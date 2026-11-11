@@ -294,7 +294,6 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
             ),
             _SettingsRow(
               label: appStrings.cameraChargingOnly,
-              description: appStrings.cameraChargingHint,
               control: Switch(value: settings.chargingOnly, onChanged: busy ? null : (value) => unawaited(_set(settings.copyWith(chargingOnly: value)))),
             ),
             _SettingsRow(

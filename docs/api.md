@@ -115,7 +115,7 @@ The OAuth-style device code flow from [clients.md](clients.md#1-device-login-oau
 | POST | `/authorize` | none (30 / 15 min) | `{ name, platform }` | `{ deviceCode, userCode, verificationUrl, expiresIn: 600, interval: 3 }` |
 | POST | `/token` | none (600 / 15 min) | `{ deviceCode }` | `428 AUTHORIZATION_PENDING` · `403 ACCESS_DENIED` · `410 EXPIRED_TOKEN` (also unknown or already used codes) · `200 { token, device: { id, name, platform }, user: { id, username } }` once |
 | POST | `/pair` | none (30 / 15 min) | `{ code, name, platform }` (`name`/`platform` fall back to the web page's suggestion) | `200 { token, device: { id, name, platform }, user: { id, username } }` · `410 EXPIRED_TOKEN` for used, expired or unknown codes |
-| GET | `/me` | bearer only | | `{ device: { id, name, platform, createdAt, lastSeenAt }, user: { id, username }, quota: { used, limit } }`; `limit` -1 = unlimited |
+| GET | `/me` | bearer only | | `{ device: { id, name, platform, createdAt, lastSeenAt }, user: { id, username, isAdmin }, quota: { used, limit } }`; `limit` -1 = unlimited |
 
 `platform` is one of `windows`, `macos`, `linux`, `android`, `ios`, `lite`, `webdav` (an app password for WebDAV)
 or empty. `verificationUrl` is `<PUBLIC_URL origin or request origin>/app/device?code=ABCD-EFGH`.

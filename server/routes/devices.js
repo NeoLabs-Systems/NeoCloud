@@ -6,6 +6,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { requireDevice } = require('../middleware/auth');
+const { isAdminUser } = require('../services/access/admin');
 const { exchangeDeviceCode, startAuthorization } = require('../services/devices/authorizations');
 const { redeemPairing } = require('../services/devices/pairing');
 const { getDeviceToken } = require('../services/devices/tokens');
@@ -43,7 +44,7 @@ router.get('/me', requireDevice, jsonHandler((req) => {
   const device = getDeviceToken(req.userId, req.deviceId);
   return {
     device: { id: device.id, name: device.name, platform: device.platform, createdAt: device.createdAt, lastSeenAt: device.lastSeenAt },
-    user: { id: user.id, username: user.username },
+    user: { id: user.id, username: user.username, isAdmin: isAdminUser(req.userId) },
     quota: { used: usage.usedBytes, limit: usage.quotaBytes },
   };
 }));

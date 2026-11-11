@@ -203,6 +203,9 @@ class NeoCloudController extends ChangeNotifier {
 
   bool get isAuthenticated => user != null;
   bool get isAdmin => user?.isAdmin ?? false;
+
+  /// Admin access on a device still requires a separate browser session.
+  bool deviceAccountIsAdmin = false;
   String get accountLabel => user?.label ?? '';
   StorageUsage? get storage => user?.storage;
 
@@ -291,6 +294,7 @@ class NeoCloudController extends ChangeNotifier {
   /// Signs in with a stored or just-approved device token. Offline, the app
   /// still opens with what it knows.
   Future<void> _enterDeviceSession(DeviceConnection connection) async {
+    deviceAccountIsAdmin = false;
     client
       ..baseUrl = connection.server
       ..bearerToken = connection.token;
@@ -332,6 +336,7 @@ class NeoCloudController extends ChangeNotifier {
 
   AccountUser _deviceUser(Map<String, dynamic> me) {
     final account = (me['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+    deviceAccountIsAdmin = account['isAdmin'] == true;
     final quota = (me['quota'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     return AccountUser.fromJson(<String, dynamic>{
       ...account,

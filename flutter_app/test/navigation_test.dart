@@ -3,18 +3,24 @@ import 'package:neocloud/main.dart';
 import 'package:neocloud/src/api/backend_client.dart';
 import 'package:neocloud/src/api/models.dart';
 import 'package:neocloud/src/device/device_session_stub.dart';
+import 'package:neocloud/src/device/device_session.dart' show DeviceSessions;
 import 'package:neocloud/src/mobile/camera_upload_stub.dart';
 import 'package:neocloud/src/mobile/share_intake_stub.dart';
 import 'package:neocloud/src/navigation/app_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<(NeoCloudController, SharedPreferences)> _signedIn({bool admin = false, Map<String, Object> stored = const <String, Object>{}}) async {
+class _MobileSessions extends Fake implements DeviceSessions {
+  @override
+  bool get supported => true;
+}
+
+Future<(NeoCloudController, SharedPreferences)> _signedIn({bool admin = false, bool mobile = false, Map<String, Object> stored = const <String, Object>{}}) async {
   SharedPreferences.setMockInitialValues(stored);
   final preferences = await SharedPreferences.getInstance();
   final controller = NeoCloudController(
     client: BackendClient(baseUrl: 'http://localhost:1'),
     preferences: preferences,
-    deviceSessions: createDeviceSessions(),
+    deviceSessions: mobile ? _MobileSessions() : createDeviceSessions(),
     cameraUploads: NoCameraUploads(),
     shareIntake: NoShareIntake(),
   );
@@ -32,6 +38,16 @@ Future<(NeoCloudController, SharedPreferences)> _signedIn({bool admin = false, M
 }
 
 void main() {
+  test('mobile shows account pages and routes sensitive pages to a browser session', () async {
+    final (controller, _) = await _signedIn(mobile: true);
+    for (final page in <SettingsPage>[SettingsPage.profile, SettingsPage.security, SettingsPage.devices, SettingsPage.imports]) {
+      expect(page.visibleFor(controller), isTrue);
+      expect(page.requiresBrowserSession, isTrue);
+    }
+    expect(SettingsPage.general.requiresBrowserSession, isFalse);
+    expect(SettingsPage.sharedLinks.visibleFor(controller), isTrue);
+  });
+
   group('AppRoute.parse', () {
     test('reads sections, folder ids, settings pages and admin tabs', () {
       expect(AppRoute.parse('/files'), const AppRoute('files'));

@@ -173,6 +173,16 @@ Future<void> _showPhoneMoreSheet(BuildContext context, NeoCloudController contro
                   controller.setSelectedSection(section);
                 },
               ),
+            if (controller.usesDeviceLogin && controller.deviceAccountIsAdmin)
+              _SidebarButton(
+                label: appStrings.navAdmin,
+                icon: Icons.admin_panel_settings_outlined,
+                active: false,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(launchUrl(controller.client.uri('/app/admin'), mode: LaunchMode.externalApplication));
+                },
+              ),
           ],
         ),
       ),

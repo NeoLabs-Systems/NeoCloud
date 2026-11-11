@@ -83,10 +83,12 @@ test('full flow: pending, approve, token once, bearer access, revoke', async () 
   const bearer = `Bearer ${issued.body.token}`;
   const me = await request(app).get('/api/devices/me').set('Authorization', bearer).expect(200);
   assert.equal(me.body.device.id, issued.body.device.id);
-  assert.deepEqual(me.body.user, { id: owner.user.id, username: owner.username });
+  assert.deepEqual(me.body.user, { id: owner.user.id, username: owner.username, isAdmin: true });
   assert.equal(typeof me.body.quota.used, 'number');
   assert.equal(typeof me.body.quota.limit, 'number');
   await request(app).get('/api/folders/root/children').set('Authorization', bearer).expect(200);
+  await request(app).get('/api/admin/users').set('Authorization', bearer).expect(403);
+  await request(app).get('/api/account').set('Authorization', bearer).expect(401);
 
   // /me is for bearer tokens; a session alone doesn't name a device.
   await owner.agent.get('/api/devices/me').expect(401);
