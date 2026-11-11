@@ -1,5 +1,10 @@
 name: Reusable Docker image
 
+# Publishes the standard and the LibreOffice image for one ref. The bundled
+# web client is not built here: the release job commits server/public built
+# from the released source into the commit it tags, so the image, the tag and
+# a git install all serve the same bundle.
+
 on:
   workflow_call:
     inputs:
@@ -20,6 +25,7 @@ jobs:
   publish:
     name: Publish ${{ matrix.variant }} image
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -31,15 +37,12 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
-
-      # The image ships the web client built from this exact ref.
-      - name: Build bundled web client
-        run: npm run flutter:build:web
+      - name: Check the bundled web client
+        run: |
+          if [ ! -f server/public/main.dart.js ]; then
+            echo "::error::server/public has no web bundle at this ref; the release job builds and commits it."
+            exit 1
+          fi
 
       - name: Resolve image tags
         id: meta
