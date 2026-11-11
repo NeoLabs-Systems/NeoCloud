@@ -1,3 +1,6 @@
+> [!WARNING]
+> **Work in progress.** NeoCloud is under active development and not ready to be used yet. Don't trust it with files you can't lose.
+
 <h1 align="center">NeoCloud</h1>
 
 <p align="center"><strong>Your files. Your server. Encrypted.</strong></p>
