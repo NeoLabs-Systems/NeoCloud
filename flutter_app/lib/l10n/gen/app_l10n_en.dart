@@ -585,7 +585,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get twoFactorSetupStep =>
-      'Add this key to your authenticator app, then enter the code it shows.';
+      'Scan this QR code with your authenticator app, or enter the key manually. Then enter the code it shows.';
 
   @override
   String get twoFactorCode => '6-digit code';

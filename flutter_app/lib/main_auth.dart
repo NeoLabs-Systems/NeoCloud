@@ -19,7 +19,8 @@ class _AuthViewState extends State<AuthView> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _codeController = TextEditingController();
   bool _registerMode = false;
 
@@ -42,10 +43,16 @@ class _AuthViewState extends State<AuthView> {
         title: Text(appStrings.forgotPasswordTitle),
         content: SizedBox(
           width: 420,
-          child: SelectableText(appStrings.forgotPasswordAskAdmin, style: TextStyle(color: _textSecondary, height: 1.45)),
+          child: SelectableText(
+            appStrings.forgotPasswordAskAdmin,
+            style: TextStyle(color: _textSecondary, height: 1.45),
+          ),
         ),
         actions: <Widget>[
-          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.close)),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(appStrings.close),
+          ),
         ],
       ),
     );
@@ -74,11 +81,15 @@ class _AuthViewState extends State<AuthView> {
         password: _passwordController.text,
       );
     } else {
-      if (_usernameController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      if (_usernameController.text.trim().isEmpty ||
+          _passwordController.text.isEmpty) {
         controller.showInlineError(appStrings.enterYourUsernameOrEmail);
         return;
       }
-      await controller.login(username: _usernameController.text.trim(), password: _passwordController.text);
+      await controller.login(
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+      );
     }
     if (controller.isAuthenticated) TextInput.finishAutofillContext();
   }
@@ -87,6 +98,7 @@ class _AuthViewState extends State<AuthView> {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
     await widget.controller.completeTwoFactorLogin(code: code);
+    if (widget.controller.isAuthenticated) TextInput.finishAutofillContext();
     if (widget.controller.isAwaitingTwoFactor) _codeController.clear();
   }
 
@@ -111,7 +123,10 @@ class _AuthViewState extends State<AuthView> {
 
   Widget _spinnerOr(String label) {
     return widget.controller.isAuthenticating
-        ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+        ? const SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
         : Text(label);
   }
 
@@ -123,14 +138,21 @@ class _AuthViewState extends State<AuthView> {
         keyboardType: TextInputType.visiblePassword,
         autofillHints: const <String>[AutofillHints.oneTimeCode],
         onSubmitted: (_) => _submitCode(),
-        decoration: InputDecoration(labelText: appStrings.twoFactorOrRecoveryCode, helperText: appStrings.openYourAuthenticator, helperMaxLines: 2),
+        decoration: InputDecoration(
+          labelText: appStrings.twoFactorOrRecoveryCode,
+          helperText: appStrings.openYourAuthenticator,
+          helperMaxLines: 2,
+        ),
       ),
       if (controller.errorMessage != null) ...<Widget>[
         const SizedBox(height: AppSpacing.sm),
         _InlineError(message: controller.errorMessage!),
       ],
       const SizedBox(height: AppSpacing.lg),
-      FilledButton(onPressed: controller.isAuthenticating ? null : _submitCode, child: _spinnerOr(appStrings.verify)),
+      FilledButton(
+        onPressed: controller.isAuthenticating ? null : _submitCode,
+        child: _spinnerOr(appStrings.verify),
+      ),
       const SizedBox(height: AppSpacing.sm),
       TextButton(
         onPressed: controller.isAuthenticating
@@ -158,8 +180,18 @@ class _AuthViewState extends State<AuthView> {
       TextField(
         controller: _usernameController,
         autofillHints: const <String>[AutofillHints.username],
+        keyboardType: register
+            ? TextInputType.text
+            : TextInputType.emailAddress,
+        autocorrect: false,
+        enableSuggestions: false,
+        textInputAction: TextInputAction.next,
         onChanged: edited,
-        decoration: InputDecoration(labelText: register ? appStrings.username : appStrings.usernameOrEmail),
+        decoration: InputDecoration(
+          labelText: register
+              ? appStrings.username
+              : appStrings.usernameOrEmail,
+        ),
       ),
       if (register) ...<Widget>[
         const SizedBox(height: AppSpacing.sm),
@@ -175,7 +207,12 @@ class _AuthViewState extends State<AuthView> {
       TextField(
         controller: _passwordController,
         obscureText: true,
-        autofillHints: <String>[register ? AutofillHints.newPassword : AutofillHints.password],
+        autocorrect: false,
+        enableSuggestions: false,
+        textInputAction: register ? TextInputAction.next : TextInputAction.done,
+        autofillHints: <String>[
+          register ? AutofillHints.newPassword : AutofillHints.password,
+        ],
         onChanged: edited,
         onSubmitted: (_) => register ? null : _submit(),
         decoration: InputDecoration(labelText: appStrings.password),
@@ -187,6 +224,9 @@ class _AuthViewState extends State<AuthView> {
         TextField(
           controller: _confirmPasswordController,
           obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+          autofillHints: const <String>[AutofillHints.newPassword],
           onChanged: edited,
           onSubmitted: (_) => _submit(),
           decoration: InputDecoration(labelText: appStrings.confirmPassword),
@@ -198,8 +238,13 @@ class _AuthViewState extends State<AuthView> {
       ],
       const SizedBox(height: AppSpacing.lg),
       FilledButton(
-        onPressed: controller.isAuthenticating || (register && !strength.acceptable) ? null : _submit,
-        child: _spinnerOr(register ? appStrings.authCreateAccount : appStrings.signIn),
+        onPressed:
+            controller.isAuthenticating || (register && !strength.acceptable)
+            ? null
+            : _submit,
+        child: _spinnerOr(
+          register ? appStrings.authCreateAccount : appStrings.signIn,
+        ),
       ),
       if (showSecurityKeySignIn) ...<Widget>[
         const SizedBox(height: 20),
@@ -208,7 +253,11 @@ class _AuthViewState extends State<AuthView> {
         OutlinedButton.icon(
           onPressed: controller.isAuthenticating
               ? null
-              : () => unawaited(controller.signInWithSecurityKey(username: _usernameController.text)),
+              : () => unawaited(
+                  controller.signInWithSecurityKey(
+                    username: _usernameController.text,
+                  ),
+                ),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(46),
             foregroundColor: _textPrimary,
@@ -233,11 +282,17 @@ class _AuthViewState extends State<AuthView> {
                         controller.clearInlineError();
                         setState(() => _registerMode = !_registerMode);
                       },
-                child: Text(_registerMode ? appStrings.alreadyHaveAnAccount : appStrings.needANewAccount),
+                child: Text(
+                  _registerMode
+                      ? appStrings.alreadyHaveAnAccount
+                      : appStrings.needANewAccount,
+                ),
               ),
             if (!_registerMode)
               TextButton(
-                onPressed: controller.isAuthenticating ? null : _showForgotPasswordDialog,
+                onPressed: controller.isAuthenticating
+                    ? null
+                    : _showForgotPasswordDialog,
                 child: Text(appStrings.forgotPassword),
               ),
           ],
@@ -273,9 +328,15 @@ class _AuthViewState extends State<AuthView> {
             builder: (context, viewportConstraints) {
               return SingleChildScrollView(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: viewportConstraints.maxHeight),
+                  constraints: BoxConstraints(
+                    minHeight: viewportConstraints.maxHeight,
+                  ),
                   child: Padding(
-                    padding: EdgeInsets.all(viewportConstraints.maxWidth < AppBreakpoints.mobile ? 14 : 24),
+                    padding: EdgeInsets.all(
+                      viewportConstraints.maxWidth < AppBreakpoints.mobile
+                          ? 14
+                          : 24,
+                    ),
                     child: Center(
                       child: _EntranceMotion(
                         child: _GlassSurface(
@@ -286,13 +347,25 @@ class _AuthViewState extends State<AuthView> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: <Widget>[
-                                const Center(child: _BrandLockup(logoSize: 44, showName: false)),
+                                const Center(
+                                  child: _BrandLockup(
+                                    logoSize: 44,
+                                    showName: false,
+                                  ),
+                                ),
                                 const SizedBox(height: AppSpacing.md),
                                 Text(title, style: _displayTitleStyle(24)),
                                 const SizedBox(height: AppSpacing.sm),
-                                Text(subtitle, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: _textSecondary)),
+                                Text(
+                                  subtitle,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(color: _textSecondary),
+                                ),
                                 const SizedBox(height: AppSpacing.lg),
-                                if (twoFactor) ..._twoFactorFields(controller) else ..._credentialFields(controller),
+                                if (twoFactor)
+                                  ..._twoFactorFields(controller)
+                                else
+                                  ..._credentialFields(controller),
                               ],
                             ),
                           ),

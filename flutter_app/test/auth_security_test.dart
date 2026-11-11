@@ -80,6 +80,16 @@ void main() {
   group('sign-in view', () {
     setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
+    testWidgets('sign-in fields advertise credentials to autofill services', (tester) async {
+      final controller = await _controller();
+      await _pumpAuth(tester, controller);
+      final username = tester.widget<TextField>(find.widgetWithText(TextField, 'Username or email'));
+      final password = tester.widget<TextField>(find.widgetWithText(TextField, 'Password'));
+      expect(username.autofillHints, contains(AutofillHints.username));
+      expect(password.autofillHints, contains(AutofillHints.password));
+      expect(password.autocorrect, isFalse);
+    });
+
     testWidgets('offers security key sign-in where the browser supports it', (tester) async {
       final controller = await _controller();
       await _pumpAuth(tester, controller);

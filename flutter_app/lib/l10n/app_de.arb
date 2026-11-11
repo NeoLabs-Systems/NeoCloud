@@ -169,7 +169,7 @@
   "twoFactorOff": "Aus. Verlange bei jeder Anmeldung einen Code aus einer Authenticator-App.",
   "twoFactorEnable": "Einrichten",
   "twoFactorDisable": "Ausschalten",
-  "twoFactorSetupStep": "Füge diesen Schlüssel in deiner Authenticator-App hinzu und gib den angezeigten Code ein.",
+  "twoFactorSetupStep": "Scanne diesen QR-Code mit deiner Authenticator-App oder gib den Schlüssel manuell ein. Gib anschließend den angezeigten Code ein.",
   "twoFactorCode": "6-stelliger Code",
   "recoveryCodesTitle": "Wiederherstellungscodes sichern",
   "recoveryCodesMessage": "Jeder Code meldet dich einmal an, falls du dein Handy verlierst. Sie werden nicht noch einmal angezeigt.",

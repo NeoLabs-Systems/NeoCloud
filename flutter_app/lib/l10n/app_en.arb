@@ -290,7 +290,7 @@
   "twoFactorOff": "Off. Add a code from an authenticator app to every sign-in.",
   "twoFactorEnable": "Set up",
   "twoFactorDisable": "Turn off",
-  "twoFactorSetupStep": "Add this key to your authenticator app, then enter the code it shows.",
+  "twoFactorSetupStep": "Scan this QR code with your authenticator app, or enter the key manually. Then enter the code it shows.",
   "twoFactorCode": "6-digit code",
   "recoveryCodesTitle": "Save your recovery codes",
   "recoveryCodesMessage": "Each code signs you in once if you lose your phone. They won’t be shown again.",

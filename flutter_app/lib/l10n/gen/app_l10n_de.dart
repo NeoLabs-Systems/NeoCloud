@@ -592,7 +592,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get twoFactorSetupStep =>
-      'Füge diesen Schlüssel in deiner Authenticator-App hinzu und gib den angezeigten Code ein.';
+      'Scanne diesen QR-Code mit deiner Authenticator-App oder gib den Schlüssel manuell ein. Gib anschließend den angezeigten Code ein.';
 
   @override
   String get twoFactorCode => '6-stelliger Code';
