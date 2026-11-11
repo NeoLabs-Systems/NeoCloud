@@ -1,68 +1,177 @@
 name: Release Stable
 
-# Manual: promotes beta to main, lets semantic-release cut vX.Y.Z from the
-# conventional commits, then builds the same artifacts as a beta release and
-# moves the Docker :latest tag.
+# Manual, from main: promotes beta to main, lets semantic-release cut vX.Y.Z
+# from the conventional commits, then builds the same artifacts as a beta
+# release and moves the Docker :latest tag.
+#
+# semantic-release on main ignores the vX.Y.Z-beta.N prerelease tags, and with
+# no stable tag at all it starts at 1.0.0. Until the first stable release a
+# v0.0.0 tag on the root commit is created as the baseline, so the betas'
+# 0.1.0 line becomes v0.1.0 (a feat commit is a minor bump from 0.0.0).
+#
+# dry_run merges and builds locally and prints the version semantic-release
+# would cut, without pushing, tagging or publishing anything.
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run (print the next version; push, tag and publish nothing)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
   issues: write
   pull-requests: write
   packages: write
+  actions: read
+
+concurrency:
+  group: release-stable
+  cancel-in-progress: false
 
 jobs:
   release:
     name: Promote beta and publish stable release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       release_tag: ${{ steps.tag.outputs.release_tag }}
       release_sha: ${{ steps.sha.outputs.release_sha }}
+    env:
+      DRY_RUN: ${{ inputs.dry_run }}
     steps:
+      # semantic-release only publishes from its configured branch (main) and
+      # reads the branch from the run's ref.
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Release Stable from main (it promotes beta into main)."
+          exit 1
+
+      # Promoting while a beta release is still pushing would ship a beta
+      # without its version stamp and bundle commit.
+      - name: Check no beta release is running
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          running="$(gh run list --repo "$REPOSITORY" --workflow release-beta.yml --limit 20 \
+            --json status --jq '[.[] | select(.status != "completed")] | length')"
+          if [ "$running" != "0" ]; then
+            echo "::error::A Release Beta run is still in progress; run this again when it has finished."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.5'
+          cache: true
 
       - name: Configure Git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Promote beta to main
+      - name: Merge beta into main
         run: |
           git fetch origin main beta --tags --force
-          git checkout main
-          git merge --no-ff origin/beta -m "chore(release): promote beta to main [skip ci]"
-          git push origin HEAD:main
+          if ! git merge --no-ff --no-commit origin/beta; then
+            # main only receives promotions: the version stamp follows beta,
+            # and the bundle is rebuilt in the next step.
+            git checkout origin/beta -- package.json package-lock.json
+          fi
+          git rm -rq --cached --ignore-unmatch server/public
+          rm -rf server/public
+          unmerged="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$unmerged" ]; then
+            echo "::error::Promoting beta conflicts with main outside generated files:"
+            echo "$unmerged"
+            exit 1
+          fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Build bundled web client
+        run: npm run flutter:build:web
+
+      - name: Verify the bundle does not point at a dev server
+        run: |
+          if grep -Eq "localhost:3344|127\.0\.0\.1:3344" server/public/main.dart.js; then
+            echo "::error::Bundled web client still points at a local dev server."
+            exit 1
+          fi
+
+      - name: Commit the promotion
+        run: |
+          git add -f server/public
+          if [ -f .git/MERGE_HEAD ] || ! git diff --cached --quiet; then
+            git commit -m "chore(release): promote beta to main [skip ci]"
+          else
+            echo "main already contains beta and its bundle."
+          fi
+
+      - name: Seed the baseline tag before the first stable release
+        run: |
+          if git tag --merged HEAD --list 'v*' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "A stable release exists; no baseline needed."
+            exit 0
+          fi
+          root="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+          git tag v0.0.0 "$root" -m "Baseline before the first stable release"
+          echo "Tagged v0.0.0 at ${root} as the semantic-release baseline."
+
+      - name: Push main
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git push origin HEAD:main
+          if git rev-parse -q --verify refs/tags/v0.0.0 >/dev/null; then
+            git push origin v0.0.0
+          fi
 
       - name: semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p @semantic-release/github semantic-release
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          npx --yes \
+            -p semantic-release@25 \
+            -p @semantic-release/commit-analyzer@13 \
+            -p @semantic-release/release-notes-generator@14 \
+            -p @semantic-release/github@12 \
+            semantic-release "${args[@]}"
 
       - name: Capture release tag
         id: tag
+        if: ${{ !inputs.dry_run }}
         run: |
-          tag="$(git tag --points-at HEAD --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)"
+          tag="$(git tag --points-at HEAD --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
           if [ -z "$tag" ]; then
-            echo "semantic-release did not tag $(git rev-parse HEAD); no releasable commits since the last stable release."
+            echo "::error::semantic-release did not tag $(git rev-parse HEAD); no releasable commits since the last stable release."
             exit 1
           fi
           echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
 
       - id: sha
+        if: ${{ !inputs.dry_run }}
         run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   build-clients:
     name: Build clients
     needs: release
+    if: ${{ !inputs.dry_run }}
     uses: ./.github/workflows/_build-clients.yml
     with:
       ref: ${{ needs.release.outputs.release_sha }}
@@ -71,6 +180,7 @@ jobs:
   publish-docker-image:
     name: Publish Docker images
     needs: release
+    if: ${{ !inputs.dry_run }}
     permissions:
       contents: read
       packages: write
@@ -79,26 +189,12 @@ jobs:
       ref: ${{ needs.release.outputs.release_sha }}
       release_tag: ${{ needs.release.outputs.release_tag }}
 
-  attach-assets:
-    name: Attach release assets
+  publish-release-assets:
+    name: Publish release assets
     needs: [release, build-clients]
-    runs-on: ubuntu-latest
-    steps:
-      # Only the client builds: docker/build-push-action also uploads its
-      # own build-record artifacts, which are not release assets.
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: lite-*
-          path: dist
-          merge-multiple: true
-      - uses: actions/download-artifact@v4
-        with:
-          name: android-apk
-          path: dist
-      - name: Upload to the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd dist
-          sha256sum * > SHA256SUMS.txt
-          gh release upload "${{ needs.release.outputs.release_tag }}" * --clobber --repo "${{ github.repository }}"
+    if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_publish-release-assets.yml
+    with:
+      release_tag: ${{ needs.release.outputs.release_tag }}
