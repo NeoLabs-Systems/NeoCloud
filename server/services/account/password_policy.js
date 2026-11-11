@@ -120,14 +120,13 @@ function evaluatePasswordStrength(password, context = {}) {
       && score >= MIN_PASSWORD_SCORE
       && !containsPersonalInfo
       && !usesCommonPattern
-      && !sequential
-      && !repeatedRuns,
+      && !sequential,
     feedback,
   };
 }
 
 // Names the reason that actually rejected the password: personal info and
-// common patterns reject on their own, so they beat general length/variety tips.
+// common patterns and sequences reject on their own, so they beat general length/variety tips.
 function passwordStrengthError(result) {
   const feedback = Array.isArray(result?.feedback) ? result.feedback : [];
   const details = feedback.find((item) => item === PERSONAL_INFO_FEEDBACK)

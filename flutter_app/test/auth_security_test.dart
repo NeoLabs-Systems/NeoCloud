@@ -45,7 +45,7 @@ Future<void> _pumpAuth(WidgetTester tester, NeoCloudController controller) async
 }
 
 void main() {
-  group('password strength (same rules as the server and NeoAgent)', () {
+  group('password strength (same rules as the server)', () {
     test('handles empty, weak, strong and personal passwords', () {
       expect(evaluatePasswordStrength(password: '').score, 0);
       expect(evaluatePasswordStrength(password: 'password123').score, lessThan(3));
@@ -57,6 +57,13 @@ void main() {
       final personal = evaluatePasswordStrength(password: 'NeoUser2026!', username: 'neouser', email: 'neo@example.com');
       expect(personal.containsUserInfo, isTrue);
       expect(personal.isAcceptable, isFalse);
+    });
+
+    test('repetition reduces the score without rejecting an otherwise strong password', () {
+      final varied = evaluatePasswordStrength(password: 'ORCHID7772018!!WIND');
+      expect(varied.score, 3);
+      expect(varied.isAcceptable, isTrue);
+      expect(evaluatePasswordStrength(password: 'aaaAAAA1').isAcceptable, isFalse);
     });
 
     test('8 characters with a score of 3 is enough', () {

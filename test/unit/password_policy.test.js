@@ -1,7 +1,7 @@
 'use strict';
 
-// The NeoLabs password policy (same rules and messages as NeoAgent): at least
-// 8 characters, a score of 3 or more, no personal info or obvious patterns.
+// At least 8 characters and a score of 3; personal info and common or
+// sequential patterns are rejected. Repetition reduces the score.
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
@@ -37,6 +37,13 @@ test('accepts a short but varied password and clamps the score', () => {
   assert.equal(strong.isAcceptable, true);
   assert.equal(strong.score, 4);
   assert.equal(evaluatePasswordStrength('').score, 0);
+});
+
+test('repeated characters reduce the score without automatically rejecting a strong password', () => {
+  const varied = evaluatePasswordStrength('ORCHID7772018!!WIND');
+  assert.equal(varied.score, 3);
+  assert.equal(varied.isAcceptable, true);
+  assert.equal(evaluatePasswordStrength('aaaAAAA1').isAcceptable, false);
 });
 
 test('the error names the reason that rejected the password', () => {
