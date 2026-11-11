@@ -52,7 +52,8 @@ jobs:
       - name: Commit and tag
         run: |
           git add package.json package-lock.json
-          git commit -m "chore(beta-release): ${{ steps.version.outputs.release_tag }} [skip ci]"
+          # A rerun after a failed push finds the version already bumped.
+          git diff --cached --quiet || git commit -m "chore(beta-release): ${{ steps.version.outputs.release_tag }} [skip ci]"
           for attempt in 1 2 3 4 5; do
             git fetch origin beta
             git rebase origin/beta
