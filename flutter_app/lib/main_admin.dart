@@ -47,7 +47,8 @@ class AdminPanel extends StatefulWidget {
 }
 
 class _AdminPanelState extends State<AdminPanel> {
-  _AdminTab _tab = _AdminTab.users;
+  /// Kept by the controller, so the address and a reload keep the tab.
+  _AdminTab get _tab => widget.controller._adminTab;
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +56,12 @@ class _AdminPanelState extends State<AdminPanel> {
     return _PageScaffold(
       children: <Widget>[
         _PageTitle(title: appStrings.adminTitle, subtitle: appStrings.adminSubtitle),
-        _AdminSafetyCard(controller: controller, onOpenBackups: () => setState(() => _tab = _AdminTab.backups)),
+        _AdminSafetyCard(controller: controller, onOpenBackups: () => controller._openAdminTab(_AdminTab.backups)),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: _AdminTab.values
-              .map((tab) => _AdminTabChip(tab: tab, active: tab == _tab, onTap: () => setState(() => _tab = tab)))
+              .map((tab) => _AdminTabChip(tab: tab, active: tab == _tab, onTap: () => controller._openAdminTab(tab)))
               .toList(growable: false),
         ),
         KeyedSubtree(
@@ -495,7 +496,6 @@ class _AdminAccessTab extends StatefulWidget {
 
 class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
   bool? _allowSignup;
-  List<Map<String, dynamic>>? _keys;
 
   NeoCloudController get _controller => widget.controller;
 
@@ -508,12 +508,8 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
   Future<void> _load() async {
     try {
       final allow = await _controller.client.adminAllowSignup();
-      final keys = await _controller.client.adminSignupKeys();
       if (!mounted) return;
-      setState(() {
-        _allowSignup = allow;
-        _keys = keys;
-      });
+      setState(() => _allowSignup = allow);
     } catch (error) {
       if (mounted) setState(() => pageError = _controller.friendlyError(error));
     }
@@ -524,20 +520,8 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
     await _load();
   });
 
-  String _keyStatus(Map<String, dynamic> key) {
-    switch (key['status']) {
-      case 'used':
-        return appStrings.adminKeyUsed((key['usedBy'] as Map?)?['username']?.toString() ?? '—');
-      case 'revoked':
-        return appStrings.adminKeyRevoked;
-      default:
-        return appStrings.adminKeyUnused;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final keys = _keys;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -553,38 +537,6 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
                 onChanged: _allowSignup == null || busy ? null : (value) => unawaited(_act(() => _controller.client.adminSetAllowSignup(value))),
               ),
             ),
-          ],
-        ),
-        _SettingsGroup(
-          title: appStrings.adminSignupKeys,
-          trailing: FilledButton.icon(
-            onPressed: busy ? null : () => unawaited(_act(_controller.client.adminCreateSignupKey)),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: Text(appStrings.adminCreateKey),
-          ),
-          children: <Widget>[
-            if (keys == null) const _LoadingPlaceholder(),
-            if (keys != null && keys.isEmpty) _SettingsBlock(child: _EmptyText(appStrings.adminNoKeys)),
-            for (final key in keys ?? const <Map<String, dynamic>>[])
-              _SettingsRow(
-                label: key['code']?.toString() ?? '',
-                description: _keyStatus(key),
-                control: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    IconButton(
-                      tooltip: appStrings.copy,
-                      onPressed: () => Clipboard.setData(ClipboardData(text: key['code']?.toString() ?? '')),
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                    ),
-                    if (key['status'] == 'unused')
-                      TextButton(
-                        onPressed: () => unawaited(_act(() => _controller.client.adminRevokeSignupKey((key['id'] as num).toInt()))),
-                        child: Text(appStrings.adminRevoke),
-                      ),
-                  ],
-                ),
-              ),
           ],
         ),
       ],

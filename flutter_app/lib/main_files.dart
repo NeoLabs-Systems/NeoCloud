@@ -64,9 +64,34 @@ abstract class _FilesBase extends State<FilesPanel> {
   int _loadGeneration = 0;
 
   NeoCloudController get controller => widget.controller;
-  String get folderId => controller.openFolderId ?? 'root';
+
+  /// Browsing a folder another account shares with this one (Shared with
+  /// me) rather than the account's own files.
+  bool get inShare => controller.selectedSection == AppSection.shared;
+  String get folderId => inShare ? controller.openSharedFolderId ?? '' : controller.openFolderId ?? 'root';
   String get currentFolderId => listing?.folder.id ?? folderId;
-  bool get atRoot => listing?.folder.parentId == null;
+
+  /// The account's own root. A shared folder also has no parent here (the
+  /// owner's folders above it stay hidden), but it is not a root.
+  bool get atRoot => !inShare && listing?.folder.parentId == null;
+
+  /// The share the open folder is part of; its first breadcrumb is the
+  /// shared folder itself.
+  SharedWithMe? get share => inShare ? controller.shareFor(listing?.path.firstOrNull?.id) : null;
+
+  /// Whether items may be added, renamed, moved or deleted here. Read-only
+  /// shares only browse and download; the server refuses the rest anyway.
+  bool get canWrite => !inShare || (share?.permission.canWrite ?? false);
+
+  /// Opens [id] in the same place this page is: own files or Shared with me
+  /// (null: the root, or the list of shares).
+  void goToFolder(String? id, {bool replace = false}) {
+    if (inShare) {
+      controller.openSharedFolder(id, replace: replace);
+    } else {
+      controller.openFolder(id, replace: replace);
+    }
+  }
 
   /// The vault the open folder belongs to, if any.
   String? get vaultId => listing?.folder.vaultId;
@@ -79,7 +104,8 @@ abstract class _FilesBase extends State<FilesPanel> {
 
   String get folderName {
     final current = listing;
-    if (current == null || current.folder.parentId == null) return appStrings.home;
+    if (current == null) return inShare ? '' : appStrings.home;
+    if (atRoot) return appStrings.home;
     if (current.folder.vaultId != null && current.path.isNotEmpty && current.path.last.id == current.folder.id) {
       return current.path.last.name;
     }
@@ -92,6 +118,7 @@ abstract class _FilesBase extends State<FilesPanel> {
     controller.filesRevision.addListener(reload);
     controller.addListener(_onControllerChanged);
     controller.vaults.addListener(reload);
+    controller.fileChanges.addListener(_onFilesChangedElsewhere);
     scroll.addListener(_onScroll);
     unawaited(load());
   }
@@ -101,6 +128,10 @@ abstract class _FilesBase extends State<FilesPanel> {
     controller.filesRevision.removeListener(reload);
     controller.removeListener(_onControllerChanged);
     controller.vaults.removeListener(reload);
+    controller.fileChanges
+      ..removeListener(_onFilesChangedElsewhere)
+      ..release(renameHold)
+      ..release(dragHold);
     _searchDebounce?.cancel();
     _skeletonTimer?.cancel();
     searchText.dispose();
@@ -120,6 +151,25 @@ abstract class _FilesBase extends State<FilesPanel> {
   }
 
   void reload() => unawaited(load(quiet: true));
+
+  /// Another tab, device or client changed this folder: reload in place,
+  /// keeping the scroll position and the selection.
+  void _onFilesChangedElsewhere(FileChangeBatch batch) {
+    if (batch.affects(currentFolderId)) reload();
+  }
+
+  /// While a rename or a drag is under way, changes from elsewhere wait, so
+  /// the list doesn't move under the pointer.
+  final Object renameHold = Object();
+  final Object dragHold = Object();
+
+  void holdLiveUpdates(Object token, bool busy) {
+    if (busy) {
+      controller.fileChanges.hold(token);
+    } else {
+      controller.fileChanges.release(token);
+    }
+  }
 
   /// Applies [change] to the loaded items and search results alike, for
   /// changes made before the server confirms them.
@@ -159,7 +209,7 @@ abstract class _FilesBase extends State<FilesPanel> {
         order: controller.settings.sortOrder,
         limit: limit,
       ));
-      final latest = page.folder.parentId == null ? await _recentFiles() : const <FileNode>[];
+      final latest = !inShare && page.folder.parentId == null ? await _recentFiles() : const <FileNode>[];
       if (!mounted || generation != _loadGeneration) return;
       _skeletonTimer?.cancel();
       setState(() {
@@ -176,9 +226,10 @@ abstract class _FilesBase extends State<FilesPanel> {
     } catch (failure) {
       if (!mounted || generation != _loadGeneration) return;
       _skeletonTimer?.cancel();
-      // A folder that vanished (trashed elsewhere) falls back to the root.
+      // A folder that vanished (trashed elsewhere, or no longer shared)
+      // falls back to the root or the list of shares.
       if (failure is ApiException && failure.statusCode == 404 && target != 'root') {
-        controller.openFolder(null);
+        goToFolder(null, replace: true);
         return;
       }
       setState(() {

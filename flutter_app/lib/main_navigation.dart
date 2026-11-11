@@ -2,7 +2,7 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, favorites, recent, trash, settings, admin }
+enum AppSection { files, shared, favorites, recent, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
 enum SidebarGroup { files, admin, settings }
@@ -12,6 +12,8 @@ extension AppSectionInfo on AppSection {
     switch (this) {
       case AppSection.files:
         return appStrings.navAllFiles;
+      case AppSection.shared:
+        return appStrings.navSharedWithMe;
       case AppSection.favorites:
         return appStrings.filesNavFavorites;
       case AppSection.recent:
@@ -29,6 +31,8 @@ extension AppSectionInfo on AppSection {
     switch (this) {
       case AppSection.files:
         return Icons.folder_outlined;
+      case AppSection.shared:
+        return Icons.folder_shared_outlined;
       case AppSection.favorites:
         return Icons.star_outline_rounded;
       case AppSection.recent:
@@ -45,6 +49,7 @@ extension AppSectionInfo on AppSection {
   SidebarGroup get group {
     switch (this) {
       case AppSection.files:
+      case AppSection.shared:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
@@ -84,6 +89,7 @@ extension SidebarGroupInfo on SidebarGroup {
 List<AppSection> _mainSections(NeoCloudController controller) {
   return <AppSection>[
     AppSection.files,
+    AppSection.shared,
     AppSection.favorites,
     AppSection.recent,
     AppSection.trash,

@@ -3,7 +3,8 @@ part of 'main.dart';
 // The sign-in and registration screen, ported 1:1 from NeoRouter's
 // main_auth.dart: one 420px card on the flat backdrop, the logo above a
 // left-aligned title, fields with floating labels, one gold button and two
-// quiet links. NeoCloud adds the sign-up key field and the 2FA step.
+// quiet links. NeoCloud adds the 2FA step, and NeoAgent's password strength
+// meter and security key sign-in.
 
 class AuthView extends StatefulWidget {
   const AuthView({super.key, required this.controller});
@@ -19,7 +20,6 @@ class _AuthViewState extends State<AuthView> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  final TextEditingController _signupKeyController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
   bool _registerMode = false;
 
@@ -29,7 +29,6 @@ class _AuthViewState extends State<AuthView> {
     _passwordController.dispose();
     _emailController.dispose();
     _confirmPasswordController.dispose();
-    _signupKeyController.dispose();
     _codeController.dispose();
     super.dispose();
   }
@@ -73,7 +72,6 @@ class _AuthViewState extends State<AuthView> {
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        signupKey: _signupKeyController.text.trim().isEmpty ? null : _signupKeyController.text.trim(),
       );
     } else {
       if (_usernameController.text.trim().isEmpty || _passwordController.text.isEmpty) {
@@ -90,6 +88,25 @@ class _AuthViewState extends State<AuthView> {
     if (code.isEmpty) return;
     await widget.controller.completeTwoFactorLogin(code: code);
     if (widget.controller.isAwaitingTwoFactor) _codeController.clear();
+  }
+
+  _PasswordStrengthInfo get _registerPasswordStrength => _passwordStrengthInfo(
+    password: _passwordController.text,
+    username: _usernameController.text,
+    email: _emailController.text,
+  );
+
+  Widget _orDivider(String label) {
+    return Row(
+      children: <Widget>[
+        Expanded(child: Divider(color: _border)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(label, style: TextStyle(color: _textMuted, fontSize: 12)),
+        ),
+        Expanded(child: Divider(color: _border)),
+      ],
+    );
   }
 
   Widget _spinnerOr(String label) {
@@ -129,18 +146,15 @@ class _AuthViewState extends State<AuthView> {
 
   List<Widget> _credentialFields(NeoCloudController controller) {
     final register = _registerMode || _bootstrap;
-    void edited(String _) => controller.clearInlineError();
+    // The meter reads the username and email too, so every edit redraws it.
+    void edited(String _) {
+      controller.clearInlineError();
+      if (register) setState(() {});
+    }
+
+    final strength = _registerPasswordStrength;
+    final showSecurityKeySignIn = !register && controller.supportsSecurityKeys;
     return <Widget>[
-      if (register && controller.signupKeyRequired && !_bootstrap) ...<Widget>[
-        TextField(
-          controller: _signupKeyController,
-          textCapitalization: TextCapitalization.characters,
-          inputFormatters: <TextInputFormatter>[_SignupKeyFormatter()],
-          onChanged: edited,
-          decoration: InputDecoration(labelText: appStrings.signupKey, hintText: 'XXXX-XXXX-XXXX'),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-      ],
       TextField(
         controller: _usernameController,
         autofillHints: const <String>[AutofillHints.username],
@@ -167,6 +181,8 @@ class _AuthViewState extends State<AuthView> {
         decoration: InputDecoration(labelText: appStrings.password),
       ),
       if (register) ...<Widget>[
+        const SizedBox(height: 10),
+        _PasswordStrengthIndicator(info: strength),
         const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _confirmPasswordController,
@@ -182,24 +198,43 @@ class _AuthViewState extends State<AuthView> {
       ],
       const SizedBox(height: AppSpacing.lg),
       FilledButton(
-        onPressed: controller.isAuthenticating ? null : _submit,
+        onPressed: controller.isAuthenticating || (register && !strength.acceptable) ? null : _submit,
         child: _spinnerOr(register ? appStrings.authCreateAccount : appStrings.signIn),
       ),
+      if (showSecurityKeySignIn) ...<Widget>[
+        const SizedBox(height: 20),
+        _orDivider(appStrings.authOrContinueWith),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: controller.isAuthenticating
+              ? null
+              : () => unawaited(controller.signInWithSecurityKey(username: _usernameController.text)),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
+            foregroundColor: _textPrimary,
+            side: BorderSide(color: _borderLight),
+          ),
+          icon: const Icon(Icons.key, size: 18),
+          label: Text(appStrings.authSignInWithSecurityKey),
+        ),
+      ],
       if (!_bootstrap) ...<Widget>[
         const SizedBox(height: AppSpacing.sm),
         Wrap(
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
-            TextButton(
-              onPressed: controller.isAuthenticating
-                  ? null
-                  : () {
-                      controller.clearInlineError();
-                      setState(() => _registerMode = !_registerMode);
-                    },
-              child: Text(_registerMode ? appStrings.alreadyHaveAnAccount : appStrings.needANewAccount),
-            ),
+            // With sign-up off only the way back from the form stays.
+            if (_registerMode || controller.registrationOpen)
+              TextButton(
+                onPressed: controller.isAuthenticating
+                    ? null
+                    : () {
+                        controller.clearInlineError();
+                        setState(() => _registerMode = !_registerMode);
+                      },
+                child: Text(_registerMode ? appStrings.alreadyHaveAnAccount : appStrings.needANewAccount),
+              ),
             if (!_registerMode)
               TextButton(
                 onPressed: controller.isAuthenticating ? null : _showForgotPasswordDialog,
@@ -225,7 +260,7 @@ class _AuthViewState extends State<AuthView> {
       subtitle = appStrings.firstAccountSubtitle;
     } else if (_registerMode) {
       title = appStrings.authCreateAccount;
-      subtitle = controller.signupKeyRequired ? appStrings.signupKeyStepSubtitle : appStrings.createAnotherAccount;
+      subtitle = appStrings.createAnotherAccount;
     } else {
       title = appStrings.authSignInTitle;
       subtitle = appStrings.authSignInSubtitle;
@@ -272,21 +307,5 @@ class _AuthViewState extends State<AuthView> {
         ),
       ),
     );
-  }
-}
-
-/// Sign-up keys as XXXX-XXXX-XXXX while they are typed or pasted.
-class _SignupKeyFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final raw = newValue.text.toUpperCase().replaceAll(RegExp(r'[^0-9A-Z]'), '');
-    final clipped = raw.length > 12 ? raw.substring(0, 12) : raw;
-    final buffer = StringBuffer();
-    for (var i = 0; i < clipped.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write('-');
-      buffer.write(clipped[i]);
-    }
-    final text = buffer.toString();
-    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }

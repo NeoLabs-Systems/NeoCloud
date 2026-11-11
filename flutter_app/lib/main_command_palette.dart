@@ -136,6 +136,7 @@ class _CommandPaletteState extends State<_CommandPalette> {
     ];
     final places = <_PaletteCommand>[
       _PaletteCommand(Icons.folder_outlined, appStrings.navAllFiles, () => controller.openFolder(null)),
+      _PaletteCommand(Icons.folder_shared_outlined, appStrings.navSharedWithMe, () => controller.openSharedFolder(null)),
       _PaletteCommand(Icons.star_outline_rounded, appStrings.filesNavFavorites, () => _go(AppSection.favorites)),
       _PaletteCommand(Icons.schedule_rounded, appStrings.navRecent, () => _go(AppSection.recent)),
       _PaletteCommand(Icons.delete_outline_rounded, appStrings.navTrash, () => _go(AppSection.trash)),

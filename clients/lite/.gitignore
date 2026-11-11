@@ -1,0 +1,3 @@
+
+# go-winres output, made by packaging/windows/build.sh
+cmd/neocloud-lite/*.syso

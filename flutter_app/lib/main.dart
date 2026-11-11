@@ -9,8 +9,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:neocloud_background/neocloud_background.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,15 +33,22 @@ import 'src/files/upload_queue.dart';
 import 'src/imports/import_progress.dart';
 import 'src/l10n/app_language.dart';
 import 'src/l10n/widget_localizations.dart';
+import 'src/live/file_change_feed.dart';
+import 'src/live/live_connection.dart';
+import 'src/live/live_socket.dart';
+import 'src/live/socket_io_frame.dart';
+import 'src/mobile/background_reliability.dart';
 import 'src/mobile/camera_upload.dart';
 import 'src/mobile/qr_scanner.dart';
 import 'src/mobile/share_intake.dart';
+import 'src/navigation/app_route.dart';
 import 'src/pairing/pairing_link.dart';
 import 'src/search/snippet.dart';
 import 'src/security/password_strength.dart';
 import 'src/security/bip39_words.dart';
 import 'src/security/passphrase_strength.dart';
 import 'src/security/recovery_words.dart';
+import 'src/security/webauthn_client.dart';
 import 'src/sharing/share_draft.dart';
 import 'src/sharing/share_text.dart';
 import 'src/theme/palette.dart';
@@ -52,6 +61,7 @@ part 'main_admin_backups.dart';
 part 'main_admin_safety.dart';
 part 'main_admin_search.dart';
 part 'main_auth.dart';
+part 'main_background_permissions.dart';
 part 'main_camera_upload.dart';
 part 'main_camera_status.dart';
 part 'main_command_palette.dart';
@@ -77,15 +87,19 @@ part 'main_import_jobs.dart';
 part 'main_navigation.dart';
 part 'main_pair_landing.dart';
 part 'main_pairing_dialog.dart';
+part 'main_router.dart';
 part 'main_password_strength.dart';
 part 'main_settings.dart';
 part 'main_settings_devices.dart';
 part 'main_settings_pages.dart';
+part 'main_settings_passkeys.dart';
 part 'main_settings_webdav.dart';
 part 'main_share_links.dart';
 part 'main_share_form.dart';
+part 'main_share_people.dart';
 part 'main_shared.dart';
 part 'main_shared_links_page.dart';
+part 'main_shared_with_me.dart';
 part 'main_mobile_shell.dart';
 part 'main_shell.dart';
 part 'main_spacing.dart';
@@ -105,6 +119,8 @@ part 'main_viewer.dart';
 const String _configuredBackendUrl = String.fromEnvironment('NEOCLOUD_BACKEND_URL');
 
 Future<void> main() async {
+  // Real paths (/app/files/…) instead of #/ addresses; a no-op off the web.
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await ensureAppLanguageLoaded();
   final preferences = await SharedPreferences.getInstance();
@@ -121,18 +137,34 @@ Future<void> main() async {
 /// dialogs.
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
-class NeoCloudApp extends StatelessWidget {
+class NeoCloudApp extends StatefulWidget {
   const NeoCloudApp({super.key, required this.controller});
 
   final NeoCloudController controller;
 
   @override
+  State<NeoCloudApp> createState() => _NeoCloudAppState();
+}
+
+class _NeoCloudAppState extends State<NeoCloudApp> {
+  late final _AppRouterDelegate _routerDelegate = _AppRouterDelegate(widget.controller);
+  late final _AppRouteProvider _routeProvider = _AppRouteProvider(widget.controller);
+
+  @override
+  void dispose() {
+    _routerDelegate.dispose();
+    _routeProvider.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
         _appThemeMode = controller.themeMode;
-        return MaterialApp(
+        return MaterialApp.router(
           key: ValueKey<String>('${controller.themeMode.name}-${currentAppLanguage.code}'),
           title: 'NeoCloud',
           debugShowCheckedModeBanner: false,
@@ -142,8 +174,9 @@ class NeoCloudApp extends StatelessWidget {
           locale: currentAppLanguage.locale,
           supportedLocales: AppLanguage.values.map((language) => language.locale),
           localizationsDelegates: appLocalizationsDelegates,
-          navigatorKey: _navigatorKey,
-          home: _NativeRuntime(controller: controller, child: NeoCloudRoot(controller: controller)),
+          routerDelegate: _routerDelegate,
+          routeInformationParser: const _AppRouteParser(),
+          routeInformationProvider: _routeProvider,
         );
       },
     );

@@ -3,6 +3,7 @@
 library;
 
 part 'models_features.dart';
+part 'models_members.dart';
 
 int _int(Object? value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 
@@ -87,6 +88,7 @@ class FileNode {
     this.vaultId,
     this.cipherName,
     this.favorite = false,
+    this.shared = false,
     this.path,
     this.expiresAt,
   });
@@ -105,6 +107,7 @@ class FileNode {
     originalPath: json['originalPath'] as String?,
     vaultId: json['vaultId'] as String?,
     favorite: json['favorite'] == true,
+    shared: json['shared'] == true,
     path: json['path'] is String ? json['path'] as String : null,
     expiresAt: _date(json['expiresAt']),
   );
@@ -130,6 +133,10 @@ class FileNode {
 
   /// Starred by the account.
   final bool favorite;
+
+  /// Shared by the account with other accounts on the server (the owner's
+  /// view only; members never see it).
+  final bool shared;
 
   /// Search, recent, storage and favorites results: the folder the node is
   /// in, e.g. "/Photos/2026" ("/" for the root).
@@ -158,6 +165,7 @@ class FileNode {
     vaultId: vaultId,
     cipherName: name,
     favorite: favorite,
+    shared: shared,
     path: path,
     expiresAt: expiresAt,
   );
@@ -178,6 +186,7 @@ class FileNode {
     vaultId: vaultId,
     cipherName: cipherName,
     favorite: favorite ?? this.favorite,
+    shared: shared,
     path: path,
     expiresAt: expiresAt,
   );
@@ -287,6 +296,27 @@ class SessionInfo {
   final String userAgent;
   final String? ipAddress;
   final DateTime? lastSeenAt;
+}
+
+/// A security key or passkey on the account (`/api/account/security-keys`).
+class SecurityKeyItem {
+  const SecurityKeyItem({required this.id, required this.label, required this.createdAt, required this.lastUsedAt, required this.backedUp});
+
+  factory SecurityKeyItem.fromJson(Map<String, dynamic> json) => SecurityKeyItem(
+    id: _int(json['id']),
+    label: _string(json['label']),
+    createdAt: _date(json['createdAt']),
+    lastUsedAt: _date(json['lastUsedAt']),
+    backedUp: json['backedUp'] == true,
+  );
+
+  final int id;
+  final String label;
+  final DateTime? createdAt;
+  final DateTime? lastUsedAt;
+
+  /// Synced by its provider (a passkey in a password manager or iCloud).
+  final bool backedUp;
 }
 
 class DeviceInfo {

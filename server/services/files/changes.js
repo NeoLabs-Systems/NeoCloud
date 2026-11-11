@@ -7,6 +7,7 @@
 const db = require('../../db/database');
 const { emitToUser } = require('../events');
 const { serializeNode } = require('./tree');
+const { membersWatching } = require('../members/access');
 
 const OPS = new Set(['create', 'update', 'rename', 'move', 'trash', 'restore', 'delete']);
 
@@ -15,10 +16,16 @@ function recordChange(userId, nodeId, op) {
   db.prepare('INSERT INTO changes (user_id, node_id, op) VALUES (?, ?, ?)').run(userId, nodeId, op);
 }
 
-// Called after the transaction commits: tells open web sessions to refresh.
+// Called after the transaction commits: tells open web sessions to refresh,
+// the owner's and those of members of a shared folder above a changed one
+// (each told only about the folders it can see).
 function announceChanges(userId, parentIds) {
   const folders = [...new Set(parentIds.filter(Boolean))];
-  if (folders.length > 0) emitToUser(userId, 'files:changed', { folderIds: folders });
+  if (folders.length === 0) return;
+  emitToUser(userId, 'files:changed', { folderIds: folders });
+  for (const [granteeId, folderIds] of membersWatching(userId, folders)) {
+    emitToUser(granteeId, 'files:changed', { folderIds });
+  }
 }
 
 function currentCursor(userId) {
@@ -27,9 +34,11 @@ function currentCursor(userId) {
 
 /**
  * Changes after `cursor`, oldest first, each with the node as it is now
- * (null once it has been deleted for good).
+ * (null once it has been deleted for good). `cursor: 'latest'` answers no
+ * changes and the current head, so a client can start following from now.
  */
 function listChanges(userId, cursor, { limit = 1000 } = {}) {
+  if (cursor === 'latest') return { changes: [], cursor: currentCursor(userId), hasMore: false };
   const pageSize = Math.min(Math.max(Number(limit) || 1000, 1), 5000);
   const rows = db.prepare(`
     SELECT c.seq, c.op, c.node_id, c.at, n.id AS present_id, n.parent_id, n.type, n.name, n.size,

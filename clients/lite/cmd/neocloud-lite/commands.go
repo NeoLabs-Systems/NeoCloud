@@ -1,18 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/autostart"
 	"github.com/neolabs/neocloud/clients/lite/internal/browser"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
@@ -57,10 +62,14 @@ func cmdLogin(args []string) error {
 	if err != nil {
 		return err
 	}
+	hadKeyLock := a.cfg.Get().KeyLock != nil
 	if err := a.engine.SignIn(*server, token); err != nil {
 		return err
 	}
 	fmt.Printf("Signed in as %s.\n", token.User.Username)
+	if hadKeyLock {
+		fmt.Println("The security key lock was turned off with the old token; run `neocloud-lite key enroll` to turn it on again.")
+	}
 	return nil
 }
 
@@ -156,6 +165,9 @@ func cmdSync(args []string) error {
 	defer a.close()
 	ctx, cancel := signalContext()
 	defer cancel()
+	if err := keyLock(a).Unlock(ctx); err != nil {
+		return err
+	}
 	if err := a.engine.SyncOnce(ctx); err != nil {
 		return err
 	}
@@ -185,7 +197,9 @@ func cmdStatus(args []string) error {
 		client, _ := a.engine.Client()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if me, err := client.Me(ctx); err != nil {
+		if cfg.Locked() {
+			fmt.Println("Token:   sealed by the security key lock (not checked)")
+		} else if me, err := client.Me(ctx); err != nil {
 			fmt.Printf("Token:   not accepted (%v)\n", err)
 		} else if me.Quota.Limit > 0 {
 			fmt.Printf("Storage: %s of %s\n", bytes(me.Quota.Used), bytes(me.Quota.Limit))
@@ -254,6 +268,7 @@ func printStatusJSON(a *app) error {
 		"account":    cfg.Username,
 		"deviceName": cfg.DeviceName,
 		"paused":     cfg.Paused,
+		"keyLock":    cfg.KeyLock != nil,
 		"pairs":      pairs,
 	})
 }
@@ -290,4 +305,74 @@ func bytes(n int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
+}
+
+// keyLock is the security key lock for one-shot commands: prompts go to
+// the terminal.
+func keyLock(a *app) *keylock.Lock {
+	lock := keylock.New(a.cfg, nil)
+	lock.Prompt = func(message string) { fmt.Fprintln(os.Stderr, message+"…") }
+	return lock
+}
+
+func cmdKey(args []string) error {
+	if len(args) != 1 {
+		return errUsage
+	}
+	a, err := openApp(stderrLogger(true))
+	if err != nil {
+		return err
+	}
+	defer a.close()
+	lock := keyLock(a)
+	ctx, cancel := signalContext()
+	defer cancel()
+	switch args[0] {
+	case "status":
+		st := lock.Status()
+		switch {
+		case !st.Supported:
+			fmt.Println("Security key lock: " + st.Message)
+		case !st.Enrolled:
+			fmt.Println("Security key lock: off")
+		default:
+			fmt.Println("Security key lock: on; the device token is stored encrypted and syncing needs the key")
+		}
+	case "enroll":
+		err := lock.Enroll(ctx, "")
+		if errors.Is(err, keylock.ErrPINRequired) {
+			var pin string
+			if pin, err = readPIN(); err != nil {
+				return err
+			}
+			err = lock.Enroll(ctx, pin)
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Println("Security key lock is on. The device token is stored encrypted; NeoCloud Lite syncs only while this key is plugged in.")
+	case "remove":
+		if err := lock.Remove(ctx); err != nil {
+			return err
+		}
+		fmt.Println("Security key lock is off. The device token is stored as before.")
+	default:
+		return errUsage
+	}
+	return nil
+}
+
+// readPIN asks for the security key's PIN without echoing it.
+func readPIN() (string, error) {
+	fmt.Fprint(os.Stderr, "Security key PIN: ")
+	defer fmt.Fprintln(os.Stderr)
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		pin, err := term.ReadPassword(int(os.Stdin.Fd()))
+		return string(pin), err
+	}
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil && line == "" {
+		return "", err
+	}
+	return strings.TrimRight(line, "\r\n"), nil
 }

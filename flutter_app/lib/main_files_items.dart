@@ -13,6 +13,7 @@ class _ItemCallbacks {
     this.onLongPress,
     this.dragSubject,
     this.onDropInto,
+    this.onDragActive,
     this.isCut,
     this.showPath = false,
     this.hitFor,
@@ -36,6 +37,9 @@ class _ItemCallbacks {
 
   /// Items dropped onto a folder.
   final void Function(List<FileNode> nodes, FileNode folder)? onDropInto;
+
+  /// A drag of items started (true) or ended (false).
+  final ValueChanged<bool>? onDragActive;
 
   /// Cut with Ctrl/⌘+X and waiting to be pasted: drawn dimmed.
   final bool Function(String id)? isCut;
@@ -82,6 +86,7 @@ String _describeNode(FileNode node) {
   final modified = _spokenDate(node.modifiedAt);
   if (modified.isNotEmpty) parts.add(modified);
   if (node.favorite) parts.add(appStrings.filesFavorite);
+  if (node.shared) parts.add(appStrings.sharedWithPeople);
   return parts.join(', ');
 }
 
@@ -185,6 +190,7 @@ class _FileRowState extends State<_FileRow> {
                                     ),
                                   ),
                                   if (node.favorite) ...<Widget>[const SizedBox(width: 6), Icon(Icons.star_rounded, size: 15, color: _accent)],
+                                  if (node.shared) ...<Widget>[const SizedBox(width: 6), const _SharedMark(size: 15)],
                                   if (hit != null) ...<Widget>[const SizedBox(width: 8), _MatchBadge(match: hit.match)],
                                 ],
                               ),
@@ -282,6 +288,7 @@ class _FileTile extends StatelessWidget {
                           const SizedBox(height: 40),
                         const Spacer(),
                         if (node.favorite) Icon(Icons.star_rounded, size: 16, color: _accent),
+                        if (node.shared) const _SharedMark(size: 16),
                         _FileActionsMenu(actions: actions),
                       ],
                     ),
@@ -448,6 +455,21 @@ class _ListHeader extends StatelessWidget {
           SizedBox(width: 150, child: _sortHeader('modified', appStrings.columnModified)),
         ],
       ),
+    );
+  }
+}
+
+/// Marks an item the account shared with other people on the server.
+class _SharedMark extends StatelessWidget {
+  const _SharedMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: appStrings.sharedWithPeople,
+      child: Icon(Icons.people_alt_outlined, size: size, color: _textMuted),
     );
   }
 }

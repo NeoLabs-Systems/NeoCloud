@@ -338,6 +338,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage> with _Page
             ),
           ],
         ),
+        _SecurityKeysSection(controller: _controller),
         _SettingsGroup(
           title: appStrings.sessionsTitle,
           children: <Widget>[

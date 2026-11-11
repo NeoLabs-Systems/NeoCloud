@@ -71,3 +71,43 @@ func (c *Client) Move(ctx context.Context, id, newParentID, newName string) (*No
 func (c *Client) Delete(ctx context.Context, id string) error {
 	return c.doJSON(ctx, http.MethodDelete, "/api/nodes/"+url.PathEscape(id), nil, nil, nil)
 }
+
+// Crumb is one folder on the way from the root to a listed folder.
+type Crumb struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// folderPage is one page of GET /api/folders/:id/children.
+type folderPage struct {
+	Folder     Node    `json:"folder"`
+	Path       []Crumb `json:"path"`
+	Items      []Node  `json:"items"`
+	NextCursor *string `json:"nextCursor"`
+}
+
+// Subfolders lists the folders directly inside folderID (RootAlias for the
+// root), with the crumbs from the root down to it. Listings put folders
+// first, so paging stops at the first file.
+func (c *Client) Subfolders(ctx context.Context, folderID string) (Node, []Crumb, []Node, error) {
+	var folders []Node
+	query := url.Values{"limit": {"2000"}}
+	for {
+		var page folderPage
+		if err := c.doJSON(ctx, http.MethodGet, "/api/folders/"+url.PathEscape(folderID)+"/children", query, nil, &page); err != nil {
+			return Node{}, nil, nil, err
+		}
+		done := page.NextCursor == nil
+		for _, item := range page.Items {
+			if !item.IsFolder() {
+				done = true
+				break
+			}
+			folders = append(folders, item)
+		}
+		if done {
+			return page.Folder, page.Path, folders, nil
+		}
+		query.Set("cursor", *page.NextCursor)
+	}
+}

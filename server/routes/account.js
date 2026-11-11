@@ -6,6 +6,7 @@ const db = require('../db/database');
 const { requireAuth } = require('../middleware/auth');
 const { changePassword } = require('../services/account/credentials');
 const twoFactor = require('../services/account/two_factor');
+const webauthn = require('../services/account/webauthn');
 const { listSessions, regenerateCurrentSession, revokeSession } = require('../services/account/sessions');
 const { createDeviceToken, listDeviceTokens, revokeDeviceToken } = require('../services/devices/tokens');
 const { decideAuthorization, describeAuthorization } = require('../services/devices/authorizations');
@@ -32,6 +33,7 @@ function currentUser(req) {
 router.get('/', jsonHandler((req) => ({
   user: toUserPayload(currentUser(req)),
   twoFactor: twoFactor.getTwoFactorStatus(req.userId),
+  securityKeys: webauthn.listCredentials(req.userId),
 })));
 
 router.get('/usage', jsonHandler((req) => getUsage(req.userId)));
@@ -74,6 +76,39 @@ router.post('/2fa/recovery-codes', accountLimiter, jsonHandler((req) => twoFacto
   currentPassword: req.body?.currentPassword,
   code: req.body?.code,
 })));
+
+// Security keys and passkeys. Registration is a two-step ceremony whose
+// challenge waits in the session between options and verify.
+router.get('/security-keys', jsonHandler((req) => ({ securityKeys: webauthn.listCredentials(req.userId) })));
+
+router.post('/security-keys/register/options', accountLimiter, jsonHandler(async (req) => {
+  const { options, challenge } = await webauthn.beginRegistration({ req, userId: req.userId });
+  req.session.pendingWebAuthnRegistration = challenge;
+  return { options };
+}));
+
+router.post('/security-keys/register/verify', accountLimiter, jsonHandler((req) => {
+  const pending = req.session.pendingWebAuthnRegistration;
+  delete req.session.pendingWebAuthnRegistration;
+  return webauthn.completeRegistration({
+    req,
+    userId: req.userId,
+    response: req.body?.response,
+    label: req.body?.label,
+    pending,
+  });
+}));
+
+router.put('/security-keys/:id', accountLimiter, jsonHandler((req) => webauthn.renameCredential(
+  req.userId,
+  intParam(req.params.id, 'security key id'),
+  req.body?.label,
+)));
+
+router.delete('/security-keys/:id', accountLimiter, jsonHandler((req) => webauthn.deleteCredential(
+  req.userId,
+  intParam(req.params.id, 'security key id'),
+)));
 
 router.get('/sessions', jsonHandler((req) => ({ sessions: listSessions(req, req.userId) })));
 

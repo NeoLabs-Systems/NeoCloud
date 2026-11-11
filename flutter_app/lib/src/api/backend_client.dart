@@ -6,6 +6,7 @@ import '../network/app_http_client_factory.dart';
 import 'models.dart';
 
 part 'backend_client_features.dart';
+part 'backend_client_members.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
 /// the API (e.g. NAME_EXISTS); [message] is readable text for the user.
@@ -107,15 +108,23 @@ class BackendClient {
     required String username,
     required String email,
     required String password,
-    String? signupKey,
   }) async => _map(await _request('POST', '/api/auth/register', json: {
     'username': username,
     'email': email,
     'password': password,
-    'signupKey': ?signupKey,
   }, expireOn401: false));
 
-  Future<void> checkSignupKey(String key) => _request('POST', '/api/auth/signup-key/check', json: {'key': key}, expireOn401: false);
+  /// Security key sign-in: options for `navigator.credentials.get`, then the
+  /// assertion back. Without [username] any discoverable key (passkey) works.
+  Future<Map<String, dynamic>> beginSecurityKeyLogin({String? username}) async => _map(await _request(
+    'POST',
+    '/api/auth/webauthn/login/options',
+    json: {if (username != null && username.isNotEmpty) 'username': username},
+    expireOn401: false,
+  ));
+
+  Future<Map<String, dynamic>> completeSecurityKeyLogin(Map<String, dynamic> response) async =>
+      _map(await _request('POST', '/api/auth/webauthn/login/verify', json: {'response': response}, expireOn401: false));
 
   Future<void> logout() async {
     await _request('POST', '/api/auth/logout', expireOn401: false);
@@ -186,6 +195,12 @@ class BackendClient {
   Future<DuplicateReport> storageDuplicates() async => DuplicateReport.fromJson(_map(await _request('GET', '/api/storage/duplicates')));
 
   Future<List<FileNode>> trash() async => nodesFromJson(_map(await _request('GET', '/api/trash'))['items']);
+
+  /// The change journal after [cursor]: `{changes, cursor, hasMore}`. The web
+  /// app polls it when its socket is down; the mobile apps always do. A null
+  /// [cursor] asks for the head only (`cursor=latest`), no changes.
+  Future<Map<String, dynamic>> syncChanges(int? cursor, {int limit = 5000}) async =>
+      _map(await _request('GET', '/api/sync/changes', query: {'cursor': cursor == null ? 'latest' : '$cursor', 'limit': '$limit'}));
 
   Future<void> restoreFromTrash(String id) => _request('POST', '/api/trash/$id/restore');
 
@@ -293,6 +308,24 @@ class BackendClient {
 
   Future<void> changePassword(String current, String next) =>
       _request('PUT', '/api/account/password', json: {'currentPassword': current, 'newPassword': next});
+
+  Future<List<SecurityKeyItem>> securityKeys() async => _securityKeys(_map(await _request('GET', '/api/account/security-keys'))['securityKeys']);
+
+  Future<Map<String, dynamic>> beginSecurityKeyRegistration() async =>
+      _map(await _request('POST', '/api/account/security-keys/register/options'));
+
+  Future<List<SecurityKeyItem>> completeSecurityKeyRegistration(Map<String, dynamic> response, String label) async => _securityKeys(
+    _map(await _request('POST', '/api/account/security-keys/register/verify', json: {'response': response, 'label': label}))['credentials'],
+  );
+
+  Future<List<SecurityKeyItem>> renameSecurityKey(int id, String label) async =>
+      _securityKeys(_map(await _request('PUT', '/api/account/security-keys/$id', json: {'label': label}))['credentials']);
+
+  Future<List<SecurityKeyItem>> deleteSecurityKey(int id) async =>
+      _securityKeys(_map(await _request('DELETE', '/api/account/security-keys/$id'))['credentials']);
+
+  List<SecurityKeyItem> _securityKeys(Object? rows) =>
+      ((rows as List?) ?? const []).map((row) => SecurityKeyItem.fromJson(_map(row))).toList();
 
   Future<Map<String, dynamic>> beginTwoFactor(String password) async =>
       _map(await _request('POST', '/api/account/2fa/setup', json: {'currentPassword': password}));
@@ -430,13 +463,6 @@ class BackendClient {
   Future<bool> adminAllowSignup() async => _map(await _request('GET', '/api/admin/access'))['allowSignup'] == true;
 
   Future<void> adminSetAllowSignup(bool allow) => _request('PUT', '/api/admin/access/signup', json: {'allowSignup': allow});
-
-  Future<List<Map<String, dynamic>>> adminSignupKeys() async =>
-      ((_map(await _request('GET', '/api/admin/signup-keys'))['keys'] as List?) ?? const []).map(_map).toList();
-
-  Future<void> adminCreateSignupKey() => _request('POST', '/api/admin/signup-keys', json: {'count': 1});
-
-  Future<void> adminRevokeSignupKey(int id) => _request('DELETE', '/api/admin/signup-keys/$id');
 
   Future<Map<String, dynamic>> adminHealth() async => _map(await _request('GET', '/api/admin/health'));
 

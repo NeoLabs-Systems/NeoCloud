@@ -47,7 +47,12 @@ class _HomeViewState extends State<HomeView> {
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onResume: _resumeCameraBackup);
+    _lifecycle = AppLifecycleListener(
+      onResume: _resumeCameraBackup,
+      // Polling for changes made elsewhere pauses while the app is hidden.
+      onShow: () => controller.liveUpdates.setVisible(true),
+      onHide: () => controller.liveUpdates.setVisible(false),
+    );
     controller.uploads.resolveConflict = (conflict) async {
       if (!mounted) return null;
       return showConflictDialog(context, controller, conflict);
@@ -97,12 +102,11 @@ class _HomeViewState extends State<HomeView> {
                       title: const _BrandLockup(logoSize: 26),
                       actions: <Widget>[
                         _CameraStatusChip(controller: controller),
-                        if (phone) _PhoneMoreMenu(controller: controller),
                       ],
                       shape: Border(bottom: BorderSide(color: _border)),
                     ),
               drawer: wide || phone ? null : Drawer(backgroundColor: _bgSecondary, shape: const RoundedRectangleBorder(), child: sidebar),
-              bottomNavigationBar: phone ? _PhoneNavigationBar(controller: controller) : null,
+              bottomNavigationBar: phone ? _MobileTabBar(controller: controller) : null,
               body: Row(
                 children: <Widget>[
                   if (wide) sidebar,
@@ -152,13 +156,15 @@ class _Sidebar extends StatelessWidget {
     for (final nav in groups) {
       final parent = nav.sections.first;
       final hasChildren = nav.sections.length > 1;
-      final open = expanded == nav.group;
+      final open = hasChildren && expanded == nav.group;
+      final holdsCurrent = nav.sections.contains(current);
       items.add(_SidebarButton(
         label: nav.group.label,
         icon: nav.group.icon,
-        active: current == parent && !open,
+        // A closed group still shows that the open page is inside it.
+        active: holdsCurrent && !open,
         trailing: hasChildren
-            ? Icon(open ? Icons.expand_less : Icons.expand_more, size: 16, color: current == parent ? _textSecondary : _textMuted)
+            ? Icon(open ? Icons.expand_less : Icons.expand_more, size: 16, color: holdsCurrent ? _textSecondary : _textMuted)
             : null,
         onTap: hasChildren ? () => onToggle(nav.group) : () => go(parent),
       ));
@@ -363,6 +369,10 @@ class _SectionBody extends StatelessWidget {
     switch (controller.selectedSection) {
       case AppSection.files:
         return FilesPanel(controller: controller);
+      case AppSection.shared:
+        return controller.openSharedFolderId == null
+            ? SharedWithMePanel(controller: controller)
+            : FilesPanel(key: const ValueKey<String>('shared-folder'), controller: controller);
       case AppSection.favorites:
         return FavoritesPanel(controller: controller);
       case AppSection.recent:

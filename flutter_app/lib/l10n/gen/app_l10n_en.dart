@@ -85,10 +85,6 @@ class AppL10nEn extends AppL10n {
   String get createAnotherAccount => 'Create another NeoCloud account.';
 
   @override
-  String get signupKeyStepSubtitle =>
-      'This server needs a sign-up key. Ask an admin for one.';
-
-  @override
   String get usernameOrEmail => 'Username or email';
 
   @override
@@ -133,15 +129,6 @@ class AppL10nEn extends AppL10n {
   String get backToSignIn => 'Back to sign in';
 
   @override
-  String get signupKey => 'Sign-up key';
-
-  @override
-  String get signupKeyChange => 'Change';
-
-  @override
-  String get signupKeyRequiredError => 'Enter your sign-up key.';
-
-  @override
   String get enterAUsername => 'Enter a username.';
 
   @override
@@ -170,14 +157,14 @@ class AppL10nEn extends AppL10n {
 
   @override
   String passwordStrength(String label) {
-    return 'Strength: $label';
+    return 'Password strength: $label';
   }
 
   @override
   String get strengthEmpty => 'empty';
 
   @override
-  String get strengthRejected => 'will be rejected';
+  String get strengthRejected => 'too weak, will be rejected';
 
   @override
   String get strengthGood => 'good';
@@ -187,13 +174,13 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get passwordHintEmpty =>
-      'Use 8+ characters. Longer passphrases work best.';
+      'Use 8+ characters. Longer passphrases work well.';
 
   @override
   String get passwordHintLength => 'Use at least 8 characters.';
 
   @override
-  String get passwordHintUserInfo => 'Don’t include your username or email.';
+  String get passwordHintUserInfo => 'Do not include your username or email.';
 
   @override
   String get passwordHintPattern =>
@@ -207,7 +194,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get passwordHintGood =>
-      'Good password. A little more length makes it strong.';
+      'Good password. A little more length makes it stronger.';
 
   @override
   String get navFiles => 'Files';
@@ -523,7 +510,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get pageDevicesDescription =>
-      'Desktop, mobile and lite clients connected to your account.';
+      'Desktop and mobile apps connected to your account.';
 
   @override
   String get pageStorage => 'Storage';
@@ -805,30 +792,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get adminAllowSignupDescription =>
-      'When off, new accounts need a sign-up key.';
-
-  @override
-  String get adminSignupKeys => 'Sign-up keys';
-
-  @override
-  String get adminCreateKey => 'Create key';
-
-  @override
-  String get adminKeyUnused => 'Unused';
-
-  @override
-  String adminKeyUsed(String name) {
-    return 'Used by $name';
-  }
-
-  @override
-  String get adminKeyRevoked => 'Revoked';
-
-  @override
-  String get adminRevoke => 'Revoke';
-
-  @override
-  String get adminNoKeys => 'No sign-up keys yet.';
+      'When off, nobody can register. The first account on a new server always can.';
 
   @override
   String get adminServerTitle => 'Server';
@@ -872,7 +836,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get officePreviewUnavailable =>
-      'Office previews need LibreOffice on the server. Download the file to open it.';
+      'There’s no preview for this file. Download it to open it.';
 
   @override
   String get play => 'Play';
@@ -1259,7 +1223,7 @@ class AppL10nEn extends AppL10n {
       'Vault videos and audio can’t be played in the browser. Download the file to play it.';
 
   @override
-  String get shareLink => 'Share link';
+  String get shareLink => 'Share';
 
   @override
   String get newVault => 'New vault';
@@ -2143,18 +2107,8 @@ class AppL10nEn extends AppL10n {
   String get filesWelcomeTitle => 'Welcome to your cloud';
 
   @override
-  String get filesWelcomeSubtitle =>
-      'Everything here is encrypted on your own server. Three things to start with:';
-
-  @override
-  String get filesWelcomeUploadTitle => 'Add your first files';
-
-  @override
   String get filesWelcomeUploadBody =>
       'Upload files or drop them anywhere on this page.';
-
-  @override
-  String get filesWelcomeDesktopTitle => 'Get the desktop app';
 
   @override
   String get filesWelcomeDesktopBody =>
@@ -2162,9 +2116,6 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get filesWelcomeDesktopAction => 'Get the app';
-
-  @override
-  String get filesWelcomeKeyTitle => 'Back up the master key';
 
   @override
   String get filesWelcomeKeyBody =>
@@ -2320,7 +2271,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get storageDetailsUnavailable =>
-      'This server doesn\'t report a detailed breakdown yet.';
+      'A detailed breakdown isn’t available right now.';
 
   @override
   String storageDuplicateGroup(int count, String size) {
@@ -2630,40 +2581,204 @@ class AppL10nEn extends AppL10n {
   String get cameraAllowFullAccess => 'Allow full access';
 
   @override
-  String get cameraDelayedTitle => 'Backup delayed by the system';
+  String get cameraIosBackgroundTip =>
+      'iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.';
 
   @override
-  String cameraDelayedMessage(String date) {
-    return 'Last run $date. The system may be stopping NeoCloud in the background to save battery.';
+  String get backgroundNotificationChannel => 'Backup progress';
+
+  @override
+  String backgroundNotificationProgress(int current, int total) {
+    return 'Backing up $current of $total';
   }
 
   @override
-  String get cameraBatteryTipGeneric =>
-      'Let NeoCloud run in the background: Settings › Apps › NeoCloud › Battery › Unrestricted.';
+  String get backgroundNotificationPause => 'Pause';
 
   @override
-  String get cameraBatteryTipSamsung =>
-      'Samsung: Settings › Battery › Background usage limits – take NeoCloud off “Sleeping apps”.';
+  String get backgroundCameraPaused => 'Paused';
 
   @override
-  String get cameraBatteryTipXiaomi =>
-      'Xiaomi: Settings › Apps › NeoCloud › Battery saver › No restrictions, and turn on Autostart.';
+  String get backgroundTitle => 'Keep backup running';
 
   @override
-  String get cameraBatteryTipHuawei =>
-      'Huawei: Settings › Battery › App launch – set NeoCloud to “Manage manually” and allow everything.';
+  String get backgroundIntroAndroid =>
+      'Camera upload keeps going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.';
 
   @override
-  String get cameraBatteryTipOnePlus =>
-      'OnePlus: Settings › Battery › Battery optimisation – set NeoCloud to “Don’t optimise”.';
+  String get backgroundIntroIos =>
+      'iOS decides when NeoCloud may run in the background: a few times a day, most often overnight on the charger. These settings give it every chance.';
 
   @override
-  String get cameraBatteryMore =>
-      'More tips for your phone on dontkillmyapp.com';
+  String get backgroundStatusGranted => 'Granted';
 
   @override
-  String get cameraIosBackgroundTip =>
-      'iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.';
+  String get backgroundStatusNeeded => 'Needed';
+
+  @override
+  String get backgroundStatusRecommended => 'Recommended';
+
+  @override
+  String get backgroundStatusOff => 'Off';
+
+  @override
+  String get backgroundPhotosTitle => 'Photos and videos';
+
+  @override
+  String get backgroundPhotosDetail =>
+      'Access to the whole library, not only selected photos, so every new photo is backed up.';
+
+  @override
+  String get backgroundBatteryTitle => 'Unrestricted battery';
+
+  @override
+  String get backgroundBatteryDetail =>
+      'Lets Android run NeoCloud in the background and start a backup soon after you take a photo.';
+
+  @override
+  String backgroundManufacturerTitle(String maker) {
+    return '$maker settings';
+  }
+
+  @override
+  String backgroundManufacturerDetail(String maker) {
+    return '$maker stops apps in the background on top of Android. Change these so it leaves NeoCloud running:';
+  }
+
+  @override
+  String get backgroundManufacturerGuide =>
+      'Guide for your phone on dontkillmyapp.com';
+
+  @override
+  String get backgroundNotificationsTitle => 'Notifications';
+
+  @override
+  String get backgroundNotificationsDetailAndroid =>
+      'Shows the backup’s progress, with a Pause button.';
+
+  @override
+  String get backgroundNotificationsDetailIos =>
+      'Lets NeoCloud tell you when backup needs you.';
+
+  @override
+  String get backgroundDataTitle => 'Background data';
+
+  @override
+  String get backgroundDataDetail =>
+      'Data Saver blocks uploads while NeoCloud is closed unless it may use data without restriction.';
+
+  @override
+  String get backgroundRefreshTitle => 'Background App Refresh';
+
+  @override
+  String get backgroundRefreshDetail =>
+      'Without it, iOS never runs NeoCloud in the background.';
+
+  @override
+  String get backgroundRefreshRestricted =>
+      'Turned off by Screen Time or a device profile; it can only be turned on there.';
+
+  @override
+  String get backgroundLowPowerTitle => 'Low Power Mode';
+
+  @override
+  String get backgroundLowPowerDetail =>
+      'While it is on, iOS pauses background tasks. Turn it off in Settings › Battery to let a backup run.';
+
+  @override
+  String get backgroundSwipeHint =>
+      'Don’t swipe NeoCloud away in the app switcher: iOS then stops its background tasks until you open it again.';
+
+  @override
+  String get backgroundAllow => 'Allow';
+
+  @override
+  String get backgroundAllowAll => 'Allow all';
+
+  @override
+  String get backgroundOpenSettings => 'Open settings';
+
+  @override
+  String get backgroundNotNow => 'Not now';
+
+  @override
+  String get backgroundBannerTitle => 'Backup may not run in the background';
+
+  @override
+  String get backgroundBannerMissing =>
+      'Something NeoCloud needs to run in the background is turned off.';
+
+  @override
+  String backgroundBannerStale(String date) {
+    return 'No complete backup since $date. The system may be stopping NeoCloud in the background.';
+  }
+
+  @override
+  String get backgroundBannerFix => 'Check settings';
+
+  @override
+  String get backgroundReliabilityTitle => 'Background reliability';
+
+  @override
+  String get backgroundReliabilityAllSet => 'Everything NeoCloud needs is set.';
+
+  @override
+  String backgroundReliabilityOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count settings to check',
+      one: '1 setting to check',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backgroundReliabilityCheck => 'Check';
+
+  @override
+  String get backgroundStepSamsungUnrestricted =>
+      'Settings › Apps › NeoCloud › Battery › Unrestricted';
+
+  @override
+  String get backgroundStepSamsungNeverSleeping =>
+      'Settings › Battery › Background usage limits › Never sleeping apps › add NeoCloud';
+
+  @override
+  String get backgroundStepXiaomiAutostart =>
+      'Settings › Apps › Manage apps › NeoCloud › turn on Autostart';
+
+  @override
+  String get backgroundStepXiaomiNoRestrictions =>
+      'Settings › Apps › Manage apps › NeoCloud › Battery saver › No restrictions';
+
+  @override
+  String get backgroundStepHuaweiAppLaunch =>
+      'Settings › Battery › App launch › NeoCloud › Manage manually, with Auto-launch, Secondary launch and Run in background on';
+
+  @override
+  String get backgroundStepOppoBatteryUsage =>
+      'Settings › Apps › NeoCloud › Battery usage › allow background activity and auto launch';
+
+  @override
+  String get backgroundStepOppoDontOptimise =>
+      'Settings › Battery › Battery optimisation › NeoCloud › Don’t optimise';
+
+  @override
+  String get backgroundStepVivoBackgroundPower =>
+      'Settings › Battery › Background power consumption management › NeoCloud › Allow';
+
+  @override
+  String get backgroundStepVivoAutostart =>
+      'i Manager › App manager › Autostart manager › turn on NeoCloud';
+
+  @override
+  String get backgroundStepAsusAutostart =>
+      'Mobile Manager › PowerMaster › Auto-start manager › NeoCloud › Allow';
+
+  @override
+  String get backgroundStepLockInRecents =>
+      'Open the recent apps and lock NeoCloud there, so clearing them leaves it running';
 
   @override
   String get cameraBackUpNow => 'Back up now';
@@ -3116,9 +3231,6 @@ class AppL10nEn extends AppL10n {
   String get importStatusCancelled => 'Cancelled';
 
   @override
-  String get filesWelcomeImportTitle => 'Coming from Nextcloud?';
-
-  @override
   String get filesWelcomeImportBody =>
       'Import your files with their folders and dates.';
 
@@ -3234,4 +3346,216 @@ class AppL10nEn extends AppL10n {
   @override
   String get importHostBlocked =>
       'Only an admin can import from a server on your local network.';
+
+  @override
+  String get filesWelcomeDontShowAgain => 'Don’t show again';
+
+  @override
+  String get filesQuickAccessShow => 'Show quick access';
+
+  @override
+  String get filesQuickAccessHide => 'Hide quick access';
+
+  @override
+  String get adminSafetyAllDone => 'All done';
+
+  @override
+  String adminSafetyProgress(int done, int total) {
+    return '$done of $total done';
+  }
+
+  @override
+  String get adminSafetyExpand => 'Show checklist';
+
+  @override
+  String get adminSafetyCollapse => 'Hide checklist';
+
+  @override
+  String get authSignInWithSecurityKey => 'Sign in with security key';
+
+  @override
+  String get authOrContinueWith => 'or continue with';
+
+  @override
+  String get passkeyWebOnly =>
+      'Security keys are only available in the NeoCloud web app.';
+
+  @override
+  String get passkeyNoneProvided => 'No security key was provided.';
+
+  @override
+  String get passkeyPromptDismissed => 'Security key prompt was dismissed.';
+
+  @override
+  String get passkeyAlreadyRegistered =>
+      'That security key is already registered on this account.';
+
+  @override
+  String get passkeyCouldNotBeUsed => 'The security key could not be used.';
+
+  @override
+  String get passkeySignInFailed =>
+      'Security key sign-in could not be started.';
+
+  @override
+  String get passkeyRegistrationFailed =>
+      'The security key registration could not be started.';
+
+  @override
+  String get passkeysTitle => 'Security keys';
+
+  @override
+  String get passkeysDescription =>
+      'Sign in with a hardware key or passkey instead of your password. A key that asks for a PIN or fingerprint also replaces your two-factor code.';
+
+  @override
+  String get passkeysNone => 'None';
+
+  @override
+  String passkeysRegistered(int count) {
+    return '$count registered';
+  }
+
+  @override
+  String get passkeyAdd => 'Add security key';
+
+  @override
+  String get passkeyNameOptional => 'Name (optional)';
+
+  @override
+  String get passkeyNameHint => 'YubiKey, MacBook Touch ID, …';
+
+  @override
+  String passkeyDefaultName(int number) {
+    return 'Security key $number';
+  }
+
+  @override
+  String get passkeyRenameTitle => 'Rename security key';
+
+  @override
+  String get passkeyName => 'Name';
+
+  @override
+  String get passkeyRemove => 'Remove';
+
+  @override
+  String passkeyAddedLastUsed(String added, String lastUsed) {
+    return 'Added $added · Last used $lastUsed';
+  }
+
+  @override
+  String get passkeyNotRecorded => 'Not recorded';
+
+  @override
+  String get passkeyNeverUsed => 'Never used';
+
+  @override
+  String get passkeyUnsupported =>
+      'This device cannot register security keys. Open NeoCloud in a browser over HTTPS to add one.';
+
+  @override
+  String get navSharedWithMe => 'Shared with me';
+
+  @override
+  String get sharedWithMeSubtitle =>
+      'Files and folders other people on this server shared with you.';
+
+  @override
+  String get sharedWithMeEmpty => 'Nothing shared with you yet';
+
+  @override
+  String get sharedWithMeEmptySubtitle =>
+      'When someone shares a file or folder with you, it shows up here.';
+
+  @override
+  String sharedBy(String owner) {
+    return 'Shared by $owner';
+  }
+
+  @override
+  String sharedByCanEdit(String owner) {
+    return 'Shared by $owner · you can edit';
+  }
+
+  @override
+  String sharedByReadOnly(String owner) {
+    return 'Shared by $owner · view only';
+  }
+
+  @override
+  String get sharedWithPeople => 'Shared with people';
+
+  @override
+  String get sharedLeave => 'Leave share';
+
+  @override
+  String sharedLeaveConfirm(String name, String owner) {
+    return 'You will no longer see “$name”. Only $owner can share it with you again.';
+  }
+
+  @override
+  String get sharedSaveToMyFiles => 'Save to my files';
+
+  @override
+  String sharedSavedToMyFiles(String name) {
+    return '“$name” copied to your files.';
+  }
+
+  @override
+  String get sharedReadOnlyError =>
+      'This folder is shared with you to view only.';
+
+  @override
+  String get sharedBoundaryError =>
+      'Items can’t be moved into or out of a shared folder. Copy them instead.';
+
+  @override
+  String get sharedRootError =>
+      'The shared folder itself belongs to its owner.';
+
+  @override
+  String get sharedZipMixedError =>
+      'Download your own files and shared files separately.';
+
+  @override
+  String get sharePeopleTitle => 'Share with people';
+
+  @override
+  String get sharePeopleHelp =>
+      'Enter the exact email address or username of someone with an account on this server.';
+
+  @override
+  String get sharePublicLinkTitle => 'Public link';
+
+  @override
+  String get memberRecipientHint => 'Email address or username';
+
+  @override
+  String get memberAdd => 'Add';
+
+  @override
+  String get memberCanView => 'Can view';
+
+  @override
+  String get memberCanEdit => 'Can edit';
+
+  @override
+  String get memberChange => 'Change access';
+
+  @override
+  String get memberRemove => 'Remove access';
+
+  @override
+  String get memberExpired => 'Expired';
+
+  @override
+  String get membersEmpty => 'Not shared with anyone yet.';
+
+  @override
+  String get memberNotFound =>
+      'No account found that this can be shared with. Check the exact email address or username.';
+
+  @override
+  String get memberAlreadyAdded => 'Already shared with this person.';
 }

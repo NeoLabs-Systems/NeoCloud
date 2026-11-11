@@ -49,6 +49,41 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/neocloud-lite
 CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build ./cmd/neocloud-lite   # also arm64
 ```
 
+The app window ([docs/clients.md](clients.md#app-window-lite)) is plain
+HTML, CSS and JS in `internal/settingsui/ui`, embedded with `go:embed`;
+rebuild the binary to see a change. `run --headless` prints a one-time URL
+to open it in any browser. The tray icons in `internal/tray/icons` are
+rendered from the logo's glyph (template PNGs for macOS, colored PNG/ICO
+elsewhere); regenerate all five states together when the logo changes.
+
+Launched without arguments (a double click) the binary runs the tray app,
+once per config folder: a second launch finds `instance.lock` taken and
+asks the running copy, over a loopback port and a random token in
+`instance.json`, to open its window. On macOS a reopen event does the same.
+The first tray launch from an installed location turns on start at login;
+after that the setting is the user's. With arguments, the CLI behaves as
+before.
+
+Installable apps are built by `packaging/<target>/build.sh <tag> <outdir>
+[arch]` (CI: the `lite-package` job in `_build-clients.yml`):
+
+| Target | Asset | Notes |
+| --- | --- | --- |
+| macOS | `NeoCloud-<tag>-macos.dmg` | Universal `NeoCloud.app`, menu bar only (`LSUIElement`), drag to Applications. Signed ad hoc only: open it the first time with right-click › Open until Developer ID signing and notarisation exist. |
+| Windows | `NeoCloud-Setup-<tag>-windows-x64.exe`, `…-arm64.exe` | NSIS, per user in `%LOCALAPPDATA%\Programs\NeoCloud`, Start-menu shortcut, uninstaller (keeps the config). GUI build (`-H=windowsgui`) with icon and version info from go-winres. Unsigned, so SmartScreen warns. |
+| Linux | `NeoCloud-<tag>-linux-x86_64.AppImage` | Best effort; autostart via XDG points at the AppImage. |
+
+The raw `neocloud-lite-*` binaries stay in the release for servers. The
+icons in `packaging/icons` come from the logo through `render.sh`.
+
+The security key lock ([docs/clients.md](clients.md#security-key-lock-lite))
+lives in `internal/fido` (CTAPHID, CTAP2 and PIN protocol 1; hidraw on
+Linux, IOKit via cgo on macOS, none on Windows) and `internal/keylock`
+(enrolment, sealing, the lock watcher). The tests run against
+`internal/fido/fidotest`, a software authenticator behind a fake HID bus,
+so they need no hardware. With a real key: `neocloud-lite key enroll`,
+then unplug and replug it while `neocloud-lite run --headless` is running.
+
 ## Branches and releases
 
 - `beta` is where work lands. Every push publishes a prerelease

@@ -43,7 +43,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>👥 Multi-user</h3>
-      Accounts, quotas, 2FA and an admin page.
+      Accounts, quotas, 2FA, passkeys and an admin page.
     </td>
   </tr>
 </table>

@@ -3,7 +3,8 @@ part of 'main.dart';
 // Admin › first-run safety: a checklist (master key exported, backup target
 // set up, backup verified) and a banner that stays until the admin confirms
 // the master key is stored offline. The server has no setting for that
-// confirmation, so it is kept per admin on this device.
+// confirmation, so it is kept per admin on this device, like whether the
+// card is folded. It starts folded once everything is done.
 
 /// Bumped when the master key is confirmed, so the checklist redraws.
 final ValueNotifier<int> _adminSafetyRevision = ValueNotifier<int>(0);
@@ -11,6 +12,8 @@ final ValueNotifier<int> _adminSafetyRevision = ValueNotifier<int>(0);
 String _masterKeyAckKey(NeoCloudController controller) => 'admin.masterKeyAck.${controller.user?.id ?? 0}';
 
 bool _masterKeyAcknowledged(NeoCloudController controller) => controller._preferences.getBool(_masterKeyAckKey(controller)) ?? false;
+
+String _safetyFoldedKey(NeoCloudController controller) => 'admin.safetyFolded.${controller.user?.id ?? 0}';
 
 /// Asks for the admin's password, shows NEOCLOUD_MASTER_KEY with copy and
 /// download, and records "I stored it" when ticked.
@@ -105,8 +108,8 @@ class _MasterKeyDialogState extends State<_MasterKeyDialog> {
   }
 }
 
-/// The banner and checklist at the top of the admin page; gone once
-/// everything is done.
+/// The banner and checklist at the top of the admin page; folds to its
+/// heading and progress.
 class _AdminSafetyCard extends StatefulWidget {
   const _AdminSafetyCard({required this.controller, required this.onOpenBackups});
 
@@ -183,6 +186,41 @@ class _AdminSafetyCardState extends State<_AdminSafetyCard> {
 
   Map<String, dynamic>? _map(Object? value) => (value as Map?)?.cast<String, dynamic>();
 
+  /// Folded as the admin left it; otherwise folded once everything is done.
+  bool _folded(bool allDone) => _controller._preferences.getBool(_safetyFoldedKey(_controller)) ?? allDone;
+
+  void _setFolded(bool folded) {
+    unawaited(_controller._preferences.setBool(_safetyFoldedKey(_controller), folded));
+    setState(() {});
+  }
+
+  Widget _header({required int done, required int total, required bool folded}) {
+    final allDone = done == total;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      onTap: () => _setFolded(!folded),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: <Widget>[
+            Expanded(child: Text(appStrings.securityChecklistTitle, style: _sectionTitleStyle())),
+            _StatusPill(
+              label: allDone ? appStrings.adminSafetyAllDone : appStrings.adminSafetyProgress(done, total),
+              color: allDone ? _success : _warning,
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              folded ? Icons.expand_more_rounded : Icons.expand_less_rounded,
+              size: 20,
+              color: _textMuted,
+              semanticLabel: folded ? appStrings.adminSafetyExpand : appStrings.adminSafetyCollapse,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _item({required bool done, required String title, required String hint, Widget? action}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -218,7 +256,11 @@ class _AdminSafetyCardState extends State<_AdminSafetyCard> {
     final verified = targets.any((target) => _map(target['lastVerification'])?['ok'] == true);
     final ran = targets.any((target) => _map(target['lastRun'])?['status'] == 'ok');
     final backupDone = canVerify ? verified : ran;
-    if (keyDone && hasTarget && backupDone && _error == null && _notice == null) return const SizedBox.shrink();
+    final done = <bool>[keyDone, hasTarget, backupDone].where((item) => item).length;
+    final folded = _folded(done == 3) && _error == null && _notice == null;
+    if (folded) {
+      return _AppCard(padding: const EdgeInsets.fromLTRB(20, 10, 16, 10), child: _header(done: done, total: 3, folded: true));
+    }
     final verifyTarget = targets.where((target) => _map(target['lastRun'])?['status'] == 'ok').firstOrNull ?? targets.firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -232,8 +274,8 @@ class _AdminSafetyCardState extends State<_AdminSafetyCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text(appStrings.securityChecklistTitle, style: _sectionTitleStyle()),
-              const SizedBox(height: 4),
+              _header(done: done, total: 3, folded: false),
+              const SizedBox(height: 2),
               Text(appStrings.securityChecklistSubtitle, style: TextStyle(color: _textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
               _item(

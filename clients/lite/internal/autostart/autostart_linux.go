@@ -27,7 +27,7 @@ func enable(exe string) error {
 	if err != nil {
 		return err
 	}
-	entry := "[Desktop Entry]\nType=Application\nName=NeoCloud Lite\n" +
+	entry := "[Desktop Entry]\nType=Application\nName=NeoCloud\n" +
 		"Exec=" + quoteExec(exe) + " run\nX-GNOME-Autostart-enabled=true\nTerminal=false\n"
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err

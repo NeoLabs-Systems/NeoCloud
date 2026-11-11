@@ -230,6 +230,20 @@ test('sync: tree snapshot, then changes from the cursor', async () => {
   assert.equal(next.body.changes.length, 0);
 });
 
+test('sync: cursor=latest starts at the head of the journal', async () => {
+  await upload(owner.agent, 'head.txt', 'x').expect(201);
+  const head = await owner.agent.get('/api/sync/changes?cursor=latest').expect(200);
+  assert.deepEqual(head.body.changes, []);
+  assert.equal(head.body.hasMore, false);
+  const snapshot = await owner.agent.get('/api/sync/tree').expect(200);
+  assert.equal(head.body.cursor, snapshot.body.cursor);
+  assert.ok(head.body.cursor > 0);
+
+  const file = await upload(owner.agent, 'after-head.txt', 'x').expect(201);
+  const after = await owner.agent.get(`/api/sync/changes?cursor=${head.body.cursor}`).expect(200);
+  assert.deepEqual(after.body.changes.map((c) => c.nodeId), [file.body.id]);
+});
+
 test('device tokens reach files and sync, nothing else', async () => {
   const created = await owner.agent.post('/api/account/devices').send({ name: 'Laptop', platform: 'macos' }).expect(201);
   const { token, device } = created.body;

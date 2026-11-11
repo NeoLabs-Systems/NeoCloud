@@ -18,11 +18,8 @@ const { getTwoFactorStatus, verifyLoginCode } = require('../services/account/two
 const { endCurrentSession, recordCurrentSession } = require('../services/account/sessions');
 const throttle = require('../services/account/login_throttle');
 const { isAdminUser } = require('../services/access/admin');
-const {
-  assertSignupKeyUsable,
-  isSignupKeyRequired,
-  redeemSignupKeyForNewUser,
-} = require('../services/access/signup_keys');
+const webauthn = require('../services/account/webauthn');
+const { getAllowSignup } = require('../config/access');
 const { getUsage } = require('../services/storage/quota');
 const { requireSessionTransport } = require('../middleware/auth');
 const { SESSION_COOKIE_NAME } = require('../http/middleware');
@@ -40,10 +37,10 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const signupKeyCheckLimiter = rateLimit({
+const webauthnLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: 'Too many sign-up key attempts, try again later', code: 'RATE_LIMITED' },
+  max: 40,
+  message: { error: 'Too many security key attempts, try again later', code: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -111,23 +108,28 @@ function establishPendingTwoFactorSession(req, res, user) {
   });
 }
 
+// The first account can always register; after that only while sign-up is on.
+function isRegistrationOpen() {
+  const { count } = db.prepare('SELECT COUNT(*) AS count FROM users').get();
+  return count === 0 || getAllowSignup();
+}
+
+function assertRegistrationOpen() {
+  if (!isRegistrationOpen()) {
+    throw httpError(403, 'Registration is closed on this server. Ask an admin for an account.', 'SIGNUP_DISABLED');
+  }
+}
+
 router.get('/status', (req, res) => {
   const { count } = db.prepare('SELECT COUNT(*) AS count FROM users').get();
-  const signupKeyRequired = isSignupKeyRequired();
   const user = readAuthenticatedUser(req);
   res.json({
     hasUser: count > 0,
-    registrationOpen: !signupKeyRequired,
-    signupKeyRequired,
+    registrationOpen: isRegistrationOpen(),
     authenticated: Boolean(user),
     user: user ? toUserPayload(user) : null,
   });
 });
-
-router.post('/signup-key/check', signupKeyCheckLimiter, jsonHandler((req) => {
-  assertSignupKeyUsable(req.body?.key);
-  return { valid: true };
-}));
 
 router.post('/register', authLimiter, requireSessionTransport, async (req, res) => {
   try {
@@ -137,6 +139,7 @@ router.post('/register', authLimiter, requireSessionTransport, async (req, res) 
     if (!username || !password || !email) {
       throw httpError(400, 'Username, email, and password required', 'MISSING_FIELDS');
     }
+    assertRegistrationOpen();
     if (!isValidEmail(email)) throw httpError(400, 'A valid email is required', 'INVALID_EMAIL');
     validateNewUsername(username);
     validateNewPassword(password, { username, email });
@@ -144,14 +147,13 @@ router.post('/register', authLimiter, requireSessionTransport, async (req, res) 
     const hash = await hashPassword(password);
     const userId = db.transaction(() => {
       // Checked again inside the transaction: hashing takes long enough for
-      // a concurrent sign-up to claim either name.
+      // a concurrent sign-up to claim either name, or the first account.
+      assertRegistrationOpen();
       validateNewUsername(username);
       assertEmailAvailable(email);
       const inserted = db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)')
         .run(username, email, hash);
-      const id = Number(inserted.lastInsertRowid);
-      redeemSignupKeyForNewUser(req.body?.signupKey, id);
-      return id;
+      return Number(inserted.lastInsertRowid);
     })();
     establishSession(req, res, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
   } catch (err) {
@@ -224,6 +226,32 @@ router.post('/login/2fa', authLimiter, requireSessionTransport, async (req, res)
     throttle.clearFailures(key);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(pendingUserId);
     if (!user) return res.status(401).json({ error: 'User not found', code: 'UNAUTHORIZED' });
+    return establishSession(req, res, user);
+  } catch (err) {
+    return sendSignInError(res, err);
+  }
+});
+
+// Security key sign-in. The challenge is spent by the first verify attempt,
+// right or wrong. A key that verified the user (PIN or biometric) stands in
+// for the second factor; a key that only confirmed presence still needs the
+// authenticator code, as in NeoAgent.
+router.post('/webauthn/login/options', webauthnLimiter, requireSessionTransport, jsonHandler(async (req) => {
+  const { options, challenge } = await webauthn.beginLogin({ req, username: req.body?.username });
+  req.session.pendingWebAuthnLogin = challenge;
+  return { options };
+}));
+
+router.post('/webauthn/login/verify', webauthnLimiter, requireSessionTransport, async (req, res) => {
+  try {
+    const pending = req.session?.pendingWebAuthnLogin;
+    delete req.session.pendingWebAuthnLogin;
+    const result = await webauthn.completeLogin({ req, response: req.body?.response, pending });
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.userId);
+    if (!user) return res.status(401).json({ error: 'User not found', code: 'UNAUTHORIZED' });
+    if (!result.userVerified && getTwoFactorStatus(user.id).enabled) {
+      return establishPendingTwoFactorSession(req, res, user);
+    }
     return establishSession(req, res, user);
   } catch (err) {
     return sendSignInError(res, err);

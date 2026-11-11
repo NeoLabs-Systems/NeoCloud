@@ -56,14 +56,19 @@ class _RecentPanelState extends State<RecentPanel> {
   void initState() {
     super.initState();
     widget.controller.filesRevision.addListener(_load);
+    widget.controller.fileChanges.addListener(_onFilesChangedElsewhere);
     _load();
   }
 
   @override
   void dispose() {
     widget.controller.filesRevision.removeListener(_load);
+    widget.controller.fileChanges.removeListener(_onFilesChangedElsewhere);
     super.dispose();
   }
+
+  /// Spans every folder, so any change elsewhere may show here.
+  void _onFilesChangedElsewhere(FileChangeBatch _) => unawaited(_load());
 
   Future<void> _load() async {
     try {
@@ -124,14 +129,19 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
   void initState() {
     super.initState();
     _controller.filesRevision.addListener(_load);
+    _controller.fileChanges.addListener(_onFilesChangedElsewhere);
     _load();
   }
 
   @override
   void dispose() {
     _controller.filesRevision.removeListener(_load);
+    _controller.fileChanges.removeListener(_onFilesChangedElsewhere);
     super.dispose();
   }
+
+  /// Spans every folder, so any change elsewhere may show here.
+  void _onFilesChangedElsewhere(FileChangeBatch _) => unawaited(_load());
 
   Future<void> _load() async {
     try {
@@ -209,14 +219,19 @@ class _TrashPanelState extends State<TrashPanel> {
   void initState() {
     super.initState();
     _controller.filesRevision.addListener(_load);
+    _controller.fileChanges.addListener(_onFilesChangedElsewhere);
     _load();
   }
 
   @override
   void dispose() {
     _controller.filesRevision.removeListener(_load);
+    _controller.fileChanges.removeListener(_onFilesChangedElsewhere);
     super.dispose();
   }
+
+  /// Spans every folder, so any change elsewhere may show here.
+  void _onFilesChangedElsewhere(FileChangeBatch _) => unawaited(_load());
 
   Future<void> _load() async {
     try {

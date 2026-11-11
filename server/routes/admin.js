@@ -6,7 +6,6 @@ const { requireAdmin } = require('../middleware/auth');
 const users = require('../services/admin/users');
 const serverConfig = require('../services/admin/server_config');
 const { listAccessEvents } = require('../services/access/audit');
-const { createSignupKeys, listSignupKeys, revokeSignupKey } = require('../services/access/signup_keys');
 const { getServerVersion } = require('../utils/version');
 const backupTargets = require('../services/backup/targets');
 const backupRunner = require('../services/backup/runner');
@@ -66,12 +65,6 @@ router.post('/storage/recalculate', settingsLimiter, jsonHandler(() => serverCon
 
 router.get('/access', jsonHandler(() => serverConfig.getAccessSettings()));
 router.put('/access/signup', settingsLimiter, jsonHandler((req) => serverConfig.setAllowSignup(req.body?.allowSignup)));
-router.get('/signup-keys', jsonHandler(() => listSignupKeys()));
-router.post('/signup-keys', settingsLimiter, jsonHandler((req) => createSignupKeys(req.userId, {
-  count: Number(req.body?.count ?? 1),
-  label: req.body?.label,
-}), { status: 201 }));
-router.delete('/signup-keys/:id', jsonHandler((req) => revokeSignupKey(req.userId, intParam(req.params.id, 'key id'))));
 
 router.get('/backups', jsonHandler(() => ({ targets: backupTargets.listTargets(), runs: backupTargets.listRuns() })));
 router.post('/backups/targets', settingsLimiter, jsonHandler((req) => backupTargets.createTarget(req.body), { status: 201 }));

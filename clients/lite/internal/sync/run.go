@@ -60,7 +60,7 @@ func (e *Engine) Run(ctx context.Context) error {
 
 func (e *Engine) pollRemote(ctx context.Context) {
 	cfg := e.cfg.Get()
-	if cfg.Paused || !cfg.LoggedIn() {
+	if cfg.Paused || !cfg.LoggedIn() || cfg.Locked() {
 		return
 	}
 	client, err := e.Client()

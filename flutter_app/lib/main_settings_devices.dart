@@ -82,6 +82,12 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     }),
   );
 
+  /// The system a client reported, written as people know it.
+  static String _platformName(String platform) {
+    const names = <String, String>{'android': 'Android', 'ios': 'iOS', 'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux', 'web': 'Web'};
+    return names[platform.toLowerCase()] ?? platform;
+  }
+
   Widget _deviceRow(DeviceInfo device) {
     final webDav = device.platform == _webDavPlatform;
     final locale = currentAppLanguage.code;
@@ -89,7 +95,7 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     if (webDav) {
       tag = appStrings.webDavTag;
     } else {
-      tag = device.platform.isEmpty ? null : device.platform;
+      tag = device.platform.isEmpty ? null : _platformName(device.platform);
     }
     return _SettingsRow(
       label: device.name,

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>NeoCloud</string>
+  <key>CFBundleDisplayName</key><string>NeoCloud</string>
+  <key>CFBundleExecutable</key><string>NeoCloud</string>
+  <key>CFBundleIdentifier</key><string>systems.neolabs.neocloud.lite</string>
+  <key>CFBundleIconFile</key><string>NeoCloud</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleShortVersionString</key><string>@NUMVERSION@</string>
+  <key>CFBundleVersion</key><string>@NUMVERSION@</string>
+  <key>NeoCloudReleaseTag</key><string>@TAG@</string>
+  <key>LSMinimumSystemVersion</key><string>12.0</string>
+  <key>LSUIElement</key><true/>
+  <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSHumanReadableCopyright</key><string>NeoLabs Systems, AGPL-3.0</string>
+</dict>
+</plist>

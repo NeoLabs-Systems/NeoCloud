@@ -1,6 +1,7 @@
 part of 'main.dart';
 
-// Public links to a file or folder (docs/clients.md §3). Opening the dialog
+// Sharing a file or folder: with people on this server (main_share_people.dart)
+// and by public link (docs/clients.md §3). Opening the dialog
 // for an item that already has an active link shows that link instead of
 // minting another; the options form (main_share_form.dart) creates or edits.
 // Settings › Shared links lists every link (main_shared_links_page.dart).
@@ -297,6 +298,15 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              // People on this server first; the public link below.
+              if (widget.editLink == null) ...<Widget>[
+                _SharePeopleSection(controller: _controller, nodeId: widget.nodeId, isFolder: widget.isFolder),
+                const SizedBox(height: AppSpacing.md),
+                Divider(height: 1, color: _border),
+                const SizedBox(height: AppSpacing.md),
+                _SectionTitle(appStrings.sharePublicLinkTitle),
+                const SizedBox(height: AppSpacing.sm),
+              ],
               if (_view == _ShareView.loading) const _LoadingPlaceholder(),
               if (_view == _ShareView.link && link != null) ..._linkView(link),
               if (_view == _ShareView.form)

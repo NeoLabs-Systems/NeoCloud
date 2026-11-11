@@ -1,4 +1,4 @@
-// Package settingsui is the lite client's settings page: a tiny HTTP server
+// Package settingsui is the lite client's app window: a tiny HTTP server
 // on 127.0.0.1 with a random port.
 //
 // Other local users can reach that port, so every request needs a session.
@@ -15,39 +15,83 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	gosync "sync"
 	"time"
 
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/autostart"
+	"github.com/neolabs/neocloud/clients/lite/internal/browser"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
 
-//go:embed page.html
-var page []byte
+// ui is the page: index.html plus the stylesheet, script and logo it loads.
+//
+//go:embed ui
+var ui embed.FS
 
-// Server serves the settings page.
+// assetTypes are the files under ui/ served at /assets/<name>.
+var assetTypes = map[string]string{
+	"app.css":  "text/css; charset=utf-8",
+	"app.js":   "text/javascript; charset=utf-8",
+	"logo.svg": "image/svg+xml",
+}
+
+// pageCSP allows nothing but this server's own files (and the QR code's
+// data: URI): no inline script, nothing from the network.
+const pageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+// Options are the page's ties to the rest of the app.
+type Options struct {
+	// LogPath is the log file the page offers to open ("" when the
+	// client logs to a terminal).
+	LogPath string
+	// WindowProfile is the browser profile folder of the app window.
+	WindowProfile string
+}
+
+// Server serves the app window's page and API.
 type Server struct {
 	engine *sync.Engine
 	cfg    *config.Store
+	lock   *keylock.Lock
+	opts   Options
 	host   string
 	cookie string // the session cookie's name, unique per port
 	http   *http.Server
 
+	// Seams for the tests: the OS dialogs and openers.
+	run      commandRunner
+	lookPath func(string) (string, error)
+	open     func(string) error
+	openApp  func(url, profileDir string) (bool, error)
+	closeApp func(profileDir string) error
+	picking  gosync.Mutex // one folder dialog at a time
+
 	mu       gosync.Mutex
 	login    loginState
 	launches map[string]time.Time // unused launch codes → expiry (zero: none)
-	sessions map[string]bool
+	sessions map[string]int       // session → its number; the highest is the newest window
+	seq      int
+	openedAt time.Time
+	windows  int       // pages holding /api/window
+	goneAt   time.Time // when the last of them let go
+	quota    map[string]int64
+	quotaAt  time.Time
 }
 
 const (
@@ -67,7 +111,7 @@ type loginState struct {
 }
 
 // Start listens on a random loopback port.
-func Start(engine *sync.Engine, cfg *config.Store) (*Server, error) {
+func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Options) (*Server, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -75,23 +119,42 @@ func Start(engine *sync.Engine, cfg *config.Store) (*Server, error) {
 	s := &Server{
 		engine:   engine,
 		cfg:      cfg,
+		lock:     lock,
+		opts:     opts,
 		host:     listener.Addr().String(),
 		cookie:   fmt.Sprintf("neocloud_lite_%d", listener.Addr().(*net.TCPAddr).Port),
+		run:      runCommand,
+		lookPath: exec.LookPath,
+		open:     browser.Open,
+		openApp:  browser.OpenApp,
+		closeApp: browser.CloseApp,
 		launches: map[string]time.Time{},
-		sessions: map[string]bool{},
+		sessions: map[string]int{},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /launch", s.launch)
 	mux.HandleFunc("GET /{$}", s.servePage)
+	mux.HandleFunc("GET /assets/{name}", s.serveAsset)
 	mux.HandleFunc("GET /api/state", s.api(s.state))
+	mux.HandleFunc("GET /api/window", s.holdWindow)
 	mux.HandleFunc("POST /api/login", s.api(s.startLogin))
+	mux.HandleFunc("DELETE /api/login", s.api(s.cancelLogin))
 	mux.HandleFunc("POST /api/logout", s.api(s.logout))
 	mux.HandleFunc("POST /api/pairs", s.api(s.addPair))
 	mux.HandleFunc("PUT /api/pairs/{id}", s.api(s.updatePair))
 	mux.HandleFunc("DELETE /api/pairs/{id}", s.api(s.removePair))
 	mux.HandleFunc("POST /api/pairs/{id}/confirm-deletes", s.api(s.confirmDeletes))
 	mux.HandleFunc("PUT /api/settings", s.api(s.updateSettings))
+	mux.HandleFunc("POST /api/key-lock", s.api(s.enrollKey))
+	mux.HandleFunc("DELETE /api/key-lock", s.api(s.removeKey))
 	mux.HandleFunc("POST /api/sync", s.api(func(*http.Request) (any, error) { engine.SyncNow(); return ok(), nil }))
+	mux.HandleFunc("POST /api/pairs/{id}/sync", s.api(s.syncPair))
+	mux.HandleFunc("POST /api/pairs/{id}/open", s.api(s.openPair))
+	mux.HandleFunc("POST /api/pick-folder", s.api(s.pickFolder))
+	mux.HandleFunc("GET /api/remote/folders", s.api(s.remoteFolders))
+	mux.HandleFunc("POST /api/remote/folders", s.api(s.createRemoteFolder))
+	mux.HandleFunc("GET /api/account", s.api(s.account))
+	mux.HandleFunc("POST /api/open/{target}", s.api(s.openTarget))
 	s.http = &http.Server{Handler: s.guard(mux), ReadHeaderTimeout: 10 * time.Second}
 	go s.http.Serve(listener)
 	return s, nil
@@ -137,11 +200,12 @@ func (s *Server) launch(w http.ResponseWriter, r *http.Request) {
 	session := ""
 	if valid {
 		session = randomHex()
-		s.sessions[session] = true
+		s.seq++
+		s.sessions[session] = s.seq
 	}
 	s.mu.Unlock()
 	if !valid {
-		http.Error(w, "This link was already used or has expired. Open the settings again from the NeoCloud Lite tray icon.", http.StatusForbidden)
+		http.Error(w, "This link was already used or has expired. Choose Open NeoCloud in the tray menu again.", http.StatusForbidden)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -187,7 +251,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 		if !s.hasSession(r) {
-			http.Error(w, "Open the settings from the NeoCloud Lite tray icon.", http.StatusForbidden)
+			http.Error(w, "Choose Open NeoCloud in the tray menu.", http.StatusForbidden)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -202,9 +266,23 @@ func (s *Server) guard(next http.Handler) http.Handler {
 }
 
 func (s *Server) servePage(w http.ResponseWriter, _ *http.Request) {
+	page, _ := ui.ReadFile("ui/index.html")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:")
+	w.Header().Set("Content-Security-Policy", pageCSP)
 	w.Write(page)
+}
+
+func (s *Server) serveAsset(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	contentType, known := assetTypes[name]
+	if !known {
+		http.NotFound(w, r)
+		return
+	}
+	body, _ := ui.ReadFile("ui/" + name)
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Write(body)
 }
 
 func (s *Server) api(handler func(*http.Request) (any, error)) http.HandlerFunc {
@@ -226,11 +304,14 @@ func decode(r *http.Request, into any) error {
 	return json.NewDecoder(http.MaxBytesReader(nil, r.Body, 1<<20)).Decode(into)
 }
 
-func (s *Server) state(*http.Request) (any, error) {
+func (s *Server) state(r *http.Request) (any, error) {
 	cfg := s.cfg.Get()
+	seq := s.sessionSeq(r)
 	s.mu.Lock()
 	login := s.login
+	superseded := seq < s.seq
 	s.mu.Unlock()
+	home, _ := os.UserHomeDir()
 	pairs := cfg.Pairs
 	if pairs == nil {
 		pairs = []config.Pair{}
@@ -247,8 +328,40 @@ func (s *Server) state(*http.Request) (any, error) {
 		"pairs":         pairs,
 		"status":        s.engine.Status(),
 		"login":         login,
+		"keyLock":       s.lock.Status(),
 		"defaultIgnore": sync.DefaultIgnore,
+		"activity":      s.engine.Activity(),
+		"logs":          s.hasLogs(),
+		"version":       version(),
+		"os":            runtime.GOOS,
+		"home":          home,
+		"superseded":    superseded,
 	}, nil
+}
+
+// buildVersion is the release tag, set by clients/lite/packaging
+// (-ldflags -X …/settingsui.buildVersion=v1.2.3).
+var buildVersion string
+
+// version is the release tag, else the module version or VCS revision
+// the binary was built from.
+func version() string {
+	if buildVersion != "" {
+		return buildVersion
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "dev"
+	}
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return v
+	}
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" && len(setting.Value) >= 7 {
+			return "dev " + setting.Value[:7]
+		}
+	}
+	return "dev"
 }
 
 // startLogin begins the device-code flow and polls for the approval in
@@ -285,9 +398,13 @@ func (s *Server) startLogin(r *http.Request) (any, error) {
 		token, err := client.WaitForToken(ctx, auth)
 		if err == nil {
 			err = s.engine.SignIn(server, token)
+			s.forgetQuota()
 		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		if s.login.UserCode != auth.UserCode {
+			return // cancelled, or replaced by a newer sign-in
+		}
 		s.login = loginState{}
 		if err != nil && !errors.Is(err, context.Canceled) {
 			s.login.Error = err.Error()
@@ -296,8 +413,26 @@ func (s *Server) startLogin(r *http.Request) (any, error) {
 	return started, nil
 }
 
+// cancelLogin stops waiting for a pending device approval.
+func (s *Server) cancelLogin(*http.Request) (any, error) {
+	s.mu.Lock()
+	if s.login.cancel != nil {
+		s.login.cancel()
+	}
+	s.login = loginState{}
+	s.mu.Unlock()
+	return ok(), nil
+}
+
 func (s *Server) logout(*http.Request) (any, error) {
+	s.forgetQuota()
 	return ok(), s.engine.SignOut()
+}
+
+func (s *Server) forgetQuota() {
+	s.mu.Lock()
+	s.quota = nil
+	s.mu.Unlock()
 }
 
 type pairBody struct {
@@ -410,6 +545,23 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 		}
 	}
 	return ok(), nil
+}
+
+// enrollKey turns on the security key lock. It answers once the key was
+// touched (or the attempt timed out); the PIN, when the key needs one, is
+// used for this request only.
+func (s *Server) enrollKey(r *http.Request) (any, error) {
+	var body struct {
+		PIN string `json:"pin"`
+	}
+	if err := decode(r, &body); err != nil {
+		return nil, err
+	}
+	return ok(), s.lock.Enroll(r.Context(), body.PIN)
+}
+
+func (s *Server) removeKey(r *http.Request) (any, error) {
+	return ok(), s.lock.Remove(r.Context())
 }
 
 func cleanList(values []string) []string {

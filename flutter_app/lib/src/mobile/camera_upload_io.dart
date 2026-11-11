@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
+import 'package:neocloud_background/neocloud_background.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,8 @@ import 'package:workmanager/workmanager.dart';
 import '../api/backend_client.dart';
 import '../device/device_session.dart';
 import '../files/upload_queue.dart';
+import '../l10n/app_language.dart';
+import 'background_reliability.dart';
 import 'camera_backup.dart';
 import 'camera_upload.dart';
 import 'camera_upload_stub.dart';
@@ -21,6 +24,11 @@ const String _settingsKey = 'camera.settings';
 const String _leaseKey = 'camera.lease';
 const String _limitedKey = 'camera.limited';
 const String _reconfirmKey = 'camera.reconfirm';
+const String _pausedKey = 'camera.pausedUntil';
+
+/// Pause in the notification holds automatic passes back this long; "Back
+/// up now" ends it sooner.
+const Duration _pauseFor = Duration(hours: 1);
 
 /// Two passes (foreground and background task) must not run at once; a
 /// lease older than this is taken to be from a pass that died.
@@ -31,25 +39,108 @@ const Duration _leaseTimeout = Duration(minutes: 20);
 /// decides (typically a few times a day); Android every ~hour at the earliest.
 const String cameraUploadTaskId = 'systems.neolabs.neocloud.cameraUpload';
 
+/// iOS only: a BGProcessingTask, minutes long, which iOS runs mostly
+/// overnight on the charger. Registered in AppDelegate.swift and listed in
+/// Info.plist like [cameraUploadTaskId]; one-shot, so every pass books the
+/// next.
+const String cameraProcessingTaskId = 'systems.neolabs.neocloud.cameraUpload.processing';
+
 /// The background entry point: workmanager starts a headless engine and
-/// calls this. It signs in with the stored device token and runs one pass,
-/// if camera upload is on for that very account.
+/// calls this for the periodic task, the new-photo trigger and the
+/// after-reboot run on Android, and for both BGTasks on iOS. It signs in
+/// with the stored device token and runs one pass, if camera upload is on
+/// for that very account, then books the one-shot triggers again.
 @pragma('vm:entry-point')
 void cameraUploadDispatcher() {
   Workmanager().executeTask((task, _) async {
     WidgetsFlutterBinding.ensureInitialized();
+    // The notification speaks the app's language.
+    await ensureAppLanguageLoaded();
     final connection = await createDeviceSessions().read();
     final account = connection?.accountKey;
     if (connection == null || account == null) return true;
     final client = BackendClient(baseUrl: connection.server)..bearerToken = connection.token;
+    final preferences = await SharedPreferences.getInstance();
     try {
       // Android runs the task only while charging when that was asked for.
-      await _pass(client, await SharedPreferences.getInstance(), account: account, charging: Platform.isAndroid ? true : null);
+      await _pass(client, preferences, account: account, charging: Platform.isAndroid ? true : null);
       return true;
     } catch (_) {
       return false;
+    } finally {
+      final settings = CameraUploadSettings.decode(preferences.getString(_settingsKey));
+      if (settings.activeFor(account) && settings.folderId != null) await _armTriggers(settings).catchError((Object _) {});
     }
   });
+}
+
+/// The one-shot triggers for [settings]: Android's new-photo job, iOS's
+/// processing task. The periodic task is registered once, in `update`.
+Future<void> _armTriggers(CameraUploadSettings settings) async {
+  if (Platform.isAndroid) {
+    await NeoCloudBackground.armMediaTrigger(unmeteredOnly: settings.wifiOnly, chargingOnly: settings.chargingOnly);
+  } else if (Platform.isIOS) {
+    await Workmanager().registerProcessingTask(
+      cameraProcessingTaskId,
+      cameraProcessingTaskId,
+      constraints: Constraints(
+        networkType: settings.wifiOnly ? NetworkType.unmetered : NetworkType.connected,
+        requiresCharging: true,
+      ),
+    );
+  }
+}
+
+Future<void> _disarmTriggers(Workmanager workmanager) async {
+  await NeoCloudBackground.disarmMediaTrigger();
+  if (Platform.isIOS) await workmanager.cancelByUniqueName(cameraProcessingTaskId);
+}
+
+/// Holds the platform's background allowance while a pass uploads: on
+/// Android the transfer service (progress notification, partial wakelock),
+/// on iOS the extra time an app leaving the screen gets. Pause in the
+/// notification and the system's time limits become the pass's
+/// [CameraBackupEngine.run] interruption.
+class _CameraTransfer {
+  static const String _owner = 'camera';
+
+  bool _held = false;
+  DateTime _shown = DateTime(0);
+  CameraBlock? stopWith;
+
+  void show(CameraProgress progress) {
+    final now = DateTime.now();
+    final title = appStrings.backgroundNotificationProgress(progress.current, progress.total);
+    if (!_held) {
+      _held = true;
+      _shown = now;
+      unawaited(NeoCloudBackground.startTransfer(
+        owner: _owner,
+        channelName: appStrings.backgroundNotificationChannel,
+        title: title,
+        body: progress.name,
+        pauseLabel: appStrings.backgroundNotificationPause,
+        current: progress.current,
+        total: progress.total,
+        onStop: (reason) => stopWith = reason == BackgroundStopReason.pause ? CameraBlock.paused : CameraBlock.interrupted,
+      ));
+      return;
+    }
+    // iCloud downloads report many times a second.
+    if (now.difference(_shown) < const Duration(seconds: 1)) return;
+    _shown = now;
+    unawaited(NeoCloudBackground.updateTransfer(
+      owner: _owner,
+      title: title,
+      body: progress.name,
+      current: progress.current,
+      total: progress.total,
+    ));
+  }
+
+  Future<void> release() async {
+    if (_held) await NeoCloudBackground.stopTransfer(_owner);
+  }
 }
 
 /// The ledger as `<app support>/camera/ledger.json`, replaced atomically
@@ -249,10 +340,17 @@ Future<CameraPassResult?> _pass(
   await preferences.reload();
   final settings = CameraUploadSettings.decode(preferences.getString(_settingsKey));
   if (!settings.activeFor(account)) return null;
+  if (manual) {
+    await preferences.remove(_pausedKey);
+  } else {
+    final paused = DateTime.tryParse(preferences.getString(_pausedKey) ?? '');
+    if (paused != null && DateTime.now().isBefore(paused)) return null;
+  }
   final lease = DateTime.tryParse(preferences.getString(_leaseKey) ?? '');
   final now = DateTime.now();
   if (lease != null && now.difference(lease) < _leaseTimeout) return null;
   await preferences.setString(_leaseKey, now.toIso8601String());
+  final transfer = _CameraTransfer();
   try {
     final network = await Connectivity().checkConnectivity();
     final onWifi = network.contains(ConnectivityResult.wifi) || network.contains(ConnectivityResult.ethernet);
@@ -273,11 +371,19 @@ Future<CameraPassResult?> _pass(
       ),
       CameraConditions(onWifi: onWifi, charging: charging, signedIn: true),
       manual: manual,
-      onProgress: onProgress,
+      onProgress: (progress) {
+        transfer.show(progress);
+        onProgress?.call(progress);
+      },
+      interruption: () => transfer.stopWith,
     );
     await preferences.setBool(_limitedKey, result.limitedAccess);
+    if (result.block == CameraBlock.paused) {
+      await preferences.setString(_pausedKey, DateTime.now().add(_pauseFor).toIso8601String());
+    }
     return result;
   } finally {
+    await transfer.release();
     await preferences.remove(_leaseKey);
   }
 }
@@ -336,6 +442,9 @@ class _IoCameraUploads extends CameraUploads {
   DateTime? get lastRun => _ledger.lastRun;
 
   @override
+  DateTime? get lastSuccess => _ledger.lastSuccess;
+
+  @override
   bool get limitedAccess => _limited;
 
   @override
@@ -374,9 +483,13 @@ class _IoCameraUploads extends CameraUploads {
       if (stored.enabled) await preferences.setBool(_reconfirmKey, true);
       await preferences.setString(_settingsKey, stored.rebound(accountKey).encode());
       await _FileLedgerStore.clear();
-      await (await _workmanager()).cancelByUniqueName(cameraUploadTaskId);
+      final workmanager = await _workmanager();
+      await workmanager.cancelByUniqueName(cameraUploadTaskId);
+      await _disarmTriggers(workmanager);
     }
     await load();
+    // Booked again on every start: a force-stop or an iOS update drops them.
+    if (_settings.activeFor(accountKey) && _settings.folderId != null) unawaited(_armTriggers(_settings).catchError((Object _) {}));
   }
 
   @override
@@ -389,7 +502,9 @@ class _IoCameraUploads extends CameraUploads {
       await preferences.setBool(_reconfirmKey, true);
       await preferences.setString(_settingsKey, stored.copyWith(enabled: false).encode());
     }
-    await (await _workmanager()).cancelByUniqueName(cameraUploadTaskId);
+    final workmanager = await _workmanager();
+    await workmanager.cancelByUniqueName(cameraUploadTaskId);
+    await _disarmTriggers(workmanager);
     await load();
   }
 
@@ -411,6 +526,19 @@ class _IoCameraUploads extends CameraUploads {
 
   @override
   Future<void> openSystemSettings() => PhotoManager.openSetting();
+
+  @override
+  Future<CameraAccess> photoAccess() async => switch (await _PhotoLibrary().access()) {
+    CameraAccessLevel.full => CameraAccess.granted,
+    CameraAccessLevel.limited => CameraAccess.limited,
+    CameraAccessLevel.denied => CameraAccess.denied,
+  };
+
+  @override
+  Future<BackgroundReliability> backgroundReliability() async => BackgroundReliability.evaluate(
+    status: BackgroundPlatformStatus.fromMap(await NeoCloudBackground.status()),
+    photos: await photoAccess(),
+  );
 
   @override
   Future<CameraLibrarySize> librarySize({required bool includeVideos}) => _PhotoLibrary().size(includeVideos: includeVideos);
@@ -441,8 +569,10 @@ class _IoCameraUploads extends CameraUploads {
           requiresCharging: next.chargingOnly,
         ),
       );
+      await _armTriggers(next);
     } else {
       await workmanager.cancelByUniqueName(cameraUploadTaskId);
+      await _disarmTriggers(workmanager);
     }
   }
 

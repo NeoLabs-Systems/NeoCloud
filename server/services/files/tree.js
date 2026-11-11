@@ -13,10 +13,13 @@ const SORT_COLUMNS = { name: 'lower(name)', size: 'size', modified: 'modified_at
 const DEFAULT_PAGE_SIZE = 500;
 const MAX_PAGE_SIZE = 2000;
 
-// Every column of a node plus whether its owner marked it as a favorite.
+// Every column of a node plus whether its owner marked it as a favorite and
+// shared it with other accounts.
 const NODE_COLUMNS = `nodes.*, EXISTS (
   SELECT 1 FROM favorites f WHERE f.user_id = nodes.user_id AND f.node_id = nodes.id
-) AS favorite`;
+) AS favorite, EXISTS (
+  SELECT 1 FROM user_shares s WHERE s.node_id = nodes.id
+) AS shared`;
 
 function serializeNode(row) {
   return {
@@ -33,6 +36,7 @@ function serializeNode(row) {
     vaultId: row.vault_id ?? null,
     // Known for rows read with NODE_COLUMNS; the sync feeds don't carry it.
     ...(row.favorite === undefined ? {} : { favorite: row.favorite === 1 }),
+    ...(row.shared === undefined ? {} : { shared: row.shared === 1 }),
     ...(row.trashed_at ? { trashedAt: row.trashed_at } : {}),
   };
 }

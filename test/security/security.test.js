@@ -170,18 +170,21 @@ test('master key export needs the admin password', async () => {
   assert.equal(res.body.masterKey, process.env.NEOCLOUD_MASTER_KEY);
 });
 
-test('sign-up keys gate registration when open sign-up is off', async () => {
+test('registration is refused while sign-up is off', async () => {
   await alice.agent.put('/api/admin/access/signup').send({ allowSignup: false }).expect(200);
+  const status = await request(app).get('/api/auth/status').expect(200);
+  assert.equal(status.body.registrationOpen, false);
   const blocked = await request(app).post('/api/auth/register').send({
     username: 'carol', email: 'carol@example.com', password: STRONG_PASSWORD,
   }).expect(403);
-  assert.equal(blocked.body.code, 'SIGNUP_KEY_REQUIRED');
+  assert.equal(blocked.body.code, 'SIGNUP_DISABLED');
+  await alice.agent.get('/api/admin/signup-keys').expect(404);
 
-  const keys = await alice.agent.post('/api/admin/signup-keys').send({ count: 1 }).expect(201);
-  await request(app).post('/api/auth/register').send({
-    username: 'carol', email: 'carol@example.com', password: STRONG_PASSWORD, signupKey: keys.body.keys[0].code,
-  }).expect(200);
   await alice.agent.put('/api/admin/access/signup').send({ allowSignup: true }).expect(200);
+  assert.equal((await request(app).get('/api/auth/status').expect(200)).body.registrationOpen, true);
+  await request(app).post('/api/auth/register').send({
+    username: 'carol', email: 'carol@example.com', password: STRONG_PASSWORD,
+  }).expect(200);
 });
 
 test('weak passwords and duplicate names are refused', async () => {

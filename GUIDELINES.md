@@ -17,8 +17,8 @@ server/
   middleware/       Auth guards (session, device token, admin)
   routes/           HTTP only, one file per domain
   services/
-    account/        Credentials, sessions, 2FA
-    access/         Admin flag, sign-up keys, audit log
+    account/        Credentials, sessions, 2FA, security keys
+    access/         Admin flag, audit log
     admin/          Admin use cases
     crypto/         Key hierarchy and segmented AES-GCM
     storage/        Blob files, blob references, quotas
@@ -29,6 +29,7 @@ server/
     sync/           Snapshots for sync clients
     devices/        Bearer tokens and device-code sign-in for native clients
     shares/         Share links (owner side) and public access to them
+    members/        Sharing with other accounts: grants, the access resolver, member file/transfer ops
     settings/       Per-account preferences
     import/         Imports from Nextcloud/WebDAV: read-only client, jobs, runner
   utils/            Pure helpers
@@ -82,6 +83,7 @@ docs/api.md         Endpoint reference — keep it in step with the routes
 - Never log secrets, tokens, file names of other accounts, or file contents.
 - Origin checks go through `server/config/origins.js` only.
 - Device tokens reach `files`, `transfers`, `storage`, `sync`, `shares` and `vaults` routes only (`requireAuthOrDevice`); account, settings and admin require a session.
+- File routes resolve node ids through `services/members/access.js` (`resolveAccess`), so shared nodes are reached only through a live grant; keep owner-only features (versions, vaults, links, sync, WebDAV) on the account-scoped services.
 - Public share routes check every node id against the shared subtree (`services/shares/public.js`); never serve a share node through another path.
 - Import passwords (another server's credentials) are stored only with `encryptValue` and set to NULL when the job ends; imports are session-only.
 - Downloads always carry the sandbox CSP; active types are always attachments.

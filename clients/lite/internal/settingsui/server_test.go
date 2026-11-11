@@ -1,6 +1,7 @@
 package settingsui
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/state"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
@@ -25,7 +27,8 @@ func startServer(t *testing.T) *Server {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	s, err := Start(sync.New(cfg, db, nil), cfg)
+	engine := sync.New(cfg, db, nil)
+	s, err := Start(engine, cfg, keylock.New(cfg, engine), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,5 +166,40 @@ func TestLaunchCodesExpireAndRejectBadRequests(t *testing.T) {
 	req.Header.Set(apiHeader, "x")
 	if got := status(browser.Do(req)); got != http.StatusForbidden {
 		t.Errorf("rebound Host: %d", got)
+	}
+}
+
+func TestKeyLockEndpoints(t *testing.T) {
+	s := startServer(t)
+	call := func(client *http.Client, method, path, body string) (int, map[string]any) {
+		t.Helper()
+		req, _ := http.NewRequest(method, "http://"+s.host+path, strings.NewReader(body))
+		req.Header.Set(apiHeader, "settings")
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var out map[string]any
+		json.NewDecoder(res.Body).Decode(&out)
+		return res.StatusCode, out
+	}
+	if code, _ := call(browserClient(t), http.MethodPost, "/api/key-lock", `{}`); code != http.StatusForbidden {
+		t.Errorf("enroll without a session: %d", code)
+	}
+	browser := browserClient(t)
+	if got := status(browser.Get(s.LaunchURL(LaunchTTL))); got != http.StatusOK {
+		t.Fatalf("launch: %d", got)
+	}
+	_, state := call(browser, http.MethodGet, "/api/state", "")
+	lock, ok := state["keyLock"].(map[string]any)
+	if !ok || lock["enrolled"] != false || lock["message"] == "" {
+		t.Errorf("keyLock in state: %v", state["keyLock"])
+	}
+	if code, out := call(browser, http.MethodPost, "/api/key-lock", `{"pin":""}`); code != http.StatusBadRequest || out["error"] == "" {
+		t.Errorf("enroll while signed out: %d %v", code, out)
+	}
+	if code, _ := call(browser, http.MethodDelete, "/api/key-lock", ""); code != http.StatusBadRequest {
+		t.Errorf("remove while off: %d", code)
 	}
 }

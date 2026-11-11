@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/neolabs/neocloud/clients/lite/internal/filelock"
 )
 
 // lockPair makes sure only one process syncs a pair at a time: two
@@ -19,7 +21,7 @@ func lockPair(stateDir, pairID string) (func(), error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := tryLock(file); err != nil {
+	if err := filelock.TryLock(file); err != nil {
 		file.Close()
 		return nil, fmt.Errorf("another NeoCloud instance is syncing this folder right now")
 	}

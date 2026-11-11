@@ -8,14 +8,16 @@ All endpoints live under `/api` and speak JSON unless noted. Errors look like
 | Client | How |
 | --- | --- |
 | Web app | Session cookie `neocloud.sid` from `/api/auth/login` or `/api/auth/register`. |
-| Mobile app, lite (desktop) client | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares and vaults only. |
+| Mobile app, lite (desktop) client | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only. |
 | Share link visitors | No account: the link token in the path, plus an unlock cookie for password links. |
 
 Browsers on another origin must be listed in `ALLOWED_ORIGINS`; state-changing
 requests from any other origin get `403 ORIGIN_NOT_ALLOWED`.
 
 Node ids are UUIDs. `root` stands for the account's root folder wherever a
-folder id is expected. A node of another account always answers `404`.
+folder id is expected. A node of another account always answers `404`,
+unless that account shared it (or a folder above it) with you: see
+[Sharing with accounts](#sharing-with-accounts--session-or-bearer).
 
 ## Health — `GET /api/health` (no account)
 
@@ -32,11 +34,12 @@ While the server shuts down (up to 30 s), new uploads get
 
 | Method | Path | Body | Notes |
 | --- | --- | --- | --- |
-| GET | `/status` | | `hasUser`, `signupKeyRequired`, `authenticated`, `user` |
-| POST | `/signup-key/check` | `{ key }` | |
-| POST | `/register` | `{ username, email, password, signupKey? }` | First account becomes admin |
+| GET | `/status` | | `hasUser`, `registrationOpen`, `authenticated`, `user` |
+| POST | `/register` | `{ username, email, password }` | First account becomes admin. `403 SIGNUP_DISABLED` while sign-up is off (`NEOCLOUD_ALLOW_SIGNUP=false`); the first account can always register |
 | POST | `/login` | `{ username, password }` | `username` also takes the email. May answer `{ requiresTwoFactor: true }` |
 | POST | `/login/2fa` | `{ code }` | TOTP or recovery code, within 10 minutes and at most 5 codes per password sign-in (then `401 TWO_FACTOR_ATTEMPTS_EXCEEDED` or `TWO_FACTOR_EXPIRED`: sign in with the password again) |
+| POST | `/webauthn/login/options` | `{ username? }` | → `{ options }` for `navigator.credentials.get`. Without a username the browser offers any discoverable key (passkey). `409 NO_SECURITY_KEYS` while no key is registered on this host |
+| POST | `/webauthn/login/verify` | `{ response }` | The assertion as JSON (base64url fields). Answers like `/login`, `{ requiresTwoFactor: true }` included: a key that verified the user (PIN or biometric) stands in for the second factor, a presence-only key does not |
 | POST | `/logout` | | Ends the session and closes its socket.io connections |
 | GET | `/me` | | |
 
@@ -48,6 +51,20 @@ sign-in until the oldest of those failures is 15 minutes old. A throttled try,
 right or wrong, answers `429 LOGIN_LOCKED` with `Retry-After` and
 `retryAfter` (seconds) in the body. A right password clears its own
 failures; wrong second-factor codes count until a full sign-in succeeds.
+A security key sign-in counts like a password try for the key's account.
+
+Security keys: the relying party is the host of `PUBLIC_URL` when set, else
+the origin the browser is on (this server or one in `ALLOWED_ORIGINS`); a key
+only works on the host it was registered on. Each ceremony's challenge lives
+in the session for 5 minutes and is spent by the first verify, right or
+wrong (`400 SECURITY_KEY_CHALLENGE_EXPIRED`). Other codes:
+`401 SECURITY_KEY_UNKNOWN`, `SECURITY_KEY_REJECTED` (bad signature, wrong
+origin, or a signature counter that went backwards), `409 SECURITY_KEY_EXISTS`.
+Both routes allow 40 requests per 15 minutes per address.
+
+Passwords need at least 8 characters and a strength score of 3 of 4, and may
+not contain the username or email, common words, repeated characters or
+obvious sequences: `400 PASSWORD_TOO_SHORT` / `PASSWORD_WEAK` with the reason.
 
 The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited), `trashBytes`, `versionBytes`.
 
@@ -63,6 +80,10 @@ The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited
 | POST | `/2fa/enable` | `{ code, currentCode? }` — `code` from the new secret; with 2FA already on, `currentCode` from the factor being replaced is required as well → `{ recoveryCodes, status }` |
 | POST | `/2fa/disable` · `/2fa/recovery-codes` | `{ currentPassword, code }` |
 | GET / DELETE | `/sessions` · `/sessions/:id` | Revoking a session also closes its socket.io connections |
+| GET | `/security-keys` | → `{ securityKeys: [{ id, label, createdAt, lastUsedAt, transports, backedUp, rpId }] }`; `GET /` carries the same list |
+| POST | `/security-keys/register/options` | → `{ options }` for `navigator.credentials.create`. At most 20 keys (`400 SECURITY_KEY_LIMIT`) |
+| POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N" |
+| PUT / DELETE | `/security-keys/:id` | `{ label }` to rename → `{ success, credentials }`; another account's key is `404` |
 | GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once |
 | GET | `/devices/authorize/:userCode` | → `{ name, platform, createdAt, expiresAt }` of a pending device login |
 | POST | `/devices/authorize/:userCode` | `{ approve: true\|false }` → `{ success: true }` |
@@ -138,8 +159,10 @@ copies, imports, WebDAV) answers `507 NODE_LIMIT`. `POST /folders`,
 
 Every node carries `vaultId` (null outside a vault) and, in everything the
 account itself reads (listings, node, search, recent, favorites, trash,
-storage, the result of rename/move/copy/upload/restore), `favorite: bool`.
-The sync feeds (`/api/sync/*`) leave `favorite` out.
+storage, the result of rename/move/copy/upload/restore), `favorite: bool`
+and `shared: bool` (shared with at least one other account). The sync feeds
+(`/api/sync/*`) leave both out; members of a shared folder never see
+`shared`.
 
 **Paging.** `limit` defaults to 500, at most 2000. While more follow,
 `nextCursor` is a string to pass back as `cursor` (with the same `sort` and
@@ -251,6 +274,92 @@ In `PATCH`, only the fields present change; `null` clears `expiresAt`,
 link, or a revoked one, is `404`. The root can't be shared (`400
 ROOT_IMMUTABLE`), vault nodes neither (`409 VAULT_NOT_SHAREABLE`).
 
+## Sharing with accounts — session or bearer
+
+Files and folders can be shared with other accounts on the same server. A
+share is permanent unless the owner sets `expiresAt`, and the member is
+named only by their exact email address or username: there is no account
+search, list or suggestion anywhere in the API.
+
+**Owner side** (only the node's owner; anyone else gets `404`):
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| POST | `/api/nodes/:id/members` | `{ recipient, permission?, expiresAt? }` | `201` member |
+| GET | `/api/nodes/:id/members` | | `{ members: [member] }`, oldest first |
+| PATCH | `/api/nodes/:id/members/:memberId` | `{ permission?, expiresAt? }` | the member; `expiresAt: null` clears it |
+| DELETE | `/api/nodes/:id/members/:memberId` | | `{ success: true }`; access ends at once |
+
+A member is `{ id, nodeId, recipient, displayName, permission, createdAt,
+expiresAt, expired }`. `recipient` is what the owner typed; `displayName` is
+the member's display name (null when they set none). The member's email or
+username is never sent unless the owner typed it.
+
+- `recipient`: an email address (has an `@`) or a username, matched exactly,
+  case-insensitively (`400 INVALID_RECIPIENT` when empty or over 254
+  characters). An unknown account, the owner's own account and an account
+  that can't receive shares all answer the same `404 RECIPIENT_NOT_FOUND`.
+  `POST` is limited to 30 per account in 15 minutes (`429 RATE_LIMITED`).
+- `permission`: `read` (default) or `write` (`400 INVALID_PERMISSION`).
+  Files can only be shared `read` (`400 WRITE_NEEDS_FOLDER`).
+- `expiresAt`: an ISO date in the future (`400 INVALID_EXPIRY`); none by
+  default. An expired member stays listed (`expired: true`) but has no access.
+- The root can't be shared (`400 ROOT_IMMUTABLE`), vault folders and vault
+  contents neither (`409 VAULT_NOT_SHAREABLE`). The same account twice on
+  one node is `409 ALREADY_MEMBER`. An unknown member id is `404
+  MEMBER_NOT_FOUND`.
+
+**Member side:**
+
+| Method | Path | Answer |
+| --- | --- | --- |
+| GET | `/api/shared-with-me` | `{ shares: [{ id, permission, ownerName, sharedAt, expiresAt, node }] }`, newest first |
+| DELETE | `/api/shared-with-me/:id` | leaves the share; access ends at once |
+
+`ownerName` is the owner's display name, or their username without one.
+Shares whose node is in the owner's trash, or that expired, are left out.
+
+**What a member can do** with a shared node and everything below it, through
+the usual [Files](#files) and [Transfers](#transfers) routes and the same
+node ids:
+
+| | read | write |
+| --- | --- | --- |
+| `GET /folders/:id/children`, `GET /nodes/:id`, content (with Range), thumbnail, preview, ZIP | yes | yes |
+| Upload (single or resumable) into a folder, `POST /folders` | | yes |
+| Rename, move within the share, copy, `DELETE /nodes/:id`, `POST /trash/:id/restore` | | yes |
+
+- Writes land in the owner's tree: they count against the owner's quota and
+  node limit and show up in the owner's sync feed. A read member's write is
+  `403 SHARE_READ_ONLY`.
+- Breadcrumbs (`path`) start at the shared folder, and the shared node's
+  `parentId` is `null`. `favorite` is always `false`. Vault folders inside a
+  shared folder are left out of listings, `total` and ZIPs, and answer
+  `404`.
+- The shared node itself can't be renamed, moved or deleted by a member
+  (`403 SHARE_ROOT_IMMUTABLE`); leave the share instead.
+- Moves stay inside the shared folder (`409 SHARE_BOUNDARY` across its
+  border, in either direction). A copy across it is a real copy owned by,
+  and charged to, the account that receives it (`413 QUOTA_EXCEEDED`,
+  `413 COPY_TOO_LARGE`, checked before anything is written; files are then
+  copied one by one, so a failure midway keeps what was copied). Vault
+  nodes are never copied out.
+- `POST /trash/:id/restore` works for a node trashed directly inside a folder
+  the member can write to; it goes back there. Listing and emptying the trash
+  stay the owner's.
+- A member's resumable upload belongs to the owner and can only be continued
+  by that member while they may still write to its folder.
+- A ZIP holds either your own nodes or nodes of one other owner
+  (`400 ZIP_MIXED_OWNERS`).
+- Owner-only, `404` for members: versions (and `?version=` on content),
+  members, share links, vaults, favorites, `POST /nodes/:id/opened`, search,
+  recent files, trash listing, sync and WebDAV. A member can't re-share.
+
+**Live updates.** Members get the socket event `files:changed` with the
+folder ids they can see when a shared folder changes, like the owner.
+Adding, changing or removing a member, and leaving, send `shares:changed`
+(no payload) to the member and, on leaving, to the owner.
+
 ## Public share access — `/api/public/shares/:token` (no account)
 
 The page for people is `GET /s/:token`. Every node id is checked to lie inside
@@ -346,7 +455,7 @@ server can: `{ imageThumbnails, officePreview, fullTextSearch }` (`fullTextSearc
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/sync/tree` | Every live node with its relative `path`, plus the journal `cursor` |
-| GET | `/api/sync/changes?cursor=&limit=` | `{ changes: [{ seq, op, nodeId, node }], cursor, hasMore }` |
+| GET | `/api/sync/changes?cursor=&limit=` | `{ changes: [{ seq, op, nodeId, node }], cursor, hasMore }`. `cursor=latest` answers `{ changes: [], cursor: <newest seq>, hasMore: false }`, to start following from now |
 
 `op` is `create`, `update`, `rename`, `move`, `trash`, `restore` or `delete`.
 `node` is the node as it is now (null once deleted for good). A trashed folder
@@ -439,8 +548,7 @@ changes and at most once a second while a job makes progress.
 | DELETE | `/users/:id` | Not for admins; deletes all their files |
 | GET / PUT | `/config/storage` | `defaultQuotaBytes`, `maxUploadBytes`, `trashRetentionDays`, `versionRetention` |
 | POST | `/storage/recalculate` | |
-| GET | `/access` · PUT `/access/signup` | `{ allowSignup }` |
-| GET / POST / DELETE | `/signup-keys` · `/signup-keys/:id` | `{ count, label }` |
+| GET | `/access` · PUT `/access/signup` | `{ allowSignup }` — off refuses every registration but the first account's |
 | POST | `/keys/master` | `{ password }` → `{ masterKey }` |
 | GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun` and `lastVerification` (below, or null) |
 | POST | `/backups/targets` | `{ name, type: local\|sftp\|s3\|webdav, config, schedule: manual\|daily\|weekly, hour, weekday, retention }` |

@@ -60,6 +60,38 @@ jobs:
           path: clients/lite/dist/${{ env.ARTIFACT }}
           if-no-files-found: error
 
+  # Installable apps; the logic lives in clients/lite/packaging/<target>/build.sh.
+  lite-package:
+    name: Lite app ${{ matrix.target }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: macos, arch: universal, runner: macos-latest }
+          - { target: windows, arch: amd64, runner: ubuntu-latest }
+          - { target: windows, arch: arm64, runner: ubuntu-latest }
+          - { target: linux, arch: amd64, runner: ubuntu-latest }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: clients/lite/go.mod
+          cache-dependency-path: clients/lite/go.sum
+      - if: matrix.target == 'windows'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - run: clients/lite/packaging/${{ matrix.target }}/build.sh "${{ inputs.release_tag }}" pkg ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lite-package-${{ matrix.target }}-${{ matrix.arch }}
+          path: |
+            pkg/*.dmg
+            pkg/*.exe
+            pkg/*.AppImage
+          if-no-files-found: error
+
   android:
     name: Android APK
     runs-on: ubuntu-latest

@@ -180,12 +180,15 @@ class CameraBackupEngine {
   static const int _saveEvery = 10;
 
   /// One pass. [manual] means the user asked for it, so "charging only"
-  /// can't hold it back on a platform that can't tell.
+  /// can't hold it back on a platform that can't tell. [interruption] is
+  /// asked before each file; a block it returns ends the pass there, with
+  /// the ledger saved.
   Future<CameraPassResult> run(
     CameraPassOptions options,
     CameraConditions conditions, {
     bool manual = false,
     void Function(CameraProgress progress)? onProgress,
+    CameraBlock? Function()? interruption,
   }) async {
     final ledger = await store.load();
     final now = _clock();
@@ -258,6 +261,10 @@ class CameraBackupEngine {
     var streak = 0;
     var sinceSave = 0;
     for (var index = 0; index < queue.length; index++) {
+      final interrupted = interruption?.call();
+      if (interrupted != null) {
+        return stop(interrupted, partial: CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited));
+      }
       final asset = queue[index];
       final record = ledger.records[asset.id]!;
       onProgress?.call(CameraProgress(current: index + 1, total: queue.length, name: record.name));

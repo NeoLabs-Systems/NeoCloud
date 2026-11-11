@@ -19,6 +19,9 @@ redact logs; never include live credentials or real personal files.
 Especially useful:
 
 - Reading, changing or deleting another account's files (IDOR).
+- Reaching more through a share between accounts than it grants: files outside
+  the shared folder, writing with read access, or finding out which accounts
+  exist.
 - Authentication, 2FA or device-token bypass.
 - Getting plaintext out of the blob store without the master key, or
   tampering with a blob without detection.
@@ -53,6 +56,33 @@ database:
 
 If the word list of your files must not sit in the database in readable
 form, leave full-text search off or opt out; vault folders are never indexed.
+
+## Sharing between accounts
+
+Every file route that takes a node id from a member resolves it in one place
+(`server/services/members/access.js`): a node someone else owns is reachable
+only when a live, unexpired grant to the caller sits on it or on a folder
+above it, with nothing up to the owner's root in the trash, and never when
+it is in a vault. Anything else answers the same `404` as a missing node.
+The check runs on every request, so removing a member or leaving a share
+takes effect on the next request, including resumable uploads in progress.
+
+- Members see breadcrumbs from the shared folder down only; the owner's
+  folders above it, other files, vaults, versions, favorites, search, sync
+  and trash stay hidden.
+- A member's writes are stored as the owner's (key, quota, node limit); the
+  shared folder itself can't be renamed, moved or deleted by a member, and
+  moves can't cross its border. A copy across it re-encrypts every file
+  under the receiving account and is charged to that account.
+- Members can't re-share, create links or manage members (`404`).
+- Recipients are named by exact email or username only; there is no account
+  search or listing. Unknown names, the owner's own name and accounts that
+  can't receive shares get one identical `404 RECIPIENT_NOT_FOUND`, and
+  adding members is limited to 30 tries per account in 15 minutes. The owner
+  sees a member's display name and what they typed, never the member's other
+  identifier.
+- Deleting the owner, the member or the shared node removes the share
+  (foreign-key cascades).
 
 ## Imports and private networks
 

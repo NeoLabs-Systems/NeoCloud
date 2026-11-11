@@ -9,8 +9,8 @@ const { requireAuthOrDevice } = require('../middleware/auth');
 const tree = require('../services/files/tree');
 const marks = require('../services/files/marks');
 const { recentFiles, search } = require('../services/files/search');
-const operations = require('../services/files/operations');
 const trash = require('../services/files/trash');
+const memberFiles = require('../services/members/files');
 const versions = require('../services/files/versions');
 const { sendJsonError } = require('../http/errors');
 const { jsonHandler } = require('./_helpers/http');
@@ -39,7 +39,7 @@ function queryText(value) {
   return typeof value === 'string' ? value : undefined;
 }
 
-router.get('/folders/:id/children', jsonHandler((req) => tree.listChildren(req.userId, req.params.id, {
+router.get('/folders/:id/children', jsonHandler((req) => memberFiles.listChildren(req.userId, req.params.id, {
   sort: req.query.sort,
   order: req.query.order,
   limit: req.query.limit,
@@ -49,32 +49,28 @@ router.get('/folders/:id/children', jsonHandler((req) => tree.listChildren(req.u
 
 // { parentId, name } creates one folder; { parentId, path: "a/b/c" } creates
 // every missing folder along the path and returns the deepest.
-router.post('/folders', mutationLimiter, jsonHandler((req) => (req.body?.path
-  ? operations.ensureFolderPath(req.userId, { parentId: req.body.parentId ?? tree.ROOT_ALIAS, path: req.body.path })
-  : operations.createFolder(req.userId, {
-    parentId: req.body?.parentId ?? tree.ROOT_ALIAS,
-    name: req.body?.name,
-    conflict: req.body?.conflict,
-  })), { status: 201 }));
+router.post('/folders', mutationLimiter, jsonHandler((req) => memberFiles.createFolder(req.userId, {
+  parentId: req.body?.parentId ?? tree.ROOT_ALIAS,
+  name: req.body?.name,
+  path: req.body?.path,
+  conflict: req.body?.conflict,
+}), { status: 201 }));
 
-router.get('/nodes/:id', jsonHandler((req) => {
-  const node = tree.getLiveNode(req.userId, req.params.id);
-  return { node: tree.serializeNode(node), path: tree.breadcrumbs(req.userId, node.id) };
-}));
+router.get('/nodes/:id', jsonHandler((req) => memberFiles.getNode(req.userId, req.params.id)));
 
-router.patch('/nodes/:id', mutationLimiter, jsonHandler((req) => operations.updateNode(req.userId, req.params.id, {
+router.patch('/nodes/:id', mutationLimiter, jsonHandler((req) => memberFiles.updateNode(req.userId, req.params.id, {
   name: req.body?.name,
   parentId: req.body?.parentId,
   conflict: req.body?.conflict,
 })));
 
-router.post('/nodes/:id/copy', mutationLimiter, copyLimiter, jsonHandler((req) => operations.copyNode(req.userId, req.params.id, {
+router.post('/nodes/:id/copy', mutationLimiter, copyLimiter, jsonHandler((req) => memberFiles.copyNode(req.userId, req.params.id, {
   parentId: req.body?.parentId,
   name: req.body?.name,
   conflict: req.body?.conflict,
 }), { status: 201 }));
 
-router.delete('/nodes/:id', jsonHandler((req) => trash.trashNode(req.userId, req.params.id)));
+router.delete('/nodes/:id', jsonHandler((req) => memberFiles.trashNode(req.userId, req.params.id)));
 
 router.get('/files/:id/versions', jsonHandler((req) => versions.listVersions(req.userId, req.params.id)));
 router.post('/files/:id/versions/:version/restore', jsonHandler((req) => versions.restoreVersion(
@@ -114,7 +110,7 @@ router.get('/recent', jsonHandler((req) => recentFiles(req.userId, {
 })));
 
 router.get('/trash', jsonHandler((req) => trash.listTrash(req.userId)));
-router.post('/trash/:id/restore', jsonHandler((req) => trash.restoreNode(req.userId, req.params.id)));
+router.post('/trash/:id/restore', jsonHandler((req) => memberFiles.restoreNode(req.userId, req.params.id)));
 router.delete('/trash/:id', jsonHandler((req) => trash.purgeNode(req.userId, req.params.id)));
 router.delete('/trash', jsonHandler((req) => trash.emptyTrash(req.userId)));
 

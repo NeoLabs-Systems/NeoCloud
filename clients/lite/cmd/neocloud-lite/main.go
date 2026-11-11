@@ -24,6 +24,7 @@ import (
 const usage = `neocloud-lite — NeoCloud sync client
 
 Usage:
+  neocloud-lite                        the tray app (what a double click starts)
   neocloud-lite login --server URL [--no-browser]
   neocloud-lite logout
   neocloud-lite pair add <local> <remotePath> [--direction both|up|down] [--ignore GLOB]...
@@ -34,6 +35,11 @@ Usage:
   neocloud-lite run [--headless]
   neocloud-lite status [--json]
   neocloud-lite autostart on|off
+  neocloud-lite key enroll|status|remove
+
+key enroll turns on the security key lock: the device token is stored
+encrypted and NeoCloud Lite syncs only while that key is plugged in. Quit
+the tray app first, or use its app window. Not available on Windows.
 
 Config and state live in $NEOCLOUD_LITE_HOME or the OS config folder.
 `
@@ -42,9 +48,12 @@ Config and state live in $NEOCLOUD_LITE_HOME or the OS config folder.
 func init() { runtime.LockOSThread() }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stderr, usage)
-		os.Exit(2)
+	args := launchArgs(os.Args[1:])
+	if len(args) == 0 {
+		// Opened from Finder, Explorer, the Start menu or a desktop entry.
+		args = []string{"run"}
+	} else {
+		attachConsole()
 	}
 	commands := map[string]func([]string) error{
 		"login":     cmdLogin,
@@ -54,19 +63,32 @@ func main() {
 		"run":       cmdRun,
 		"status":    cmdStatus,
 		"autostart": cmdAutostart,
+		"key":       cmdKey,
 	}
-	command, ok := commands[os.Args[1]]
+	command, ok := commands[args[0]]
 	if !ok {
-		if os.Args[1] != "help" && os.Args[1] != "-h" && os.Args[1] != "--help" {
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\n", os.Args[1])
+		if args[0] != "help" && args[0] != "-h" && args[0] != "--help" {
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\n", args[0])
 		}
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
-	if err := command(os.Args[2:]); err != nil {
+	if err := command(args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+}
+
+// launchArgs drops the -psn_… argument older macOS versions pass to an
+// app opened from Finder.
+func launchArgs(args []string) []string {
+	var kept []string
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-psn_") {
+			kept = append(kept, arg)
+		}
+	}
+	return kept
 }
 
 // app is what every command needs: config, state and the engine.
@@ -126,10 +148,14 @@ func stderrLogger(quiet bool) *log.Logger {
 	return log.New(os.Stderr, "", log.LstdFlags)
 }
 
+// logFileName is the tray app's log in the config folder.
+const logFileName = "neocloud-lite.log"
+
 // fileLogger writes to neocloud-lite.log in the config folder (the tray
 // has no terminal), truncating it when it grows past a few MiB.
 func fileLogger(dir string) *log.Logger {
-	path := filepath.Join(dir, "neocloud-lite.log")
+	os.MkdirAll(dir, 0o700) // first run: the config folder may not exist yet
+	path := filepath.Join(dir, logFileName)
 	if info, err := os.Stat(path); err == nil && info.Size() > 4<<20 {
 		os.Remove(path)
 	}

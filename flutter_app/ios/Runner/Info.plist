@@ -5,13 +5,14 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>systems.neolabs.neocloud.cameraUpload</string>
+		<string>systems.neolabs.neocloud.cameraUpload.processing</string>
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Neocloud</string>
+	<string>NeoCloud</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

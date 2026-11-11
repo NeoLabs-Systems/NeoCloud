@@ -179,8 +179,22 @@ class CameraCounts {
   final int waitingOnCloud;
 }
 
-/// Why nothing is being uploaded right now.
-enum CameraBlock { noFolder, noAccess, waitingWifi, waitingCharger, signedOut, serverUnreachable, serverFull, tooManyFailures }
+/// Why nothing is being uploaded right now. [paused]: the user tapped Pause
+/// in the notification. [interrupted]: the system ended the background time
+/// (Android 15's data sync limit, iOS's background time); the next pass
+/// resumes.
+enum CameraBlock {
+  noFolder,
+  noAccess,
+  waitingWifi,
+  waitingCharger,
+  signedOut,
+  serverUnreachable,
+  serverFull,
+  tooManyFailures,
+  paused,
+  interrupted,
+}
 
 /// Progress of the running pass: [current] of [total] files, and the iCloud
 /// download of the current one (null when it is local).
@@ -207,6 +221,7 @@ enum CameraStatusKind {
   signedOut,
   serverFull,
   failed,
+  paused,
 }
 
 /// The one line the status shows, with the numbers it needs.
@@ -242,7 +257,10 @@ CameraStatus cameraStatus({required bool enabled, required CameraLedger ledger, 
       return const CameraStatus(CameraStatusKind.serverUnreachable);
     case CameraBlock.serverFull:
       return const CameraStatus(CameraStatusKind.serverFull);
+    case CameraBlock.paused:
+      return CameraStatus(CameraStatusKind.paused, count: counts.pending);
     case CameraBlock.tooManyFailures:
+    case CameraBlock.interrupted:
     case null:
       break;
   }

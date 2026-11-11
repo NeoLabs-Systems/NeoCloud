@@ -77,6 +77,42 @@ void main() {
     expect(CameraUploadSettings.decode('not json').enabled, isFalse);
   });
 
+  group('sharing with accounts', () {
+    test('members carry the typed name, a display name only when set', () {
+      final named = ShareMember.fromJson(<String, dynamic>{
+        'id': 4,
+        'nodeId': 'n',
+        'recipient': 'ADA@example.com',
+        'displayName': 'Ada',
+        'permission': 'write',
+        'expiresAt': null,
+        'expired': false,
+      });
+      expect(named.label, 'Ada');
+      expect(named.permission.canWrite, isTrue);
+      final unnamed = ShareMember.fromJson(<String, dynamic>{'id': 5, 'recipient': 'grace', 'displayName': '  ', 'permission': 'read'});
+      expect(unnamed.label, 'grace');
+      expect(unnamed.permission, MemberPermission.read);
+      expect(MemberPermission.fromApi('anything'), MemberPermission.read);
+    });
+
+    test('shared-with-me entries and the owner\'s shared flag parse', () {
+      final share = SharedWithMe.fromJson(<String, dynamic>{
+        'id': 9,
+        'permission': 'read',
+        'ownerName': 'Grace',
+        'sharedAt': '2026-11-11 10:00:00',
+        'node': <String, dynamic>{'id': 'f', 'type': 'folder', 'name': 'Team', 'parentId': null},
+      });
+      expect(share.ownerName, 'Grace');
+      expect(share.node.isFolder, isTrue);
+      expect(share.permission.canWrite, isFalse);
+      expect(FileNode.fromJson(<String, dynamic>{'id': 'x', 'type': 'file', 'name': 'a', 'shared': true}).shared, isTrue);
+      expect(FileNode.fromJson(<String, dynamic>{'id': 'x', 'type': 'file', 'name': 'a'}).shared, isFalse);
+      expect(FileNode.fromJson(<String, dynamic>{'id': 'x', 'type': 'file', 'name': 'a', 'shared': true}).copyWith(name: 'b').shared, isTrue);
+    });
+  });
+
   group('camera upload is bound to one account on one server', () {
     final mine = cameraAccountKey('https://cloud.example.com', 7);
     final enabled = CameraUploadSettings(enabled: true, account: mine, folderId: 'f1', folderName: 'Camera', includeVideos: true);

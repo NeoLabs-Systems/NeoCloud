@@ -1,8 +1,9 @@
 part of 'main.dart';
 
-// What the mobile apps add around the app: files shared from other apps, and
+// What the mobile apps add around the app: files shared from other apps,
 // asking again about camera upload after a sign-out or a change of server
-// or account. On the web this is a no-op.
+// or account, and keeping the upload queue going when the app leaves the
+// screen. On the web this is a no-op.
 
 class _NativeRuntime extends StatefulWidget {
   const _NativeRuntime({required this.controller, required this.child});
@@ -18,6 +19,10 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
   bool _pickingTarget = false;
   bool _askingCamera = false;
 
+  /// The upload queue holds the background transfer (see [_uploadsChanged]).
+  bool _holdingUploads = false;
+  DateTime _uploadsShown = DateTime(0);
+
   NeoCloudController get _controller => widget.controller;
 
   @override
@@ -27,6 +32,7 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
     _controller.addListener(_sharedChanged);
     _controller.cameraUploads.addListener(_cameraChanged);
     _controller.addListener(_cameraChanged);
+    _controller.uploads.addListener(_uploadsChanged);
   }
 
   @override
@@ -35,7 +41,56 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
     _controller.removeListener(_sharedChanged);
     _controller.cameraUploads.removeListener(_cameraChanged);
     _controller.removeListener(_cameraChanged);
+    _controller.uploads.removeListener(_uploadsChanged);
+    if (_holdingUploads) unawaited(NeoCloudBackground.stopTransfer(_uploadsOwner));
     super.dispose();
+  }
+
+  static const String _uploadsOwner = 'uploads';
+
+  /// While files are uploading, Android's transfer service (progress
+  /// notification, wakelock) keeps the app alive when it leaves the screen,
+  /// and iOS gives it time to finish. Pause in the notification pauses the
+  /// queue.
+  void _uploadsChanged() {
+    if (!NeoCloudBackground.supported) return;
+    final queue = _controller.uploads;
+    final active = queue.activeCount > 0 && !queue.allPaused;
+    if (!active) {
+      if (_holdingUploads) {
+        _holdingUploads = false;
+        unawaited(NeoCloudBackground.stopTransfer(_uploadsOwner));
+      }
+      return;
+    }
+    final total = queue.totalBytes;
+    final sent = queue.sentBytes;
+    final title = appStrings.uploadsActive(queue.activeCount);
+    final body = '${formatBytes(sent)} / ${formatBytes(total)}';
+    // Android's progress bar takes ints: per mille.
+    final current = total == 0 ? 0 : sent * 1000 ~/ total;
+    final scale = total == 0 ? 0 : 1000;
+    final now = DateTime.now();
+    if (!_holdingUploads) {
+      _holdingUploads = true;
+      _uploadsShown = now;
+      unawaited(NeoCloudBackground.startTransfer(
+        owner: _uploadsOwner,
+        channelName: appStrings.backgroundNotificationChannel,
+        title: title,
+        body: body,
+        pauseLabel: appStrings.backgroundNotificationPause,
+        current: current,
+        total: scale,
+        onStop: (reason) {
+          if (reason == BackgroundStopReason.pause) queue.pauseAll();
+        },
+      ));
+      return;
+    }
+    if (now.difference(_uploadsShown) < const Duration(seconds: 1)) return;
+    _uploadsShown = now;
+    unawaited(NeoCloudBackground.updateTransfer(owner: _uploadsOwner, title: title, body: body, current: current, total: scale));
   }
 
   void _cameraChanged() => unawaited(_askAboutCamera());

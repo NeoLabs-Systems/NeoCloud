@@ -1,4 +1,5 @@
 import '../api/backend_client.dart';
+import 'background_reliability.dart';
 import 'camera_upload.dart';
 
 CameraUploads createCameraUploads() => NoCameraUploads();
@@ -29,6 +30,9 @@ class NoCameraUploads extends CameraUploads {
   DateTime? get lastRun => null;
 
   @override
+  DateTime? get lastSuccess => null;
+
+  @override
   bool get limitedAccess => false;
 
   @override
@@ -54,6 +58,15 @@ class NoCameraUploads extends CameraUploads {
 
   @override
   Future<void> openSystemSettings() async {}
+
+  @override
+  Future<CameraAccess> photoAccess() async => CameraAccess.denied;
+
+  @override
+  Future<BackgroundReliability> backgroundReliability() async => BackgroundReliability.evaluate(
+    status: const BackgroundPlatformStatus(android: false),
+    photos: CameraAccess.denied,
+  );
 
   @override
   Future<CameraLibrarySize> librarySize({required bool includeVideos}) async => const CameraLibrarySize(count: 0);
