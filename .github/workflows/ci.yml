@@ -1,5 +1,9 @@
 name: CI
 
+# Docs-only changes (docs/** and Markdown files) skip the test jobs. The
+# workflow itself always runs and ends in "CI result", which passes when every
+# job passed or was skipped: that is the one check to mark as required.
+
 on:
   push:
     branches:
@@ -14,14 +18,53 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request supersedes its running checks; pushes to main
+# and beta each keep their own result.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A pull request is checked out as a merge commit; its first parent
+          # is the base branch. A push compares against the previous tip.
+          if [ "$EVENT" = "pull_request" ]; then
+            base="HEAD^1"
+          else
+            base="$BEFORE"
+          fi
+          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "No usable base commit; running everything."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$base" HEAD | grep -Ev '^docs/|\.md$' | grep -q .; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only documentation changed; skipping the test jobs."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   server:
     name: Server tests (Node ${{ matrix.node-version }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +81,10 @@ jobs:
 
   flutter:
     name: Flutter analyze and tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       # The neocloud_sync package tests start the real server (pairing e2e)
@@ -71,13 +117,20 @@ jobs:
 
   android:
     name: Android build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            flutter_app/android/**/*.gradle*
+            flutter_app/android/gradle/wrapper/gradle-wrapper.properties
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -89,7 +142,10 @@ jobs:
 
   lite-client:
     name: Lite client (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +155,7 @@ jobs:
         working-directory: clients/lite
     steps:
       - uses: actions/checkout@v4
+      # The Go version comes from clients/lite/go.mod, the single place it is pinned.
       - uses: actions/setup-go@v5
         with:
           go-version-file: clients/lite/go.mod
@@ -108,7 +165,10 @@ jobs:
 
   lite-client-e2e:
     name: Lite client end-to-end
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -126,13 +186,34 @@ jobs:
 
   docker:
     name: Docker image builds
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  result:
+    name: CI result
+    if: always()
+    needs: [changes, server, flutter, android, lite-client, lite-client-e2e, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All jobs passed or were skipped
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [ "$FAILED" = "true" ]; then
+            echo "::error::At least one CI job failed or was cancelled."
+            exit 1
+          fi

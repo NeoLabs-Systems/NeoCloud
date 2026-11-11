@@ -24,8 +24,10 @@ flutter run -d chrome --dart-define=NEOCLOUD_BACKEND_URL=http://localhost:3344
 flutter analyze && flutter test
 ```
 
-Production serves the web build under `/app` from `server/public`. CI
-rebuilds and commits it on every push to `main` and `beta`.
+Production serves the web build under `/app` from `server/public`. It is
+generated: every release builds it from the released source and commits it
+with the release, so each tag carries its own bundle. *Build Web Client*
+(run by hand) rebuilds it on a branch outside a release.
 
 ## NeoCloud Lite (desktop)
 
@@ -56,3 +58,12 @@ CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build ./cmd/neocloud-lite   # also ar
   images tagged `beta`.
 - `main` is stable. *Release Stable* (run by hand) merges `beta` into
   `main`, cuts `vX.Y.Z` from the conventional commits and moves `latest`.
+- The release commit carries the version stamp and `server/public`, so a
+  tag is complete for a git install (`install.sh`, `neocloud update --tag`)
+  and matches the Docker image built from it.
+- Pushes that change only `docs/` or Markdown files run no release and skip
+  the CI test jobs. *CI result* is the one check to mark as required.
+- *Release Stable* has a dry-run input that prints the next version without
+  pushing anything. Before the first stable release it tags the root commit
+  `v0.0.0`, the baseline semantic-release counts from (it ignores the beta
+  tags), so the `0.1.0` betas become `v0.1.0`, not `v1.0.0`.
