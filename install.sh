@@ -20,7 +20,7 @@ echo
 
 MISSING=()
 command -v git  &>/dev/null && ok "git $(git --version | awk '{print $3}')" || MISSING+=("git")
-command -v node &>/dev/null && ok "Node.js $(node --version)"                || MISSING+=("node 20.19+ (https://nodejs.org)")
+command -v node &>/dev/null && ok "Node.js $(node --version)"                || MISSING+=("node 22+ (https://nodejs.org)")
 command -v npm  &>/dev/null && ok "npm $(npm --version)"                     || MISSING+=("npm")
 if [[ ${#MISSING[@]} -gt 0 ]]; then
   err "Missing requirements:"

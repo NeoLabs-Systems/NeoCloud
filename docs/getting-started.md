@@ -21,7 +21,7 @@ LibreOffice for Office previews (`latest-office`, `beta-office`, …).
 
 ## Script
 
-Linux or macOS with Git and Node.js 20.19+:
+Linux or macOS with Git and Node.js 22+:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/NeoLabs-Systems/NeoCloud/main/install.sh)

@@ -1,1 +1,6 @@
 include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # The neocloud_sync package is analyzed and tested on its own (see CI).
+  exclude:
+    - packages/**
