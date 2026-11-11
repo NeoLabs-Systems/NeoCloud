@@ -1,0 +1,97 @@
+name: Release Stable
+
+# Manual: promotes beta to main, lets semantic-release cut vX.Y.Z from the
+# conventional commits, then builds the same artifacts as a beta release and
+# moves the Docker :latest tag.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release:
+    name: Promote beta and publish stable release
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.tag.outputs.release_tag }}
+      release_sha: ${{ steps.sha.outputs.release_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Promote beta to main
+        run: |
+          git fetch origin main beta --tags --force
+          git checkout main
+          git merge --no-ff origin/beta -m "chore(release): promote beta to main [skip ci]"
+          git push origin HEAD:main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p @semantic-release/github semantic-release
+
+      - name: Capture release tag
+        id: tag
+        run: |
+          tag="$(git tag --points-at HEAD --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)"
+          if [ -z "$tag" ]; then
+            echo "semantic-release did not tag $(git rev-parse HEAD); no releasable commits since the last stable release."
+            exit 1
+          fi
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - id: sha
+        run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-clients:
+    name: Build clients
+    needs: release
+    uses: ./.github/workflows/_build-clients.yml
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
+
+  publish-docker-image:
+    name: Publish Docker images
+    needs: release
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_publish-docker-image.yml
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
+
+  attach-assets:
+    name: Attach release assets
+    needs: [release, build-clients]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          gh release upload "${{ needs.release.outputs.release_tag }}" * --clobber --repo "${{ github.repository }}"

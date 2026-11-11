@@ -1,0 +1,115 @@
+name: Release Beta
+
+# Every push to beta publishes a prerelease vX.Y.Z-beta.N with the lite client
+# binaries, the Android APK and the Docker images (tag :beta).
+
+on:
+  push:
+    branches:
+      - beta
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-beta
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag beta release
+    if: github.event_name == 'workflow_dispatch' || github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      release_sha: ${{ steps.sha.outputs.release_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: beta
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve next beta version
+        id: version
+        run: |
+          git fetch --tags --force
+          node scripts/next_beta_version.js >> "$GITHUB_OUTPUT"
+
+      - name: Set package version
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Commit and tag
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore(beta-release): ${{ steps.version.outputs.release_tag }} [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin beta
+            git rebase origin/beta
+            git tag --force "${{ steps.version.outputs.release_tag }}" -m "Beta ${{ steps.version.outputs.release_tag }}"
+            if git push origin HEAD:beta; then
+              git push origin "${{ steps.version.outputs.release_tag }}"
+              exit 0
+            fi
+            echo "beta moved during the release push (attempt ${attempt}); retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      - name: Create prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ steps.version.outputs.release_tag }}" >/dev/null 2>&1 \
+            || gh release create "${{ steps.version.outputs.release_tag }}" \
+                 --title "Beta ${{ steps.version.outputs.release_tag }}" \
+                 --generate-notes --prerelease
+
+      - id: sha
+        run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-clients:
+    name: Build clients
+    needs: release
+    uses: ./.github/workflows/_build-clients.yml
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
+
+  publish-docker-image:
+    name: Publish Docker images
+    needs: release
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_publish-docker-image.yml
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
+
+  attach-assets:
+    name: Attach release assets
+    needs: [release, build-clients]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          gh release upload "${{ needs.release.outputs.release_tag }}" * --clobber --repo "${{ github.repository }}"

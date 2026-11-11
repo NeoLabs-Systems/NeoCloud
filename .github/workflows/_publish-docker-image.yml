@@ -1,0 +1,78 @@
+name: Reusable Docker image
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build the image from
+        required: true
+        type: string
+      release_tag:
+        description: Release tag the image is published under (v1.2.3 or v1.2.3-beta.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.variant }} image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: standard, office: 'false', suffix: '' }
+          - { variant: office, office: 'true', suffix: '-office' }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.5'
+          cache: true
+
+      # The image ships the web client built from this exact ref.
+      - name: Build bundled web client
+        run: npm run flutter:build:web
+
+      - name: Resolve image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/neolabs-systems/neocloud
+          flavor: |
+            latest=false
+            suffix=${{ matrix.suffix }},onlatest=true
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.release_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.release_tag }}
+            type=semver,pattern={{major}},value=${{ inputs.release_tag }},enable=${{ !contains(inputs.release_tag, '-') }}
+            type=raw,value=latest,enable=${{ !contains(inputs.release_tag, '-') }}
+            # The beta channel follows stable whenever stable is newer.
+            type=raw,value=beta
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: WITH_LIBREOFFICE=${{ matrix.office }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}

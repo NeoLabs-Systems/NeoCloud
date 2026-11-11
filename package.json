@@ -1,0 +1,66 @@
+{
+  "name": "neocloud",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted, encrypted multi-user file storage — the NeoLabs alternative to Nextcloud",
+  "license": "AGPL-3.0-only",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "neocloud": "bin/neocloud.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "runtime",
+    "server",
+    "landing",
+    "com.neocloud.plist",
+    "LICENSE",
+    "README.md",
+    ".env.example"
+  ],
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "NODE_ENV=development node --watch server/index.js",
+    "manage": "node bin/neocloud.js",
+    "check": "find server lib runtime bin -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "npm run test:unit && npm run test:integration && npm run test:security",
+    "test:unit": "node --test --test-force-exit --test-reporter=spec test/unit/*.test.js",
+    "test:integration": "node --test --test-force-exit --test-reporter=spec test/integration/*.test.js",
+    "test:security": "node --test --test-force-exit --test-reporter=spec test/security/*.test.js",
+    "flutter:build:web": "cd flutter_app && flutter build web --output ../server/public",
+    "audit:ci": "npm audit --omit=dev --audit-level=high"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeoLabs-Systems/NeoCloud.git"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1165.0",
+    "@aws-sdk/lib-storage": "^3.1165.0",
+    "archiver": "^8.0.0",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^13.0.3",
+    "better-sqlite3-session-store": "^0.1.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "otplib": "^13.6.0",
+    "sharp": "^0.35.5",
+    "socket.io": "^4.8.4",
+    "ssh2-sftp-client": "^12.1.1",
+    "undici": "^7.30.2",
+    "unpdf": "^1.9.1",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.3.2"
+  }
+}

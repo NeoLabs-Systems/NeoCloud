@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shared with you · NeoCloud</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0e1511" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/neocloud.css">
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+    .nav { position: relative; }
+    .share { flex: 1; width: min(860px, calc(100% - (var(--gutter) * 2))); margin-inline: auto; padding-block: clamp(28px, 7vh, 80px); }
+    .share h1 { font-size: clamp(30px, 4.6vw, 48px); margin: 16px 0 10px; overflow-wrap: anywhere; }
+    .share .meta { font-family: var(--mono); font-size: 13px; color: var(--ink-3); overflow-wrap: anywhere; }
+    .share .note { margin: 18px 0 0; padding: 14px 18px; border-left: 3px solid var(--gold); border-radius: 0 12px 12px 0; background: var(--surface); color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+    .hint { margin: 0; font-size: 13px; color: var(--ink-3); }
+    .share-foot { margin-top: 28px; }
+    .receipt { margin: 12px 0 0; font-weight: 600; color: var(--ink); }
+    .panel { margin-top: 28px; border: 1px solid var(--line-2); border-radius: 22px; background: var(--surface); backdrop-filter: blur(16px) saturate(140%); box-shadow: var(--shadow-md); overflow: hidden; }
+    .panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+    .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; font-size: 14px; color: var(--ink-2); }
+    .crumbs button { border: 0; background: none; padding: 4px 6px; border-radius: 8px; font: inherit; color: inherit; cursor: pointer; }
+    .crumbs button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+    .crumbs b { font-weight: 600; color: var(--ink); padding: 4px 6px; }
+    .crumbs span { color: var(--ink-3); }
+    .panel-head .btn { margin-left: auto; min-height: 38px; padding: 8px 14px; }
+    .rows { list-style: none; margin: 0; padding: 6px 0; }
+    .rows li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 20px; }
+    .rows li + li { border-top: 1px solid var(--line); }
+    .rows .icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line); color: var(--ink-2); }
+    .rows .icon svg { width: 15px; height: 15px; }
+    .rows .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); text-decoration: none; border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; }
+    .rows .name:hover { text-decoration: underline; }
+    .rows .size { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+    .empty { padding: 28px 20px; color: var(--ink-3); text-align: center; }
+    .file-card { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 22px 20px; }
+    .file-card .actions { margin-left: auto; display: flex; gap: 10px; }
+    .lock { max-width: 420px; padding: 24px 20px; display: grid; gap: 12px; }
+    .lock label { font-weight: 600; }
+    .lock input { min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-solid); color: var(--ink); font: inherit; }
+    .lock input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .error { color: var(--danger); font-size: 14px; min-height: 1em; }
+    .drop { margin: 0 20px 20px; padding: 22px; border: 1.5px dashed var(--line-strong); border-radius: 16px; text-align: center; color: var(--ink-2); transition: border-color .2s, background .2s; }
+    .drop.over { border-color: var(--gold); background: var(--gold-muted); }
+    .drop button { margin-top: 10px; }
+    .uploads { list-style: none; margin: 10px 0 0; padding: 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); text-align: left; }
+    .uploads li::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 999px; background: var(--ink-3); vertical-align: 1px; }
+    .uploads li.ok::before { background: var(--success); }
+    .uploads li.failed::before { background: var(--danger); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="/" aria-label="NeoCloud home">
+        <span class="brand-mark" aria-hidden="true"><img src="/assets/logo.svg" alt=""></span>
+        NeoCloud
+      </a>
+    </div>
+  </header>
+
+  <main class="share">
+    <span class="eyebrow" data-eyebrow>Shared with you</span>
+    <h1 data-title>Opening the link…</h1>
+    <p class="meta" data-meta></p>
+    <p class="note" data-note hidden></p>
+
+    <section class="panel" data-lock hidden>
+      <form class="lock" data-lock-form>
+        <label for="share-password">This link is protected by a password.</label>
+        <input id="share-password" type="password" autocomplete="current-password" required>
+        <p class="error" data-lock-error></p>
+        <button class="btn btn-primary" type="submit">Open</button>
+        <p class="hint">Enter the password the sender gave you for this link.</p>
+      </form>
+    </section>
+
+    <section class="panel" data-file hidden>
+      <div class="file-card">
+        <div>
+          <div data-file-name></div>
+          <div class="meta" data-file-size></div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-primary" data-file-download>Download</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" data-folder hidden>
+      <div class="panel-head" data-folder-head>
+        <nav class="crumbs" aria-label="Folder path" data-crumbs></nav>
+        <a class="btn btn-secondary" data-zip>Download all (.zip)</a>
+      </div>
+      <ul class="rows" data-rows></ul>
+      <div class="drop" data-drop hidden>
+        <div data-drop-text>Drop files here to upload them into this folder.</div>
+        <button class="btn btn-secondary" type="button" data-pick>Choose files</button>
+        <input type="file" multiple hidden data-picker>
+        <p class="receipt" data-receipt hidden></p>
+        <ul class="uploads" data-uploads></ul>
+      </div>
+    </section>
+
+    <p class="hint share-foot">You never need a password for your NeoCloud account to open a shared link.</p>
+  </main>
+
+  <script src="/js/share.js" defer></script>
+</body>
+</html>

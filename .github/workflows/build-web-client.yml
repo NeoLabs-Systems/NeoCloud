@@ -1,0 +1,62 @@
+name: Build Web Client
+
+# server/public (the bundled Flutter web client) is generated output. This
+# rebuilds it on every push that could change it and commits it back, so a
+# plain `git clone` / `neocloud update` install serves a working /app without
+# Flutter on the server. Skips its own bot commits to avoid a loop.
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/build-web-client.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-web-client-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and commit bundled web client
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.5'
+          cache: true
+
+      - name: Build bundled web client
+        run: npm run flutter:build:web
+
+      - name: Verify the bundle does not point at a dev server
+        run: |
+          if grep -Eq "localhost:3344|127\.0\.0\.1:3344" server/public/main.dart.js; then
+            echo "Bundled web client still points at a local dev server."
+            exit 1
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f server/public
+          if git diff --cached --quiet; then
+            echo "Web bundle unchanged."
+            exit 0
+          fi
+          git commit -m "chore(web-client): rebuild bundled web client [skip ci]"
+          git pull --rebase --autostash origin "${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"

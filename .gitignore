@@ -1,0 +1,15 @@
+node_modules/
+.env
+data/
+server/public/
+*.log
+.DS_Store
+flutter_app/build/
+flutter_app/.dart_tool/
+dev-data/
+**/.dart_tool/
+flutter_app/packages/*/build/
+clients/lite/dist/
+clients/lite/neocloud-lite
+clients/lite/neocloud-lite.exe
+.claude/

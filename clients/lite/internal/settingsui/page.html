@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeoCloud Lite</title>
+<style>
+  :root {
+    --bg: #0E1511; --surface: #15201A; --surface-2: #1B2821; --line: #26362C;
+    --text: #E8EEE9; --muted: #93A398; --gold: #E1B052; --gold-ink: #1A1408;
+    --danger: #E07A6A; --ok: #7BC59A; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  header .status { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .dot.idle { background: var(--ok); } .dot.syncing { background: var(--gold); }
+  .dot.error, .dot.offline { background: var(--danger); }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea {
+    width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 11px; font: inherit;
+  }
+  textarea { min-height: 64px; resize: vertical; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); }
+  button {
+    background: var(--gold); color: var(--gold-ink); border: 0; border-radius: 999px;
+    padding: 9px 18px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > .grow { flex: 1; min-width: 180px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .code { font: 600 28px/1 ui-monospace, Menlo, monospace; color: var(--gold); letter-spacing: 0.12em; margin: 8px 0; }
+  .qr { display: block; width: 200px; height: 200px; margin: 12px 0 6px; border-radius: 8px; image-rendering: pixelated; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .pair { border-top: 1px solid var(--line); padding: 14px 0; }
+  .pair:first-of-type { border-top: 0; padding-top: 0; }
+  .pair .path { font-weight: 600; word-break: break-all; }
+  .pair .remote { color: var(--gold); }
+  .error { color: var(--danger); font-size: 13px; margin-top: 8px; white-space: pre-wrap; }
+  .confirm { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; font-size: 14px; }
+  .skipped { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+  .skipped code { color: var(--text); word-break: break-all; }
+  a { color: var(--gold); }
+  .switch { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 8px 0; }
+  .switch input { width: auto; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" aria-hidden="true" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="tile" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7A5A2E"/>
+      <stop offset="100%" stop-color="#2E5A52"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="26%" cy="14%" r="72%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#fffdf6"/>
+      <stop offset="48%" stop-color="#eee3cc"/>
+      <stop offset="100%" stop-color="#b5a888"/>
+    </radialGradient>
+    <radialGradient id="node" cx="36%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#f8dca8"/>
+      <stop offset="52%" stop-color="#d3a85f"/>
+      <stop offset="100%" stop-color="#9b6f2f"/>
+    </radialGradient>
+    <linearGradient id="tube" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fffaf0"/>
+      <stop offset="52%" stop-color="#efe7d6"/>
+      <stop offset="100%" stop-color="#cabf9f"/>
+    </linearGradient>
+    <clipPath id="tc"><rect x="0" y="0" width="100" height="100" rx="22.5"/></clipPath>
+  </defs>
+  <g clip-path="url(#tc)">
+    <rect x="0" y="0" width="100" height="100" fill="url(#tile)"/>
+    <rect x="0" y="0" width="100" height="100" fill="url(#shine)"/>
+    <g transform="rotate(42 50 50)">
+    <g fill="none" stroke="url(#tube)" stroke-linecap="round">
+      <circle cx="50" cy="50" r="17" stroke-width="5" stroke-dasharray="78 29" transform="rotate(-35 50 50)" stroke-opacity="0.92"/>
+      <circle cx="50" cy="50" r="30" stroke-width="5" stroke-dasharray="150 39" transform="rotate(70 50 50)" stroke-opacity="0.8"/>
+    </g>
+    <circle cx="50" cy="50" r="7" fill="url(#core)"/>
+    <circle cx="50" cy="20" r="5.6" fill="url(#node)"/>
+    <circle cx="48" cy="18.4" r="1.7" fill="#fff7e6" fill-opacity="0.8"/>
+    </g>
+  </g>
+  <rect x="0.6" y="0.6" width="98.8" height="98.8" rx="22" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.2"/>
+</svg>
+    <h1>NeoCloud Lite</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">…</span></div>
+  </header>
+
+  <section id="account"></section>
+  <section id="pairsSection" hidden>
+    <h2>Synced folders</h2>
+    <div id="pairs"></div>
+    <h2 style="margin-top:20px">Add a folder</h2>
+    <form id="addPair">
+      <div class="row">
+        <div class="grow"><label for="local">Folder on this computer</label><input id="local" placeholder="/Users/me/NeoCloud" required></div>
+        <div class="grow"><label for="remote">Folder on the server</label><input id="remote" placeholder="/Documents"></div>
+      </div>
+      <label for="direction">Direction</label>
+      <select id="direction">
+        <option value="both">Both ways</option>
+        <option value="up">Upload only</option>
+        <option value="down">Download only</option>
+      </select>
+      <label for="ignore">Ignore patterns (one per line, e.g. *.log or node_modules/)</label>
+      <textarea id="ignore"></textarea>
+      <div class="actions"><button type="submit">Add folder</button></div>
+      <div class="error" id="addError"></div>
+    </form>
+  </section>
+  <section id="general" hidden>
+    <h2>General</h2>
+    <label class="switch"><input type="checkbox" id="paused"> Pause syncing</label>
+    <label class="switch"><input type="checkbox" id="autostart"> Start at login</label>
+    <div class="row">
+      <div class="grow"><label for="up">Upload limit (KiB/s, 0 = none)</label><input id="up" type="number" min="0"></div>
+      <div class="grow"><label for="down">Download limit (KiB/s, 0 = none)</label><input id="down" type="number" min="0"></div>
+    </div>
+    <div class="actions">
+      <button id="saveLimits" class="ghost" type="button">Save limits</button>
+      <button id="syncNow" type="button">Sync now</button>
+    </div>
+    <div class="error" id="generalError"></div>
+  </section>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let current = null;
+
+async function call(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "X-Requested-With": "settings", "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) node.append(child);
+  return node;
+}
+
+function renderAccount(state) {
+  const box = $("account");
+  box.replaceChildren(el("h2", {}, "Account"));
+  if (state.loggedIn) {
+    box.append(
+      el("div", {}, "Signed in as ", el("strong", {}, state.username || "?"), " on ", el("a", { href: state.server, target: "_blank", rel: "noreferrer" }, state.server)),
+      el("div", { class: "muted" }, "This device: " + (state.deviceName || "")),
+      el("div", { class: "actions" }, el("button", { class: "ghost", onclick: logout }, "Sign out")),
+    );
+    return;
+  }
+  if (state.login && state.login.pending) {
+    box.append(
+      el("div", {}, "Approve this device in the web app:"),
+      el("div", { class: "code" }, state.login.userCode),
+      state.login.qrCode ? el("img", { class: "qr", src: state.login.qrCode, alt: "QR code of the sign-in link", width: "200", height: "200" }) : "",
+      state.login.qrCode ? el("div", { class: "muted" }, "Or scan it with a phone that is signed in to NeoCloud.") : "",
+      el("div", {}, el("a", { href: state.login.verificationUrl, target: "_blank", rel: "noreferrer" }, "Open " + state.login.verificationUrl)),
+      el("div", { class: "muted" }, "Waiting for approval…"),
+    );
+    return;
+  }
+  const input = el("input", { id: "server", placeholder: "https://cloud.example.com", value: state.server || "" });
+  const error = el("div", { class: "error" }, (state.login && state.login.error) || "");
+  box.append(
+    el("label", { for: "server" }, "Server address"), input,
+    el("div", { class: "actions" }, el("button", { onclick: async () => {
+      error.textContent = "";
+      try {
+        const login = await call("POST", "/api/login", { server: input.value });
+        window.open(login.verificationUrl, "_blank", "noreferrer");
+        refresh();
+      } catch (err) { error.textContent = err.message; }
+    } }, "Sign in with this device")),
+    error,
+  );
+}
+
+function renderPairs(state) {
+  const list = $("pairs");
+  list.replaceChildren();
+  if (state.pairs.length === 0) list.append(el("div", { class: "muted" }, "No folders yet."));
+  for (const pair of state.pairs) {
+    const status = state.status.pairs[pair.id];
+    const direction = el("select", {}, ...["both", "up", "down"].map((value) => {
+      const option = el("option", { value }, { both: "Both ways", up: "Upload only", down: "Download only" }[value]);
+      if (value === pair.direction) option.selected = true;
+      return option;
+    }));
+    const ignore = el("textarea", {}, (pair.ignore || []).join("\n"));
+    const error = el("div", { class: "error" }, status && status.error ? status.error : "");
+    list.append(el("div", { class: "pair" },
+      el("div", { class: "path" }, pair.local, " ⇄ ", el("span", { class: "remote" }, "/" + pair.remote)),
+      el("div", { class: "muted" }, status ? "Last sync " + new Date(status.lastSync).toLocaleString() : "Not synced yet", pair.paused ? " · paused" : ""),
+      confirmBox(pair, status, error),
+      notSyncedList(status),
+      el("label", {}, "Direction"), direction,
+      el("label", {}, "Ignore patterns"), ignore,
+      el("div", { class: "actions" },
+        el("button", { class: "ghost", onclick: () => update(pair.id, { direction: direction.value, ignore: ignore.value.split("\n") }, error) }, "Save"),
+        el("button", { class: "ghost", onclick: () => update(pair.id, { paused: !pair.paused }, error) }, pair.paused ? "Resume" : "Pause"),
+        el("button", { class: "danger", onclick: () => remove(pair, error) }, "Remove"),
+      ),
+      error,
+    ));
+  }
+}
+
+// Deletions the guard held back: nothing was deleted until the user agrees.
+function confirmBox(pair, status, error) {
+  const pending = status && status.needsConfirmation;
+  if (!pending) return "";
+  const why = pending.reason === "remoteEmpty"
+    ? "The server folder is suddenly empty."
+    : "This sync would delete many files at once.";
+  return el("div", { class: "confirm" },
+    why + " Waiting: " + pending.remoteDeletes + " deletion(s) on the server, " + pending.localDeletes +
+      " on this computer (local ones go to .neocloud/trash for 30 days).",
+    el("div", { class: "actions" },
+      el("button", { onclick: () => confirmDeletes(pair, pending, error) }, "Delete them"),
+    ),
+  );
+}
+
+function notSyncedList(status) {
+  const items = (status && status.notSynced) || [];
+  if (items.length === 0) return "";
+  return el("ul", { class: "skipped" }, ...items.map((item) => el("li", {}, el("code", {}, item.path), " — ", item.detail)));
+}
+
+async function confirmDeletes(pair, pending, error) {
+  const total = pending.remoteDeletes + pending.localDeletes;
+  if (!confirm("Delete " + total + " file(s) for " + pair.local + "?")) return;
+  try { await call("POST", "/api/pairs/" + pair.id + "/confirm-deletes"); refresh(); } catch (err) { error.textContent = err.message; }
+}
+
+function render(state) {
+  current = state;
+  $("dot").className = "dot " + state.status.state;
+  $("statusText").textContent = state.status.message || state.status.state;
+  // Re-render only parts the user is not typing in.
+  if (!$("account").contains(document.activeElement)) renderAccount(state);
+  if (!$("pairs").contains(document.activeElement)) renderPairs(state);
+  $("pairsSection").hidden = !state.loggedIn;
+  $("general").hidden = !state.loggedIn;
+  $("paused").checked = state.paused;
+  $("autostart").checked = state.autostart;
+  if (document.activeElement !== $("up")) $("up").value = state.uploadKiBps;
+  if (document.activeElement !== $("down")) $("down").value = state.downloadKiBps;
+}
+
+async function refresh() {
+  try { render(await call("GET", "/api/state")); } catch (err) { $("statusText").textContent = err.message; }
+}
+
+async function update(id, body, error) {
+  try { await call("PUT", "/api/pairs/" + id, body); refresh(); } catch (err) { error.textContent = err.message; }
+}
+
+async function remove(pair, error) {
+  if (!confirm("Stop syncing " + pair.local + "? Files stay on both sides.")) return;
+  try { await call("DELETE", "/api/pairs/" + pair.id); refresh(); } catch (err) { error.textContent = err.message; }
+}
+
+async function logout() {
+  if (!confirm("Sign out? Sync state is forgotten; files stay where they are.")) return;
+  await call("POST", "/api/logout"); refresh();
+}
+
+async function setting(body) {
+  $("generalError").textContent = "";
+  try { await call("PUT", "/api/settings", body); refresh(); } catch (err) { $("generalError").textContent = err.message; }
+}
+
+$("addPair").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("addError").textContent = "";
+  try {
+    await call("POST", "/api/pairs", {
+      local: $("local").value, remote: $("remote").value,
+      direction: $("direction").value, ignore: $("ignore").value.split("\n"),
+    });
+    event.target.reset();
+    refresh();
+  } catch (err) { $("addError").textContent = err.message; }
+});
+$("paused").addEventListener("change", (e) => setting({ paused: e.target.checked }));
+$("autostart").addEventListener("change", (e) => setting({ autostart: e.target.checked }));
+$("saveLimits").addEventListener("click", () => setting({ uploadKiBps: Number($("up").value) || 0, downloadKiBps: Number($("down").value) || 0 }));
+$("syncNow").addEventListener("click", () => call("POST", "/api/sync").then(refresh));
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

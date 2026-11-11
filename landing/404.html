@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found · NeoCloud</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0e1511" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+    .nav { position: relative; }
+    .brand-mark img { width: 100%; height: 100%; display: block; }
+    .lost { flex: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 80px); align-items: center; padding-block: clamp(32px, 8vh, 96px); }
+    .lost h1 { font-size: clamp(40px, 6vw, 72px); margin: 18px 0 20px; }
+    .lost .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+    .route-log { border: 1px solid var(--line-2); border-radius: 22px; background: var(--surface); backdrop-filter: blur(16px) saturate(140%); box-shadow: var(--shadow-md); overflow: hidden; }
+    .route-log header { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+    .route-log header b { color: var(--ink); font-weight: 600; }
+    .route-log .path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .route-log ol { list-style: none; margin: 0; padding: 8px 0; }
+    .route-log li { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 11px 20px; opacity: 0; transform: translateY(4px); animation: hop .5s var(--ease) forwards; }
+    .route-log li:nth-child(2) { animation-delay: .45s; }
+    .route-log li:nth-child(3) { animation-delay: .9s; }
+    .route-log li:nth-child(4) { animation-delay: 1.35s; }
+    .route-log .who { font-weight: 600; letter-spacing: -0.01em; }
+    .route-log .code { font-family: var(--mono); font-size: 13px; color: var(--ink-3); }
+    .route-log .why { grid-column: 1 / -1; color: var(--ink-3); font-size: 14px; }
+    .route-log footer { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 14px; opacity: 0; animation: hop .5s var(--ease) 1.9s forwards; }
+    .route-log footer::before { content: ""; width: 7px; height: 7px; border-radius: 999px; background: var(--gold); flex: 0 0 auto; }
+    @keyframes hop { to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .route-log li, .route-log footer { animation: none; opacity: 1; transform: none; } }
+    @media (max-width: 860px) { .lost { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="/" aria-label="NeoCloud home">
+        <span class="brand-mark" aria-hidden="true"><img src="/assets/logo.svg" alt=""></span>
+        NeoCloud
+      </a>
+      <div class="nav-actions">
+        <a class="btn btn-ghost" href="/app">Open app</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap lost">
+    <div>
+      <span class="eyebrow">Error 404 · Not found</span>
+      <h1>We looked everywhere. <em>Even in the trash.</em></h1>
+      <p class="lede">NeoCloud keeps versions, a trash and nightly backups so nothing gets lost. This page was never here in the first place, so there is nothing to restore.</p>
+      <div class="actions">
+        <a class="btn btn-primary btn-lg" href="/">
+          Back to the start
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-secondary btn-lg" href="/app">Open NeoCloud</a>
+      </div>
+    </div>
+
+    <section class="route-log" aria-label="Places NeoCloud searched for this page">
+      <header><b>GET</b> <span class="path" data-path>/this-page</span></header>
+      <ol>
+        <li><span class="who">All files</span><span class="code">404</span><span class="why">Not in any folder.</span></li>
+        <li><span class="who">Trash</span><span class="code">404</span><span class="why">Nobody deleted it, either.</span></li>
+        <li><span class="who">Versions</span><span class="code">404</span><span class="why">No earlier version to bring back.</span></li>
+        <li><span class="who">Last night's backup</span><span class="code">404</span><span class="why">Checked the snapshot. Still nothing.</span></li>
+      </ol>
+      <footer>Searched everywhere. 0 bytes used, so this one's on us.</footer>
+    </section>
+  </main>
+
+  <script>
+    document.querySelector('[data-path]').textContent = location.pathname;
+  </script>
+</body>
+</html>

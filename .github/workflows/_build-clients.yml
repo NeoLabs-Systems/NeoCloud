@@ -1,0 +1,92 @@
+name: Reusable client builds
+
+# Builds the release clients for one ref: the Go lite client for every desktop
+# platform and the Android APK. Artifacts are attached to the release by the
+# calling workflow.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build
+        required: true
+        type: string
+      release_tag:
+        description: Release tag the binaries are versioned as (v1.2.3 or v1.2.3-beta.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  lite:
+    name: Lite client ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS needs cgo for the tray (fyne.io/systray), so it builds natively.
+          - { goos: darwin, goarch: arm64, runner: macos-latest, cgo: '1', ext: '' }
+          - { goos: darwin, goarch: amd64, runner: macos-latest, cgo: '1', ext: '' }
+          # Windows and Linux trays are pure Go: cross-compile with cgo off.
+          - { goos: windows, goarch: amd64, runner: ubuntu-latest, cgo: '0', ext: '.exe' }
+          - { goos: windows, goarch: arm64, runner: ubuntu-latest, cgo: '0', ext: '.exe' }
+          - { goos: linux, goarch: amd64, runner: ubuntu-latest, cgo: '0', ext: '' }
+          - { goos: linux, goarch: arm64, runner: ubuntu-latest, cgo: '0', ext: '' }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: clients/lite/go.mod
+          cache-dependency-path: clients/lite/go.sum
+      - name: Build
+        working-directory: clients/lite
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          name="neocloud-lite-${{ inputs.release_tag }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          go build -trimpath -ldflags "-s -w" -o "dist/$name" ./cmd/neocloud-lite
+          echo "ARTIFACT=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lite-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: clients/lite/dist/${{ env.ARTIFACT }}
+          if-no-files-found: error
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.5'
+          cache: true
+      - name: Build release APK
+        working-directory: flutter_app
+        run: |
+          version="${{ inputs.release_tag }}"
+          version="${version#v}"
+          build_number="${{ github.run_number }}"
+          flutter build apk --release --build-name "${version%%-*}" --build-number "$build_number"
+          mkdir -p ../dist
+          cp build/app/outputs/flutter-apk/app-release.apk "../dist/neocloud-${{ inputs.release_tag }}-android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/*.apk
+          if-no-files-found: error

@@ -1,0 +1,14 @@
+import 'package:web/web.dart' as web;
+
+/// Lets the browser download the file: it sends the session cookie itself
+/// and streams to disk, so large files never pass through app memory.
+/// [headers] are not needed here; the browser carries the cookie.
+Future<void> startDownload(Uri uri, {String? fileName, Map<String, String> headers = const <String, String>{}}) async {
+  final anchor = web.HTMLAnchorElement()
+    ..href = uri.toString()
+    ..download = fileName ?? ''
+    ..style.display = 'none';
+  web.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+}

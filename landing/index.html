@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NeoCloud — Your files, your server, encrypted</title>
+  <meta name="description" content="NeoCloud is self-hosted file storage for your household or team: every file encrypted on disk, quotas per person, versions, trash and automatic encrypted backups.">
+  <meta name="theme-color" content="#0e1511" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
+  <meta property="og:site_name" content="NeoCloud">
+  <meta property="og:title" content="NeoCloud — Your files, your server, encrypted">
+  <meta property="og:description" content="Self-hosted cloud storage without the bloat: encrypted at rest, multi-user, quotas, versions and encrypted backups to your NAS, SFTP, S3 or WebDAV.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/app/icons/Icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/neocloud.css">
+</head>
+<body>
+  <header class="nav" data-nav>
+    <div class="nav-inner">
+      <a class="brand" href="#top" aria-label="NeoCloud home">
+        <span class="brand-mark" aria-hidden="true"><img src="assets/logo.svg" alt=""></span>
+        NeoCloud
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#why">Why NeoCloud</a>
+        <a href="#how">How it works</a>
+        <a href="#backups">Backups</a>
+        <a href="#security">Security</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="btn btn-ghost signin" href="/app">Sign in</a>
+        <a class="btn btn-primary" href="/app" data-start>Get started</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" data-nav-toggle>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="mobile-menu" data-mobile-menu>
+      <a href="#why">Why NeoCloud</a>
+      <a href="#how">How it works</a>
+      <a href="#backups">Backups</a>
+      <a href="#security">Security</a>
+      <a class="btn btn-primary signin" href="/app">Sign in</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h1 class="reveal" data-d="1">Your files.<br><em>Your server.</em></h1>
+            <p class="lede reveal" data-d="2">
+              NeoCloud keeps your photos, documents and projects on hardware you own, encrypted before they ever touch the disk.
+              A calm app for the whole household or team, without the plugins, the app store and the update treadmill.
+            </p>
+            <div class="hero-actions reveal" data-d="3">
+              <a class="btn btn-primary btn-lg" href="/app" data-start>
+                Get started
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </a>
+              <a class="btn btn-secondary btn-lg" href="#how">See how it works</a>
+            </div>
+            <p class="hero-note reveal" data-d="4">Runs on a home server, a NAS or a small VPS</p>
+          </div>
+
+          <div class="hero-demo reveal" data-d="2">
+            <div class="vault" data-vault aria-label="Files are encrypted as they arrive on your NeoCloud">
+              <div class="vault-head">
+                <span class="vault-title"><i aria-hidden="true"></i>Uploading to <b>Photos / 2026</b></span>
+                <span class="vault-lock" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+                  AES-256
+                </span>
+              </div>
+              <ul class="vault-list" data-vault-list></ul>
+              <div class="vault-foot">
+                <span data-vault-status aria-live="polite">Encrypting in 64 KB segments…</span>
+                <span data-vault-meter>2.4 GB of 50 GB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="facts reveal" data-d="3">
+          <div class="fact"><b>AES-256</b><span>every file, encrypted at rest</span></div>
+          <div class="fact"><b>1 process</b><span>Node and SQLite, nothing else</span></div>
+          <div class="fact"><b>Per person</b><span>accounts, quotas and 2FA</span></div>
+          <div class="fact"><b>4 targets</b><span>for encrypted backups</span></div>
+        </div>
+      </div>
+      <div class="hero-fade" aria-hidden="true"></div>
+    </section>
+
+    <section class="section" id="why">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Why NeoCloud</span>
+          <h2>A cloud that stays out of the way.</h2>
+        </div>
+        <div class="benefits">
+          <article class="benefit reveal">
+            <span class="b-icon" aria-hidden="true">🔐</span>
+            <h3>Encrypted on disk</h3>
+            <p>Every file is encrypted with its own key before it is written. A stolen drive or a leaked backup shows nothing but noise.</p>
+          </article>
+          <article class="benefit reveal" data-d="1">
+            <span class="b-icon" aria-hidden="true">🪶</span>
+            <h3>Light and quick</h3>
+            <p>One small server process and one database file. No PHP stack, no plugin zoo, no weekly update ritual.</p>
+          </article>
+          <article class="benefit reveal" data-d="2">
+            <span class="b-icon" aria-hidden="true">👨‍👩‍👧</span>
+            <h3>Made for several people</h3>
+            <p>Everyone gets a private space. Give the family 50 GB each, yourself unlimited, and change it any time.</p>
+          </article>
+          <article class="benefit reveal" data-d="3">
+            <span class="b-icon" aria-hidden="true">🕰️</span>
+            <h3>Nothing gets lost</h3>
+            <p>Replacing a file keeps the earlier versions. Deleted things wait in the trash. Uploads resume after a dropped connection.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">How it works</span>
+          <h2>Up and running in three steps.</h2>
+        </div>
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="s-num">1</span>
+            <h3>Install it once</h3>
+            <p>One Docker command or one install script. NeoCloud creates its keys on the first start and runs as a background service.</p>
+            <code class="cmd">docker compose up -d</code>
+          </li>
+          <li class="step reveal" data-d="1">
+            <span class="s-num">2</span>
+            <h3>Create your account</h3>
+            <p>The first account becomes the admin. Invite the others, or hand out sign-up keys, and set how much space each person gets.</p>
+          </li>
+          <li class="step reveal" data-d="2">
+            <span class="s-num">3</span>
+            <h3>Drop your files in</h3>
+            <p>Drag files or whole folders into the browser. Photos, PDFs, Office documents, videos and text open right in the app.</p>
+            <div class="modes">
+              <span>🖼️ Photos</span><span>📄 PDF</span><span>📊 Office</span><span>🎬 Video</span><span>📝 Text</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="backups">
+      <div class="wrap split">
+        <div class="split-copy reveal">
+          <span class="eyebrow">Backups</span>
+          <h2>A second copy, without a second thought.</h2>
+          <p>Every night NeoCloud copies what changed to a second place you choose. Only new files travel, old snapshots are pruned on schedule, and the copy is as encrypted as the original.</p>
+          <ul class="plainlist">
+            <li>A folder, a USB disk or a NAS share</li>
+            <li>Another machine over SFTP</li>
+            <li>Any S3-compatible bucket: AWS, Backblaze, MinIO, Hetzner</li>
+            <li>A WebDAV share, even an old Nextcloud</li>
+          </ul>
+        </div>
+        <div class="flow reveal" data-d="1" aria-label="NeoCloud sends encrypted backups to a NAS, SFTP, S3 or WebDAV">
+          <div class="flow-source">
+            <span class="brand-mark" aria-hidden="true"><img src="assets/logo.svg" alt=""></span>
+            <div><b>Your NeoCloud</b><span>nightly · 03:00</span></div>
+          </div>
+          <div class="flow-lines" aria-hidden="true">
+            <svg viewBox="0 0 120 220" preserveAspectRatio="none">
+              <path d="M0 110 C 60 110, 60 22, 120 22"></path>
+              <path d="M0 110 C 60 110, 60 84, 120 84"></path>
+              <path d="M0 110 C 60 110, 60 146, 120 146"></path>
+              <path d="M0 110 C 60 110, 60 198, 120 198"></path>
+            </svg>
+          </div>
+          <ul class="flow-targets">
+            <li><b>NAS</b><span>/mnt/backup · ok</span></li>
+            <li><b>SFTP</b><span>offsite box · ok</span></li>
+            <li><b>S3</b><span>b2 · 7 snapshots</span></li>
+            <li><b>WebDAV</b><span>storage box · ok</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="security">
+      <div class="wrap split rev">
+        <div class="split-copy reveal">
+          <span class="eyebrow">Security</span>
+          <h2>Keys all the way down.</h2>
+          <p>A master key on your server protects one key per person, and each of those protects one key per file. Files are sealed in 64 KB segments, so a video can still be scrubbed and any tampering is caught.</p>
+          <ul class="plainlist">
+            <li>Every account sees only its own files</li>
+            <li>Two-step sign-in with an authenticator app</li>
+            <li>Previews are sandboxed, uploads checksummed</li>
+            <li>Open source under the AGPL-3.0 licence</li>
+          </ul>
+        </div>
+        <div class="keys reveal" data-d="1" aria-label="Key hierarchy: master key, account key, file key, encrypted segments">
+          <div class="key-row"><span class="key-dot gold"></span><b>Master key</b><span>on your server</span></div>
+          <div class="key-row indent"><span class="key-dot"></span><b>Account key</b><span>one per person</span></div>
+          <div class="key-row indent-2"><span class="key-dot"></span><b>File key</b><span>one per file</span></div>
+          <div class="segments" data-segments aria-hidden="true"></div>
+          <p class="segments-note">64 KB segments · each one authenticated</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Everywhere you are</span>
+          <h2>One cloud, every device.</h2>
+        </div>
+        <div class="clients reveal">
+          <span class="client on">🌐 Web app</span>
+          <span class="client on">🪶 NeoCloud Lite for Windows · macOS · Linux</span>
+          <span class="client on">📱 Android</span>
+          <span class="client">📱 iOS <em>soon</em></span>
+          <span class="client on">📂 WebDAV for Finder, Explorer, rclone</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-tight">
+      <div class="wrap">
+        <div class="final reveal">
+          <h2>Take your files home.</h2>
+          <p>Install NeoCloud, create the first account and drop in your first folder in a few minutes.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary btn-lg" href="/app" data-start>Get started</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top">
+            <span class="brand-mark" aria-hidden="true"><img src="assets/logo.svg" alt=""></span>
+            NeoCloud
+          </a>
+          <p>Encrypted, self-hosted file storage for the whole household or team. Open source and running on your own server.</p>
+        </div>
+
+        <div>
+          <h4>Product</h4>
+          <nav class="footer-links" aria-label="Product">
+            <a href="#why">Why NeoCloud</a>
+            <a href="#how">How it works</a>
+            <a href="#backups">Backups</a>
+            <a href="/app" class="signin">Open app</a>
+          </nav>
+        </div>
+
+        <div>
+          <h4>Resources</h4>
+          <nav class="footer-links" aria-label="Resources">
+            <a href="https://github.com/NeoLabs-Systems/NeoCloud#-install">Install</a>
+            <a href="https://github.com/NeoLabs-Systems/NeoCloud/blob/main/docs/api.md">API reference</a>
+            <a href="https://github.com/NeoLabs-Systems/NeoCloud">GitHub</a>
+          </nav>
+        </div>
+
+        <div>
+          <h4>Trust</h4>
+          <nav class="footer-links" aria-label="Trust">
+            <a href="https://github.com/NeoLabs-Systems/NeoCloud/blob/main/SECURITY.md">Security</a>
+            <a href="https://github.com/NeoLabs-Systems/NeoCloud/blob/main/LICENSE">AGPL-3.0 license</a>
+            <a href="https://discord.gg/f59rg2RwUT">Community</a>
+          </nav>
+        </div>
+      </div>
+
+      <div class="footer-bar">
+        <span>&copy; 2026 NeoCloud</span>
+        <span>A NeoLabs product.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/surface.js"></script>
+  <script src="js/vault.js"></script>
+</body>
+</html>

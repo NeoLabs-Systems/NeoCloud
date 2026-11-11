@@ -1,0 +1,47 @@
+# NeoCloud with Docker Compose: docker compose up -d
+# Then open http://localhost:3344/app on this host and create the first account
+# (it becomes the admin). For other machines, see `ports` below.
+# Back up the master key right after: docker compose exec neocloud neocloud keys export
+name: neocloud
+
+services:
+  neocloud:
+    # Pinned to a major version: `docker compose pull` brings fixes and
+    # features, never a breaking release. Move to the next major on purpose
+    # (read its release notes), e.g. NEOCLOUD_VERSION=1. To go back after a
+    # bad update, set the previous version tag and `docker compose up -d`;
+    # see docs/operations.md for restoring the pre-update database snapshot.
+    image: ghcr.io/neolabs-systems/neocloud:${NEOCLOUD_VERSION:-0}
+    build: .
+    restart: unless-stopped
+    # On stop the server finishes running uploads and downloads (up to 30 s).
+    stop_grace_period: 40s
+    ports:
+      # Published on this host's loopback only: the reverse proxy on this
+      # host reaches it, nothing else on the network does (Docker-published
+      # ports skip host firewalls such as ufw). Alternatives:
+      # - proxy in another container (Traefik, Caddy): drop `ports` and put
+      #   both on one Docker network;
+      # - no proxy, plain http on the LAN: "3344:3344", and leave PUBLIC_URL
+      #   empty or http:// so no X-Forwarded-* header is trusted.
+      # Never publish 3344 on all interfaces behind an https PUBLIC_URL with
+      # a hop-count TRUST_PROXY: any client could then set its own address.
+      - "127.0.0.1:3344:3344"
+    environment:
+      # Every address people open NeoCloud at in a browser, comma-separated, e.g.
+      # http://192.168.1.20:3344,https://cloud.example.com. Empty allows only localhost.
+      ALLOWED_ORIGINS: ""
+      # The HTTPS address behind a reverse proxy, e.g. https://cloud.example.com.
+      PUBLIC_URL: ""
+      # Proxies allowed to set X-Forwarded-*: addresses or subnets
+      # (172.18.0.1,loopback) or a hop count. Empty with an https PUBLIC_URL:
+      # proxies on loopback and private addresses (the Docker bridge
+      # included), never a client connecting from the internet.
+      TRUST_PROXY: ""
+    volumes:
+      - neocloud-data:/data
+      # Keep large file storage on another disk:
+      # - /mnt/bigdisk/neocloud:/data/data/storage
+
+volumes:
+  neocloud-data:

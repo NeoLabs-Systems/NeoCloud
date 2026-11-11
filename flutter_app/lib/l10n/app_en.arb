@@ -1,0 +1,1713 @@
+{
+  "@@locale": "en",
+  "appName": "NeoCloud",
+  "appEyebrow": "PRIVATE CLOUD",
+  "cancel": "Cancel",
+  "save": "Save",
+  "saving": "Saving…",
+  "saved": "Saved",
+  "close": "Close",
+  "dismiss": "Dismiss",
+  "retry": "Try again",
+  "refresh": "Refresh",
+  "create": "Create",
+  "delete": "Delete",
+  "clear": "Clear",
+  "copy": "Copy",
+  "copied": "Copied",
+  "continueLabel": "Continue",
+  "genericError": "Something went wrong. Please try again.",
+  "connectionError": "Can’t reach the NeoCloud server.",
+  "signIn": "Sign in",
+  "authSignInTitle": "Welcome back",
+  "authSignInSubtitle": "Sign in to continue.",
+  "authCreateAccount": "Create account",
+  "createTheFirstAccount": "Create the first account",
+  "firstAccountSubtitle": "This account will administer NeoCloud on this server.",
+  "createAnotherAccount": "Create another NeoCloud account.",
+  "signupKeyStepSubtitle": "This server needs a sign-up key. Ask an admin for one.",
+  "usernameOrEmail": "Username or email",
+  "username": "Username",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm password",
+  "forgotPasswordAskAdmin": "NeoCloud doesn't send emails yet. Ask an administrator of this server to set a new password for you (Admin › Users).",
+  "alreadyHaveAnAccount": "Already have an account? Sign in",
+  "needANewAccount": "Need a new account? Register",
+  "verification": "Verification",
+  "enter2faCode": "Enter your 2FA code",
+  "openYourAuthenticator": "Open your authenticator app and enter the 6-digit code, or use a recovery code.",
+  "twoFactorOrRecoveryCode": "2FA or recovery code",
+  "verify": "Verify",
+  "backToSignIn": "Back to sign in",
+  "signupKey": "Sign-up key",
+  "signupKeyChange": "Change",
+  "signupKeyRequiredError": "Enter your sign-up key.",
+  "enterAUsername": "Enter a username.",
+  "usernameTooShort": "Use at least 3 characters.",
+  "enterAValidEmail": "Enter a valid email address.",
+  "enterAPassword": "Enter a password.",
+  "passwordsDoNotMatch": "Passwords don’t match.",
+  "enterYourUsernameOrEmail": "Enter your username or email.",
+  "enterYour2faCode": "Enter your 2FA or recovery code.",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "passwordStrength": "Strength: {label}",
+  "@passwordStrength": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "strengthEmpty": "empty",
+  "strengthRejected": "will be rejected",
+  "strengthGood": "good",
+  "strengthStrong": "strong",
+  "passwordHintEmpty": "Use 8+ characters. Longer passphrases work best.",
+  "passwordHintLength": "Use at least 8 characters.",
+  "passwordHintUserInfo": "Don’t include your username or email.",
+  "passwordHintPattern": "Avoid repeated characters and obvious sequences.",
+  "passwordHintMore": "Add more length or another character type.",
+  "passwordHintStrong": "Strong password.",
+  "passwordHintGood": "Good password. A little more length makes it strong.",
+  "navFiles": "Files",
+  "navAllFiles": "All files",
+  "navRecent": "Recent",
+  "navTrash": "Trash",
+  "navAdmin": "Admin",
+  "navSettings": "Settings",
+  "storageUsedOf": "{used} of {total}",
+  "@storageUsedOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "storageUsedUnlimited": "{used} used",
+  "@storageUsedUnlimited": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "storageLabel": "Storage",
+  "unlimited": "Unlimited",
+  "filesTitle": "Files",
+  "filesSubtitle": "Everything you keep here is encrypted on your server.",
+  "upload": "Upload",
+  "newFolder": "New folder",
+  "folderName": "Folder name",
+  "rename": "Rename",
+  "newName": "New name",
+  "moveTo": "Move to…",
+  "moveHere": "Move here",
+  "makeCopy": "Make a copy",
+  "download": "Download",
+  "downloadZip": "Download as ZIP",
+  "versions": "Versions",
+  "open": "Open",
+  "moveToTrash": "Move to trash",
+  "home": "Home",
+  "columnName": "Name",
+  "columnSize": "Size",
+  "columnModified": "Modified",
+  "itemsCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
+  "@itemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectedCount": "{count} selected",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyFolderTitle": "This folder is empty",
+  "emptyFolderSubtitle": "Drop files anywhere on this page, or use Upload.",
+  "dropToUpload": "Drop to upload to “{folder}”",
+  "@dropToUpload": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "searchFiles": "Search files and folders",
+  "noSearchResults": "Nothing matches “{query}”.",
+  "@noSearchResults": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "trashConfirmTitle": "Move to trash?",
+  "trashConfirmMessage": "{count, plural, =1{“{name}” moves to the trash. You can restore it from there.} other{{count} items move to the trash. You can restore them from there.}}",
+  "@trashConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nameExistsTitle": "“{name}” already exists",
+  "@nameExistsTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nameExistsMessage": "A file with this name is already in this folder.",
+  "replace": "Replace",
+  "keepBoth": "Keep both",
+  "skip": "Skip",
+  "applyToAll": "Do this for the remaining files",
+  "uploadsTitle": "Uploads",
+  "uploadsActive": "{count, plural, =1{Uploading 1 file} other{Uploading {count} files}}",
+  "@uploadsActive": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadsDone": "Uploads finished",
+  "uploadWaiting": "Waiting",
+  "uploadDone": "Done",
+  "uploadSkipped": "Skipped",
+  "uploadFailed": "Failed",
+  "uploadCancel": "Cancel upload",
+  "uploadClearFinished": "Clear finished",
+  "recentTitle": "Recent",
+  "recentSubtitle": "Files you changed or added most recently.",
+  "recentEmpty": "No files yet",
+  "recentEmptySubtitle": "Upload something and it shows up here.",
+  "trashTitle": "Trash",
+  "trashSubtitle": "Deleted items wait here before they are removed for good.",
+  "trashRetention": "Items are removed automatically after {days} days.",
+  "@trashRetention": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "restore": "Restore",
+  "deleteForever": "Delete forever",
+  "emptyTrash": "Empty trash",
+  "emptyTrashConfirm": "Everything in the trash is deleted for good. This can’t be undone.",
+  "deleteForeverConfirm": "“{name}” is deleted for good. This can’t be undone.",
+  "@deleteForeverConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "trashIsEmpty": "The trash is empty",
+  "trashIsEmptySubtitle": "Deleted files and folders show up here.",
+  "deletedOn": "Deleted {date} · from {path}",
+  "@deletedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "versionsTitle": "Versions of “{name}”",
+  "@versionsTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "versionCurrent": "Current version",
+  "versionNumber": "Version {number}",
+  "@versionNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "noVersions": "No earlier versions yet. Replacing the file keeps the old one here.",
+  "noPreview": "No preview for this file type yet.",
+  "previewTooLarge": "This file is too large to preview here.",
+  "details": "Details",
+  "settingsTitle": "Settings",
+  "settingsScopeAccount": "ACCOUNT",
+  "settingsScopeApp": "THIS DEVICE",
+  "settingsAccountHint": "Saved to your account",
+  "settingsSaveHint": "Changes save automatically",
+  "settingsSaveFailed": "Couldn’t save the last change",
+  "pageProfile": "Profile",
+  "pageProfileDescription": "Your name and sign-in details.",
+  "pageSecurity": "Sign-in & security",
+  "pageSecurityDescription": "Password, two-factor authentication and active sessions.",
+  "pageDevices": "Devices",
+  "pageDevicesDescription": "Desktop, mobile and lite clients connected to your account.",
+  "pageStorage": "Storage",
+  "pageStorageDescription": "How much space you use and what takes it.",
+  "pageGeneral": "General",
+  "pageGeneralDescription": "Appearance, language and how files are shown.",
+  "displayName": "Display name",
+  "displayNameHint": "Shown instead of your username.",
+  "accountUsername": "Username",
+  "accountEmail": "Email",
+  "accountRole": "Role",
+  "roleAdmin": "Administrator",
+  "roleUser": "User",
+  "signOut": "Sign out",
+  "signOutDescription": "End this session on this device.",
+  "changePassword": "Change password",
+  "currentPassword": "Current password",
+  "newPassword": "New password",
+  "passwordChanged": "Password changed.",
+  "twoFactorTitle": "Two-factor authentication",
+  "twoFactorOn": "On · {count} recovery codes left",
+  "@twoFactorOn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "twoFactorOff": "Off. Add a code from an authenticator app to every sign-in.",
+  "twoFactorEnable": "Set up",
+  "twoFactorDisable": "Turn off",
+  "twoFactorSetupStep": "Add this key to your authenticator app, then enter the code it shows.",
+  "twoFactorCode": "6-digit code",
+  "recoveryCodesTitle": "Save your recovery codes",
+  "recoveryCodesMessage": "Each code signs you in once if you lose your phone. They won’t be shown again.",
+  "sessionsTitle": "Active sessions",
+  "sessionCurrent": "This session",
+  "sessionLastSeen": "Last active {date}",
+  "@sessionLastSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionRevoke": "Sign out",
+  "devicesEmpty": "No devices connected yet.",
+  "deviceConnect": "Connect a device",
+  "deviceName": "Device name",
+  "deviceTokenTitle": "Device token",
+  "deviceTokenMessage": "Paste this token into the NeoCloud app on that device. It is shown only once.",
+  "deviceRevoke": "Disconnect",
+  "deviceLastSeen": "Last seen {date}",
+  "@deviceLastSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceNeverSeen": "Not used yet",
+  "storageUsed": "Used",
+  "storageQuota": "Quota",
+  "storageCurrentFiles": "Current files",
+  "storageVersions": "Earlier versions",
+  "storageTrash": "Trash",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "language": "Language",
+  "fileView": "File view",
+  "fileViewList": "List",
+  "fileViewGrid": "Grid",
+  "uploadConflict": "When a file already exists",
+  "uploadConflictAsk": "Ask",
+  "adminTitle": "Admin",
+  "adminSubtitle": "Accounts, storage limits and how this server runs.",
+  "adminTabUsers": "Users",
+  "adminTabStorage": "Storage",
+  "adminTabAccess": "Access",
+  "adminTabServer": "Server",
+  "adminUsersTitle": "Accounts",
+  "adminSearchUsers": "Search by name or email",
+  "adminQuotaDefault": "Default ({size})",
+  "@adminQuotaDefault": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSetQuota": "Storage limit",
+  "adminQuotaModeDefault": "Server default",
+  "adminQuotaModeCustom": "Custom",
+  "adminQuotaModeUnlimited": "Unlimited",
+  "adminQuotaCustomHint": "e.g. 50GB or 500MB",
+  "adminMakeAdmin": "Make admin",
+  "adminRemoveAdmin": "Remove admin",
+  "adminResetPassword": "Reset password",
+  "adminResetPasswordMessage": "Sets a new password for {name} and signs them out everywhere.",
+  "@adminResetPasswordMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteUser": "Delete account",
+  "adminDeleteUserMessage": "{name} and all their files are deleted for good.",
+  "@adminDeleteUserMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminFilesCount": "{count} files",
+  "@adminFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminStorageTitle": "Storage policy",
+  "adminDefaultQuota": "Default quota per account",
+  "adminDefaultQuotaDescription": "A size like 10GB, or “unlimited”.",
+  "adminMaxUpload": "Largest single file",
+  "adminMaxUploadDescription": "0 means no limit beyond the quota.",
+  "adminTrashDays": "Days in trash",
+  "adminTrashDaysDescription": "0 keeps items until the trash is emptied.",
+  "adminVersions": "Versions kept per file",
+  "adminRecalculate": "Recalculate usage",
+  "adminAccessTitle": "Registration",
+  "adminAllowSignup": "Open sign-up",
+  "adminAllowSignupDescription": "When off, new accounts need a sign-up key.",
+  "adminSignupKeys": "Sign-up keys",
+  "adminCreateKey": "Create key",
+  "adminKeyUnused": "Unused",
+  "adminKeyUsed": "Used by {name}",
+  "@adminKeyUsed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminKeyRevoked": "Revoked",
+  "adminRevoke": "Revoke",
+  "adminNoKeys": "No sign-up keys yet.",
+  "adminServerTitle": "Server",
+  "adminVersion": "Version",
+  "adminUptime": "Uptime",
+  "adminDatabase": "Database",
+  "adminAccounts": "Accounts",
+  "adminFiles": "Files",
+  "adminStored": "Stored",
+  "adminDiskFree": "Free on storage disk",
+  "adminLogs": "Recent logs",
+  "adminMasterKey": "Master key",
+  "adminMasterKeyDescription": "Every file is encrypted under this key. Keep a copy offline: without it, files and backups can’t be decrypted.",
+  "adminShowMasterKey": "Show master key",
+  "adminConfirmPassword": "Confirm with your password",
+  "officePreviewUnavailable": "Office previews need LibreOffice on the server. Download the file to open it.",
+  "play": "Play",
+  "pause": "Pause",
+  "mediaUnavailable": "This file can’t be played in the browser.",
+  "adminTabBackups": "Backups",
+  "backupTargets": "Backup targets",
+  "backupTargetsDescription": "Copies of every file and the database, encrypted, on another disk or server. Only new files are uploaded each time.",
+  "backupAddTarget": "Add target",
+  "backupEditTarget": "Edit target",
+  "backupNoTargets": "No backup targets yet.",
+  "backupName": "Name",
+  "backupType": "Type",
+  "backupTypeLocal": "Folder / NAS",
+  "backupTypeSftp": "SFTP",
+  "backupTypeS3": "S3-compatible",
+  "backupTypeWebdav": "WebDAV",
+  "backupPath": "Folder path",
+  "backupPathHint": "e.g. /mnt/nas/neocloud",
+  "backupHost": "Host",
+  "backupPort": "Port",
+  "backupUsername": "Username",
+  "backupPassword": "Password",
+  "backupPrivateKey": "Private key (optional)",
+  "backupSecretKept": "Leave empty to keep the saved one",
+  "backupEndpoint": "Endpoint (empty for AWS)",
+  "backupRegion": "Region",
+  "backupBucket": "Bucket",
+  "backupAccessKey": "Access key",
+  "backupSecretKey": "Secret key",
+  "backupPrefix": "Prefix (optional)",
+  "backupPathStyle": "Path-style URLs (MinIO)",
+  "backupUrl": "WebDAV folder URL",
+  "backupSchedule": "Schedule",
+  "backupScheduleManual": "Manual",
+  "backupScheduleDaily": "Daily",
+  "backupScheduleWeekly": "Weekly",
+  "backupHour": "At hour (server time)",
+  "backupWeekday": "Weekday",
+  "backupRetention": "Snapshots to keep",
+  "backupRunNow": "Back up now",
+  "backupTest": "Test connection",
+  "backupTestOk": "Connection works.",
+  "backupStarted": "Backup started.",
+  "backupNeverRun": "Never backed up",
+  "backupLastOk": "Last backup {date} · {count} new files",
+  "@backupLastOk": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupLastFailed": "Last backup failed: {error}",
+  "@backupLastFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backupRunning": "Backing up…",
+  "backupDeleteMessage": "The target is removed from NeoCloud. Backups already on it stay there.",
+  "backupHistory": "Recent runs",
+  "backupRestoreHint": "Restore with the CLI while NeoCloud is stopped: neocloud backup restore <id> <snapshot>. You need the master key.",
+  "adminPreviews": "Previews",
+  "adminPreviewsValue": "Images: yes · Office: {office}",
+  "@adminPreviewsValue": {
+    "placeholders": {
+      "office": {
+        "type": "String"
+      }
+    }
+  },
+  "yes": "yes",
+  "noLibreOffice": "no (install LibreOffice)",
+  "forgotPassword": "Forgot password?",
+  "forgotPasswordTitle": "Reset your password",
+  "newMenu": "New",
+  "uploadFiles": "Upload files",
+  "sortBy": "Sort",
+  "sortName": "Name",
+  "sortSize": "Size",
+  "sortModified": "Last modified",
+  "sortType": "Type",
+  "sortAscending": "Ascending",
+  "sortDescending": "Descending",
+  "movedTo": "Moved to “{folder}”.",
+  "@movedTo": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "dragItems": "{count, plural, =1{1 item} other{{count} items}}",
+  "@dragItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAll": "Select all",
+  "openFolder": "Open folder",
+  "showInFolder": "Show in folder",
+  "copied2": "Copied.",
+  "deviceApprovalTitle": "Connect a device",
+  "deviceApprovalSubtitle": "A device asks for access to your files.",
+  "deviceApprovalEnterCode": "Enter the code the device shows.",
+  "deviceCodeLabel": "Device code",
+  "deviceCodeUnknown": "This code is unknown or has expired. Start the sign-in on the device again.",
+  "deviceApproveHint": "Only approve it if you started the sign-in yourself. It will reach the files of {account}.",
+  "@deviceApproveHint": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceApprove": "Approve",
+  "deviceDeny": "Deny",
+  "deviceApproved": "{name} is connected. You can return to the device.",
+  "@deviceApproved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceDenied": "{name} was denied access.",
+  "@deviceDenied": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "openNeoCloud": "Open NeoCloud",
+  "connectTitle": "Connect to NeoCloud",
+  "connectSubtitle": "Enter the address of your NeoCloud server. You then approve this device in your browser.",
+  "connectServerLabel": "Server address",
+  "connectButton": "Connect",
+  "connectInvalidServer": "Enter a server address such as https://cloud.example.com.",
+  "connectApproveTitle": "Approve in your browser",
+  "connectApproveSubtitle": "Sign in to NeoCloud in the browser window that opened and check that it shows this code.",
+  "connectWaiting": "Waiting for approval…",
+  "connectOpenBrowser": "Open browser again",
+  "connectDenied": "The sign-in was denied in the browser.",
+  "connectExpired": "The code expired before it was approved. Connect again.",
+  "deviceRevokedNotice": "This device was signed out. Connect it again to continue.",
+  "vaultBoundaryError": "Items can’t be moved into or out of a vault. Download and upload them instead.",
+  "shareTargetTitle": "{count, plural, =1{Save 1 file to NeoCloud} other{Save {count} files to NeoCloud}}",
+  "@shareTargetTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadHere": "Upload here",
+  "shareRejected": "{count, plural, =1{1 shared item couldn’t be received.} other{{count} shared items couldn’t be received.}}",
+  "@shareRejected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareTooLarge": "This share is larger than 2 GB and wasn’t received. Upload big files from the Files page.",
+  "edit": "Edit",
+  "editorDone": "Done",
+  "editorSaved": "Saved as a new version",
+  "editorUnsaved": "Unsaved changes",
+  "editorDiscardTitle": "Discard your changes?",
+  "editorDiscardMessage": "What you changed since the last save will be lost.",
+  "editorKeepEditing": "Keep editing",
+  "editorDiscard": "Discard",
+  "editorConflictTitle": "Changed elsewhere",
+  "editorConflictMessage": "{name} was changed since you opened it. Save anyway? The other version stays in the version history.",
+  "@editorConflictMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editorOverwrite": "Save anyway",
+  "vaultNoMediaPreview": "Vault videos and audio can’t be played in the browser. Download the file to play it.",
+  "shareLink": "Share link",
+  "newVault": "New vault",
+  "vaultLock": "Lock",
+  "vaultSubtitle": "End-to-end encrypted. Names and contents are encrypted on this device; the server can’t read them.",
+  "vaultIntro": "A vault is a folder whose names and contents are encrypted on your device with a passphrase only you know.",
+  "vaultPassphrase": "Passphrase",
+  "vaultPassphraseRepeat": "Repeat passphrase",
+  "vaultNoRecovery": "The passphrase can’t be recovered or reset, not even by an admin. If you forget it, the files in this vault are lost.",
+  "vaultCreate": "Create vault",
+  "vaultNameRequired": "Give the vault a name.",
+  "vaultPassphraseTooShort": "Use at least {count} characters.",
+  "@vaultPassphraseTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultWrongPassphrase": "That passphrase doesn’t open this vault.",
+  "vaultLockedTitle": "{name} is locked",
+  "@vaultLockedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultLockedSubtitle": "Enter the passphrase to see and add files. It stays unlocked until you lock it or close NeoCloud.",
+  "vaultUnlock": "Unlock",
+  "shareLinkTitle": "Share “{name}”",
+  "@shareLinkTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareExpiry": "Link expires",
+  "shareExpiryNever": "Never",
+  "shareExpiryDay": "1 day",
+  "shareExpiryWeek": "7 days",
+  "shareExpiryMonth": "30 days",
+  "sharePasswordToggle": "Protect with a password",
+  "sharePasswordHint": "Visitors need it to open the link.",
+  "sharePassword": "Link password",
+  "sharePasswordRequired": "Enter a password or turn the protection off.",
+  "shareAllowUpload": "Allow uploads",
+  "shareAllowUploadHint": "Anyone with the link can add files to this folder.",
+  "shareCreate": "Create link",
+  "shareExpired": "Expired",
+  "shareNeverExpires": "Never expires",
+  "shareExpiresOn": "Expires {date}",
+  "@shareExpiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "sharePasswordTag": "Password",
+  "shareUploadTag": "Uploads allowed",
+  "shareFolderTag": "Folder",
+  "shareRevoke": "Revoke",
+  "shareRevokeConfirm": "The link to {name} stops working right away for everyone who has it.",
+  "@shareRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRevoked": "Link revoked.",
+  "shareCopied": "Link copied.",
+  "pageSharedLinks": "Shared links",
+  "pageSharedLinksDescription": "Public links to your files and folders.",
+  "sharedLinksHint": "Create a link from a file’s actions. Revoking stops it at once.",
+  "sharedLinksEmpty": "No shared links yet.",
+  "pageCameraUpload": "Camera upload",
+  "pageCameraUploadDescription": "Upload new photos and videos from this phone automatically.",
+  "disconnect": "Disconnect",
+  "disconnectTitle": "Disconnect this device?",
+  "disconnectMessage": "This device forgets its access to {server} and camera upload turns off. To connect again you approve it once more in the browser.",
+  "@disconnectMessage": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "syncChooseThisFolder": "Choose this folder",
+  "syncChoose": "Choose",
+  "syncNothingChosen": "Not chosen yet",
+  "cameraAccessTitle": "Allow access to your photos",
+  "cameraAccessMessage": "NeoCloud reads new photos and videos from your library to upload them to your server. Nothing else leaves the phone. You can choose “All photos” or a selection in the next step.",
+  "cameraAccessDenied": "NeoCloud has no access to your photos. Allow it in the system settings to use camera upload.",
+  "cameraUploadOn": "Camera upload is on. New photos are uploaded from now on.",
+  "cameraReconfirmTitle": "Turn camera upload back on?",
+  "cameraReconfirmMessage": "Camera upload was turned off because this device signed out or connected to another server or account. Photos go to {server} only after you set it up again.",
+  "@cameraReconfirmMessage": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraReconfirmLater": "Not now",
+  "cameraReconfirmSetUp": "Set up",
+  "cameraUploadFolder": "Upload to",
+  "cameraUploadEnable": "Upload new photos",
+  "cameraUploadEnableDescription": "Photos taken after you turn this on; older ones stay on the phone only.",
+  "cameraUploadWifiOnly": "Only on Wi-Fi",
+  "cameraUploadVideos": "Include videos",
+  "cameraUploadStatus": "Status",
+  "cameraUploadBackgroundHint": "In the background the system decides when NeoCloud may run: on Android about hourly at most, on iOS a few times a day. Opening the app uploads right away.",
+  "cameraUploadOffState": "Off",
+  "cameraUploadFailedState": "Last run failed",
+  "cameraUploadFailedHint": "Check the network and that NeoCloud may still read your photos.",
+  "cameraUploadCount": "{count, plural, =0{Nothing uploaded yet} =1{1 file uploaded} other{{count} files uploaded}}",
+  "@cameraUploadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraUploadSince": "since {date}",
+  "@cameraUploadSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraUploadLastRun": "last run {date}",
+  "@cameraUploadLastRun": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraUploadRunNow": "Upload now",
+  "cameraAccessSettings": "Photo access",
+  "cameraOpenSettings": "Open settings",
+  "shareSummaryView": "Anyone with this link can view and download",
+  "shareSummaryViewUpload": "Anyone with this link can view, download and add files",
+  "shareSummaryUploadOnly": "Anyone with this link can add files but can’t see what’s in the folder",
+  "shareSummaryPassword": "password required",
+  "shareSummaryExpires": "expires {date}",
+  "@shareSummaryExpires": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "shareSummaryNoExpiry": "no expiry",
+  "shareSummaryExpired": "expired",
+  "shareSummaryOneTime": "one-time link",
+  "shareSummaryDownloadsLeft": "{count, plural, =1{1 download left} other{{count} downloads left}}",
+  "@shareSummaryDownloadsLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareSummaryUsedUp": "download limit reached",
+  "shareDownloadedTimes": "{count, plural, =0{Not downloaded yet} other{Downloaded {count}×}}",
+  "@shareDownloadedTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareExpiresInDays": "{count, plural, =1{expires tomorrow} other{expires in {count} days}}",
+  "@shareExpiresInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareExpiresInHours": "{count, plural, =0{expires within the hour} =1{expires in 1 hour} other{expires in {count} hours}}",
+  "@shareExpiresInHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareExpiredOn": "expired {date}",
+  "@shareExpiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "shareModeTitle": "Visitors can",
+  "shareModeView": "View",
+  "shareModeViewUpload": "View + upload",
+  "shareModeUploadOnly": "File request",
+  "shareModeViewHint": "See, preview and download what you share.",
+  "shareModeViewUploadHint": "Also add files to this folder. Nothing is ever replaced.",
+  "shareModeUploadOnlyHint": "Only add files. Visitors don’t see the folder’s contents, not even what others uploaded.",
+  "shareExpiryCustom": "Custom…",
+  "shareExpiryPick": "Expires on",
+  "sharePasswordGenerate": "Generate",
+  "sharePasswordCopy": "Copy password",
+  "sharePasswordCopied": "Password copied.",
+  "sharePasswordSendSeparately": "Send the password another way than the link, e.g. by phone or another messenger.",
+  "sharePasswordTooShort": "Use at least {count} characters.",
+  "@sharePasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharePasswordKeep": "Leave empty to keep the current password.",
+  "shareLimitTitle": "Download limit",
+  "shareLimitNone": "No limit",
+  "shareLimitOnce": "One-time",
+  "shareLimitCustom": "Custom",
+  "shareLimitCount": "Downloads allowed",
+  "shareLimitHint": "Every file or ZIP download counts. The link stops working after the last one.",
+  "shareLimitInvalid": "Enter a number of downloads from 1 to 1,000,000.",
+  "shareNote": "Note for visitors (optional)",
+  "shareNoteHint": "Shown on the share page.",
+  "shareSave": "Save changes",
+  "shareSaved": "Link updated.",
+  "shareEdit": "Edit link",
+  "shareNewLink": "New link",
+  "shareMoreLinks": "{count, plural, =1{1 more active link for this item in Settings › Shared links.} other{{count} more active links for this item in Settings › Shared links.}}",
+  "@shareMoreLinks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareGroupActive": "Active",
+  "shareGroupInactive": "Expired or used up",
+  "shareNoteTag": "Note",
+  "shareModeFileRequestTag": "File request",
+  "shareExpiryInPast": "Pick an expiry date in the future.",
+  "vaultShowPassphrase": "Show or hide",
+  "vaultGeneratePassphrase": "Generate passphrase",
+  "vaultGeneratedHint": "Six random words. Write them down — the vault can only be opened with them or the recovery key.",
+  "vaultCopyPassphrase": "Copy passphrase",
+  "vaultStrengthTooWeak": "Too weak",
+  "vaultStrengthWeak": "Weak",
+  "vaultStrengthGood": "Good",
+  "vaultStrengthStrong": "Strong",
+  "vaultStrengthLabel": "Strength: {label}",
+  "@vaultStrengthLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultHintTooShort": "Use at least {count} characters, or generate a passphrase.",
+  "@vaultHintTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultHintTooWeak": "Easy to guess. Add more words or characters, avoid names, years and common passwords.",
+  "vaultHintGood": "Good. Longer is stronger: four or more unrelated words work well.",
+  "vaultHintStrong": "Strong passphrase.",
+  "vaultWarningCallout": "Only you hold the key. If you lose both the passphrase and the recovery key, nobody — not even an admin — can open this vault again.",
+  "vaultNext": "Next",
+  "vaultBack": "Back",
+  "vaultStepDetails": "Step 1 of 3 · Name and passphrase",
+  "vaultStepRecovery": "Step 2 of 3 · Recovery key",
+  "vaultStepConfirm": "Step 3 of 3 · Check the recovery key",
+  "vaultRecoveryTitle": "Recovery key",
+  "vaultRecoveryIntro": "These 24 words open the vault if you forget the passphrase. Write them down or print the sheet and keep it somewhere safe, offline.",
+  "vaultRecoveryDontStore": "Don’t store the recovery key in NeoCloud. Anyone who has it can open the vault.",
+  "vaultRecoveryCopy": "Copy words",
+  "vaultRecoveryDownload": "Download recovery sheet",
+  "vaultRecoverySaved": "I saved the recovery key somewhere safe",
+  "vaultRecoveryCheckIntro": "Type these words from your recovery key to make sure you have it.",
+  "vaultRecoveryWordNumber": "Word {number}",
+  "@vaultRecoveryWordNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultRecoveryCheckWrong": "That doesn’t match the recovery key. Check what you saved.",
+  "vaultSheetTitle": "NeoCloud vault recovery key",
+  "vaultSheetVault": "Vault: {name}",
+  "@vaultSheetVault": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultSheetServer": "Server: {server}",
+  "@vaultSheetServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultSheetCreated": "Created: {date}",
+  "@vaultSheetCreated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultSheetUse": "If you forget the passphrase: open the vault in NeoCloud, choose “Forgot passphrase?” and enter these 24 words in order.",
+  "vaultSheetKeep": "Keep this sheet offline, e.g. printed with your important papers. Don’t store it in NeoCloud. Anyone with these words can open the vault.",
+  "vaultRecoveryCopied": "Recovery words copied. Paste them somewhere offline and clear the clipboard.",
+  "vaultForgot": "Forgot passphrase?",
+  "vaultRecoverTitle": "Reset the passphrase",
+  "vaultRecoverIntro": "Enter the 24 words of the recovery key you saved when you created this vault, then choose a new passphrase.",
+  "vaultRecoverWords": "Recovery key (24 words)",
+  "vaultRecoverWordCount": "{count} of 24 words",
+  "@vaultRecoverWordCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultRecoverUnknownWord": "Word {number} isn’t a recovery word. Check the spelling.",
+  "@vaultRecoverUnknownWord": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultRecoverChecksum": "These words don’t form a valid recovery key. Check their order and spelling.",
+  "vaultRecoverWordsOk": "Recovery key looks right.",
+  "vaultRecoverMismatch": "This recovery key belongs to a different vault.",
+  "vaultNewPassphrase": "New passphrase",
+  "vaultRecoverSubmit": "Reset and unlock",
+  "vaultRecovered": "New passphrase set. The vault is unlocked; your recovery key stays the same.",
+  "vaultShowRecovery": "Show recovery key",
+  "vaultShowRecoveryIntro": "Enter the vault’s passphrase to see its recovery key.",
+  "vaultBanner": "No previews, search or sharing in vaults — by design. Names and contents are encrypted on this device before upload.",
+  "vaultUnlocking": "Unlocking…",
+  "securityChecklistTitle": "Make this server recoverable",
+  "securityChecklistSubtitle": "Three things that decide whether your files survive a lost disk or server.",
+  "securityMasterKeyItem": "Master key exported",
+  "securityMasterKeyItemHint": "Every file and backup is encrypted under it. Keep a copy offline, outside this server.",
+  "securityBackupTargetItem": "Backup target set up",
+  "securityBackupTargetItemHint": "A second place – another disk, SFTP, S3 or WebDAV – that gets an encrypted copy.",
+  "securityBackupVerifiedItem": "Backup verified",
+  "securityBackupVerifiedItemHint": "A test restore of the latest snapshot worked.",
+  "securityBackupRanItem": "A backup ran successfully",
+  "securityExportKey": "Export master key",
+  "securitySetUpBackup": "Set up backups",
+  "securityVerifyNow": "Verify now",
+  "securityVerifyOk": "Backup verified.",
+  "securityVerifyFailed": "Verification failed: {error}",
+  "@securityVerifyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "securityDone": "Done",
+  "securityOpen": "Open",
+  "securityBanner": "Export the master key and keep it offline. Without it, files and backups can’t be decrypted if this server is lost.",
+  "securityKeyStored": "I stored the master key somewhere safe, outside this server",
+  "securityKeyDownload": "Download as file",
+  "securityDatabaseOk": "OK",
+  "securityDatabasePending": "Checking…",
+  "securityDatabaseDamaged": "Damaged",
+  "securityDatabaseCheckedAt": "checked {date}",
+  "@securityDatabaseCheckedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "securityDamagedBlobs": "{count, plural, =1{1 damaged file found by the background check} other{{count} damaged files found by the background check}}",
+  "@securityDamagedBlobs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "securityDiskFull": "The server’s disk is full. Ask the admin to free up space; nothing was saved.",
+  "securityServerStopping": "The server is restarting. Try again in a moment.",
+  "filesFavoritesEmpty": "No favorites yet",
+  "filesFavoritesEmptySubtitle": "Star files and folders you use often; they show up here.",
+  "filesFavoritesSubtitle": "Files and folders you starred.",
+  "filesNavFavorites": "Favorites",
+  "filesTrashExpiresIn": "{days, plural, =0{deleted permanently today} =1{deleted permanently in 1 day} other{deleted permanently in {days} days}}",
+  "@filesTrashExpiresIn": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "filesAndMore": "{names} and {count} more",
+  "@filesAndMore": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filesCut": "{count, plural, =1{1 item cut · paste it in another folder} other{{count} items cut · paste them in another folder}}",
+  "@filesCut": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filesCutAction": "Cut",
+  "filesFavorite": "favorite",
+  "filesFavoriteFailed": "Couldn't change the star of {names}.",
+  "@filesFavoriteFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "filesKindFolder": "folder",
+  "filesModifiedOn": "modified {date}",
+  "@filesModifiedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "filesModifiedToday": "modified today",
+  "filesModifiedYesterday": "modified yesterday",
+  "filesMoveFailed": "Couldn't move {names} to “{folder}”.",
+  "@filesMoveFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "filesPasteHere": "{count, plural, =1{Paste 1 item here} other{Paste {count} items here}}",
+  "@filesPasteHere": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filesRenameFailed": "Couldn't rename “{name}”.",
+  "@filesRenameFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "filesRestoreFailed": "Couldn't restore {names}.",
+  "@filesRestoreFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "filesShortcutsHint": "Press ? for keyboard shortcuts · Ctrl/⌘+K for commands · drag items onto a folder to move them",
+  "filesStar": "Add to favorites",
+  "filesStarred": "{count, plural, =1{Added to favorites} other{{count} items added to favorites}}",
+  "@filesStarred": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filesTrashFailed": "Couldn't move {names} to the trash.",
+  "@filesTrashFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "filesUndoFailed": "Couldn't undo for {names}.",
+  "@filesUndoFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "filesUnstar": "Remove from favorites",
+  "filesUnstarred": "{count, plural, =1{Removed from favorites} other{{count} items removed from favorites}}",
+  "@filesUnstarred": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filesWelcomeTitle": "Welcome to your cloud",
+  "filesWelcomeSubtitle": "Everything here is encrypted on your own server. Three things to start with:",
+  "filesWelcomeUploadTitle": "Add your first files",
+  "filesWelcomeUploadBody": "Upload files or drop them anywhere on this page.",
+  "filesWelcomeDesktopTitle": "Get the desktop app",
+  "filesWelcomeDesktopBody": "Keep a folder on your computer in sync.",
+  "filesWelcomeDesktopAction": "Get the app",
+  "filesWelcomeKeyTitle": "Back up the master key",
+  "filesWelcomeKeyBody": "Without it, a restored server can't read any file. Store it somewhere safe.",
+  "filesWelcomeKeyAction": "Open admin",
+  "paletteActions": "Actions",
+  "paletteFolders": "Go to folder",
+  "paletteHint": "Type a command, folder or page",
+  "paletteNothing": "Nothing matches.",
+  "palettePlaces": "Places",
+  "paletteRecent": "Recent files",
+  "paletteSearchFiles": "Search files",
+  "paletteShortcuts": "Keyboard shortcuts",
+  "paletteTitle": "Command palette",
+  "paletteShortcutClear": "Clear selection or search",
+  "paletteShortcutCutPaste": "Cut and paste into another folder",
+  "paletteShortcutExtend": "Extend the selection",
+  "paletteShortcutHomeEnd": "First or last item",
+  "paletteShortcutMove": "Move between items",
+  "paletteShortcutSelectAll": "Select all",
+  "paletteShortcutToggle": "Select or deselect",
+  "paletteShortcutTypeAhead": "Jump to a name by typing it",
+  "searchAny": "Any",
+  "searchClearFilters": "Clear filters",
+  "searchEmptyHint": "Try fewer words, other filters, or search all folders.",
+  "searchEverywhere": "Search all folders",
+  "searchLookInTrash": "Look in the trash",
+  "searchModified": "Modified",
+  "searchModifiedDay": "Last 24 hours",
+  "searchModifiedWeek": "Last 7 days",
+  "searchModifiedMonth": "Last 30 days",
+  "searchModifiedYear": "Last year",
+  "searchNothingFiltered": "Nothing matches these filters.",
+  "searchOpenFolder": "Open containing folder",
+  "searchResultsCount": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "@searchResultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSize": "Size",
+  "searchSize10m": "Over 10 MB",
+  "searchSize100m": "Over 100 MB",
+  "searchSize1g": "Over 1 GB",
+  "searchThisFolder": "This folder",
+  "searchType": "Type",
+  "searchTypeArchives": "Archives",
+  "searchTypeAudio": "Audio",
+  "searchTypeDocuments": "Documents",
+  "searchTypeFolders": "Folders",
+  "searchTypeImages": "Images",
+  "searchTypePdf": "PDFs",
+  "searchTypeVideos": "Videos",
+  "storageAlmostFull": "Almost full",
+  "storageByType": "By type",
+  "storageDetailsUnavailable": "This server doesn't report a detailed breakdown yet.",
+  "storageDuplicateGroup": "{count} identical copies · {size} each",
+  "@storageDuplicateGroup": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "storageDuplicates": "Duplicates",
+  "storageKeepNewest": "Keep newest",
+  "storageLargest": "Largest files",
+  "storageNewest": "Newest",
+  "storageNoDuplicates": "No identical files found.",
+  "storageReclaimable": "{size} can be freed",
+  "@storageReclaimable": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "storageTypeOther": "Other",
+  "storageTypeVaults": "Vaults",
+  "undoAction": "Undo",
+  "undoMoved": "{count, plural, =1{1 item moved to “{folder}”} other{{count} items moved to “{folder}”}}",
+  "@undoMoved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "undoRenamed": "Renamed to “{name}”",
+  "@undoRenamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "undoRestored": "“{name}” restored",
+  "@undoRestored": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "undoTrashed": "{count, plural, =1{“{name}” moved to trash} other{{count} items moved to trash}}",
+  "@undoTrashed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadAnnounceFailed": "Upload failed: {name}",
+  "@uploadAnnounceFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadAnnounceFinishedWithFailures": "{count, plural, =1{Uploads finished, 1 failed} other{Uploads finished, {count} failed}}",
+  "@uploadAnnounceFinishedWithFailures": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadConflictApplyToAll": "{count, plural, =1{Do this for the 1 remaining upload} other{Do this for all {count} remaining uploads}}",
+  "@uploadConflictApplyToAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadConflictExisting": "ALREADY THERE",
+  "uploadConflictIncoming": "NEW UPLOAD",
+  "uploadConflictKeepBothAs": "Keep both saves the new file as “{name}”.",
+  "@uploadConflictKeepBothAs": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadDismiss": "Dismiss",
+  "uploadEtaHours": "about {count} h",
+  "@uploadEtaHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadEtaMinutes": "about {count} min",
+  "@uploadEtaMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadEtaUnderMinute": "less than a minute",
+  "uploadFinalizing": "Finishing…",
+  "uploadInterrupted": "{count, plural, =1{1 upload was interrupted} other{{count} uploads were interrupted}}",
+  "@uploadInterrupted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadInterruptedHint": "Pick the same files again to continue where they stopped.",
+  "uploadPause": "Pause",
+  "uploadPauseAll": "Pause all",
+  "uploadPaused": "Paused",
+  "uploadProgressCount": "{done} of {total}",
+  "@uploadProgressCount": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadResume": "Resume",
+  "uploadResumeAll": "Resume all",
+  "uploadResumeReselect": "Resume (re-select files)",
+  "uploadWaitingForConnection": "Waiting for connection",
+  "cameraStatusOff": "Off",
+  "cameraStatusUpToDate": "Up to date",
+  "cameraStatusUploading": "Uploading {current} of {total}",
+  "@cameraStatusUploading": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraStatusPending": "{count, plural, =1{1 file waiting} other{{count} files waiting}}",
+  "@cameraStatusPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraStatusWaitingWifi": "Waiting for Wi-Fi",
+  "cameraStatusWaitingCharger": "Waiting for charger",
+  "cameraStatusLimited": "Limited photo access",
+  "cameraStatusNoAccess": "No photo access",
+  "cameraStatusNoFolder": "No folder chosen",
+  "cameraStatusUnreachable": "Server unreachable",
+  "cameraStatusSignedOut": "Signed out",
+  "cameraStatusServerFull": "Server full",
+  "cameraStatusFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
+  "@cameraStatusFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraCountOnPhone": "On phone",
+  "cameraCountBackedUp": "Backed up",
+  "cameraCountPending": "Pending",
+  "cameraCountFailed": "Failed",
+  "cameraWaitingCloud": "{count, plural, =1{1 waiting on iCloud} other{{count} waiting on iCloud}}",
+  "@cameraWaitingCloud": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraBackupTitle": "Photo backup",
+  "cameraBackupEnableDescription": "Back up the photos on this phone to NeoCloud. Nothing is ever deleted from the phone.",
+  "cameraScopeTitle": "What should be backed up?",
+  "cameraScopeNew": "New photos only",
+  "cameraScopeNewHint": "Photos and videos taken from now on.",
+  "cameraScopeEverything": "Everything ({count} items, about {size})",
+  "@cameraScopeEverything": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraScopeEverythingCount": "Everything ({count} items)",
+  "@cameraScopeEverythingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraScopeEverythingHint": "Your whole library, newest first. The first run takes a while.",
+  "cameraScopeCounting": "Counting your library…",
+  "cameraScopeSetting": "Back up",
+  "cameraScopeNewShort": "New only",
+  "cameraScopeEverythingShort": "Everything",
+  "cameraChargingOnly": "Only while charging",
+  "cameraChargingHint": "In the background Android waits for the charger. iOS can’t tell apps, so it backs up when you open NeoCloud or tap Back up now.",
+  "cameraVideosWifiOnly": "Videos only on Wi-Fi",
+  "cameraVideosWifiOnlyHint": "Photos may use mobile data, videos wait for Wi-Fi.",
+  "cameraLimitedMessage": "NeoCloud can only see the photos you selected. The others aren’t backed up.",
+  "cameraAllowFullAccess": "Allow full access",
+  "cameraDelayedTitle": "Backup delayed by the system",
+  "cameraDelayedMessage": "Last run {date}. The system may be stopping NeoCloud in the background to save battery.",
+  "@cameraDelayedMessage": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraBatteryTipGeneric": "Let NeoCloud run in the background: Settings › Apps › NeoCloud › Battery › Unrestricted.",
+  "cameraBatteryTipSamsung": "Samsung: Settings › Battery › Background usage limits – take NeoCloud off “Sleeping apps”.",
+  "cameraBatteryTipXiaomi": "Xiaomi: Settings › Apps › NeoCloud › Battery saver › No restrictions, and turn on Autostart.",
+  "cameraBatteryTipHuawei": "Huawei: Settings › Battery › App launch – set NeoCloud to “Manage manually” and allow everything.",
+  "cameraBatteryTipOnePlus": "OnePlus: Settings › Battery › Battery optimisation – set NeoCloud to “Don’t optimise”.",
+  "cameraBatteryMore": "More tips for your phone on dontkillmyapp.com",
+  "cameraIosBackgroundTip": "iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.",
+  "cameraBackUpNow": "Back up now",
+  "cameraRetryFailed": "Retry failed",
+  "cameraExportLog": "Export upload log",
+  "cameraLogTitle": "Upload log",
+  "cameraLogEmpty": "Nothing logged yet.",
+  "cameraListEmpty": "Nothing here.",
+  "cameraReasonWifi": "waiting for Wi-Fi",
+  "cameraReasonIcloud": "waiting on iCloud",
+  "cameraReasonNotAvailable": "the system couldn’t provide this file",
+  "cameraAttempts": "{count, plural, =1{1 attempt} other{{count} attempts}}",
+  "@cameraAttempts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraNeverRun": "Not run yet",
+  "cameraUnnamed": "Not read yet",
+  "cameraOptions": "Options",
+  "mobileNavFiles": "Files",
+  "mobileNavCamera": "Camera",
+  "mobileMore": "More",
+  "mobileRecentServers": "Recent servers",
+  "mobileForgetServer": "Forget",
+  "filesQuickAccess": "Quick access",
+  "done": "Done",
+  "deviceRevokeTitle": "Disconnect {name}?",
+  "@deviceRevokeTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceRevokeMessage": "The app on that device is signed out and has to be connected again.",
+  "pairPhone": "Pair a phone",
+  "pairTitle": "Pair a phone",
+  "pairInstructions": "Open the NeoCloud app on your phone, tap “Scan QR code” and point the camera at this code.",
+  "pairQrSemantics": "QR code to pair a phone",
+  "pairWaiting": "Waiting for the phone",
+  "pairExpiresIn": "Expires in {time}",
+  "@pairExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pairExpired": "Code expired",
+  "pairNewCode": "New code",
+  "pairPairedWith": "Paired with {device} ✓",
+  "@pairPairedWith": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "pairUnknownDevice": "your phone",
+  "pairCantScan": "Can't scan? Open this link on the phone:",
+  "pairLandingTitle": "Pair with the NeoCloud app",
+  "pairLandingPhoneBody": "This link signs in the NeoCloud app on this phone. Install the app if you haven't, then open the link in it. The code works for five minutes.",
+  "pairLandingOpenApp": "Open in NeoCloud app",
+  "pairLandingAppStore": "Get it on the App Store",
+  "pairLandingPlayStore": "Get it on Google Play",
+  "pairLandingComputerBody": "This link is meant for your phone. Open it there, or scan the QR code in Settings › Devices with the NeoCloud app.",
+  "pairLandingInvalid": "This pairing link is incomplete. Show a new code in Settings › Devices.",
+  "connectOr": "or",
+  "connectScanQr": "Scan QR code",
+  "connectScanQrHint": "In the web app, open Settings › Devices › Pair a phone.",
+  "scanTitle": "Scan QR code",
+  "scanPrimeTitle": "Use the camera to pair",
+  "scanPrimeBody": "NeoCloud needs the camera only to read the pairing code shown in the web app. Nothing is recorded or uploaded.",
+  "scanPrimeAllow": "Allow camera",
+  "scanHint": "Point the camera at the QR code in Settings › Devices",
+  "scanWrongCode": "That's not a NeoCloud pairing code",
+  "scanTorchOn": "Turn on the light",
+  "scanTorchOff": "Turn off the light",
+  "scanDeniedTitle": "Camera access is off",
+  "scanDeniedBodyIos": "Allow NeoCloud to use the camera in Settings, or connect with the server address instead.",
+  "scanDeniedBodyAndroid": "Allow the camera when asked, or turn it on under Settings › Apps › NeoCloud › Permissions. You can also connect with the server address.",
+  "scanOpenSettings": "Open Settings",
+  "scanFailedTitle": "The camera didn't start",
+  "scanFailedBody": "Close other apps that use the camera and try again.",
+  "webDavTitle": "Connect apps (WebDAV)",
+  "webDavDescription": "Finder, Windows Explorer, rclone and many other apps open NeoCloud as a network drive. They sign in with an app password, not your account password.",
+  "webDavAddress": "WebDAV address",
+  "webDavPassword": "App password",
+  "webDavPasswordHint": "One per app, so you can disconnect each on its own. App passwords are listed above with a WebDAV tag.",
+  "webDavCreatePassword": "Create app password",
+  "webDavPasswordName": "Which app is it for?",
+  "webDavPasswordDefaultName": "WebDAV",
+  "webDavPasswordTitle": "Your app password",
+  "webDavPasswordMessage": "Enter it in the app together with your user name. It is shown only once.",
+  "webDavRevokeMessage": "Apps that use this app password can't reach your files any more.",
+  "webDavTag": "WebDAV",
+  "webDavHowTo": "How to connect common apps",
+  "webDavHintFinderTitle": "Finder (macOS)",
+  "webDavHintFinder": "Go › Connect to Server (⌘K), paste the address, then sign in with your user name and an app password.",
+  "webDavHintWindowsTitle": "Windows",
+  "webDavHintWindows": "In File Explorer, right-click This PC › Map network drive, paste the address and tick “Connect using different credentials”. Needs HTTPS.",
+  "webDavHintRcloneTitle": "rclone",
+  "webDavHintRclone": "rclone config › New remote › WebDAV, vendor “owncloud”, then the address, user name and app password.",
+  "webDavHintObsidianTitle": "Obsidian",
+  "webDavHintObsidian": "Install the Remotely Save plugin, choose WebDAV and enter the address, user name and app password.",
+  "webDavHintKeepassTitle": "KeePassXC and KeePass apps",
+  "webDavHintKeepass": "Open the database from the mounted drive in KeePassXC; on phones, KeePassDX and Strongbox open WebDAV addresses directly.",
+  "pageImport": "Import",
+  "pageImportDescription": "Move your files over from Nextcloud or another WebDAV server.",
+  "importNextcloudTitle": "Move from Nextcloud",
+  "importNextcloudDescription": "NeoCloud copies your files with their folders and dates. Nothing on the other server is changed.",
+  "importServerUrl": "Server address",
+  "importAppPassword": "App password",
+  "importAppPasswordHelpLink": "How do I create an app password?",
+  "importAppPasswordHelpTitle": "App password in Nextcloud",
+  "importAppPasswordHelp": "In Nextcloud, open your avatar › Personal settings › Security. Under “Devices & sessions”, enter a name such as NeoCloud and click “Create new app password”. Copy the password shown and paste it here. NeoCloud keeps it encrypted and deletes it when the import ends.",
+  "importAppPasswordDocs": "Nextcloud help",
+  "importSource": "Source folder",
+  "importSourceHint": "The folder on the other server; / takes everything.",
+  "importTarget": "Import into",
+  "importChooseFolder": "Choose folder",
+  "importTest": "Test connection",
+  "importTestFound": "Connected. {files} items in this folder, {size} in total.",
+  "@importTestFound": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "importTestFailed": "The server could not be read. Check the address, user name and app password.",
+  "importQuotaWarning": "This won't fit: you need {size} more space than your storage has left. The import stops when it is full.",
+  "@importQuotaWarning": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "importStart": "Start import",
+  "importStarted": "Import started. You can leave this page; it keeps running.",
+  "importJobsTitle": "Imports",
+  "importJobsEmpty": "No imports yet.",
+  "importInto": "Into {folder}",
+  "@importInto": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "importFilesOf": "{done} of {total} files",
+  "@importFilesOf": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "importFilesDone": "{done} files",
+  "@importFilesDone": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      }
+    }
+  },
+  "importBytesOf": "{done} of {total}",
+  "@importBytesOf": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "importSkipped": "{count, plural, =1{1 skipped (already there)} other{{count} skipped (already there)}}",
+  "@importSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
+  "@importFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importShowErrors": "{count, plural, =1{Show 1 error} other{Show {count} errors}}",
+  "@importShowErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importHideErrors": "Hide errors",
+  "importPause": "Pause",
+  "importResume": "Resume",
+  "importCancel": "Cancel import",
+  "importCancelTitle": "Cancel this import?",
+  "importCancelMessage": "Files copied so far stay in NeoCloud. You can resume later; files already there are skipped.",
+  "importOpenFolder": "Open folder",
+  "importRemove": "Remove from list",
+  "importStatusQueued": "Queued",
+  "importStatusScanning": "Scanning",
+  "importStatusRunning": "Importing",
+  "importStatusPaused": "Paused",
+  "importStatusDone": "Done",
+  "importStatusFailed": "Failed",
+  "importStatusCancelled": "Cancelled",
+  "filesWelcomeImportTitle": "Coming from Nextcloud?",
+  "filesWelcomeImportBody": "Import your files with their folders and dates.",
+  "filesWelcomeImportAction": "Import your files",
+  "searchFileContents": "File contents",
+  "searchFileContentsHint": "Also find files by the words inside them",
+  "searchMatchName": "Name",
+  "searchMatchContent": "Content",
+  "searchMatchBoth": "Name + content",
+  "searchSettingsTitle": "Search",
+  "searchSettingsContents": "Search inside my files",
+  "searchSettingsContentsHint": "The server indexes the text of your documents so search finds the words in them. Turn this off to keep your files out of the index.",
+  "searchSettingsContentsOff": "Full-text search is off on this server. If an admin turns it on, this decides whether your files are indexed.",
+  "adminSearchTitle": "Full-text search",
+  "adminSearchDescription": "Lets people find files by the words inside them: text, PDF and Office documents. Vault files are never indexed.",
+  "adminSearchToggle": "Full-text search",
+  "adminSearchPrivacy": "Trade-off: the index stores which words each file contains. The text itself is encrypted, but anyone holding the database can tell whether a file contains a given word. Each user can opt out in their settings.",
+  "adminSearchState": "Index",
+  "adminSearchOff": "Off",
+  "adminSearchIndexing": "Indexing",
+  "adminSearchUpToDate": "Up to date",
+  "adminSearchIndexed": "Indexed files",
+  "adminSearchPending": "Waiting",
+  "adminSearchFailed": "Failed",
+  "adminSearchFailedHint": "Damaged or password-protected files can't be read.",
+  "adminSearchSize": "Index size",
+  "adminSearchPdf": "PDF text",
+  "adminSearchPdfFallback": "Install poppler-utils for better PDF text; the built-in reader is used until then.",
+  "adminSearchOffice": "Office documents",
+  "adminSearchToolPdftotext": "pdftotext",
+  "adminSearchToolAvailable": "Available",
+  "adminSearchToolMissing": "Not installed",
+  "adminSearchRebuild": "Rebuild index",
+  "adminSearchRebuildHint": "Reads every file again, in the background.",
+  "adminSearchRebuildStarted": "The index is being rebuilt in the background.",
+  "importTargetHint": "Without a folder, files go into a new “Nextcloud” folder in Home.",
+  "importHostBlocked": "Only an admin can import from a server on your local network."
+}

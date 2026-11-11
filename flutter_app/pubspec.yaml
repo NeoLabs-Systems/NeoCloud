@@ -1,0 +1,53 @@
+name: neocloud
+description: NeoCloud client — encrypted self-hosted file storage for web, Android and iOS.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  http: ^1.5.0
+  google_fonts: ^8.1.0
+  shared_preferences: ^2.5.3
+  file_picker: ^10.3.10
+  desktop_drop: ^0.8.4
+  url_launcher: ^6.3.2
+  web: ^1.1.1
+  pdfrx: ^2.2.24
+  video_player: ^2.10.1
+  flutter_svg: ^2.3.0
+  flutter_secure_storage: ^10.3.1
+  path_provider: ^2.1.5
+  photo_manager: ^3.12.0
+  workmanager: ^0.9.2
+  connectivity_plus: ^7.3.1
+  neocloud_sync:
+    path: packages/neocloud_sync
+  crypto: ^3.0.6
+  cryptography: ^2.7.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.5.0
+
+# workmanager_platform_interface 0.9.4 added a parameter that
+# workmanager_apple 0.9.4 doesn't implement; the next fixed releases need
+# Flutter 3.38. Pin the last matching pair until Flutter is upgraded.
+dependency_overrides:
+  workmanager_platform_interface: 0.9.3
+  workmanager_android: 0.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+  generate: true

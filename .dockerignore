@@ -1,0 +1,7 @@
+node_modules
+.git
+test
+flutter_app
+docs
+*.log
+.env
