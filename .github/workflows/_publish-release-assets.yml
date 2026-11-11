@@ -1,7 +1,7 @@
 name: Reusable release assets
 
-# Attaches the client builds from _build-clients.yml in the same run, plus
-# SHA256SUMS.txt, to an existing GitHub release.
+# Publishes a checksum list after all client builds have completed.
+# The builds attach their own assets as soon as they finish.
 
 on:
   workflow_call:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   attach:
-    name: Attach release assets
+    name: Publish release checksums
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,7 +31,7 @@ jobs:
         with:
           name: android-apk
           path: dist
-      - name: Upload to the release
+      - name: Upload checksums to the release
         working-directory: dist
         env:
           GH_TOKEN: ${{ github.token }}
@@ -39,4 +39,4 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           sha256sum -- * > SHA256SUMS.txt
-          gh release upload --clobber --repo "$REPOSITORY" "$RELEASE_TAG" ./*
+          gh release upload --clobber --repo "$REPOSITORY" "$RELEASE_TAG" SHA256SUMS.txt

@@ -4771,6 +4771,24 @@ abstract class AppL10n {
   /// **'The app on that device is signed out and has to be connected again.'**
   String get deviceRevokeMessage;
 
+  /// No description provided for @qrPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'QR Pairing'**
+  String get qrPairing;
+
+  /// No description provided for @pairPhoneDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.'**
+  String get pairPhoneDescription;
+
+  /// No description provided for @showQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR code'**
+  String get showQrCode;
+
   /// No description provided for @pairPhone.
   ///
   /// In en, this message translates to:
@@ -4870,13 +4888,13 @@ abstract class AppL10n {
   /// No description provided for @pairLandingComputerBody.
   ///
   /// In en, this message translates to:
-  /// **'This link is meant for your phone. Open it there, or scan the QR code in Settings › Devices with the NeoCloud app.'**
+  /// **'This link is meant for your phone. Open it there, or scan the QR code in Settings › Sign-in & security with the NeoCloud app.'**
   String get pairLandingComputerBody;
 
   /// No description provided for @pairLandingInvalid.
   ///
   /// In en, this message translates to:
-  /// **'This pairing link is incomplete. Show a new code in Settings › Devices.'**
+  /// **'This pairing link is incomplete. Show a new code in Settings › Sign-in & security.'**
   String get pairLandingInvalid;
 
   /// No description provided for @connectOr.
@@ -4894,7 +4912,7 @@ abstract class AppL10n {
   /// No description provided for @connectScanQrHint.
   ///
   /// In en, this message translates to:
-  /// **'In the web app, open Settings › Devices › Pair a phone.'**
+  /// **'In the web app, open Settings › Sign-in & security › Pair a phone.'**
   String get connectScanQrHint;
 
   /// No description provided for @scanTitle.
@@ -4924,7 +4942,7 @@ abstract class AppL10n {
   /// No description provided for @scanHint.
   ///
   /// In en, this message translates to:
-  /// **'Point the camera at the QR code in Settings › Devices'**
+  /// **'Point the camera at the QR code in Settings › Sign-in & security'**
   String get scanHint;
 
   /// No description provided for @scanWrongCode.

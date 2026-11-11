@@ -2859,6 +2859,16 @@ class AppL10nEn extends AppL10n {
       'The app on that device is signed out and has to be connected again.';
 
   @override
+  String get qrPairing => 'QR Pairing';
+
+  @override
+  String get pairPhoneDescription =>
+      'Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.';
+
+  @override
+  String get showQrCode => 'Show QR code';
+
+  @override
   String get pairPhone => 'Pair a phone';
 
   @override
@@ -2914,11 +2924,11 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get pairLandingComputerBody =>
-      'This link is meant for your phone. Open it there, or scan the QR code in Settings › Devices with the NeoCloud app.';
+      'This link is meant for your phone. Open it there, or scan the QR code in Settings › Sign-in & security with the NeoCloud app.';
 
   @override
   String get pairLandingInvalid =>
-      'This pairing link is incomplete. Show a new code in Settings › Devices.';
+      'This pairing link is incomplete. Show a new code in Settings › Sign-in & security.';
 
   @override
   String get connectOr => 'or';
@@ -2928,7 +2938,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get connectScanQrHint =>
-      'In the web app, open Settings › Devices › Pair a phone.';
+      'In the web app, open Settings › Sign-in & security › Pair a phone.';
 
   @override
   String get scanTitle => 'Scan QR code';
@@ -2945,7 +2955,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get scanHint =>
-      'Point the camera at the QR code in Settings › Devices';
+      'Point the camera at the QR code in Settings › Sign-in & security';
 
   @override
   String get scanWrongCode => 'That\'s not a NeoCloud pairing code';

@@ -1,8 +1,8 @@
 name: Reusable client builds
 
 # Builds the release clients for one ref: the Go lite client for every desktop
-# platform and the Android APK. The artifacts are attached to the release by
-# _publish-release-assets.yml.
+# platform and the Android APK. Each build attaches its files immediately;
+# artifacts are retained for the final checksum list.
 
 on:
   workflow_call:
@@ -17,7 +17,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   lite:
@@ -58,6 +58,11 @@ jobs:
           name="neocloud-lite-${RELEASE_TAG}-${GOOS}-${GOARCH}${EXT}"
           go build -trimpath -ldflags "-s -w" -o "dist/$name" ./cmd/neocloud-lite
           echo "ARTIFACT=$name" >> "$GITHUB_ENV"
+      - name: Attach client to release
+        uses: ./.github/actions/attach-release-assets
+        with:
+          release_tag: ${{ inputs.release_tag }}
+          files: clients/lite/dist/${{ env.ARTIFACT }}
       - uses: actions/upload-artifact@v4
         with:
           name: lite-${{ matrix.goos }}-${{ matrix.goarch }}
@@ -87,6 +92,14 @@ jobs:
       - if: matrix.target == 'windows'
         run: sudo apt-get update && sudo apt-get install -y nsis
       - run: clients/lite/packaging/${{ matrix.target }}/build.sh "${{ inputs.release_tag }}" pkg ${{ matrix.arch }}
+      - name: Attach app to release
+        uses: ./.github/actions/attach-release-assets
+        with:
+          release_tag: ${{ inputs.release_tag }}
+          files: |
+            pkg/*.dmg
+            pkg/*.exe
+            pkg/*.AppImage
       - uses: actions/upload-artifact@v4
         with:
           name: lite-package-${{ matrix.target }}-${{ matrix.arch }}
@@ -132,6 +145,11 @@ jobs:
           flutter build apk --release --build-name "${version%%-*}" --build-number "$build_number"
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk "../dist/neocloud-${RELEASE_TAG}-android.apk"
+      - name: Attach APK to release
+        uses: ./.github/actions/attach-release-assets
+        with:
+          release_tag: ${{ inputs.release_tag }}
+          files: dist/*.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk

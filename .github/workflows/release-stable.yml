@@ -172,6 +172,8 @@ jobs:
     name: Build clients
     needs: release
     if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/_build-clients.yml
     with:
       ref: ${{ needs.release.outputs.release_sha }}

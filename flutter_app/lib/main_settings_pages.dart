@@ -293,6 +293,20 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage> with _Page
       children: <Widget>[
         feedback(),
         _SettingsGroup(
+          title: appStrings.qrPairing,
+          children: <Widget>[
+            _SettingsRow(
+              label: appStrings.pairPhone,
+              description: appStrings.pairPhoneDescription,
+              control: OutlinedButton.icon(
+                onPressed: busy ? null : () => unawaited(showPairPhoneDialog(context, _controller)),
+                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                label: Text(appStrings.showQrCode),
+              ),
+            ),
+          ],
+        ),
+        _SettingsGroup(
           title: appStrings.changePassword,
           children: <Widget>[
             _SettingsBlock(

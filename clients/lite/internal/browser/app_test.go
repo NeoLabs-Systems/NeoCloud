@@ -2,6 +2,7 @@ package browser
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestFindChromium(t *testing.T) {
 	noPath := func(string) (string, error) { return "", errors.New("not found") }
 	only := func(want string) func(string) bool { return func(path string) bool { return path == want } }
 
-	mac := "/Users/me/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+	mac := filepath.Join(env["HOME"], "Applications", "Brave Browser.app/Contents/MacOS/Brave Browser")
 	if got := findChromium("darwin", getenv, noPath, only(mac)); got != mac {
 		t.Errorf("darwin: %q", got)
 	}
