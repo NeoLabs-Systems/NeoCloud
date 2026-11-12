@@ -160,6 +160,11 @@ async function sendZip(res, userId, rawIds, { skipVaults = false } = {}) {
     'Content-Disposition': contentDisposition('attachment', zipName(userId, ids)),
     'X-Content-Type-Options': 'nosniff',
   });
+  // A HEAD answers with the headers only; the archive is built for a GET.
+  if (res.req?.method === 'HEAD') {
+    res.end();
+    return;
+  }
   const archive = new ZipArchive({ store: true });
   archive.on('warning', (err) => logger.warn('ZIP warning:', err.message));
   for (const { node, path } of entries) {

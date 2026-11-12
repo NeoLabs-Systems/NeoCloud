@@ -105,7 +105,8 @@ router.get('/:token/zip', browseLimiter, streaming(async (req, res) => {
   const context = openFromRequest(req);
   shares.assertCanView(context);
   const node = shares.nodeInShare(context, typeof req.query.folderId === 'string' ? req.query.folderId : '');
-  shares.consumeDownload(context.share);
+  // A HEAD (link previews, download managers probing) is not a download.
+  if (req.method !== 'HEAD') shares.consumeDownload(context.share);
   await sendZip(res, context.share.user_id, node.id, { skipVaults: true });
 }));
 

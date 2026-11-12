@@ -1,6 +1,7 @@
 'use strict';
 
 const { isAdminUser } = require('../services/access/admin');
+const { isAccountActive } = require('../services/account/status');
 const { resolveDeviceToken } = require('../services/devices/tokens');
 const { basicCredentials, resolveAppPassword } = require('../services/webdav/auth');
 
@@ -8,11 +9,11 @@ function unauthorized(res) {
   return res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' });
 }
 
-// Browser session only. Sets req.userId for the handlers below.
-function requireAuth(req, res, next) {
-  if (!req.session?.userId) return unauthorized(res);
-  req.userId = req.session.userId;
-  next();
+// The session's account while it exists and isn't disabled. Read on every
+// request, so disabling an account locks out a session nobody revoked.
+function sessionUserId(req) {
+  const userId = req.session?.userId;
+  return userId && isAccountActive(userId) ? userId : null;
 }
 
 function deviceFromHeader(req) {
@@ -23,8 +24,9 @@ function deviceFromHeader(req) {
 
 // A browser session or a device bearer token (desktop, mobile, lite clients).
 function requireAuthOrDevice(req, res, next) {
-  if (req.session?.userId) {
-    req.userId = req.session.userId;
+  const userId = sessionUserId(req);
+  if (userId) {
+    req.userId = userId;
     return next();
   }
   const device = deviceFromHeader(req);
@@ -34,20 +36,24 @@ function requireAuthOrDevice(req, res, next) {
   next();
 }
 
-// Approving another sign-in: a browser session or the phone app's token.
-// WebDAV app passwords and desktop tokens can't vouch for a new sign-in.
+// The phone app is a full client like the browser: its token (android/ios
+// only) reaches account, settings, imports and admin, and approves other
+// sign-ins. Desktop tokens and WebDAV app passwords never do.
 const PHONE_PLATFORMS = new Set(['android', 'ios']);
 
+function phoneRequired(res) {
+  return res.status(403).json({ error: 'Use a browser or the NeoCloud phone app for this.', code: 'PHONE_REQUIRED' });
+}
+
 function requireSessionOrPhone(req, res, next) {
-  if (req.session?.userId) {
-    req.userId = req.session.userId;
+  const userId = sessionUserId(req);
+  if (userId) {
+    req.userId = userId;
     return next();
   }
   const device = deviceFromHeader(req);
   if (!device) return unauthorized(res);
-  if (!PHONE_PLATFORMS.has(device.platform)) {
-    return res.status(403).json({ error: 'Approve sign-ins from the NeoCloud phone app or a browser.', code: 'PHONE_REQUIRED' });
-  }
+  if (!PHONE_PLATFORMS.has(device.platform)) return phoneRequired(res);
   req.userId = device.userId;
   req.deviceId = device.deviceId;
   next();
@@ -63,12 +69,24 @@ function requireDevice(req, res, next) {
 }
 
 // Admin is read from the account row on every request (never cached in the
-// session), so revoking it takes effect immediately.
+// session or the token), so revoking it takes effect immediately. A browser
+// session or the phone app's token; a disabled account's token resolves to
+// nothing (resolveDeviceToken).
 function requireAdmin(req, res, next) {
-  if (!req.session?.userId || !isAdminUser(req.session.userId)) {
+  let userId = sessionUserId(req);
+  let deviceId = null;
+  if (!userId) {
+    const device = deviceFromHeader(req);
+    if (device && PHONE_PLATFORMS.has(device.platform)) {
+      userId = device.userId;
+      deviceId = device.deviceId;
+    }
+  }
+  if (!userId || !isAdminUser(userId)) {
     return res.status(403).json({ error: 'Admin access required', code: 'ADMIN_REQUIRED' });
   }
-  req.userId = req.session.userId;
+  req.userId = userId;
+  if (deviceId) req.deviceId = deviceId;
   next();
 }
 
@@ -101,4 +119,4 @@ function requireAppPassword(req, res, next) {
   return next();
 }
 
-module.exports = { requireAdmin, requireAppPassword, requireAuth, requireAuthOrDevice, requireDevice, requireSessionOrPhone, requireSessionTransport };
+module.exports = { requireAdmin, requireAppPassword, requireAuthOrDevice, requireDevice, requireSessionOrPhone, requireSessionTransport };

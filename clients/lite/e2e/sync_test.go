@@ -219,7 +219,7 @@ func assertConverged(t *testing.T, s *server, rest *api.Client, devices ...*devi
 	t.Helper()
 	remote := s.remoteSnapshot(t, rest)
 	for _, d := range devices {
-		local := localSnapshot(t, d.dir, sync.MatcherFor(d.pair))
+		local := localSnapshot(t, d.dir, sync.LocalMatcher(d.pair))
 		if out := diff(local, remote); out != "" {
 			t.Fatalf("%s differs from the server (local vs remote):\n%s", d.name, out)
 		}

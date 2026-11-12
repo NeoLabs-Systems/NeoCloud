@@ -24,6 +24,7 @@ const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   alert: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5"/><path d="M12 17.5v.01"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3"/><path d="m16.5 6.5 2.5 2.5"/><path d="m14 9 2 2"/>',
   file: '<path d="M14 3.5H7.5A1.5 1.5 0 0 0 6 5v14a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V7.5z"/><path d="M14 3.5v4h4"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>',
   folderPlus: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M12 11v5M9.5 13.5h5"/>',
@@ -70,15 +71,21 @@ function iconButton(name, title, onclick, kind = "") {
 
 function dot(kind) { return el("span", { class: "dot " + kind }); }
 
-async function call(method, path, body) {
+async function call(method, path, body, signal) {
   const res = await fetch(path, {
     method,
+    signal,
     headers: { "X-Requested-With": "neocloud", "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.statusText || "Request failed");
+  if (!res.ok) throw new Error(sentence(data.error || res.statusText || "Request failed"));
   return data;
+}
+
+// Go errors start in lower case; the page shows them as sentences.
+function sentence(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 let toastTimer = 0;
@@ -107,7 +114,7 @@ function ask({ title, body, ok, danger }) {
   return new Promise((resolve) => {
     const close = (answer) => { scrim.remove(); document.removeEventListener("keydown", onKey); resolve(answer); };
     const onKey = (event) => { if (event.key === "Escape") close(false); };
-    const confirm = button(ok, () => close(true), { kind: danger ? "danger" : "primary" });
+    const confirm = button(ok, () => close(true), { kind: danger ? "destructive" : "primary" });
     const scrim = el("div", { class: "scrim", onclick: (event) => { if (event.target === scrim) close(false); } },
       el("div", { class: "dialog", role: "dialog", "aria-modal": "true" },
         el("h3", {}, title),
@@ -176,7 +183,9 @@ const DIRECTIONS = {
 
 let S = null;              // last /api/state answer
 let quota = null;          // last /api/account answer
-let view = { name: "home" };
+// The tray's "Settings…" opens the window at /#settings.
+let view = { name: location.hash === "#settings" ? "settings" : "home" };
+if (location.hash) history.replaceState(null, "", "/");
 let painted = "";          // signature of what is on screen
 let sawPending = false;    // a sign-in was pending in this window
 let closing = false;
@@ -188,14 +197,18 @@ function go(next) {
   window.scrollTo(0, 0);
 }
 
+let failures = 0;          // /api/state calls failed in a row
 async function refresh() {
   try {
     S = await call("GET", "/api/state");
+    failures = 0;
   } catch (err) {
-    if (!S) {
+    // NeoCloud quit or restarted (its sessions are gone): say so instead
+    // of showing a stale screen whose buttons fail.
+    if (!S || ++failures === 3) {
+      painted = "";
       document.getElementById("app").replaceChildren(el("div", { class: "welcome" },
-        el("div", { class: "brand" }, el("img", { src: "/assets/logo.svg", alt: "" }), el("h1", {}, "NeoCloud"),
-          el("p", { class: "lead" }, "This window lost its connection to NeoCloud. Open it again from the tray icon."))));
+        authCard("Connection lost", "This window lost its connection to NeoCloud. Choose Open NeoCloud in the tray menu to open it again.")));
     }
     return;
   }
@@ -253,11 +266,14 @@ function signatureOf(name) {
 
 // ---------- Screens: sign-in ----------
 
-function brand(lead) {
-  return el("div", { class: "brand" },
-    el("img", { src: "/assets/logo.svg", alt: "", width: "64", height: "64" }),
-    el("h1", {}, "NeoCloud"),
-    el("p", { class: "lead" }, lead));
+// NeoRouter's sign-in card (main_auth.dart): the mark, a display title,
+// one line of lead, then the form.
+function authCard(title, lead, ...children) {
+  return el("section", { class: "auth-card" },
+    el("img", { class: "mark", src: "/assets/logo.svg", alt: "", width: "44", height: "44" }),
+    el("h1", { class: "display" }, title),
+    lead ? el("p", { class: "lead" }, lead) : null,
+    ...children);
 }
 
 function welcome() {
@@ -265,7 +281,11 @@ function welcome() {
     class: "input", id: "server", type: "url", required: true, autocomplete: "url", spellcheck: "false",
     placeholder: "https://cloud.example.com", value: S.server || "",
   });
-  const error = el("div", { class: "error" }, (S.login && S.login.error) || "");
+  const username = el("input", {
+    class: "input", id: "username", autocomplete: "username", spellcheck: "false", autocapitalize: "off",
+    placeholder: "Only needed if your key holds several accounts",
+  });
+  const error = el("div", { class: "error", role: "alert" }, (S.login && S.login.error) || "");
   const submit = button("Continue", null, { kind: "primary big wide" });
   submit.type = "submit";
   const form = el("form", {
@@ -286,9 +306,92 @@ function welcome() {
   el("label", { class: "field", for: "server" }, "Server address", input),
   error,
   submit,
-  el("p", { class: "hint" }, "You will approve this computer once in NeoCloud. Your password never goes through this app."));
+  el("p", { class: "hint" }, "You approve this computer once in NeoCloud. Your password never goes through this app."));
   setTimeout(() => input.focus(), 0);
-  return el("div", { class: "welcome" }, brand("Keep folders on this computer in sync with your NeoCloud."), form, connectionSettings());
+  return el("div", { class: "welcome" },
+    authCard("Sign in to NeoCloud", "Keep folders on this computer in sync with your NeoCloud.",
+      form,
+      el("p", { class: "or" }, "or"),
+      securityKeySignIn(input, username)),
+    el("div", { class: "below-card" }, connectionSettings()));
+}
+
+// "Sign in with security key": the app signs the server's challenge with a
+// NeoCloud passkey or security key itself. The request to /api/login/key
+// waits for the touch; it answers with the next step ("pin", "code") or
+// signs this computer in.
+function securityKeySignIn(server, username) {
+  let pending = null; // AbortController of the request waiting for the touch
+  let needsPin = false; // the key asked for its PIN: later tries send it
+  const error = el("div", { class: "error", role: "alert" });
+  const start = button("Sign in with security key", () => run(), { kind: "wide", icon: "key" });
+  const touch = el("div", { class: "key-wait", hidden: true },
+    el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Touch your security key"),
+    button("Cancel", () => pending && pending.abort(), { kind: "ghost" }));
+  const pin = el("input", { class: "input", id: "keyPin", type: "password", autocomplete: "off" });
+  const pinForm = el("form", { class: "stack", hidden: true, onsubmit: (event) => { event.preventDefault(); run(); } },
+    el("label", { class: "field", for: "keyPin" }, "Security key PIN", pin),
+    el("button", { type: "submit", class: "btn primary wide" }, "Continue with PIN"));
+  const code = el("input", {
+    class: "input mono", id: "keyCode", inputmode: "numeric", autocomplete: "one-time-code", spellcheck: "false",
+  });
+  const codeForm = el("form", { class: "stack", hidden: true, onsubmit: (event) => { event.preventDefault(); sendCode(); } },
+    el("label", { class: "field", for: "keyCode" }, "Code from your authenticator app", code),
+    el("button", { type: "submit", class: "btn primary wide" }, "Sign in"));
+
+  // Shows one step: "start", "touch", "pin" or "code".
+  const show = (step) => {
+    start.hidden = step !== "start";
+    touch.hidden = step !== "touch";
+    pinForm.hidden = step !== "pin";
+    codeForm.hidden = step !== "code";
+    if (step === "pin") setTimeout(() => pin.focus(), 0);
+    if (step === "code") setTimeout(() => code.focus(), 0);
+  };
+  const answer = (result) => {
+    error.textContent = result.error || "";
+    if (result.success) {
+      sawPending = true;
+      refresh();
+      return;
+    }
+    if (result.next === "pin") {
+      needsPin = true;
+      pin.value = "";
+    }
+    if (result.next === "code") code.value = "";
+    show(result.next || "start");
+  };
+  const failed = (err) => {
+    error.textContent = err.name === "AbortError" ? "Cancelled." : err.message;
+    show(needsPin ? "pin" : "start");
+  };
+  const run = async () => {
+    if (!server.reportValidity()) return;
+    error.textContent = "";
+    show("touch");
+    pending = new AbortController();
+    try {
+      answer(await call("POST", "/api/login/key",
+        { server: server.value, username: username.value.trim(), pin: pin.value }, pending.signal));
+    } catch (err) {
+      failed(err);
+    }
+    pending = null;
+  };
+  const sendCode = async () => {
+    error.textContent = "";
+    try {
+      answer(await call("POST", "/api/login/key/code", { code: code.value }));
+    } catch (err) {
+      error.textContent = err.message;
+      show("start");
+    }
+  };
+  return el("div", { class: "stack key-sign-in" },
+    el("label", { class: "field", for: "username" }, "Username (optional)", username),
+    start, touch, pinForm, codeForm, error,
+    el("p", { class: "hint" }, "Use a passkey or security key you added in NeoCloud under Settings › Security."));
 }
 
 // The proxy choice before signing in: a work network's proxy may block the
@@ -327,42 +430,49 @@ function connectionSettings() {
 function approve() {
   const login = S.login;
   return el("div", { class: "welcome" },
-    el("div", { class: "brand" },
-      el("h1", {}, "Approve this computer"),
-      el("p", { class: "lead" }, "Check that NeoCloud shows this code, then approve the sign-in.")),
-    el("div", { class: "card code-card" },
-      el("div", { class: "code selectable", "aria-label": "Sign-in code" }, login.userCode),
-      button("Open in browser to approve", () => act(() => call("POST", "/api/open/approval")), { kind: "primary big wide", icon: "external" }),
-      login.qrCode ? el("img", { class: "qr", src: login.qrCode, alt: "QR code of the approval link", width: "168", height: "168" }) : null,
-      login.qrCode ? el("p", { class: "hint" }, "Or scan it with a phone that is signed in to NeoCloud.") : null,
-      el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Waiting for approval…")),
+    authCard("Approve this computer", "Check that NeoCloud shows this code, then approve the sign-in.",
+      el("div", { class: "code-card" },
+        el("div", { class: "code selectable", "aria-label": "Sign-in code" }, login.userCode),
+        button("Open in browser to approve", () => act(() => call("POST", "/api/open/approval")), { kind: "primary big wide", icon: "external" }),
+        login.qrCode ? el("img", { class: "qr", src: login.qrCode, alt: "QR code of the approval link", width: "168", height: "168" }) : null,
+        login.qrCode ? el("p", { class: "hint" }, "Or scan it with the NeoCloud app on a phone that is signed in.") : null,
+        el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Waiting for approval…"))),
     button("Use a different server", () => act(() => call("DELETE", "/api/login")), { kind: "ghost" }));
 }
 
 function connected() {
   return el("div", { class: "welcome" },
-    el("div", { class: "brand" },
+    el("section", { class: "auth-card" },
       el("div", { class: "done-mark" }, icon("check")),
-      el("h1", {}, "You're connected"),
-      el("p", { class: "lead" }, "Signed in as ", el("strong", {}, S.username), " on ", host(S.server), ".")),
-    el("div", { class: "choices" },
+      el("h1", { class: "display" }, "You're connected"),
+      el("p", { class: "lead" }, "Signed in as ", el("strong", {}, S.username), " on ", host(S.server), "."),
       button("Choose what to sync", () => go(newWizard()), { kind: "primary big wide", icon: "folderPlus" }),
       button("Not now", () => go({ name: "home" }), { kind: "ghost wide" })));
 }
 
 // ---------- Screens: home ----------
 
-function topBar(title, sub, ...right) {
+// The home bar: NeoRouter's BrandLockup and the page's actions.
+function topBar(...right) {
   return el("header", { class: "bar" },
     el("img", { class: "logo", src: "/assets/logo.svg", alt: "" }),
-    el("h1", {}, title, sub ? el("span", { class: "sub ellipsis" }, sub) : null),
+    el("span", { class: "name" }, "NeoCloud"),
     ...right);
 }
 
-function backBar(title, onBack) {
+// A sub-page bar: back to where the page was opened from.
+function backBar(parent, onBack) {
   return el("header", { class: "bar" },
-    iconButton("back", "Back", onBack || (() => go({ name: "home" }))),
-    el("h1", {}, title));
+    iconButton("back", "Back to " + parent, onBack || (() => go({ name: "home" }))),
+    el("span", { class: "crumb" }, parent));
+}
+
+// NeoRouter's settings page header: scope eyebrow, display title, lead.
+function pageHead(eyebrow, title, lead) {
+  return el("div", { class: "page-head" },
+    el("p", { class: "eyebrow" }, eyebrow),
+    el("h1", { class: "display ellipsis", title }, title),
+    lead ? el("p", { class: "lead" }, lead) : null);
 }
 
 function pairOf(id) { return S.pairs.find((pair) => pair.id === id); }
@@ -399,8 +509,9 @@ function pairStatus(pair) {
 
 function home() {
   return [
-    topBar("NeoCloud", null,
+    topBar(
       iconButton("sync", "Sync now", () => act(() => call("POST", "/api/sync"), "Syncing all folders")),
+      iconButton("external", "Open web app", () => act(() => call("POST", "/api/open/web"))),
       iconButton("gear", "Settings", () => go({ name: "settings" }))),
     el("main", { class: "content" },
       overviewCard(),
@@ -440,8 +551,8 @@ function overviewCard() {
     storage,
     el("div", { class: "statusline" },
       el("span", { class: "status" }, dot(kind), word, detail ? el("span", { class: "detail ellipsis" }, "· " + detail) : null),
-      button(paused ? "Resume" : "Pause", () => act(() => call("PUT", "/api/settings", { paused: !paused })),
-        { icon: paused ? "play" : "pause" })));
+      button(paused ? "Resume syncing" : "Pause syncing", () => act(() => call("PUT", "/api/settings", { paused: !paused })),
+        { kind: "small", icon: paused ? "play" : "pause" })));
 }
 
 function attentionCards() {
@@ -517,8 +628,10 @@ async function confirmDeletes(pair, pending) {
 function folderList() {
   if (!S.pairs.length) {
     return el("section", { class: "card empty" },
-      el("p", {}, "No folders yet. Sync a folder from this computer, or bring your NeoCloud files here."),
-      button("Add a folder", () => go(newWizard()), { kind: "primary", icon: "plus" }));
+      el("div", { class: "eicon" }, icon("folder")),
+      el("h3", {}, "No folders yet"),
+      el("p", {}, "Sync a folder from this computer, or bring your NeoCloud files here."),
+      button("Add folder", () => go(newWizard()), { kind: "primary", icon: "plus" }));
   }
   return el("section", { class: "card folders" }, S.pairs.map((pair) => {
     const [kind, word] = pairStatus(pair);
@@ -584,9 +697,10 @@ function newWizard() {
 
 function addFolder() {
   const back = view.step === 0 ? () => go({ name: "home" }) : () => go({ ...view, step: view.step - 1 });
-  if (view.step === 0) return [backBar("Add a folder", back), el("main", { class: "content" }, stepStart())];
+  const bar = backBar(view.step === 0 ? "NeoCloud" : "Back", back);
+  if (view.step === 0) return [bar, el("main", { class: "content" }, el("p", { class: "eyebrow" }, "Add folder"), stepStart())];
   const steps = el("div", { class: "steps", "aria-hidden": "true" }, [1, 2, 3].map((n) => el("i", { class: n <= view.step ? "on" : "" })));
-  return [backBar("Add a folder", back), el("main", { class: "content" }, steps, FLOWS[view.flow][view.step - 1]())];
+  return [bar, el("main", { class: "content" }, steps, el("p", { class: "eyebrow" }, "Add folder · Step " + view.step + " of 3"), FLOWS[view.flow][view.step - 1]())];
 }
 
 function stepStart() {
@@ -698,7 +812,7 @@ function stepRemote() {
       crumbs,
       el("div", { class: "tree" }, rows),
       el("div", { class: "newfolder" }, name, button("Create", create, { icon: "folderPlus" }))),
-    el("div", { class: "target" }, icon("cloud"), "Sync with ", el("strong", { class: "ellipsis" }, remoteLabel(listing.folder.path))),
+    el("div", { class: "target" }, icon("cloud"), el("span", { class: "ellipsis" }, "Sync with ", el("strong", {}, remoteLabel(listing.folder.path)))),
     el("div", { class: "footer" },
       el("span"),
       button(cloud && !listing.folder.path ? "Sync everything" : "Use this folder", () => go({ ...view, step: view.step + 1, local: cloud ? "" : view.local }), { kind: "primary" })),
@@ -769,14 +883,31 @@ function directionChoices(current, onPick) {
       el("span", {}, el("strong", {}, d.title), el("span", {}, d.text)))));
 }
 
-function ignoreField(value, onInput, title = "Advanced: ignore patterns") {
+function ignoreField(value, onInput, title = "Advanced: ignore patterns", pair = null) {
   const area = el("textarea", { class: "input", rows: "4", spellcheck: "false", placeholder: "*.log\nnode_modules/\nbuild/", oninput: (event) => onInput(event.target.value) });
   area.value = value;
-  return el("details", { class: "advanced", open: value ? true : undefined },
+  const hasFile = pair && S.cloudIgnore && S.cloudIgnore[pair.id];
+  return el("details", { class: "advanced", open: value || hasFile ? true : undefined },
     el("summary", {}, icon("chevron"), title),
     el("div", { class: "body" },
       el("p", { class: "hint" }, "One pattern per line, like .gitignore. Always skipped: " + (S.defaultIgnore || []).map((p) => p.replace("\r", "")).join(", ") + "."),
-      area));
+      area,
+      pair ? cloudIgnoreNote(pair) : null));
+}
+
+// cloudIgnoreNote explains .cloudignore files and opens (or creates) the
+// one at the folder's root in the text editor.
+function cloudIgnoreNote(pair) {
+  const exists = S.cloudIgnore && S.cloudIgnore[pair.id];
+  const code = (text) => el("code", {}, text);
+  return el("div", { class: "cloudignore" },
+    el("p", { class: "hint" },
+      "Rules from .cloudignore files in this folder also apply, after these, and sync to your other devices. Same syntax: ",
+      code("*.log"), " anywhere, ", code("build/"), " folders only, ", code("/todo.txt"), " only next to the file, ",
+      code("docs/**/*.pdf"), " at any depth, ", code("!keep.log"), " sync it after all."),
+    button(exists ? "Open .cloudignore" : "Create .cloudignore",
+      () => act(() => call("POST", "/api/pairs/" + pair.id + "/cloudignore"), exists ? "" : "Created .cloudignore"),
+      { kind: "small", icon: "file" }));
 }
 
 function stepDirection() {
@@ -933,14 +1064,16 @@ function editFolder() {
     if (yes) act(async () => { await call("DELETE", "/api/pairs/" + pair.id); go({ name: "home" }); }, "Folder removed");
   };
   return [
-    backBar("Edit folder"),
+    backBar("NeoCloud"),
     el("main", { class: "content" },
+      pageHead("Folder", baseName(pair.local)),
       el("section", { class: "card picked" },
         el("div", { class: "ficon" }, icon("folder")),
         el("div", { class: "info" },
-          el("strong", { class: "ellipsis" }, baseName(pair.local)),
-          el("div", { class: "muted small ellipsis", title: pair.local }, tilde(pair.local)),
-          el("div", { class: "muted small ellipsis" }, remoteLabel(pair.remote)))),
+          el("strong", { class: "ellipsis", title: pair.local }, tilde(pair.local)),
+          el("div", { class: "muted small ellipsis" }, "Synced with " + remoteLabel(pair.remote))),
+        button("Open", () => act(() => call("POST", "/api/pairs/" + pair.id + "/open")), { kind: "small", icon: "folder" })),
+      el("div", { class: "section-head" }, el("h2", {}, "How it syncs")),
       directionChoices(view.direction, (value) => { view.direction = value; redraw(); }),
       el("div", { class: "section-head" }, el("h2", {}, "Folders to sync")),
       folderPicker(view.tree, s.newFolders || "sync", (value) => { s.newFolders = value; redraw(); }),
@@ -965,7 +1098,7 @@ function editFolder() {
             numberField("deleteGuardFiles", "Ask before deleting more than (files)", s.deleteGuardFiles, g.deleteGuardFiles, (v) => { s.deleteGuardFiles = v; }),
             numberField("deleteGuardPercent", "…or more than (%)", s.deleteGuardPercent, g.deleteGuardPercent, (v) => { s.deleteGuardPercent = v; })),
           numberField("bigFolderPromptMB", "Ask before syncing a new folder bigger than (MB, 0 = never)", s.bigFolderPromptMB, g.bigFolderPromptMB, (v) => { s.bigFolderPromptMB = v; }),
-          ignoreField(view.ignore, (value) => { view.ignore = value; }, "Ignore patterns"))),
+          ignoreField(view.ignore, (value) => { view.ignore = value; }, "Ignore patterns", pair))),
       el("div", { class: "footer" },
         button("Remove", remove, { kind: "danger", icon: "trash" }),
         button("Save", save, { kind: "primary" }))),
@@ -983,20 +1116,25 @@ function issues() {
     el("code", { class: "ellipsis selectable", title: item.path }, item.path),
     el("span", { class: "muted small" }, item.detail),
     el("div", { class: "actions" },
-      button("Retry", () => resolve(item, "", "Retrying"), { icon: "sync" }),
-      item.both ? button("Keep this computer's", () => resolve(item, "local", "Keeping this computer's version")) : null,
-      item.both ? button("Keep the cloud's", () => resolve(item, "remote", "Keeping the cloud's version")) : null,
-      item.both ? button("Keep both", () => resolve(item, "both", "Keeping both")) : null)));
-  const skipped = (r.notSynced || []).map((item) => el("div", { class: "issue" },
+      button("Retry", () => resolve(item, "", "Retrying"), { kind: "small", icon: "sync" }),
+      item.both ? button("Keep this computer's", () => resolve(item, "local", "Keeping this computer's version"), { kind: "small" }) : null,
+      item.both ? button("Keep the cloud's", () => resolve(item, "remote", "Keeping the cloud's version"), { kind: "small" }) : null,
+      item.both ? button("Keep both", () => resolve(item, "both", "Keeping both"), { kind: "small" }) : null)));
+  const line = (item) => el("div", { class: "issue" },
     el("code", { class: "ellipsis selectable", title: item.path }, item.path),
-    el("span", { class: "muted small" }, item.detail)));
+    el("span", { class: "muted small" }, item.detail));
+  const skipped = (r.notSynced || []).map(line);
+  const ignored = (r.ignored || []).map(line);
   return [
-    backBar("Issues in " + baseName(pair.local)),
+    backBar("NeoCloud"),
     el("main", { class: "content" },
+      pageHead("Issues", baseName(pair.local)),
       el("div", { class: "section-head" }, el("h2", {}, "Could not sync")),
       el("section", { class: "card issues" }, failed.length ? failed : el("div", { class: "act none" }, "Nothing failed in the last sync.")),
       el("div", { class: "section-head" }, el("h2", {}, "Left out on purpose")),
       el("section", { class: "card issues" }, skipped.length ? skipped : el("div", { class: "act none" }, "Nothing was left out.")),
+      ignored.length ? el("div", { class: "section-head" }, el("h2", {}, "Ignored by .cloudignore")) : null,
+      ignored.length ? el("section", { class: "card issues" }, ignored) : null,
       el("div", { class: "footer" },
         button("Open folder", () => act(() => call("POST", "/api/pairs/" + pair.id + "/open")), { icon: "folder" }),
         button("Edit folder", () => go({ name: "edit", id: pair.id })))),
@@ -1030,8 +1168,9 @@ function settings() {
   const up = el("input", { class: "input", id: "up", type: "number", min: "0", step: "100", value: String(S.uploadKiBps || 0) });
   const down = el("input", { class: "input", id: "down", type: "number", min: "0", step: "100", value: String(S.downloadKiBps || 0) });
   return [
-    backBar("Settings"),
+    backBar("NeoCloud"),
     el("main", { class: "content" },
+      pageHead("This computer", "Settings"),
       el("div", { class: "section-head" }, el("h2", {}, "General")),
       el("section", { class: "card group" },
         settingRow("Start at login", "Start NeoCloud when you sign in to this computer.",
@@ -1074,8 +1213,7 @@ function settings() {
           numberField("gBigFolder", "Ask before syncing a new folder bigger than (MB, 0 = never)", g.bigFolderPromptMB, 500, (v) => { g.bigFolderPromptMB = v; }),
           el("div", { class: "unit" }, el("span", { class: "ellipsis" }),
             button("Save", () => setGlobal({ deleteGuardFiles: g.deleteGuardFiles, deleteGuardPercent: g.deleteGuardPercent, bigFolderPromptMB: g.bigFolderPromptMB }, "Saved"))))),
-      el("div", { class: "section-head" }, el("h2", {}, "Security key")),
-      keyLockCard(),
+      keyLockSection(),
       el("div", { class: "section-head" }, el("h2", {}, "Account")),
       el("section", { class: "card group" },
         el("div", { class: "setting" },
@@ -1094,15 +1232,15 @@ function settings() {
   ];
 }
 
+// The security key lock, left out where the system cannot run it
+// (keyLock.supported is false on Windows).
+function keyLockSection() {
+  if (!S.keyLock.supported) return null;
+  return [el("div", { class: "section-head" }, el("h2", {}, "Security key")), keyLockCard()];
+}
+
 function keyLockCard() {
   const lock = S.keyLock;
-  if (!lock.supported) {
-    return el("section", { class: "card group" },
-      el("div", { class: "setting" },
-        el("div", { class: "text" },
-          el("strong", { class: "status" }, dot(""), "Not available"),
-          el("span", {}, lock.message))));
-  }
   const busy = view.keyBusy;
   const pin = el("input", { class: "input", id: "pin", type: "password", autocomplete: "off", placeholder: "Only if your key has one" });
   const run = async () => {

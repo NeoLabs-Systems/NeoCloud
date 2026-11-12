@@ -145,6 +145,32 @@ func (c *Client) fetchInto(ctx context.Context, id, etag string, part *os.File, 
 	return err
 }
 
+// ReadSmallFile fetches a file's content into memory, at most limit
+// bytes, and checks it against wantEtag. It is for small files the
+// client needs before deciding anything else (a .cloudignore).
+func (c *Client) ReadSmallFile(ctx context.Context, id, wantEtag string, limit int64) ([]byte, error) {
+	req, err := c.newRequest(ctx, http.MethodGet, "/api/files/"+url.PathEscape(id)+"/content", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(c.Down.Reader(ctx, res.Body), limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("file %s is larger than %d bytes", id, limit)
+	}
+	if sum := sha256.Sum256(data); wantEtag != "" && hex.EncodeToString(sum[:]) != wantEtag {
+		return nil, fmt.Errorf("content of %s does not match etag %s", id, wantEtag)
+	}
+	return data, nil
+}
+
 // restartPart empties a part file and its running hash.
 func restartPart(part *os.File, sum hash.Hash) (int64, error) {
 	sum.Reset()

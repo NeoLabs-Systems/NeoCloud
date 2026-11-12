@@ -15,11 +15,40 @@ const MAX_PAGE_SIZE = 2000;
 
 // Every column of a node plus whether its owner marked it as a favorite and
 // shared it with other accounts.
+// AI tags and metadata (ai_node_meta): tags the owner accepted, and what the
+// extraction found in the current content (gone once the content changes).
 const NODE_COLUMNS = `nodes.*, EXISTS (
   SELECT 1 FROM favorites f WHERE f.user_id = nodes.user_id AND f.node_id = nodes.id
 ) AS favorite, EXISTS (
   SELECT 1 FROM user_shares s WHERE s.node_id = nodes.id
-) AS shared`;
+) AS shared, (
+  SELECT m.tags_json FROM ai_node_meta m WHERE m.node_id = nodes.id
+) AS ai_tags_json, (
+  SELECT m.fields_json || char(31) || COALESCE(m.model, '') FROM ai_node_meta m
+  WHERE m.node_id = nodes.id AND m.etag = nodes.etag AND m.fields_json <> '{}'
+) AS ai_meta_json`;
+
+// The aiMeta a client sees: the extracted fields with their confidences and
+// the model, without the internal flags.
+function aiMetaOf(raw) {
+  if (!raw) return null;
+  const [json, model] = raw.split('\u001f');
+  try {
+    const { camera: _camera, ...fields } = JSON.parse(json);
+    return { ...fields, model: model || null };
+  } catch {
+    return null;
+  }
+}
+
+function aiTagsOf(raw) {
+  try {
+    const tags = JSON.parse(raw || '[]');
+    return Array.isArray(tags) ? tags : [];
+  } catch {
+    return [];
+  }
+}
 
 function serializeNode(row) {
   return {
@@ -34,9 +63,12 @@ function serializeNode(row) {
     createdAt: row.created_at,
     modifiedAt: row.modified_at,
     vaultId: row.vault_id ?? null,
+    // Set by the owner on a folder; the sync feeds don't carry it.
+    ...(row.ai_excluded === undefined ? {} : { aiExcluded: row.ai_excluded === 1 }),
     // Known for rows read with NODE_COLUMNS; the sync feeds don't carry it.
     ...(row.favorite === undefined ? {} : { favorite: row.favorite === 1 }),
     ...(row.shared === undefined ? {} : { shared: row.shared === 1 }),
+    ...(row.ai_tags_json === undefined ? {} : { aiTags: aiTagsOf(row.ai_tags_json), aiMeta: aiMetaOf(row.ai_meta_json) }),
     ...(row.trashed_at ? { trashedAt: row.trashed_at } : {}),
   };
 }
@@ -140,7 +172,7 @@ function listChildren(userId, folderId, { sort = 'name', order = 'asc', limit, o
     after = `AND (is_folder < @cFolder OR (is_folder = @cFolder AND (sort_value ${beyond} @cValue
       OR (sort_value = @cValue AND (sort_name > @cName OR (sort_name = @cName AND id > @cId))))))`;
   } else {
-    params.offset = Math.max(Number.parseInt(offset, 10) || 0, 0);
+    params.offset = Math.min(Math.max(Number.parseInt(offset, 10) || 0, 0), Number.MAX_SAFE_INTEGER);
   }
   // Column, direction and comparison come from the whitelists above, never from input.
   const rows = db.prepare(`

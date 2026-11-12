@@ -59,6 +59,73 @@ TextStyle _sectionEyebrowStyle() => TextStyle(
   letterSpacing: 0.8,
 );
 
+/// The phone's server and sign-in screens are NeoAgent's (main_setup.dart,
+/// main_app_shell.dart AuthView), so they take its form controls: taller
+/// fields and buttons, rounder corners, bolder labels, gold links.
+ThemeData _phoneEntryTheme(ThemeData base) {
+  final palette = _palette;
+  final dark = base.brightness == Brightness.dark;
+  final inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(color: palette.borderLight),
+  );
+  return base.copyWith(
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: palette.bgSecondary.withValues(alpha: dark ? 0.82 : 0.84),
+      border: inputBorder,
+      enabledBorder: inputBorder,
+      focusedBorder: inputBorder.copyWith(borderSide: BorderSide(color: palette.accentHover, width: 1.4)),
+      errorBorder: inputBorder.copyWith(borderSide: BorderSide(color: palette.danger)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      labelStyle: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.15),
+      hintStyle: TextStyle(color: palette.textMuted),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: palette.accent,
+        foregroundColor: dark ? palette.bgPrimary : Colors.white,
+        disabledBackgroundColor: palette.bgTertiary,
+        disabledForegroundColor: palette.textMuted,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: dark ? 0.14 : 0.22)),
+        ),
+        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, letterSpacing: -0.1),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: palette.textPrimary,
+        side: BorderSide(color: Colors.white.withValues(alpha: dark ? 0.12 : 0.26)),
+        backgroundColor: palette.bgCard.withValues(alpha: dark ? 0.2 : 0.5),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: palette.accentHover,
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -0.05),
+      ),
+    ),
+  );
+}
+
+/// NeoAgent's eyebrow over the phone's entry screens: mono, gold.
+TextStyle _entryEyebrowStyle() =>
+    GoogleFonts.geistMono(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.7, color: _accentHover);
+
+/// The other ways in under the phone's sign-in button (NeoAgent's).
+ButtonStyle _altSignInButtonStyle() => OutlinedButton.styleFrom(
+  minimumSize: const Size.fromHeight(46),
+  foregroundColor: _textPrimary,
+  side: BorderSide(color: _borderLight),
+);
+
 /// Title of a card or section.
 TextStyle _sectionTitleStyle() =>
     TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: -0.15);
@@ -114,7 +181,8 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
       ),
       titleTextStyle: GoogleFonts.geist(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
     ),
-    bottomSheetTheme: BottomSheetThemeData(backgroundColor: palette.bgSecondary, surfaceTintColor: Colors.transparent),
+    // NeoAgent leaves sheets (phone only here) at the Material surface.
+    bottomSheetTheme: const BottomSheetThemeData(surfaceTintColor: Colors.transparent),
     popupMenuTheme: PopupMenuThemeData(
       color: palette.bgSecondary,
       surfaceTintColor: Colors.transparent,

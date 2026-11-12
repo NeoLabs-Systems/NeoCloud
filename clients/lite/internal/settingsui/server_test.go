@@ -2,6 +2,8 @@ package settingsui
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -201,5 +203,55 @@ func TestKeyLockEndpoints(t *testing.T) {
 	}
 	if code, _ := call(browser, http.MethodDelete, "/api/key-lock", ""); code != http.StatusBadRequest {
 		t.Errorf("remove while off: %d", code)
+	}
+}
+
+func TestLaunchOpensSettingsWhenAsked(t *testing.T) {
+	s := startServer(t)
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	for view, want := range map[string]string{"settings": "/#settings", "elsewhere": "/"} {
+		res, err := client.Get(s.LaunchURL(LaunchTTL) + "&view=" + view)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if got := res.Header.Get("Location"); got != want {
+			t.Errorf("view=%s redirects to %q, want %q", view, got, want)
+		}
+	}
+}
+
+func TestPageServesItsFonts(t *testing.T) {
+	s := startServer(t)
+	browser := browserClient(t)
+	page, err := browser.Get(s.LaunchURL(LaunchTTL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page.Body.Close()
+	if csp := page.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "font-src 'self'") {
+		t.Errorf("CSP %q does not allow the page's fonts", csp)
+	}
+	for _, name := range []string{"geist.woff2", "geist-mono.woff2"} {
+		res, err := browser.Get("http://" + s.host + "/assets/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "font/woff2" {
+			t.Errorf("%s: %d %s", name, res.StatusCode, res.Header.Get("Content-Type"))
+		}
+	}
+}
+
+func TestReachErrorNamesTheServer(t *testing.T) {
+	refused := &url.Error{Op: "Post", URL: "http://127.0.0.1:9/api/devices/authorize", Err: errors.New("connection refused")}
+	got := reachError("http://127.0.0.1:9", fmt.Errorf("authorize: %w", refused))
+	if got == nil || !strings.HasPrefix(got.Error(), "can't reach 127.0.0.1:9.") {
+		t.Errorf("reachError = %v", got)
+	}
+	answer := errors.New("this server does not allow sign-ups")
+	if got := reachError("http://127.0.0.1:9", answer); got != answer {
+		t.Errorf("a server answer was rewritten: %v", got)
 	}
 }

@@ -96,6 +96,20 @@ func New(store *config.Store, hooks Hooks) *Lock {
 	return newLock(store, hid, err, hooks)
 }
 
+// IgnoreIfUnsupported forgets a lock this system has no transport for (a
+// config copied from another computer): its sealed token cannot be opened
+// here, so the app asks to sign in again instead of staying locked. It
+// reports whether there was such a lock.
+func IgnoreIfUnsupported(store *config.Store) bool {
+	if store.Get().KeyLock == nil {
+		return false
+	}
+	if _, err := fido.System(); err == nil {
+		return false
+	}
+	return store.ForgetKeyLock()
+}
+
 func newLock(store *config.Store, hid fido.Transport, unsupported error, hooks Hooks) *Lock {
 	if hooks == nil {
 		hooks = nopHooks{}

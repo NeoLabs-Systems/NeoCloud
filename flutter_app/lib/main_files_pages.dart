@@ -73,7 +73,11 @@ class _RecentPanelState extends State<RecentPanel> {
   Future<void> _load() async {
     try {
       final items = await widget.controller.client.recent(by: 'modified');
-      if (mounted) setState(() => _items = items.where((node) => !node.inVault).toList());
+      if (!mounted) return;
+      setState(() {
+        _items = items.where((node) => !node.inVault).toList();
+        _error = null;
+      });
     } catch (error) {
       if (mounted) setState(() => _error = widget.controller.friendlyError(error));
     }
@@ -147,7 +151,11 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
   Future<void> _load() async {
     try {
       final items = await _controller.vaults.reveal(await _controller.client.favorites());
-      if (mounted) setState(() => _items = items);
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _error = null;
+      });
     } catch (error) {
       if (mounted) setState(() => _error = _controller.friendlyError(error));
     }
@@ -162,8 +170,9 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
       }
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = '${appStrings.filesFavoriteFailed('“${node.name}”')} ${_controller.friendlyError(error)}');
+      // Reload first: a successful load clears the error this sets.
       await _load();
+      if (mounted) setState(() => _error = '${appStrings.filesFavoriteFailed('“${node.name}”')} ${_controller.friendlyError(error)}');
     }
   }
 
@@ -238,7 +247,11 @@ class _TrashPanelState extends State<TrashPanel> {
   Future<void> _load() async {
     try {
       final items = await _controller.client.trash();
-      if (mounted) setState(() => _items = items);
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _error = null;
+      });
     } catch (error) {
       if (mounted) setState(() => _error = _controller.friendlyError(error));
     }
@@ -249,6 +262,9 @@ class _TrashPanelState extends State<TrashPanel> {
       await action();
       _controller.notifyFilesChanged();
     } catch (error) {
+      if (!mounted) return;
+      // Puts back what was taken off the list before the server refused.
+      await _load();
       if (mounted) setState(() => _error = _controller.friendlyError(error));
     }
   }

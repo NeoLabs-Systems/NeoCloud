@@ -23,6 +23,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,11 +40,13 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/proxy"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
+	"github.com/neolabs/neocloud/clients/lite/internal/securitykey"
 	"github.com/neolabs/neocloud/clients/lite/internal/shellfolder"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
 
-// ui is the page: index.html plus the stylesheet, script and logo it loads.
+// ui is the page: index.html plus the stylesheet, script, logo and fonts it
+// loads.
 //
 //go:embed ui
 var ui embed.FS
@@ -53,11 +56,14 @@ var assetTypes = map[string]string{
 	"app.css":  "text/css; charset=utf-8",
 	"app.js":   "text/javascript; charset=utf-8",
 	"logo.svg": "image/svg+xml",
+	// Geist and Geist Mono, the NeoLabs apps' type (OFL, see ui/OFL.txt).
+	"geist.woff2":      "font/woff2",
+	"geist-mono.woff2": "font/woff2",
 }
 
 // pageCSP allows nothing but this server's own files (and the QR code's
 // data: URI): no inline script, nothing from the network.
-const pageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+const pageCSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 // Options are the page's ties to the rest of the app.
 type Options struct {
@@ -85,12 +91,16 @@ type Server struct {
 	run      commandRunner
 	lookPath func(string) (string, error)
 	open     func(string) error
+	openText func(string) error
 	openApp  func(url, profileDir string) (bool, error)
 	closeApp func(profileDir string) error
 	picking  gosync.Mutex // one folder dialog at a time
+	keys     func() (securitykey.Platform, error)
+	keying   gosync.Mutex // one security key sign-in at a time
 
 	mu       gosync.Mutex
 	login    loginState
+	keyCode  keyCodeState         // a security key sign-in waiting for its 2FA code
 	launches map[string]time.Time // unused launch codes → expiry (zero: none)
 	sessions map[string]int       // session → its number; the highest is the newest window
 	seq      int
@@ -136,8 +146,10 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 		run:      runCommand,
 		lookPath: exec.LookPath,
 		open:     browser.Open,
+		openText: browser.OpenText,
 		openApp:  browser.OpenApp,
 		closeApp: browser.CloseApp,
+		keys:     securitykey.System,
 		launches: map[string]time.Time{},
 		sessions: map[string]int{},
 	}
@@ -149,6 +161,8 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("GET /api/window", s.holdWindow)
 	mux.HandleFunc("POST /api/login", s.api(s.startLogin))
 	mux.HandleFunc("DELETE /api/login", s.api(s.cancelLogin))
+	mux.HandleFunc("POST /api/login/key", s.api(s.startKeyLogin))
+	mux.HandleFunc("POST /api/login/key/code", s.api(s.keyLoginCode))
 	mux.HandleFunc("POST /api/logout", s.api(s.logout))
 	mux.HandleFunc("POST /api/pairs", s.api(s.addPair))
 	mux.HandleFunc("PUT /api/pairs/{id}", s.api(s.updatePair))
@@ -162,6 +176,7 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("POST /api/sync", s.api(func(*http.Request) (any, error) { engine.SyncNow(); return ok(), nil }))
 	mux.HandleFunc("POST /api/pairs/{id}/sync", s.api(s.syncPair))
 	mux.HandleFunc("POST /api/pairs/{id}/open", s.api(s.openPair))
+	mux.HandleFunc("POST /api/pairs/{id}/cloudignore", s.api(s.openCloudIgnore))
 	mux.HandleFunc("POST /api/pick-folder", s.api(s.pickFolder))
 	mux.HandleFunc("GET /api/local/suggest", s.api(s.suggestLocal))
 	mux.HandleFunc("GET /api/remote/folders", s.api(s.remoteFolders))
@@ -228,7 +243,11 @@ func (s *Server) launch(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	page := "/"
+	if r.URL.Query().Get("view") == "settings" {
+		page = "/#settings"
+	}
+	http.Redirect(w, r, page, http.StatusSeeOther)
 }
 
 // hasSession reports whether r carries a session cookie of this server.
@@ -340,6 +359,7 @@ func (s *Server) state(r *http.Request) (any, error) {
 		"autostart":     autostart.Enabled(),
 		"global":        effectiveGlobal(cfg),
 		"pairs":         pairs,
+		"cloudIgnore":   cloudIgnores(pairs),
 		"status":        s.engine.Status(),
 		"login":         login,
 		"keyLock":       s.lock.Status(),
@@ -394,7 +414,7 @@ func (s *Server) startLogin(r *http.Request) (any, error) {
 	client := api.New(server, "")
 	auth, err := client.Authorize(r.Context(), config.DefaultDeviceName(), "lite")
 	if err != nil {
-		return nil, err
+		return nil, reachError(server, err)
 	}
 	qrCode := ""
 	if svg, err := qr.SVG(auth.VerificationURL); err == nil {
@@ -427,6 +447,20 @@ func (s *Server) startLogin(r *http.Request) (any, error) {
 	return started, nil
 }
 
+// reachError puts a request that never reached the server into words for
+// the page; the server's own answers pass through.
+func reachError(server string, err error) error {
+	var netErr *url.Error
+	if errors.As(err, &netErr) && !errors.Is(err, context.Canceled) {
+		host := server
+		if parsed, perr := url.Parse(server); perr == nil && parsed.Host != "" {
+			host = parsed.Host
+		}
+		return fmt.Errorf("can't reach %s. Check the address and your network connection", host)
+	}
+	return err
+}
+
 // cancelLogin stops waiting for a pending device approval.
 func (s *Server) cancelLogin(*http.Request) (any, error) {
 	s.mu.Lock()
@@ -438,8 +472,13 @@ func (s *Server) cancelLogin(*http.Request) (any, error) {
 	return ok(), nil
 }
 
+// logout signs out and drops what a sign-in left behind here: the cached
+// quota and a security key sign-in still waiting for its code.
 func (s *Server) logout(*http.Request) (any, error) {
-	s.forgetQuota()
+	s.mu.Lock()
+	s.quota = nil
+	s.keyCode = keyCodeState{}
+	s.mu.Unlock()
 	return ok(), s.engine.SignOut()
 }
 

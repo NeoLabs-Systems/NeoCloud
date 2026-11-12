@@ -25,6 +25,11 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     _load();
   }
 
+  void _retry() {
+    setState(() => pageError = null);
+    unawaited(_load());
+  }
+
   Future<void> _load() async {
     try {
       final devices = await _controller.client.devices();
@@ -93,9 +98,10 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     }
     return _SettingsRow(
       label: device.name,
-      tag: tag,
+      tag: device.current ? appStrings.deviceCurrent : tag,
       description: device.lastSeenAt == null ? appStrings.deviceNeverSeen : appStrings.deviceLastSeen(formatDate(device.lastSeenAt, locale)),
-      control: TextButton(onPressed: busy ? null : () => unawaited(_revoke(device)), child: Text(appStrings.deviceRevoke)),
+      // This phone signs out with Disconnect (Profile, or the settings list).
+      control: device.current ? null : TextButton(onPressed: busy ? null : () => unawaited(_revoke(device)), child: Text(appStrings.deviceRevoke)),
     );
   }
 
@@ -105,7 +111,7 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        feedback(),
+        if (devices != null) feedback(),
         _SettingsGroup(
           title: appStrings.pageDevices,
           trailing: Wrap(
@@ -120,7 +126,8 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
             ],
           ),
           children: <Widget>[
-            if (devices == null) const _LoadingPlaceholder(),
+            if (devices == null && pageError == null) const _LoadingPlaceholder(),
+            if (devices == null && pageError != null) _SettingsBlock(child: _LoadError(message: pageError!, onRetry: _retry)),
             if (devices != null && devices.isEmpty) _SettingsBlock(child: _EmptyText(appStrings.devicesEmpty)),
             for (final device in devices ?? const <DeviceInfo>[]) _deviceRow(device),
           ],
@@ -152,7 +159,7 @@ Future<void> _showSecretOnce(BuildContext context, {required String title, requi
       ),
       actions: <Widget>[
         OutlinedButton.icon(
-          onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: secret))),
+          onPressed: () => unawaited(_copyToClipboard(dialogContext, secret)),
           icon: const Icon(Icons.copy_rounded, size: 16),
           label: Text(appStrings.copy),
         ),

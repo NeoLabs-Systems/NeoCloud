@@ -20,10 +20,11 @@ func TestRemoteViewSkipsVaultsAndIgnored(t *testing.T) {
 		{ID: "sx", ParentID: "root", Type: "folder", Name: "SharedX", Path: "SharedX"},
 	}}
 	// "shared" in lower case: the server compares names without case.
-	view, err := buildRemoteView(context.Background(), nil, tree, "shared", false, NewMatcher(nil))
+	view, err := buildRemoteView(context.Background(), nil, tree, "shared", false)
 	if err != nil {
 		t.Fatal(err)
 	}
+	view.dropIgnored(NewMatcher(nil))
 	var paths []string
 	for rel := range view.nodes {
 		paths = append(paths, rel)
@@ -41,11 +42,11 @@ func TestRemoteViewRefusesVanishedRoot(t *testing.T) {
 	tree := &api.Tree{RootID: "root", Nodes: []api.Node{{ID: "root", Type: "folder"}}}
 	// A pair that synced before must not treat a missing folder as
 	// "everything was deleted".
-	if _, err := buildRemoteView(context.Background(), nil, tree, "Gone", false, NewMatcher(nil)); err != errRemoteRootMissing {
+	if _, err := buildRemoteView(context.Background(), nil, tree, "Gone", false); err != errRemoteRootMissing {
 		t.Errorf("err = %v, want errRemoteRootMissing", err)
 	}
 	vault := &api.Tree{RootID: "root", Nodes: []api.Node{{ID: "v", Type: "folder", Path: "Vault", VaultID: "x"}}}
-	if _, err := buildRemoteView(context.Background(), nil, vault, "Vault", false, NewMatcher(nil)); err == nil {
+	if _, err := buildRemoteView(context.Background(), nil, vault, "Vault", false); err == nil {
 		t.Error("a vault folder was accepted as a pair root")
 	}
 }

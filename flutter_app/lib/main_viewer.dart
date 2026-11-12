@@ -38,23 +38,32 @@ _ViewerKind _viewerKindOf(FileNode node) {
 /// edited in place. Vault files are decrypted in the app; their media can't
 /// stream and the server makes no previews of them.
 /// [readOnly] turns editing off: files another account shares with this one
-/// to view only, or as a single file.
-Future<void> showFileViewer(BuildContext context, NeoCloudController controller, List<FileNode> files, int index, {bool readOnly = false}) {
+/// to view only, or as a single file. [aiAllowed] says which files may show
+/// the AI panel (summary, tags); none without it.
+Future<void> showFileViewer(
+  BuildContext context,
+  NeoCloudController controller,
+  List<FileNode> files,
+  int index, {
+  bool readOnly = false,
+  bool Function(FileNode file)? aiAllowed,
+}) {
   if (index < 0 || files.isEmpty) return Future<void>.value();
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.72),
-    builder: (_) => _FileViewer(controller: controller, files: files, initialIndex: index, readOnly: readOnly),
+    builder: (_) => _FileViewer(controller: controller, files: files, initialIndex: index, readOnly: readOnly, aiAllowed: aiAllowed),
   );
 }
 
 class _FileViewer extends StatefulWidget {
-  const _FileViewer({required this.controller, required this.files, required this.initialIndex, this.readOnly = false});
+  const _FileViewer({required this.controller, required this.files, required this.initialIndex, this.readOnly = false, this.aiAllowed});
 
   final NeoCloudController controller;
   final List<FileNode> files;
   final int initialIndex;
   final bool readOnly;
+  final bool Function(FileNode file)? aiAllowed;
 
   @override
   State<_FileViewer> createState() => _FileViewerState();
@@ -71,8 +80,32 @@ class _FileViewerState extends State<_FileViewer> {
   String? _editError;
   String? _editNotice;
 
+  /// The AI panel beside the preview (wide screens).
+  bool _showAi = false;
+
   FileNode get _file => _files[_index];
   NeoCloudController get _controller => widget.controller;
+
+  bool get _aiAvailable => _controller.aiReview.enabled && (widget.aiAllowed?.call(_file) ?? false);
+
+  bool get _wide => MediaQuery.sizeOf(context).width >= 1000;
+
+  /// Wide: the panel beside the preview; otherwise a sheet over it.
+  void _toggleAi() {
+    if (_wide) {
+      setState(() => _showAi = !_showAi);
+      return;
+    }
+    final file = _file;
+    unawaited(showAdaptiveSheet<void>(
+      context: context,
+      builder: (sheetContext) => _AdaptiveDialog(
+        title: Text(appStrings.aiDetailsTitle),
+        content: SizedBox(width: 480, child: AiFileDetails(controller: _controller, node: file)),
+        actions: <Widget>[TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: Text(appStrings.close))],
+      ),
+    ));
+  }
   bool get _editing => _editor != null;
   bool get _dirty => _editing && _editor!.text != _savedText;
 
@@ -92,7 +125,7 @@ class _FileViewerState extends State<_FileViewer> {
   Future<void> _step(int delta) async {
     final next = _index + delta;
     if (next < 0 || next >= _files.length) return;
-    if (!await _leaveEditor()) return;
+    if (!await _leaveEditor() || !mounted) return;
     setState(() => _index = next);
     _controller.markOpened(_file);
   }
@@ -311,6 +344,14 @@ class _FileViewerState extends State<_FileViewer> {
           icon: const Icon(Icons.edit_outlined, size: 16),
           label: Text(appStrings.edit),
         ),
+      if (_aiAvailable)
+        IconButton(
+          tooltip: appStrings.aiDetailsTitle,
+          isSelected: _showAi && _wide,
+          onPressed: _toggleAi,
+          icon: const Icon(Icons.auto_awesome_outlined),
+          selectedIcon: Icon(Icons.auto_awesome_rounded, color: _accent),
+        ),
       IconButton(tooltip: appStrings.download, onPressed: _download, icon: const Icon(Icons.download_rounded)),
     ];
   }
@@ -397,6 +438,15 @@ class _FileViewerState extends State<_FileViewer> {
                           onPressed: _index < _files.length - 1 && !_editing ? () => unawaited(_step(1)) : null,
                           icon: const Icon(Icons.chevron_right_rounded, size: 30),
                         ),
+                        if (_showAi && _wide && _aiAvailable && !_editing)
+                          Container(
+                            width: 340,
+                            decoration: BoxDecoration(border: Border(left: BorderSide(color: _border))),
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                              child: AiFileDetails(key: ValueKey<String>('${file.id}-${file.etag}'), controller: _controller, node: file),
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -5,9 +5,24 @@
 
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
+const { parseModelSelectionId } = require('../ai/model_identity');
 
 const oneOf = (...values) => (value) => values.includes(value);
 const isBoolean = (value) => typeof value === 'boolean';
+// 'auto' or a `provider::model` id from the catalog.
+const isModelChoice = (value) => value === 'auto'
+  || (typeof value === 'string' && value.length <= 300 && parseModelSelectionId(value) !== null);
+// Per-feature switches: { autoTitle: true, … }, booleans only.
+const isFeatureFlags = (value) => value !== null
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && Object.keys(value).length <= 32
+  && Object.entries(value).every(([key, flag]) => /^[a-zA-Z][a-zA-Z0-9]{0,39}$/.test(key) && isBoolean(flag));
+// A file name pattern such as "{date} {issuer} – {subject}"; never a path.
+const isNamingTemplate = (value) => typeof value === 'string'
+  && value.trim().length > 0
+  && value.length <= 200
+  && !/[\\/\u0000-\u001f]/.test(value);
 
 const SETTINGS = {
   language: { default: null, valid: (value) => value === null || oneOf('de', 'en')(value) },
@@ -20,6 +35,15 @@ const SETTINGS = {
   uploadConflict: { default: 'ask', valid: oneOf('ask', 'replace', 'rename') },
   // Whether the account's files go into the full-text index (when the admin turned it on).
   fullTextSearch: { default: true, valid: isBoolean },
+  // AI (docs/ai.md): off until the person opts in; each role picks a model.
+  ai_opt_in: { default: false, valid: isBoolean },
+  ai_model_text: { default: 'auto', valid: isModelChoice },
+  ai_model_smart: { default: 'auto', valid: isModelChoice },
+  ai_model_vision: { default: 'auto', valid: isModelChoice },
+  ai_model_embedding: { default: 'auto', valid: isModelChoice },
+  ai_model_transcription: { default: 'auto', valid: isModelChoice },
+  ai_features: { default: {}, valid: isFeatureFlags },
+  ai_naming_template: { default: '{date} {issuer} – {subject}', valid: isNamingTemplate },
 };
 
 function readSettings(userId) {
@@ -40,7 +64,7 @@ function updateSettings(userId, patch) {
     throw httpError(400, 'Settings must be an object.', 'INVALID_SETTINGS');
   }
   for (const [key, value] of Object.entries(patch)) {
-    const spec = SETTINGS[key];
+    const spec = Object.hasOwn(SETTINGS, key) ? SETTINGS[key] : null;
     if (!spec) throw httpError(400, `Unknown setting: ${key}`, 'UNKNOWN_SETTING');
     if (!spec.valid(value)) throw httpError(400, `Invalid value for ${key}.`, 'INVALID_SETTING_VALUE');
   }

@@ -20,6 +20,8 @@ const ROUTE_REGISTRY = [
   { basePath: '/api/public/shares', modulePath: '../routes/public_shares' },
   { basePath: '/api/vaults', modulePath: '../routes/vaults' },
   { basePath: '/api/imports', modulePath: '../routes/imports' },
+  { basePath: '/api/ai', modulePath: '../routes/ai' },
+  { basePath: '/api/neorouter', modulePath: '../routes/neorouter' },
 ];
 
 function registerApiRoutes(app) {

@@ -19,6 +19,7 @@ const (
 	ReasonInvalidName = "invalidName"
 	ReasonPathTooLong = "pathTooLong"
 	ReasonNameClash   = "nameClash"
+	ReasonIgnored     = "ignored"
 )
 
 // NotSynced is a path the engine deliberately leaves alone, with why.

@@ -48,11 +48,18 @@ function createFolder(toUserId, parentId, name, mode) {
 }
 
 async function copyFile(fromUserId, node, toUserId, { parentId, name, conflict }) {
-  const blob = await writeTemporaryBlob(toUserId, openBlob(fromUserId, node.blob_id, node.size), {
-    ...uploadLimit(toUserId),
-    limitError: quotaExceeded,
-    expectedSize: node.size,
-  });
+  const source = openBlob(fromUserId, node.blob_id, node.size);
+  let blob;
+  try {
+    blob = await writeTemporaryBlob(toUserId, source, {
+      ...uploadLimit(toUserId),
+      limitError: quotaExceeded,
+      expectedSize: node.size,
+    });
+  } finally {
+    // A refused write only unpipes the source; this closes its file.
+    source.destroy();
+  }
   return commitUploadedBlob(toUserId, { parentId, name, conflict }, blob);
 }
 

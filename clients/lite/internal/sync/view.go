@@ -33,6 +33,8 @@ type localScan struct {
 	// hidden are items Windows marks hidden or system, skipped when the
 	// pair leaves hidden files out.
 	hidden []string
+	// ignored are the paths a .cloudignore kept out, for the report.
+	ignored []NotSynced
 }
 
 // scanLocal walks the pair's folder. Symlinks and special files are
@@ -61,13 +63,17 @@ func scanLocal(root string, ignore *Matcher, excluded func(string) bool) (*local
 		}
 		raw = filepath.ToSlash(raw)
 		key := nfc(raw)
-		if ignore.Match(key, d.IsDir()) || excluded(key) {
+		verdict := ignore.Explain(key, d.IsDir())
+		if verdict.Ignored || excluded(key) {
+			if item, ok := ignoredItem(key, verdict); ok {
+				scan.ignored = append(scan.ignored, item)
+			}
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if ignore.hiddenAttr && hasHiddenAttr(full) {
+		if ignore.hidesAttr(key, d.IsDir()) && hasHiddenAttr(full) {
 			scan.hidden = append(scan.hidden, key)
 			if d.IsDir() {
 				return filepath.SkipDir
@@ -124,10 +130,11 @@ type remoteView struct {
 
 var errRemoteRootMissing = errors.New("the remote folder of this pair no longer exists; re-add the pair to start over")
 
-// buildRemoteView filters the snapshot down to the pair. When the pair's
+// buildRemoteView filters the snapshot down to the pair (ignore rules
+// apply afterwards, see dropIgnored). When the pair's
 // folder is missing it is created, but only for a pair that never synced:
 // for a synced pair a missing folder must not read as "delete everything".
-func buildRemoteView(ctx context.Context, client *api.Client, tree *api.Tree, remote string, neverSynced bool, ignore *Matcher) (*remoteView, error) {
+func buildRemoteView(ctx context.Context, client *api.Client, tree *api.Tree, remote string, neverSynced bool) (*remoteView, error) {
 	view := &remoteView{rootID: tree.RootID, nodes: map[string]api.Node{}, paths: map[string]string{}}
 	prefix := ""
 	if remote != "" {
@@ -165,9 +172,6 @@ func buildRemoteView(ctx context.Context, client *api.Client, tree *api.Tree, re
 			}
 			continue
 		}
-		if ignore.Match(rel, node.IsFolder()) {
-			continue
-		}
 		if taken, ok := view.nodes[rel]; ok {
 			view.skipped = append(view.skipped, NotSynced{Path: raw, Reason: ReasonNameClash,
 				Detail: "not synced: name clashes with " + taken.Name + " on the server"})
@@ -176,6 +180,25 @@ func buildRemoteView(ctx context.Context, client *api.Client, tree *api.Tree, re
 		view.put(rel, node)
 	}
 	return view, nil
+}
+
+// dropIgnored takes out what the matcher ignores and returns the paths a
+// .cloudignore kept out, for the report.
+func (v *remoteView) dropIgnored(ignore *Matcher) []NotSynced {
+	var ignored []NotSynced
+	for _, rel := range sortedKeys(v.nodes) {
+		node := v.nodes[rel]
+		verdict := ignore.Explain(rel, node.IsFolder())
+		if !verdict.Ignored {
+			continue
+		}
+		delete(v.nodes, rel)
+		delete(v.paths, node.ID)
+		if item, ok := ignoredItem(rel, verdict); ok {
+			ignored = append(ignored, item)
+		}
+	}
+	return ignored
 }
 
 // findFolder looks a folder up by path. The server compares names without

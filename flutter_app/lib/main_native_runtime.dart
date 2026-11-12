@@ -1,6 +1,7 @@
 part of 'main.dart';
 
-// What the mobile apps add around the app: files shared from other apps,
+// What the mobile apps add around the app: pairing links the system opens
+// the app with, files shared from other apps,
 // asking again about camera upload after a sign-out or a change of server
 // or account, and keeping the upload queue going when the app leaves the
 // screen. On the web this is a no-op.
@@ -33,6 +34,8 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
     _controller.cameraUploads.addListener(_cameraChanged);
     _controller.addListener(_cameraChanged);
     _controller.uploads.addListener(_uploadsChanged);
+    _controller.addListener(_pairFromLink);
+    listenForAppLinks(_receivedLink);
   }
 
   @override
@@ -42,8 +45,30 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
     _controller.cameraUploads.removeListener(_cameraChanged);
     _controller.removeListener(_cameraChanged);
     _controller.uploads.removeListener(_uploadsChanged);
+    _controller.removeListener(_pairFromLink);
+    stopListeningForAppLinks();
     if (_holdingUploads) unawaited(NeoCloudBackground.stopTransfer(_uploadsOwner));
     super.dispose();
+  }
+
+  /// A pairing link the system opened the app with, until it is used.
+  PairingLinkData? _pendingLink;
+
+  void _receivedLink(String raw) {
+    final link = parsePairingLink(raw);
+    if (link == null) return;
+    _pendingLink = link;
+    _pairFromLink();
+  }
+
+  /// Signs in with [_pendingLink] once the app has started. A phone that is
+  /// already signed in just opens; the link is dropped.
+  void _pairFromLink() {
+    final link = _pendingLink;
+    if (link == null || _controller.isBooting) return;
+    _pendingLink = null;
+    if (_controller.isAuthenticated || !_controller.usesDeviceLogin || _controller.isConnecting) return;
+    unawaited(_controller.pair(link));
   }
 
   static const String _uploadsOwner = 'uploads';

@@ -70,6 +70,8 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     isCut: (id) => _cutNodes.any((node) => node.id == id),
     showPath: searching,
     hitFor: searchHits.isEmpty ? null : (id) => searchHits[id],
+    aiPending: (id) => controller.aiReview.pendingFor(id).isNotEmpty,
+    onAiSuggestion: controller.aiReview.enabled && !inShare ? (node) => unawaited(showAiSuggestionsFor(context, controller, node)) : null,
   );
 
   Widget _newMenu() {
@@ -175,10 +177,9 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          crumbs,
+          // Sort and view sit beside the path, so the list starts higher.
+          Row(children: <Widget>[Expanded(child: crumbs), const SizedBox(width: 8), controls]),
           if (!inShare) ...<Widget>[const SizedBox(height: 10), search],
-          const SizedBox(height: 10),
-          Align(alignment: Alignment.centerRight, child: controls),
         ],
       );
     }
@@ -199,6 +200,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       onMove: inShare ? null : () => unawaited(move(nodes)),
       onTrash: canWrite ? () => unawaited(trash(nodes)) : null,
       onFavorite: inShare ? null : () => unawaited(toggleFavorite(nodes)),
+      aiActions: aiSelectionActions(nodes),
     );
   }
 
@@ -255,7 +257,8 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
           ),
         ];
       }
-      if (listing == null || (atRoot && !loading)) return const <Widget>[];
+      // An empty Home shows the welcome line instead, while it is on.
+      if (listing == null || (atRoot && _WelcomeBanner.visibleFor(controller))) return const <Widget>[];
       return <Widget>[
         SliverToBoxAdapter(
           child: _EmptyCard(
@@ -264,7 +267,9 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
             subtitle: appStrings.emptyFolderSubtitle,
             action: canWrite
                 ? Wrap(
+                    alignment: WrapAlignment.center,
                     spacing: 8,
+                    runSpacing: 8,
                     children: <Widget>[
                       OutlinedButton.icon(onPressed: () => unawaited(newFolder()), icon: const Icon(Icons.create_new_folder_outlined, size: 18), label: Text(appStrings.newFolder)),
                       FilledButton.icon(onPressed: () => unawaited(pickAndUpload()), icon: const Icon(Icons.upload_rounded, size: 18), label: Text(appStrings.uploadFiles)),

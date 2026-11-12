@@ -24,7 +24,7 @@ class _VaultBanner extends StatelessWidget {
           Expanded(child: Text(appStrings.vaultBanner, style: TextStyle(color: _textPrimary, fontSize: 13, height: 1.4))),
           const SizedBox(width: 8),
           PopupMenuButton<String>(
-            tooltip: appStrings.details,
+            tooltip: appStrings.filesMoreActions,
             icon: Icon(Icons.more_horiz_rounded, size: 20, color: _textMuted),
             onSelected: (action) {
               if (action == 'recovery') unawaited(showVaultRecoveryKeyDialog(context, controller, vaultId: vaultId, folderName: folderName));

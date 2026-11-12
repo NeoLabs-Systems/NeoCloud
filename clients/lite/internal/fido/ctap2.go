@@ -34,10 +34,12 @@ const (
 // StatusError is a CTAP2 status code other than CTAP2_OK.
 type StatusError byte
 
-// Status codes the lock handles (CTAP 2.1 §8.2).
+// Status codes the lock and the sign-in handle (CTAP 2.1 §8.2).
 const (
+	ErrOperationDenied   StatusError = 0x27
 	ErrUnsupportedOption StatusError = 0x2b
 	ErrInvalidOption     StatusError = 0x2c
+	ErrKeepaliveCancel   StatusError = 0x2d
 	ErrNoCredentials     StatusError = 0x2e
 	ErrActionTimeout     StatusError = 0x2f
 	ErrPINInvalid        StatusError = 0x31
@@ -49,6 +51,10 @@ const (
 
 func (e StatusError) Error() string {
 	switch e {
+	case ErrOperationDenied:
+		return "the security key refused the request"
+	case ErrKeepaliveCancel:
+		return "cancelled"
 	case ErrNoCredentials:
 		return "the security key does not hold this credential"
 	case ErrActionTimeout:

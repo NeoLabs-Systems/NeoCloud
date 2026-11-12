@@ -1,80 +1,66 @@
 part of 'main.dart';
 
-// The shell on phones (below 640px): NeoAgent's bottom tab bar
-// (_MobileTabBar in NeoAgent's main_app_shell.dart) with NeoCloud's tabs,
-// in place of the drawer. "More" holds the pages that don't get a tab
-// (shared with me, favorites, trash, admin). 640–980px keeps the drawer.
+// The shell on phones (below 640px), NeoAgent's phone frame
+// (main_app_shell.dart): a slim top bar, the sections of the open group as a
+// chip row under it, and one bottom tab per sidebar group, in place of the
+// drawer. Camera upload, the phone's own feature, gets a tab of its own
+// between the groups. 640–980px keeps the drawer.
 
-enum _PhoneTab { files, recent, camera, settings, more }
-
-/// The pages behind the "More" tab.
-List<AppSection> _phoneMoreSections(NeoCloudController controller) => _mainSections(controller)
-    .where((section) => section == AppSection.shared || section == AppSection.favorites || section == AppSection.trash || section == AppSection.admin)
-    .toList();
+enum _PhoneTab { files, camera, settings, admin }
 
 List<_PhoneTab> _phoneTabs(NeoCloudController controller) => <_PhoneTab>[
   _PhoneTab.files,
-  _PhoneTab.recent,
   if (controller.cameraUploads.supported) _PhoneTab.camera,
   _PhoneTab.settings,
-  if (_phoneMoreSections(controller).isNotEmpty) _PhoneTab.more,
+  if (controller.isAdmin) _PhoneTab.admin,
 ];
 
 _PhoneTab _currentPhoneTab(NeoCloudController controller) {
-  switch (controller.selectedSection) {
-    case AppSection.recent:
-      return _PhoneTab.recent;
-    case AppSection.settings:
-      return controller.settingsPage == SettingsPage.cameraUpload && controller.cameraUploads.supported ? _PhoneTab.camera : _PhoneTab.settings;
-    case AppSection.shared:
-    case AppSection.favorites:
-    case AppSection.trash:
-    case AppSection.admin:
-      return _PhoneTab.more;
-    case AppSection.files:
-      return _PhoneTab.files;
+  final section = controller.selectedSection;
+  if (section == AppSection.settings) {
+    return controller.settingsPage == SettingsPage.cameraUpload && controller.cameraUploads.supported ? _PhoneTab.camera : _PhoneTab.settings;
   }
+  if (section == AppSection.admin) return _PhoneTab.admin;
+  return _PhoneTab.files;
 }
 
-void _openPhoneTab(BuildContext context, NeoCloudController controller, _PhoneTab tab) {
+void _openPhoneTab(NeoCloudController controller, _PhoneTab tab) {
   switch (tab) {
     case _PhoneTab.files:
       controller.setSelectedSection(AppSection.files);
-    case _PhoneTab.recent:
-      controller.setSelectedSection(AppSection.recent);
     case _PhoneTab.camera:
       controller.setSettingsPage(SettingsPage.cameraUpload);
       controller.setSelectedSection(AppSection.settings);
     case _PhoneTab.settings:
       if (controller.settingsPage == SettingsPage.cameraUpload) controller.setSettingsPage(null);
       controller.setSelectedSection(AppSection.settings);
-    case _PhoneTab.more:
-      _showPhoneMoreSheet(context, controller);
+    case _PhoneTab.admin:
+      controller.setSelectedSection(AppSection.admin);
   }
 }
 
 extension _PhoneTabInfo on _PhoneTab {
   String get label => switch (this) {
-    _PhoneTab.files => appStrings.mobileNavFiles,
-    _PhoneTab.recent => appStrings.navRecent,
+    _PhoneTab.files => SidebarGroup.files.label,
     _PhoneTab.camera => appStrings.mobileNavCamera,
-    _PhoneTab.settings => appStrings.navSettings,
-    _PhoneTab.more => appStrings.mobileMore,
+    _PhoneTab.settings => SidebarGroup.settings.label,
+    _PhoneTab.admin => SidebarGroup.admin.label,
   };
 
-  // NeoAgent's tab icons: outlined Material icons, one glyph for both
-  // states; the colour carries the selection.
+  // NeoAgent's tab icons: the sidebar group's outlined icon, one glyph for
+  // both states; the colour carries the selection. Settings is NeoAgent's
+  // sliders.
   IconData get icon => switch (this) {
-    _PhoneTab.files => Icons.folder_outlined,
-    _PhoneTab.recent => Icons.schedule_outlined,
+    _PhoneTab.files => SidebarGroup.files.icon,
     _PhoneTab.camera => Icons.photo_camera_outlined,
     _PhoneTab.settings => Icons.tune,
-    _PhoneTab.more => Icons.more_horiz,
+    _PhoneTab.admin => SidebarGroup.admin.icon,
   };
 }
 
-/// The phone's top bar (NeoAgent's _MobileTopBar): the mark and name, then
-/// camera upload's status and the QR scanner.
+/// The phone's header (NeoAgent's _MobileTopBar): the mark and name, then
+/// camera upload's status and the QR scanner; below it the chips of the
+/// open group.
 class _MobileTopBar extends StatelessWidget {
   const _MobileTopBar({required this.controller});
 
@@ -82,20 +68,114 @@ class _MobileTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 4, 4),
-      child: Row(
-        children: <Widget>[
-          const _BrandLockup(logoSize: 28),
-          const Spacer(),
-          _CameraStatusChip(controller: controller),
-          if (qrScannerSupported && controller.usesDeviceLogin)
-            IconButton(
-              tooltip: appStrings.scanTitle,
-              onPressed: () => unawaited(_scanQrCode(context, controller)),
-              icon: Icon(Icons.qr_code_scanner_rounded, color: _textSecondary),
-            ),
-        ],
+    final group = controller.selectedSection.group;
+    final sections = _groupSections(controller, group);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
+          child: Row(
+            children: <Widget>[
+              const NeoCloudMark(size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  appStrings.appName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.geist(fontSize: 16, fontWeight: FontWeight.w700, color: _textPrimary, letterSpacing: -0.4),
+                ),
+              ),
+              _CameraStatusChip(controller: controller),
+              if (qrScannerSupported && controller.usesDeviceLogin)
+                IconButton(
+                  tooltip: appStrings.scanTitle,
+                  onPressed: () => unawaited(_scanQrCode(context, controller)),
+                  icon: Icon(Icons.qr_code_scanner_rounded, color: _textSecondary),
+                ),
+            ],
+          ),
+        ),
+        if (sections.length > 1)
+          _MobileSectionChips(
+            controller: controller,
+            sections: sections,
+            selected: controller.selectedSection,
+            onSelect: controller.setSelectedSection,
+          ),
+      ],
+    );
+  }
+}
+
+/// The sections of the open group as a horizontally scrolling chip row
+/// (NeoAgent's _MobileSectionChips): every page of the group stays one tap
+/// away and visible.
+class _MobileSectionChips extends StatelessWidget {
+  const _MobileSectionChips({required this.controller, required this.sections, required this.selected, required this.onSelect});
+
+  final NeoCloudController controller;
+  final List<AppSection> sections;
+  final AppSection selected;
+  final ValueChanged<AppSection> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      // Grows with the text so a large font scale doesn't clip the chips.
+      height: 36 + 16 * MediaQuery.textScalerOf(context).scale(1),
+      child: ListView.separated(
+        key: const ValueKey<String>('mobile-section-chips'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        itemCount: sections.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final section = sections[index];
+          return _SectionChip(section: section, active: section == selected, badge: _sectionBadge(controller, section), onTap: () => onSelect(section));
+        },
+      ),
+    );
+  }
+}
+
+class _SectionChip extends StatelessWidget {
+  const _SectionChip({required this.section, required this.active, required this.onTap, this.badge});
+
+  final AppSection section;
+  final bool active;
+  final Widget? badge;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(999);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            color: active ? _accentMuted : _bgTertiary,
+            border: Border.all(color: active ? _accent.withValues(alpha: 0.3) : _border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(section.icon, size: 15, color: active ? _accent : _textMuted),
+              const SizedBox(width: 7),
+              Text(
+                section.label,
+                style: GoogleFonts.geist(fontSize: 12.5, fontWeight: FontWeight.w600, color: active ? _accentHover : _textSecondary),
+              ),
+              if (badge != null) ...<Widget>[const SizedBox(width: 7), badge!],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -127,7 +207,7 @@ class _MobileTabBar extends StatelessWidget {
                     child: _MobileTab(
                       tab: tab,
                       active: tab == selected,
-                      onTap: () => _openPhoneTab(context, controller, tab),
+                      onTap: () => _openPhoneTab(controller, tab),
                     ),
                   ),
                 )
@@ -177,43 +257,4 @@ class _MobileTab extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The "More" tab: the pages without a tab of their own.
-Future<void> _showPhoneMoreSheet(BuildContext context, NeoCloudController controller) {
-  return showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: _bgCard,
-    builder: (sheetContext) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            for (final section in _phoneMoreSections(controller))
-              _SidebarButton(
-                label: section.label,
-                icon: section.icon,
-                active: section == controller.selectedSection,
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  controller.setSelectedSection(section);
-                },
-              ),
-            if (controller.usesDeviceLogin && controller.deviceAccountIsAdmin)
-              _SidebarButton(
-                label: appStrings.navAdmin,
-                icon: Icons.admin_panel_settings_outlined,
-                active: false,
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  unawaited(launchUrl(controller.client.uri('/app/admin'), mode: LaunchMode.externalApplication));
-                },
-              ),
-          ],
-        ),
-      ),
-    ),
-  );
 }

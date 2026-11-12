@@ -176,7 +176,7 @@ class _PairPhoneDialogState extends State<PairPhoneDialog> {
             ),
             IconButton(
               tooltip: appStrings.copy,
-              onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: link))),
+              onPressed: () => unawaited(_copyToClipboard(context, link)),
               icon: const Icon(Icons.copy_rounded, size: 16),
             ),
           ],

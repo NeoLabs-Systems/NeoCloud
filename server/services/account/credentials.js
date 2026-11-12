@@ -86,13 +86,17 @@ async function verifyPassword(userId, password) {
 /**
  * A self-service password change. Whoever else knew the old password may
  * have signed in with it, so every other browser session, device token and
- * WebDAV app password ends here; the caller's own session (`keepSessionId`)
- * stays and should get a fresh id.
+ * WebDAV app password ends here. The caller stays signed in: its browser
+ * session (`keepSessionId`, which should then get a fresh id) or its phone
+ * app token (`keepDeviceId`).
  */
-async function changePassword(userId, { currentPassword, newPassword }, { keepSessionId }) {
+async function changePassword(userId, { currentPassword, newPassword }, { keepSessionId = null, keepDeviceId = null }) {
   const user = db.prepare('SELECT username, email FROM users WHERE id = ?').get(userId);
   if (!user) throw httpError(404, 'User not found', 'NOT_FOUND');
-  const nextPassword = String(newPassword || '');
+  if (typeof newPassword !== 'string' || !newPassword) {
+    throw httpError(400, 'A new password is required.', 'MISSING_FIELDS');
+  }
+  const nextPassword = newPassword;
   await verifyPassword(userId, currentPassword);
   validateNewPassword(nextPassword, { username: user.username, email: user.email });
   if (nextPassword === String(currentPassword || '')) {
@@ -100,7 +104,7 @@ async function changePassword(userId, { currentPassword, newPassword }, { keepSe
   }
   db.prepare('UPDATE users SET password = ? WHERE id = ?').run(await hashPassword(nextPassword), userId);
   revokeAllSessionsForUser(userId, { exceptSessionId: keepSessionId });
-  revokeAllDeviceTokens(userId);
+  revokeAllDeviceTokens(userId, { exceptDeviceId: keepDeviceId });
 }
 
 module.exports = {

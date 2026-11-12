@@ -85,7 +85,11 @@ function listRuns(limit = 50) {
   return db.prepare('SELECT * FROM backup_runs ORDER BY id DESC LIMIT ?').all(limit).map(serializeRun);
 }
 
-function cleanConfig(type, incoming = {}, previous = {}) {
+function cleanConfig(type, incoming, previous = {}) {
+  if (incoming !== undefined && incoming !== null && (typeof incoming !== 'object' || Array.isArray(incoming))) {
+    throw httpError(400, 'config must be an object.', 'BACKUP_CONFIG_INVALID');
+  }
+  incoming = incoming || {};
   const config = {};
   for (const field of FIELDS[type]) {
     let value = incoming[field];
@@ -151,7 +155,14 @@ function deleteTarget(id) {
 async function openTarget(id) {
   const row = getTargetRow(id);
   const adapter = createAdapter(row.type, readConfig(row));
-  await adapter.open();
+  try {
+    await adapter.open();
+  } catch (err) {
+    // A half-open connection (SFTP handshake done, folder refused) still
+    // holds a socket.
+    await adapter.close().catch(() => {});
+    throw err;
+  }
   return { row, adapter };
 }
 

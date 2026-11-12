@@ -115,7 +115,7 @@ function applyHttpMiddleware(app, { trustProxy, secureCookies, sessionMiddleware
   app.use((req, res, next) => {
     const path = requestPath(req);
     if (/^\/api(\/|$)/i.test(path) && !/^\/api(\/|$)/.test(path)) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ error: 'Not found', code: 'NOT_FOUND' });
     }
     return next();
   });

@@ -231,7 +231,12 @@ function copyNode(userId, nodeId, { parentId, name, conflict }) {
 
     const newIds = new Map();
     let first = null;
-    const nodes = source.type === 'folder' ? liveSubtree(userId, source.id) : [source];
+    // A vault folder inside the copied folder stays behind with everything
+    // in it: its copy would take the new parent's (non-)vault and put the
+    // vault's ciphertext outside any vault.
+    const nodes = source.type === 'folder'
+      ? liveSubtree(userId, source.id).filter((node) => (node.vault_id ?? null) === (source.vault_id ?? null))
+      : [source];
     for (const node of nodes) {
       const isTop = node.id === source.id;
       const copy = insertNode(userId, {

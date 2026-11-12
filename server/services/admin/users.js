@@ -6,13 +6,10 @@ const { setAdmin } = require('../access/admin');
 const { hashPassword, validateNewPassword } = require('../account/credentials');
 const { revokeAllSessionsForUser } = require('../account/sessions');
 const { revokeAllDeviceTokens } = require('../devices/tokens');
-const { deleteUserBlobDirectory } = require('../storage/blob_store');
+const { eraseAccount, isLastActiveAdmin } = require('../account/erasure');
 const { UNLIMITED, effectiveQuota, recalculateUsage } = require('../storage/quota');
 const { httpError } = require('../../utils/http_error');
 const { parseByteSize } = require('../../utils/bytes');
-const { createServiceLogger } = require('../../utils/logger');
-
-const logger = createServiceLogger('Admin');
 
 function serializeUser(row) {
   const quota = effectiveQuota(row.quota_bytes);
@@ -22,10 +19,14 @@ function serializeUser(row) {
     displayName: row.display_name,
     email: row.email,
     isAdmin: Number(row.is_admin) === 1,
+    disabled: Boolean(row.disabled_at),
+    disabledAt: row.disabled_at,
     usedBytes: row.used_bytes,
     quotaBytes: quota,
     quotaMode: row.quota_bytes === null ? 'default' : (row.quota_bytes === UNLIMITED ? 'unlimited' : 'custom'),
     fileCount: row.file_count ?? 0,
+    // The account's own AI token budget: null follows the server default, 0 is no limit.
+    aiMonthlyTokens: row.ai_monthly_tokens ?? null,
     createdAt: row.created_at,
     lastLogin: row.last_login,
   };
@@ -73,6 +74,8 @@ function setUserQuota(userId, { mode, bytes }, { actorUserId }) {
 }
 
 function setUserAdmin(userId, isAdmin, { actorUserId }) {
+  // Anything but a boolean (a missing field, "true", 1) must not demote.
+  if (typeof isAdmin !== 'boolean') throw httpError(400, 'isAdmin must be true or false.', 'INVALID_VALUE');
   if (userId === actorUserId && !isAdmin) {
     throw httpError(400, 'You can’t remove your own admin rights.', 'SELF_DEMOTE');
   }
@@ -82,7 +85,8 @@ function setUserAdmin(userId, isAdmin, { actorUserId }) {
 
 async function resetUserPassword(userId, password, { actorUserId }) {
   const user = getUserRow(userId);
-  const value = String(password || '');
+  if (typeof password !== 'string' || !password) throw httpError(400, 'A new password is required.', 'MISSING_FIELDS');
+  const value = password;
   validateNewPassword(value, { username: user.username, email: user.email });
   const hash = await hashPassword(value);
   db.transaction(() => {
@@ -96,26 +100,61 @@ async function resetUserPassword(userId, password, { actorUserId }) {
 }
 
 /**
- * Deletes an account with all its files. Admin accounts must lose admin
- * first, so one click can't remove an administrator.
+ * Deletes an account with all its files (services/account/erasure.js).
+ * Admin accounts must lose admin first, so one click can't remove an
+ * administrator.
  */
 async function deleteUser(userId, { actorUserId }) {
   const user = getUserRow(userId);
   if (Number(user.is_admin) === 1) {
     throw httpError(403, 'Remove admin rights before deleting this account.', 'ADMIN_ACCOUNT');
   }
-  revokeAllSessionsForUser(user.id);
-  db.transaction(() => {
-    // Nodes reference blobs, so they go first; the rest cascades with the user.
-    db.prepare('DELETE FROM nodes WHERE user_id = ? AND parent_id IS NULL').run(user.id);
-    db.prepare('DELETE FROM nodes WHERE user_id = ?').run(user.id);
-    db.prepare('DELETE FROM blobs WHERE user_id = ?').run(user.id);
-    db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
-    recordAccessEvent('account.delete', { actorUserId, detail: { userId: user.id } });
-  })();
-  await deleteUserBlobDirectory(user.id);
-  logger.info(`Admin ${actorUserId} deleted account ${user.id}`);
-  return { success: true };
+  return eraseAccount(user.id, { actorUserId });
+}
+
+/**
+ * Disables or enables an account, as in NeoRouter. Disabling ends its
+ * sessions and device tokens at once (they stay revoked when the account is
+ * enabled again); while disabled it can't sign in by any route and its
+ * public links don't serve. Nobody disables themselves or the last admin.
+ */
+function setUserDisabled(userId, disabled, { actorUserId }) {
+  if (typeof disabled !== 'boolean') throw httpError(400, 'disabled must be true or false.', 'INVALID_VALUE');
+  const user = getUserRow(userId);
+  if (disabled && userId === actorUserId) {
+    throw httpError(400, 'You can’t disable your own account.', 'CANNOT_DISABLE_SELF');
+  }
+  if (disabled && isLastActiveAdmin(user)) {
+    throw httpError(409, 'The last admin can’t be disabled.', 'LAST_ADMIN');
+  }
+  if (Boolean(user.disabled_at) !== disabled) {
+    db.transaction(() => {
+      db.prepare("UPDATE users SET disabled_at = CASE WHEN ? THEN datetime('now') END WHERE id = ?").run(disabled ? 1 : 0, user.id);
+      recordAccessEvent(disabled ? 'account.disable' : 'account.enable', { actorUserId, subjectUserId: user.id });
+    })();
+    if (disabled) signOutEverywhere(user.id);
+  }
+  return serializeUser(getUserRow(userId));
+}
+
+/** NeoAgent's "Sign out everywhere": every browser session and device token. */
+function signOutEverywhere(userId, { keepSessionId = null, keepDeviceId = null } = {}) {
+  const sessions = revokeAllSessionsForUser(userId, { exceptSessionId: keepSessionId }).revoked;
+  const devices = revokeAllDeviceTokens(userId, { exceptDeviceId: keepDeviceId });
+  return { success: true, sessions, devices };
+}
+
+function revokeUserSessions(userId, { actorUserId, sessionId, deviceId }) {
+  getUserRow(userId);
+  // An admin signing themselves out everywhere keeps the browser session or
+  // phone they asked from.
+  const self = userId === actorUserId;
+  const result = signOutEverywhere(userId, {
+    keepSessionId: self ? sessionId : null,
+    keepDeviceId: self ? deviceId : null,
+  });
+  recordAccessEvent('account.sign_out_everywhere', { actorUserId, subjectUserId: userId });
+  return result;
 }
 
 function recalculateUserUsage(userId) {
@@ -129,6 +168,8 @@ module.exports = {
   listUsers,
   recalculateUserUsage,
   resetUserPassword,
+  revokeUserSessions,
   setUserAdmin,
+  setUserDisabled,
   setUserQuota,
 };

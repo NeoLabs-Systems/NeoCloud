@@ -84,16 +84,17 @@ class _WelcomeBanner extends StatelessWidget {
   }
 
   List<Widget> _actions() => <Widget>[
-    _action(
-      appStrings.filesWelcomeDesktopAction,
-      appStrings.filesWelcomeDesktopBody,
-      () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
-    ),
+    // The desktop app's download page: no use on the phone itself.
     if (!controller.usesDeviceLogin)
-      _action(appStrings.filesWelcomeImportAction, appStrings.filesWelcomeImportBody, () {
-        controller.setSettingsPage(SettingsPage.imports);
-        controller.setSelectedSection(AppSection.settings);
-      }),
+      _action(
+        appStrings.filesWelcomeDesktopAction,
+        appStrings.filesWelcomeDesktopBody,
+        () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
+      ),
+    _action(appStrings.filesWelcomeImportAction, appStrings.filesWelcomeImportBody, () {
+      controller.setSettingsPage(SettingsPage.imports);
+      controller.setSelectedSection(AppSection.settings);
+    }),
     if (controller.isAdmin)
       _action(appStrings.filesWelcomeKeyAction, appStrings.filesWelcomeKeyBody, () => controller.setSelectedSection(AppSection.admin)),
   ];
@@ -141,7 +142,10 @@ class _WelcomeBanner extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Text(appStrings.filesWelcomeUploadBody, style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.45)),
+            child: Text(
+              controller.usesDeviceLogin ? appStrings.filesWelcomeUploadBodyPhone : appStrings.filesWelcomeUploadBody,
+              style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.45),
+            ),
           ),
           const SizedBox(height: 4),
           Transform.translate(

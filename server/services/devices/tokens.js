@@ -2,11 +2,13 @@
 
 // Bearer tokens for the desktop, mobile and lite clients. A token is shown
 // once when created; only its SHA-256 is stored. Tokens reach file and sync
-// endpoints only -- account, settings and admin stay behind a browser session.
+// endpoints; the phone app's (android/ios) also reaches account, settings and
+// admin (middleware/auth.js).
 
 const crypto = require('crypto');
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
+const { assertAccountActive } = require('../account/status');
 
 const TOKEN_PREFIX = 'nc_';
 const MAX_NAME_LENGTH = 80;
@@ -40,7 +42,10 @@ function cleanDeviceInfo({ name, platform = '' } = {}) {
   return { name: cleanName, platform: cleanPlatform(platform) };
 }
 
+// Every route that hands out a token (device code, QR pairing, security key,
+// app passwords) comes through here, so a disabled account gets none.
 function createDeviceToken(userId, info) {
+  assertAccountActive(userId);
   const { name, platform } = cleanDeviceInfo(info);
   const token = TOKEN_PREFIX + crypto.randomBytes(32).toString('base64url');
   const result = db.prepare(`
@@ -69,13 +74,15 @@ function revokeDeviceToken(userId, id) {
  * Signs every client of the account out: all bearer tokens and WebDAV app
  * passwords, plus approved device-code sign-ins, QR sign-ins and QR pairing
  * codes not yet redeemed, which would otherwise still turn into a token or a
- * session. Used when the password changes or an admin resets it.
+ * session. Used when the password changes or an admin resets it. With
+ * `exceptDeviceId` the phone that asked stays signed in.
  */
-function revokeAllDeviceTokens(userId) {
+function revokeAllDeviceTokens(userId, { exceptDeviceId = null } = {}) {
   return db.transaction(() => {
     const { changes } = db.prepare(`
-      UPDATE device_tokens SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL
-    `).run(userId);
+      UPDATE device_tokens SET revoked_at = datetime('now')
+      WHERE user_id = ? AND revoked_at IS NULL AND id IS NOT ?
+    `).run(userId, exceptDeviceId);
     db.prepare(`
       UPDATE device_authorizations SET status = 'denied' WHERE user_id = ? AND status = 'approved'
     `).run(userId);
@@ -97,12 +104,13 @@ function getDeviceToken(userId, id) {
   return serialize(row);
 }
 
-// The account id a bearer token belongs to, or null.
+// The account id a bearer token belongs to, or null. A disabled account's
+// tokens resolve to nothing.
 function resolveDeviceToken(token) {
   if (!String(token || '').startsWith(TOKEN_PREFIX)) return null;
   const row = db.prepare(`
-    SELECT id, user_id, platform, last_seen_at FROM device_tokens
-    WHERE token_hash = ? AND revoked_at IS NULL
+    SELECT d.id, d.user_id, d.platform FROM device_tokens d JOIN users u ON u.id = d.user_id
+    WHERE d.token_hash = ? AND d.revoked_at IS NULL AND u.disabled_at IS NULL
   `).get(hashToken(token));
   if (!row) return null;
   db.prepare(`

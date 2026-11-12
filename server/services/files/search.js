@@ -60,7 +60,7 @@ function parseFlag(value) {
 
 /**
  * Searches the account's live nodes by name. Every word of `q` must appear
- * in the name. Results rank exact names first, then names starting with `q`,
+ * in the name, or in the node's AI tags and extracted words. Results rank exact names first, then names starting with `q`,
  * then names with a word starting with `q`, then the rest; ties go to the
  * most recently modified. `q` may be empty when a filter is set.
  *
@@ -138,7 +138,10 @@ function search(userId, { q, type, after, before, minSize, maxSize, parentId, li
   const terms = text.split(/\s+/).filter(Boolean).slice(0, MAX_TERMS);
   terms.forEach((term, index) => {
     nameParams[`term${index}`] = `%${likeEscape(term)}%`;
-    where.push(`n.name LIKE @term${index} ESCAPE '\\'`);
+    // AI tags and extracted words (issuer, subject, type, caption) match like the name.
+    where.push(`(n.name LIKE @term${index} ESCAPE '\\' OR n.id IN (
+      SELECT m.node_id FROM ai_node_meta m WHERE m.user_id = @userId AND m.search_text LIKE @term${index} ESCAPE '\\'
+    ))`);
   });
 
   let rank = '';

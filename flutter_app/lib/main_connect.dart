@@ -1,8 +1,14 @@
 part of 'main.dart';
 
-// First run of the Android and iOS apps: which server, then a device login
-// approved in the browser (docs/clients.md §1). Same card as the
-// sign-in screen.
+// First run of the Android and iOS apps: which server, ported from
+// NeoAgent's BackendSetupView (main_setup.dart). The servers this phone
+// used stand where NeoAgent lists the ones it found nearby. The server then
+// opens the sign-in card (main_auth_phone.dart); its browser sign-in waits
+// for approval here (docs/clients.md §1).
+
+Future<void> _openInBrowser(Uri url) async {
+  await launchUrl(url, mode: LaunchMode.externalApplication);
+}
 
 const String _recentServersKey = 'connect.recentServers';
 
@@ -29,6 +35,9 @@ class ConnectView extends StatefulWidget {
 class _ConnectViewState extends State<ConnectView> {
   late final TextEditingController _server = TextEditingController(text: widget.controller.connectedServer);
 
+  /// The address field; open from the start while there is nothing to pick.
+  late bool _showAdvanced = _recentServers(widget.controller).isEmpty;
+
   NeoCloudController get _controller => widget.controller;
 
   @override
@@ -37,93 +46,163 @@ class _ConnectViewState extends State<ConnectView> {
     super.dispose();
   }
 
-  Future<void> _openInBrowser(Uri url) async {
-    await launchUrl(url, mode: LaunchMode.externalApplication);
-  }
-
   void _connect() {
     if (_controller.isConnecting) return;
-    // A pasted pairing link ("Can't scan?") signs in without the browser.
+    // A pasted pairing link ("Can't scan?") signs in without a password.
     final link = parsePairingLink(_server.text);
     if (link != null) {
       _server.text = link.server.toString();
       unawaited(_controller.pair(link));
       return;
     }
-    unawaited(_controller.connect(_server.text, openVerification: _openInBrowser));
+    unawaited(_controller.chooseServer(_server.text));
   }
 
-  List<Widget> _serverStep() {
-    return <Widget>[
-      TextField(
-        controller: _server,
-        autofocus: _server.text.isEmpty,
-        keyboardType: TextInputType.url,
-        autocorrect: false,
-        onChanged: (_) => _controller.clearInlineError(),
-        onSubmitted: (_) => _connect(),
-        decoration: InputDecoration(labelText: appStrings.connectServerLabel, hintText: 'cloud.example.com'),
-      ),
-      if (_controller.errorMessage != null) ...<Widget>[
-        const SizedBox(height: AppSpacing.sm),
-        _InlineError(message: _controller.errorMessage!),
-      ],
-      ..._recentServerChips(),
-      const SizedBox(height: AppSpacing.lg),
-      FilledButton(
-        onPressed: _controller.isConnecting ? null : _connect,
-        child: _controller.isConnecting
-            ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-            : Text(appStrings.connectButton),
-      ),
-      if (qrScannerSupported) ...<Widget>[
-        const SizedBox(height: AppSpacing.lg),
-        _ScanToPairButton(controller: _controller),
-      ],
-    ];
+  void _connectRecent(String server) {
+    _server.text = server;
+    _connect();
   }
 
-  List<Widget> _recentServerChips() {
-    final servers = _recentServers(_controller);
-    if (servers.isEmpty) return const <Widget>[];
-    return <Widget>[
-      const SizedBox(height: AppSpacing.md),
-      Text(appStrings.mobileRecentServers.toUpperCase(), style: _sectionEyebrowStyle()),
-      const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: <Widget>[
-          for (final server in servers)
-            InputChip(
-              label: Text(Uri.tryParse(server)?.host.isNotEmpty == true ? Uri.parse(server).authority : server),
-              selected: normalizeBackendUrl(_server.text) == server,
-              showCheckmark: false,
-              tooltip: server,
-              onPressed: _controller.isConnecting
-                  ? null
-                  : () => setState(() {
-                      _server.text = server;
-                      _controller.clearInlineError();
-                    }),
-              deleteButtonTooltipMessage: appStrings.mobileForgetServer,
-              onDeleted: () async {
-                await _forgetServer(_controller, server);
-                if (mounted) setState(() {});
-              },
-            ),
+  Future<void> _confirmForget(String server) async {
+    final forget = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_serverLabel(server)),
+        content: Text(appStrings.connectForgetServerBody, style: TextStyle(color: _textSecondary, height: 1.45)),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(appStrings.cancel)),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(appStrings.mobileForgetServer)),
         ],
       ),
+    );
+    if (forget != true) return;
+    await _forgetServer(_controller, server);
+    if (mounted) setState(() {});
+  }
+
+  static String _serverLabel(String server) {
+    final uri = Uri.tryParse(server);
+    return uri != null && uri.host.isNotEmpty ? uri.authority : server;
+  }
+
+  /// One server this phone used, as NeoAgent shows a server it found.
+  Widget _recentServerTile(String server) {
+    final radius = BorderRadius.circular(18);
+    return Material(
+      color: _bgSecondary.withValues(alpha: 0.72),
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: _controller.isConnecting ? null : () => _connectRecent(server),
+        onLongPress: _controller.isConnecting ? null : () => unawaited(_confirmForget(server)),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(borderRadius: radius, border: Border.all(color: _borderLight)),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: _accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.dns_outlined, color: _accent),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(_serverLabel(server), style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(appStrings.connectReadyToSignIn, style: TextStyle(color: _textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _serverStep(BuildContext context) {
+    final servers = _recentServers(_controller);
+    final connecting = _controller.isConnecting;
+    return <Widget>[
+      if (servers.isNotEmpty) ...<Widget>[
+        Text(
+          appStrings.mobileRecentServers,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        for (final server in servers) ...<Widget>[
+          _recentServerTile(server),
+          const SizedBox(height: 10),
+        ],
+      ],
+      if (_controller.errorMessage case final message?) ...<Widget>[
+        const SizedBox(height: 16),
+        _InlineError(message: message),
+      ],
+      if (qrScannerSupported) ...<Widget>[
+        const SizedBox(height: 16),
+        _ScanToPairButton(controller: _controller),
+      ],
+      const SizedBox(height: 10),
+      // ListTile needs its own Material inside the card's colored box.
+      Material(
+        type: MaterialType.transparency,
+        child: ExpansionTile(
+          initiallyExpanded: _showAdvanced,
+          onExpansionChanged: (value) => setState(() => _showAdvanced = value),
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          title: Text(appStrings.connectEnterAddress),
+          subtitle: Text(appStrings.connectEnterAddressHint),
+          children: <Widget>[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _server,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onChanged: (_) => _controller.clearInlineError(),
+              onSubmitted: (_) => _connect(),
+              decoration: InputDecoration(
+                labelText: appStrings.connectServerAddress,
+                prefixIcon: const Icon(Icons.dns_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: connecting ? null : _connect,
+                icon: connecting
+                    ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.arrow_forward_rounded),
+                label: Text(connecting ? appStrings.connectConnecting : appStrings.connectToThisServer),
+              ),
+            ),
+          ],
+        ),
+      ),
     ];
   }
 
+  /// The browser sign-in: the code to compare while the browser approves.
   List<Widget> _approvalStep(PendingDeviceLogin login) {
     return <Widget>[
-      _AppCard(
+      Container(
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        decoration: BoxDecoration(
+          color: _bgSecondary.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _borderLight),
+        ),
         child: Column(
           children: <Widget>[
-            Text(appStrings.deviceCodeLabel.toUpperCase(), style: _sectionEyebrowStyle()),
+            Text(appStrings.deviceCodeLabel.toUpperCase(), style: _entryEyebrowStyle()),
             const SizedBox(height: 8),
             SelectableText(
               login.userCode,
@@ -142,51 +221,98 @@ class _ConnectViewState extends State<ConnectView> {
         ],
       ),
       const SizedBox(height: AppSpacing.lg),
-      OutlinedButton.icon(
-        onPressed: () => unawaited(_openInBrowser(login.verificationUrl)),
-        icon: const Icon(Icons.open_in_new_rounded, size: 16),
-        label: Text(appStrings.connectOpenBrowser),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => unawaited(_openInBrowser(login.verificationUrl)),
+          icon: const Icon(Icons.open_in_new_rounded, size: 18),
+          label: Text(appStrings.connectOpenBrowser),
+        ),
       ),
       const SizedBox(height: AppSpacing.sm),
-      SelectableText(
-        login.verificationUrl.toString(),
-        textAlign: TextAlign.center,
-        style: TextStyle(color: _textMuted, fontSize: 12),
+      Center(
+        child: SelectableText(
+          login.verificationUrl.toString(),
+          textAlign: TextAlign.center,
+          style: TextStyle(color: _textMuted, fontSize: 12),
+        ),
       ),
       const SizedBox(height: AppSpacing.sm),
-      TextButton(onPressed: _controller.cancelConnect, child: Text(appStrings.cancel)),
+      Center(child: TextButton(onPressed: _controller.cancelConnect, child: Text(appStrings.cancel))),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final login = _controller.pendingLogin;
-    return _ControlSurfaceBackdrop(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: _EntranceMotion(
-                child: _GlassSurface(
-                  width: 420,
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Center(child: _BrandLockup(logoSize: 44, showName: false)),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(login == null ? appStrings.connectTitle : appStrings.connectApproveTitle, style: _displayTitleStyle(24)),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        login == null ? appStrings.connectSubtitle : appStrings.connectApproveSubtitle,
-                        style: TextStyle(color: _textSecondary, height: 1.45),
+    return Theme(
+      data: _phoneEntryTheme(Theme.of(context)),
+      child: Builder(
+        builder: (context) => _ControlSurfaceBackdrop(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: _EntranceMotion(
+                      rise: true,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _bgCard,
+                          borderRadius: BorderRadius.circular(34),
+                          border: Border.all(color: _border),
+                          boxShadow: _entryPanelShadow,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(34, 32, 34, 30),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const NeoCloudMark(size: 60),
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    appStrings.appName,
+                                    style: GoogleFonts.geist(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                      color: _textPrimary,
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 22),
+                              Text(appStrings.connectWelcome, style: _entryEyebrowStyle()),
+                              const SizedBox(height: 10),
+                              Text(
+                                login == null ? appStrings.connectTitle : appStrings.connectApproveTitle,
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.08,
+                                  letterSpacing: -0.8,
+                                  color: _textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                login == null ? appStrings.connectSubtitle : appStrings.connectApproveSubtitle,
+                                style: TextStyle(color: _textSecondary, height: 1.55),
+                              ),
+                              const SizedBox(height: 24),
+                              if (login == null) ..._serverStep(context) else ..._approvalStep(login),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      if (login == null) ..._serverStep() else ..._approvalStep(login),
-                    ],
+                    ),
                   ),
                 ),
               ),

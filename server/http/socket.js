@@ -6,6 +6,7 @@
 
 const { Server: SocketIO } = require('socket.io');
 const { sessionHash } = require('../services/account/sessions');
+const { isAccountActive } = require('../services/account/status');
 const { sessionRoom, userRoom } = require('../services/events');
 
 function createSocketServer(httpServer, { validateOrigin }) {
@@ -27,7 +28,7 @@ function bindSocketSessions(io, sessionMiddleware) {
     sessionMiddleware(socket.request, {}, (err) => {
       if (err) return next(err);
       const userId = socket.request.session?.userId;
-      if (!userId) return next(new Error('Unauthorized'));
+      if (!userId || !isAccountActive(userId)) return next(new Error('Unauthorized'));
       socket.data.userId = userId;
       socket.data.sessionHash = sessionHash(socket.request.sessionID);
       socket.join([userRoom(userId), sessionRoom(socket.data.sessionHash)]);

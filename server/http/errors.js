@@ -2,7 +2,7 @@
 
 const { sanitizeError } = require('../utils/security');
 const { logRequestSummary } = require('../utils/logger');
-const { publicErrorCode } = require('../utils/http_error');
+const { httpError, publicErrorCode } = require('../utils/http_error');
 const { redactResponseBody } = require('../utils/public_error');
 const { isAdminUser } = require('../services/access/admin');
 
@@ -12,7 +12,8 @@ function redactErrorsForNonAdmins(req, res, next) {
   if (!req.path.startsWith('/api/')) return next();
   const sendJson = res.json.bind(res);
   res.json = (body) => {
-    const userId = req.session?.userId;
+    // req.userId: set by the auth guard, for a session or a token alike.
+    const userId = req.userId || req.session?.userId;
     if (userId && isAdminUser(userId)) return sendJson(body);
     if (res.statusCode >= 500 && typeof body?.error === 'string' && !body.code) {
       console.error('[API failure hidden from non-admin]', req.method, req.path, res.statusCode, body?.error);
@@ -40,10 +41,27 @@ function sendJsonError(res, err, fallbackStatus = 500) {
   return res.status(status).json({ error: err?.message || 'Request failed.', ...(code ? { code } : {}) });
 }
 
+// The JSON and form parsers' errors carry a `type`, not a code; their
+// messages are parser internals ("Unexpected token } in JSON at …").
+const BODY_PARSER_ERRORS = {
+  'entity.parse.failed': [400, 'The request body is not valid JSON.', 'INVALID_JSON'],
+  'entity.too.large': [413, 'The request body is too large.', 'BODY_TOO_LARGE'],
+};
+
+function fromBodyParser(err) {
+  const known = BODY_PARSER_ERRORS[err?.type];
+  if (known) return httpError(...known);
+  if (typeof err?.type === 'string' && statusOf(err) < 500) {
+    return httpError(statusOf(err), 'The request body could not be read.', 'INVALID_BODY');
+  }
+  return err;
+}
+
 function registerErrorHandler(app) {
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found', code: 'NOT_FOUND' }));
   // eslint-disable-next-line no-unused-vars
-  app.use((err, req, res, _next) => {
+  app.use((rawError, req, res, _next) => {
+    const err = fromBodyParser(rawError);
     const status = statusOf(err);
     const message = sanitizeError(err);
     logRequestSummary(status >= 500 ? 'error' : 'warn', req, `failed with ${status}`, {

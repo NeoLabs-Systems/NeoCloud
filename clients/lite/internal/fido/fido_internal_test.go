@@ -240,3 +240,72 @@ func TestFIDODescriptor(t *testing.T) {
 		t.Error("truncated descriptor recognized")
 	}
 }
+
+func TestSignInAssertionEncoding(t *testing.T) {
+	req := AssertionRequest{
+		RPID:           "cloud.example.com",
+		ClientDataHash: seq(32, 0),
+		AllowList:      [][]byte{{1, 2, 3}},
+		PINToken:       seq(32, 0x80),
+	}.encode()
+	got, err := encMode.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinAuth := authenticate(seq(32, 0x80), seq(32, 0))
+	want := unhex(t, `
+		a6
+		01 71 636c6f75642e6578616d706c652e636f6d
+		02 5820 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+		03 81 a2 62 6964 43 010203 64 74797065 6a 7075626c69632d6b6579
+		05 a1 62 7570 f5
+		06 50 `+hex.EncodeToString(pinAuth)+`
+		07 01`)
+	if !bytes.Equal(got, want) {
+		t.Errorf("getAssertion CBOR\n got %x\nwant %x", got, want)
+	}
+
+	// Discoverable, with built-in UV: no allow list, uv instead of a PIN.
+	got, _ = encMode.Marshal(AssertionRequest{RPID: "a.b", ClientDataHash: seq(32, 0), UV: true}.encode())
+	want = unhex(t, `
+		a3
+		01 63 612e62
+		02 5820 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+		05 a2 62 7570 f5 62 7576 f5`)
+	if !bytes.Equal(got, want) {
+		t.Errorf("discoverable getAssertion CBOR\n got %x\nwant %x", got, want)
+	}
+}
+
+func TestSignInAssertionDecoding(t *testing.T) {
+	authData := append(seq(32, 0), 0x05, 0, 0, 0, 7)
+	// A key may leave out the credential when the allow list had one entry.
+	raw, _ := encMode.Marshal(map[int]any{2: authData, 3: []byte{0x30, 1}})
+	var resp signInAssertionResponse
+	if err := decMode.Unmarshal(raw, &resp); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resp.toAssertion([]byte{9, 9})
+	if err != nil || !bytes.Equal(got.CredentialID, []byte{9, 9}) || got.UserHandle != nil {
+		t.Fatalf("single: %+v %v", got, err)
+	}
+	if _, err := resp.toAssertion(nil); err == nil {
+		t.Error("an assertion without a credential id was accepted")
+	}
+
+	raw, _ = encMode.Marshal(map[int]any{
+		1: map[string]any{"id": []byte{1}, "type": "public-key", "transports": []string{"usb"}},
+		2: authData,
+		3: []byte{0x30, 1},
+		4: map[string]any{"id": []byte{0xaa}, "name": "neo", "displayName": "Neo"},
+		5: 3,
+	})
+	resp = signInAssertionResponse{}
+	if err := decMode.Unmarshal(raw, &resp); err != nil {
+		t.Fatal(err)
+	}
+	got, err = resp.toAssertion(nil)
+	if err != nil || !bytes.Equal(got.CredentialID, []byte{1}) || !bytes.Equal(got.UserHandle, []byte{0xaa}) || resp.NumberOfCredentials != 3 {
+		t.Fatalf("discoverable: %+v %d %v", got, resp.NumberOfCredentials, err)
+	}
+}

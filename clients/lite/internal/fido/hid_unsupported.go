@@ -2,18 +2,13 @@
 
 package fido
 
-import (
-	"errors"
-	"runtime"
-)
+import "errors"
 
 // System reports that this OS has no transport. On Windows (10 1903 and
-// later) only administrators may open FIDO HID devices directly, and
-// webauthn.dll always shows its own dialog and asks for a touch, so a
-// silent unlock on plug-in is not possible there.
+// later) only administrators may open FIDO HID devices, and webauthn.dll
+// always shows its dialog and asks for a touch (it has no up=false), so a
+// silent unlock while the key is plugged in is not possible there; the
+// app leaves the lock out on such systems (keylock.Supported).
 func System() (Transport, error) {
-	if runtime.GOOS == "windows" {
-		return nil, errors.New("not available on Windows: only administrators may talk to security keys directly, and the Windows security key API cannot unlock without a dialog and a touch. NeoCloud Lite keeps the normal sign-in")
-	}
-	return nil, errors.New("not available on this system; NeoCloud Lite keeps the normal sign-in")
+	return nil, errors.New("the security key lock is not available on this platform")
 }

@@ -30,10 +30,12 @@ const maxFolderItems = 5
 type Options struct {
 	Engine *sync.Engine
 	Config *config.Store
-	// OpenWindow shows the NeoCloud app window.
-	OpenWindow func()
-	OnReady    func()
-	OnQuit     func()
+	// OpenWindow shows the NeoCloud app window; OpenSettings shows it on
+	// its Settings page.
+	OpenWindow   func()
+	OpenSettings func()
+	OnReady      func()
+	OnQuit       func()
 }
 
 // Run shows the icon and blocks until the user quits.
@@ -47,10 +49,14 @@ func Quit() { systray.Quit() }
 func onReady(opts Options) {
 	systray.SetTooltip("NeoCloud")
 
+	// The same names as the app window: "Open web app", "Sync now",
+	// "Pause syncing", "Settings".
 	status := systray.AddMenuItem("Starting…", "")
 	status.Disable()
 	systray.AddSeparator()
 	open := systray.AddMenuItem("Open NeoCloud", "")
+	web := systray.AddMenuItem("Open web app", "Open NeoCloud in your browser")
+	systray.AddSeparator()
 	syncNow := systray.AddMenuItem("Sync now", "")
 	pause := systray.AddMenuItem("Pause syncing", "")
 	systray.AddSeparator()
@@ -60,6 +66,7 @@ func onReady(opts Options) {
 		folders[i].Hide()
 	}
 	systray.AddSeparator()
+	settings := systray.AddMenuItem("Settings…", "")
 	quit := systray.AddMenuItem("Quit NeoCloud", "")
 
 	var mu gosync.Mutex
@@ -72,6 +79,14 @@ func onReady(opts Options) {
 			pause.SetTitle("Resume syncing")
 		} else {
 			pause.SetTitle("Pause syncing")
+		}
+		// Signed out there is nothing to sync, pause or open on the web.
+		for _, item := range []*systray.MenuItem{web, syncNow, pause} {
+			if cfg.LoggedIn() {
+				item.Enable()
+			} else {
+				item.Disable()
+			}
 		}
 		mu.Lock()
 		defer mu.Unlock()
@@ -113,6 +128,12 @@ func onReady(opts Options) {
 			select {
 			case <-open.ClickedCh:
 				opts.OpenWindow()
+			case <-web.ClickedCh:
+				if server := opts.Config.Get().Server; server != "" {
+					browser.Open(server + "/app")
+				}
+			case <-settings.ClickedCh:
+				opts.OpenSettings()
 			case <-pause.ClickedCh:
 				opts.Engine.SetPaused(!opts.Config.Get().Paused)
 				refresh(opts.Engine.Status())
@@ -167,8 +188,11 @@ func statusLine(st sync.Status) string {
 		}
 		return "Up to date · " + st.LastSync.Format("15:04")
 	case sync.StateSyncing:
-		if st.Changes > 0 {
-			return fmt.Sprintf("Syncing · %d changed", st.Changes)
+		switch {
+		case st.Changes == 1:
+			return "Syncing 1 file"
+		case st.Changes > 1:
+			return fmt.Sprintf("Syncing %d files", st.Changes)
 		}
 		return "Syncing…"
 	case sync.StateLoggedOut:
@@ -177,7 +201,12 @@ func statusLine(st sync.Status) string {
 		return "Locked"
 	case sync.StateOffline:
 		return "Offline"
-	case sync.StateConfirm:
+	case sync.StatePaused:
+		if st.Message != "" {
+			return st.Message // "Paused", or why it waits (metered, battery saver)
+		}
+		return "Paused"
+	case sync.StateConfirm, sync.StateError:
 		return "Needs attention"
 	case "":
 		return "Starting…"

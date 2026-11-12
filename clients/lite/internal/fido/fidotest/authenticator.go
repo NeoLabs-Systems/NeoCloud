@@ -1,9 +1,10 @@
 // Package fidotest is a software FIDO2 authenticator behind a fake HID
 // transport, for tests. It speaks CTAPHID packets and implements
-// getInfo, clientPIN (getKeyAgreement, getPinToken), makeCredential and
-// getAssertion with hmac-secret and PIN protocol 1, with its own crypto
-// built straight from the CTAP 2.1 text so it checks the client rather
-// than mirroring it.
+// getInfo, clientPIN (getKeyAgreement, getPinToken), makeCredential,
+// getAssertion (with hmac-secret, or a plain WebAuthn sign-in with ES256
+// signatures and discoverable credentials) and getNextAssertion, with PIN
+// protocol 1 and its own crypto built straight from the CTAP 2.1 text so it
+// checks the client rather than mirroring it.
 package fidotest
 
 import (
@@ -11,12 +12,15 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -36,17 +40,77 @@ type Authenticator struct {
 	NoTouch bool
 	// AlwaysUV is reported in getInfo.
 	AlwaysUV bool
+	// BuiltInUV reports a fingerprint reader ("uv" in getInfo); the uv
+	// option then verifies the user without a PIN.
+	BuiltInUV bool
 
 	mu       sync.Mutex
 	touches  int
-	creds    map[string]credential
+	creds    map[string]*credential
+	created  int
 	agree    *ecdh.PrivateKey
 	pinToken []byte
+	next     [][]byte // getNextAssertion answers still to give
 }
 
 type credential struct {
 	rpID       string
 	credRandom []byte // CredRandomWithoutUV; the client never sends a PIN to getAssertion
+	key        *ecdsa.PrivateKey
+	userID     []byte
+	resident   bool
+	counter    uint32
+	order      int
+}
+
+// newCredential stores a fresh ES256 credential and returns its id and
+// the COSE public key.
+func (a *Authenticator) newCredential(rpID string, userID []byte, resident bool) ([]byte, []byte) {
+	if a.creds == nil {
+		a.creds = map[string]*credential{}
+	}
+	id := make([]byte, 48)
+	rand.Read(id)
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	cred := &credential{rpID: rpID, credRandom: make([]byte, 32), key: key, userID: userID, resident: resident}
+	rand.Read(cred.credRandom)
+	a.created++
+	cred.order = a.created
+	a.creds[string(id)] = cred
+	public, _ := key.PublicKey.ECDH()
+	point := public.Bytes()
+	return id, encode(cose{Kty: 2, Alg: -7, Crv: 1, X: point[1:33], Y: point[33:]})
+}
+
+// PublicKey is the signing key of a credential the fake holds, or nil.
+func (a *Authenticator) PublicKey(credentialID []byte) *ecdsa.PublicKey {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if c, ok := a.creds[string(credentialID)]; ok {
+		return &c.key.PublicKey
+	}
+	return nil
+}
+
+// Enroll creates a discoverable credential as a browser registration
+// would and returns its id and a "none" attestation object (WebAuthn
+// §6.5), for registering the fake key with a server.
+func (a *Authenticator) Enroll(rpID string, userID []byte) (credentialID, attestationObject []byte) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	id, publicKey := a.newCredential(rpID, userID, true)
+	attested := append(make([]byte, 16), byte(len(id)>>8), byte(len(id)))
+	attested = append(attested, id...)
+	attested = append(attested, publicKey...)
+	flags := byte(0x01 | 0x40)
+	if a.PIN != "" {
+		flags |= 0x04
+	}
+	return id, encode(map[string]any{
+		"fmt":      "none",
+		"attStmt":  map[string]any{},
+		"authData": authData(rpID, flags, 0, attested, nil),
+	})
 }
 
 // Touches is how many times the key waited for (and got) a touch.
@@ -211,9 +275,6 @@ const (
 func (a *Authenticator) handle(request []byte) (status byte, body []byte, touched bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.creds == nil {
-		a.creds = map[string]credential{}
-	}
 	if len(request) == 0 {
 		return statusInvalidCBOR, nil, false
 	}
@@ -231,7 +292,17 @@ func (a *Authenticator) handle(request []byte) (status byte, body []byte, touche
 	case 0x01:
 		return a.makeCredential(params)
 	case 0x02:
-		return a.getAssertion(params)
+		if _, ok := params[4]; ok {
+			return a.getAssertion(params)
+		}
+		return a.signIn(params)
+	case 0x08:
+		if len(a.next) == 0 {
+			return 0x30, nil, false // CTAP2_ERR_NOT_ALLOWED
+		}
+		answer := a.next[0]
+		a.next = a.next[1:]
+		return statusOK, answer, false
 	}
 	return 0x01, nil, false
 }
@@ -247,6 +318,9 @@ func encode(v any) []byte {
 
 func (a *Authenticator) getInfo() (byte, []byte, bool) {
 	options := map[string]bool{"rk": true, "up": true, "clientPin": a.PIN != ""}
+	if a.BuiltInUV {
+		options["uv"] = true
+	}
 	if a.AlwaysUV {
 		options["alwaysUv"] = true
 	}
@@ -349,9 +423,9 @@ func (a *Authenticator) touch() bool {
 	return true
 }
 
-func authData(rpID string, flags byte, attested, extensions []byte) []byte {
+func authData(rpID string, flags byte, counter uint32, attested, extensions []byte) []byte {
 	hash := sha256.Sum256([]byte(rpID))
-	out := append(hash[:], flags, 0, 0, 0, 1)
+	out := append(hash[:], flags, byte(counter>>24), byte(counter>>16), byte(counter>>8), byte(counter))
 	out = append(out, attested...)
 	return append(out, extensions...)
 }
@@ -380,17 +454,10 @@ func (a *Authenticator) makeCredential(params map[int]cbor.RawMessage) (byte, []
 	if !a.touch() {
 		return statusActionTimeout, nil, true
 	}
-	id := make([]byte, 48)
-	rand.Read(id)
-	cred := credential{rpID: rp.ID, credRandom: make([]byte, 32)}
-	rand.Read(cred.credRandom)
-	a.creds[string(id)] = cred
-
-	key, _ := ecdh.P256().GenerateKey(rand.Reader)
-	public := key.PublicKey().Bytes()
+	id, publicKey := a.newCredential(rp.ID, nil, false)
 	attested := append(make([]byte, 16), byte(len(id)>>8), byte(len(id)))
 	attested = append(attested, id...)
-	attested = append(attested, encode(cose{Kty: 2, Alg: -7, Crv: 1, X: public[1:33], Y: public[33:]})...)
+	attested = append(attested, publicKey...)
 	flags := byte(0x01 | 0x40)
 	var ext []byte
 	if extensions["hmac-secret"] {
@@ -399,7 +466,7 @@ func (a *Authenticator) makeCredential(params map[int]cbor.RawMessage) (byte, []
 	}
 	return statusOK, encode(map[int]any{
 		1: "none",
-		2: authData(rp.ID, flags, attested, ext),
+		2: authData(rp.ID, flags, 1, attested, ext),
 		3: map[string]any{},
 	}), true
 }
@@ -422,7 +489,7 @@ func (a *Authenticator) getAssertion(params map[int]cbor.RawMessage) (byte, []by
 		up = true
 	}
 	var found []byte
-	var cred credential
+	var cred *credential
 	for _, entry := range allow {
 		if c, ok := a.creds[string(entry.ID)]; ok && c.rpID == rpID {
 			found, cred = entry.ID, c
@@ -468,7 +535,102 @@ func (a *Authenticator) getAssertion(params map[int]cbor.RawMessage) (byte, []by
 	extensions := encode(map[string][]byte{"hmac-secret": cbc(shared, output, true)})
 	return statusOK, encode(map[int]any{
 		1: map[string]any{"id": found, "type": "public-key"},
-		2: authData(rpID, flags, nil, extensions),
+		2: authData(rpID, flags, 1, nil, extensions),
 		3: make([]byte, 64),
 	}), up
+}
+
+// signIn is getAssertion without extensions, as a WebAuthn sign-in sends
+// it (CTAP 2.1 §6.2.2): an ES256 signature over authenticatorData ||
+// clientDataHash. An empty allow list picks the discoverable credentials
+// of the relying party, newest first, the rest via getNextAssertion.
+func (a *Authenticator) signIn(params map[int]cbor.RawMessage) (byte, []byte, bool) {
+	var rpID string
+	var clientDataHash []byte
+	var allow []struct {
+		ID   []byte `cbor:"id"`
+		Type string `cbor:"type"`
+	}
+	options := map[string]bool{}
+	if cbor.Unmarshal(params[1], &rpID) != nil || cbor.Unmarshal(params[2], &clientDataHash) != nil || len(clientDataHash) != 32 {
+		return statusMissingParam, nil, false
+	}
+	if raw, ok := params[3]; ok && cbor.Unmarshal(raw, &allow) != nil {
+		return statusInvalidCBOR, nil, false
+	}
+	if raw, ok := params[5]; ok && cbor.Unmarshal(raw, &options) != nil {
+		return statusInvalidCBOR, nil, false
+	}
+	verified := false
+	if raw, ok := params[6]; ok {
+		var pinAuth []byte
+		var protocol int
+		if cbor.Unmarshal(raw, &pinAuth) != nil || cbor.Unmarshal(params[7], &protocol) != nil || protocol != 1 {
+			return statusMissingParam, nil, false
+		}
+		if a.pinToken == nil || !hmac.Equal(pinAuth, mac16(a.pinToken, clientDataHash)) {
+			return statusPINAuthInvalid, nil, false
+		}
+		verified = true
+	} else if options["uv"] {
+		if !a.BuiltInUV {
+			return statusInvalidOption, nil, false
+		}
+		verified = true
+	}
+	if a.AlwaysUV && !verified {
+		return statusPINRequired, nil, false
+	}
+
+	var ids [][]byte
+	if len(allow) > 0 {
+		for _, entry := range allow {
+			if c, ok := a.creds[string(entry.ID)]; ok && c.rpID == rpID {
+				ids = append(ids, entry.ID)
+				break
+			}
+		}
+	} else {
+		for id, c := range a.creds {
+			if c.resident && c.rpID == rpID {
+				ids = append(ids, []byte(id))
+			}
+		}
+		sort.Slice(ids, func(i, j int) bool { return a.creds[string(ids[i])].order > a.creds[string(ids[j])].order })
+	}
+	if len(ids) == 0 {
+		return statusNoCredentials, nil, false
+	}
+	if !a.touch() {
+		return statusActionTimeout, nil, true
+	}
+	flags := byte(0x01)
+	if verified {
+		flags |= 0x04
+	}
+	var answers [][]byte
+	for i, id := range ids {
+		c := a.creds[string(id)]
+		c.counter++
+		data := authData(rpID, flags, c.counter, nil, nil)
+		digest := sha256.Sum256(append(append([]byte(nil), data...), clientDataHash...))
+		signature, err := ecdsa.SignASN1(rand.Reader, c.key, digest[:])
+		if err != nil {
+			return 0x7f, nil, true
+		}
+		answer := map[int]any{
+			1: map[string]any{"id": id, "type": "public-key"},
+			2: data,
+			3: signature,
+		}
+		if len(allow) == 0 {
+			answer[4] = map[string]any{"id": c.userID}
+			if i == 0 && len(ids) > 1 {
+				answer[5] = len(ids)
+			}
+		}
+		answers = append(answers, encode(answer))
+	}
+	a.next = answers[1:]
+	return statusOK, answers[0], true
 }

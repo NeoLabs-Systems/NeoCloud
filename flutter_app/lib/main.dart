@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show PointMode;
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
@@ -19,11 +20,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
+import 'src/ai/ai_review.dart';
+import 'src/ai/model_roles.dart';
+import 'src/ai/neorouter_connect.dart';
 import 'src/api/backend_client.dart';
 import 'src/api/models.dart';
 import 'src/auth/qr_login_flow.dart';
 import 'src/backend_url.dart';
 import 'src/device/device_session.dart';
+import 'src/device/password_login.dart';
 import 'src/files/batch.dart';
 import 'src/files/file_format.dart';
 import 'src/files/file_saver.dart';
@@ -59,11 +64,24 @@ import 'src/vault/vault_keys.dart';
 import 'src/web/browser_location.dart';
 
 part 'main_admin.dart';
+part 'main_admin_ai.dart';
+part 'main_admin_ai_models.dart';
+part 'main_admin_ai_user.dart';
 part 'main_admin_backups.dart';
 part 'main_admin_safety.dart';
 part 'main_admin_search.dart';
 part 'main_adaptive_sheet.dart';
+part 'main_ai_byok.dart';
+part 'main_ai_model_picker.dart';
+part 'main_ai_neorouter.dart';
+part 'main_ai_organize.dart';
+part 'main_ai_review.dart';
+part 'main_ai_rules.dart';
+part 'main_ai_suggestion.dart';
+part 'main_ai_summary.dart';
+part 'main_ai_settings.dart';
 part 'main_auth.dart';
+part 'main_auth_phone.dart';
 part 'main_background_permissions.dart';
 part 'main_camera_upload.dart';
 part 'main_camera_status.dart';
@@ -94,6 +112,7 @@ part 'main_qr_login.dart';
 part 'main_router.dart';
 part 'main_password_strength.dart';
 part 'main_settings.dart';
+part 'main_settings_account_data.dart';
 part 'main_settings_devices.dart';
 part 'main_settings_pages.dart';
 part 'main_settings_passkeys.dart';
@@ -198,7 +217,11 @@ class NeoCloudRoot extends StatelessWidget {
     if (controller.isBooting) return const SplashView();
     if (controller.pendingPairCode != null && !controller.usesDeviceLogin) return PairLandingView(controller: controller);
     if (!controller.isAuthenticated) {
-      return controller.usesDeviceLogin ? ConnectView(controller: controller) : AuthView(controller: controller);
+      if (!controller.usesDeviceLogin) return AuthView(controller: controller);
+      // A phone: the server, then the sign-in card for it; the browser
+      // sign-in it offers continues on the connect screen.
+      if (controller.passwordLogin != null && controller.pendingLogin == null) return PhoneAuthView(controller: controller);
+      return ConnectView(controller: controller);
     }
     if (controller.pendingDeviceCode != null) return DeviceApprovalView(controller: controller);
     return HomeView(controller: controller);

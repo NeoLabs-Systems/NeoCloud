@@ -43,6 +43,8 @@ type pass struct {
 	// not synced this pass; notSynced says why.
 	skip      map[string]bool
 	notSynced []NotSynced
+	// ignored are the paths a .cloudignore keeps out (for the report).
+	ignored []NotSynced
 
 	actions int  // changes made on either side
 	again   bool // something is left for another pass
@@ -166,13 +168,19 @@ func (p *pass) run(tree *api.Tree) error {
 		return err
 	}
 	p.dropUnsafeBase()
-	p.ignore = MatcherFor(p.pair)
-	if p.remote, err = buildRemoteView(p.ctx, p.client, tree, p.pair.Remote, len(p.base) == 0, p.ignore); err != nil {
+	if p.remote, err = buildRemoteView(p.ctx, p.client, tree, p.pair.Remote, len(p.base) == 0); err != nil {
 		return err
 	}
 	if err := p.checkRoot(); err != nil {
 		return err
 	}
+	p.ignore = MatcherFor(p.pair)
+	p.ignore.load = p.cloudIgnoreRules
+	remoteIgnored := p.remote.dropIgnored(p.ignore)
+	if err := p.ignore.Err(); err != nil {
+		return err // rules unknown: deciding anything now could be wrong
+	}
+	p.dropIgnoredBase()
 	p.applyExcludes()
 	if err := p.holdNewFolders(p.bigFolder); err != nil {
 		return err
@@ -181,7 +189,11 @@ func (p *pass) run(tree *api.Tree) error {
 	if err != nil {
 		return err
 	}
+	if err := p.ignore.Err(); err != nil {
+		return err
+	}
 	p.local, p.dirs, p.disk = scan.items, scan.dirs, scan.disk
+	p.ignored = mergeIgnored(scan.ignored, remoteIgnored)
 	p.findNotSynced(scan)
 
 	if p.canDown() {

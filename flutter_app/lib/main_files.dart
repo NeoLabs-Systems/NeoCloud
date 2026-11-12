@@ -117,6 +117,7 @@ abstract class _FilesBase extends State<FilesPanel> {
     super.initState();
     controller.filesRevision.addListener(reload);
     controller.addListener(_onControllerChanged);
+    controller.aiReview.addListener(_onAiChanged);
     controller.vaults.addListener(reload);
     controller.fileChanges.addListener(_onFilesChangedElsewhere);
     scroll.addListener(_onScroll);
@@ -127,6 +128,7 @@ abstract class _FilesBase extends State<FilesPanel> {
   void dispose() {
     controller.filesRevision.removeListener(reload);
     controller.removeListener(_onControllerChanged);
+    controller.aiReview.removeListener(_onAiChanged);
     controller.vaults.removeListener(reload);
     controller.fileChanges
       ..removeListener(_onFilesChangedElsewhere)
@@ -151,6 +153,27 @@ abstract class _FilesBase extends State<FilesPanel> {
   }
 
   void reload() => unawaited(load(quiet: true));
+
+  /// Suggestions came or went: the chips on the rows follow.
+  void _onAiChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The open folder is excluded from AI, itself or through a folder above.
+  bool get aiExcludedHere {
+    final current = listing;
+    if (current == null) return false;
+    return current.folder.aiExcluded || controller.aiReview.excludesAny(current.path.map((segment) => segment.id));
+  }
+
+  /// Whether AI may be asked about [node]: AI runs for the account, the node
+  /// is the account's own, outside vaults and excluded folders.
+  bool aiAllowedFor(FileNode node) {
+    if (!controller.aiReview.enabled || inShare || node.inVault || node.trashedAt != null) return false;
+    if (node.isFolder && node.aiExcluded) return false;
+    // Search results come from anywhere; the server checks their folders.
+    return searching || !aiExcludedHere;
+  }
 
   /// Another tab, device or client changed this folder: reload in place,
   /// keeping the scroll position and the selection.
@@ -211,6 +234,7 @@ abstract class _FilesBase extends State<FilesPanel> {
       ));
       final latest = !inShare && page.folder.parentId == null ? await _recentFiles() : const <FileNode>[];
       if (!mounted || generation != _loadGeneration) return;
+      if (!inShare) controller.aiReview.noteFolders(<FileNode>[page.folder, ...page.items]);
       _skeletonTimer?.cancel();
       setState(() {
         listing = page;

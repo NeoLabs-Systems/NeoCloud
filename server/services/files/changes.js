@@ -32,6 +32,14 @@ function currentCursor(userId) {
   return db.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM changes WHERE user_id = ?').get(userId).seq;
 }
 
+// A client's cursor as a journal position SQLite can bind: anything that is
+// not a whole number from 0 up reads as 0 (from the start).
+function cursorValue(cursor) {
+  const value = Math.trunc(Number(cursor));
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.min(value, Number.MAX_SAFE_INTEGER);
+}
+
 /**
  * Changes after `cursor`, oldest first, each with the node as it is now
  * (null once it has been deleted for good). `cursor: 'latest'` answers no
@@ -39,7 +47,8 @@ function currentCursor(userId) {
  */
 function listChanges(userId, cursor, { limit = 1000 } = {}) {
   if (cursor === 'latest') return { changes: [], cursor: currentCursor(userId), hasMore: false };
-  const pageSize = Math.min(Math.max(Number(limit) || 1000, 1), 5000);
+  const pageSize = Math.min(Math.max(Math.trunc(Number(limit)) || 1000, 1), 5000);
+  const after = cursorValue(cursor);
   const rows = db.prepare(`
     SELECT c.seq, c.op, c.node_id, c.at, n.id AS present_id, n.parent_id, n.type, n.name, n.size,
            n.mime, n.etag, n.version, n.created_at, n.modified_at, n.trashed_at, n.vault_id
@@ -47,7 +56,7 @@ function listChanges(userId, cursor, { limit = 1000 } = {}) {
     WHERE c.user_id = ? AND c.seq > ?
     ORDER BY c.seq
     LIMIT ?
-  `).all(userId, Math.max(Number(cursor) || 0, 0), pageSize + 1);
+  `).all(userId, after, pageSize + 1);
   const page = rows.slice(0, pageSize);
   return {
     changes: page.map((row) => ({
@@ -57,7 +66,7 @@ function listChanges(userId, cursor, { limit = 1000 } = {}) {
       at: row.at,
       node: row.present_id ? serializeNode({ ...row, id: row.present_id }) : null,
     })),
-    cursor: page.length > 0 ? page[page.length - 1].seq : Math.max(Number(cursor) || 0, 0),
+    cursor: page.length > 0 ? page[page.length - 1].seq : after,
     hasMore: rows.length > pageSize,
   };
 }

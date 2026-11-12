@@ -2,6 +2,7 @@
 /// app works with typed values. Field names follow docs/api.md.
 library;
 
+part 'models_ai.dart';
 part 'models_features.dart';
 part 'models_members.dart';
 part 'models_qr_login.dart';
@@ -92,6 +93,9 @@ class FileNode {
     this.shared = false,
     this.path,
     this.expiresAt,
+    this.aiExcluded = false,
+    this.aiTags = const <String>[],
+    this.aiMeta,
   });
 
   factory FileNode.fromJson(Map<String, dynamic> json) => FileNode(
@@ -111,6 +115,9 @@ class FileNode {
     shared: json['shared'] == true,
     path: json['path'] is String ? json['path'] as String : null,
     expiresAt: _date(json['expiresAt']),
+    aiExcluded: json['aiExcluded'] == true,
+    aiTags: _strings(json['aiTags']),
+    aiMeta: json['aiMeta'] is Map ? (json['aiMeta'] as Map).cast<String, dynamic>() : null,
   );
 
   final String id;
@@ -146,6 +153,17 @@ class FileNode {
   /// In the trash: when the server deletes it for good.
   final DateTime? expiresAt;
 
+  /// A folder its owner excluded from AI; it covers everything below it.
+  final bool aiExcluded;
+
+  /// Tags the account accepted from AI suggestions.
+  final List<String> aiTags;
+
+  /// What AI read from the file's current content (date, issuer, subject,
+  /// type, amount, currency, caption, `confidence`, `model`); null when it
+  /// hasn't looked yet or the content changed since.
+  final Map<String, dynamic>? aiMeta;
+
   bool get isFolder => type == 'folder';
 
   bool get inVault => vaultId != null;
@@ -169,10 +187,14 @@ class FileNode {
     shared: shared,
     path: path,
     expiresAt: expiresAt,
+    aiExcluded: aiExcluded,
+    aiTags: aiTags,
+    aiMeta: aiMeta,
   );
 
-  /// This node after a rename, move or star, applied before the server answers.
-  FileNode copyWith({String? name, String? parentId, bool? favorite}) => FileNode(
+  /// This node after a rename, move, star or AI exclusion, applied before the
+  /// server answers.
+  FileNode copyWith({String? name, String? parentId, bool? favorite, bool? aiExcluded}) => FileNode(
     id: id,
     parentId: parentId ?? this.parentId,
     type: type,
@@ -190,6 +212,9 @@ class FileNode {
     shared: shared,
     path: path,
     expiresAt: expiresAt,
+    aiExcluded: aiExcluded ?? this.aiExcluded,
+    aiTags: aiTags,
+    aiMeta: aiMeta,
   );
 
   /// This node after an upload replaced its content, keeping the decrypted
@@ -255,6 +280,10 @@ class UserSettings {
     this.confirmDelete = true,
     this.uploadConflict = 'ask',
     this.fullTextSearch = true,
+    this.aiOptIn = false,
+    this.aiModels = const <String, String>{},
+    this.aiFeatures = const <String, bool>{},
+    this.aiNamingTemplate = '',
   });
 
   factory UserSettings.fromJson(Map<String, dynamic> json) => UserSettings(
@@ -266,6 +295,13 @@ class UserSettings {
     confirmDelete: json['confirmDelete'] != false,
     uploadConflict: _string(json['uploadConflict'] ?? 'ask'),
     fullTextSearch: json['fullTextSearch'] != false,
+    aiOptIn: json['ai_opt_in'] == true,
+    aiModels: <String, String>{
+      for (final entry in json.entries)
+        if (entry.key.startsWith('ai_model_') && entry.value is String) entry.key: entry.value as String,
+    },
+    aiFeatures: _aiFeatures(json['ai_features']),
+    aiNamingTemplate: _string(json['ai_naming_template']),
   );
 
   final String? language;
@@ -279,6 +315,25 @@ class UserSettings {
   /// Whether the server may index this account's files for content search
   /// (when the admin turned full-text search on).
   final bool fullTextSearch;
+
+  /// Whether this account uses AI features (`ai_opt_in`).
+  final bool aiOptIn;
+
+  /// The model per kind of work, by setting key (`ai_model_text` …):
+  /// `auto` or `provider::model`. Missing keys mean `auto`.
+  final Map<String, String> aiModels;
+
+  /// Which suggestions are on (`ai_features`), by feature name, as stored;
+  /// [aiFeatureOn] adds the server's defaults.
+  final Map<String, bool> aiFeatures;
+
+  /// Whether an AI feature is on: the stored switch, else the server's
+  /// default ([aiFeatureDefaults]).
+  bool aiFeatureOn(String feature) => aiFeatures[feature] ?? aiFeatureDefaults[feature] ?? false;
+
+  /// How suggested names are built (`ai_naming_template`); empty for the
+  /// server's default.
+  final String aiNamingTemplate;
 }
 
 class SessionInfo {
@@ -321,19 +376,23 @@ class SecurityKeyItem {
 }
 
 class DeviceInfo {
-  const DeviceInfo({required this.id, required this.name, required this.platform, required this.lastSeenAt});
+  const DeviceInfo({required this.id, required this.name, required this.platform, required this.lastSeenAt, this.current = false});
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) => DeviceInfo(
     id: _int(json['id']),
     name: _string(json['name']),
     platform: _string(json['platform']),
     lastSeenAt: _date(json['lastSeenAt']),
+    current: json['current'] == true,
   );
 
   final int id;
   final String name;
   final String platform;
   final DateTime? lastSeenAt;
+
+  /// The phone asking: it disconnects instead of revoking itself.
+  final bool current;
 }
 
 class AdminUser {
@@ -342,11 +401,13 @@ class AdminUser {
     required this.username,
     required this.email,
     required this.isAdmin,
+    required this.disabled,
     required this.usedBytes,
     required this.quotaBytes,
     required this.quotaMode,
     required this.fileCount,
     required this.lastLogin,
+    this.aiMonthlyTokens,
   });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
@@ -354,22 +415,29 @@ class AdminUser {
     username: _string(json['username']),
     email: json['email'] as String?,
     isAdmin: json['isAdmin'] == true,
+    disabled: json['disabled'] == true,
     usedBytes: _int(json['usedBytes']),
     quotaBytes: _int(json['quotaBytes']),
     quotaMode: _string(json['quotaMode']),
     fileCount: _int(json['fileCount']),
     lastLogin: _date(json['lastLogin']),
+    aiMonthlyTokens: json['aiMonthlyTokens'] is num ? (json['aiMonthlyTokens'] as num).toInt() : null,
   );
 
   final int id;
   final String username;
   final String? email;
   final bool isAdmin;
+  final bool disabled;
   final int usedBytes;
   final int quotaBytes;
   final String quotaMode;
   final int fileCount;
   final DateTime? lastLogin;
+
+  /// The account's own monthly AI token budget: null follows the server
+  /// default, 0 is no limit.
+  final int? aiMonthlyTokens;
 }
 
 /// Who a share link lets in (docs/research/roadmap.md, share modes).

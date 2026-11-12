@@ -2,13 +2,17 @@
 
 All endpoints live under `/api` and speak JSON unless noted. Errors look like
 `{ "error": "Readable message", "code": "MACHINE_CODE" }`; branch on `code`.
+A body that isn't valid JSON answers `400 INVALID_JSON`, one over 1 MB
+`413 BODY_TOO_LARGE`, any other unreadable body `INVALID_BODY`; an unknown
+`/api` path `404 NOT_FOUND`.
 
 ## Authentication
 
 | Client | How |
 | --- | --- |
 | Web app | Session cookie `neocloud.sid` from `/api/auth/login` or `/api/auth/register`. |
-| Mobile app, lite (desktop) client | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults, plus approving other sign-ins (QR sign-in, device login) under `/api/account`. |
+| Phone app (platform `android`/`ios`) | `Authorization: Bearer nc_…` from QR pairing, the device login or a password sign-in swapped for a token. A full client: everything a session reaches, account, settings, imports and admin (for an admin account) included. A handful of session-bound routes refuse it (see [Account](#account--apiaccount-session-or-phone)). |
+| Lite (desktop) client, other tokens | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only; account, settings, imports, AI and NeoRouter answer `403 PHONE_REQUIRED`, admin `403 ADMIN_REQUIRED`. WebDAV app passwords reach WebDAV only (below). |
 | Share link visitors | No account: the link token in the path, plus an unlock cookie for password links. |
 
 Browsers on another origin must be listed in `ALLOWED_ORIGINS`; state-changing
@@ -87,30 +91,36 @@ obvious sequences: `400 PASSWORD_TOO_SHORT` / `PASSWORD_WEAK` with the reason.
 
 The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited), `trashBytes`, `versionBytes`.
 
-## Account — `/api/account` (session only)
+## Account — `/api/account` (session or phone)
 
-Except approving other sign-ins, which is what the phone app does: the
-`/devices/authorize/:userCode` and `/qr-login/*` routes also take the phone
-app's device bearer token (platform `android` or `ios`; other tokens get
-`403 PHONE_REQUIRED`).
+Every route takes a browser session or the phone app's device bearer token
+(platform `android` or `ios`); other tokens get `403 PHONE_REQUIRED`. With a
+phone token: `/sessions` marks no session `current`, `/devices` marks the
+phone itself `current: true` and won't revoke it (`400 CURRENT_DEVICE`, the
+app disconnects instead), a password change keeps the phone's token instead
+of the session, and adding a security key answers `403 BROWSER_REQUIRED`
+(the ceremony lives in the browser session and the web origin). The current
+password and 2FA code are asked for exactly as with a session.
 
 | Method | Path | Body |
 | --- | --- | --- |
 | GET | `/` | |
 | GET | `/usage` | |
 | PUT | `/display-name` | `{ displayName }` |
-| PUT | `/password` | `{ currentPassword, newPassword }` — signs out every other session (and closes their sockets), revokes every device token and WebDAV app password, and voids approved device logins and open pairing codes not yet redeemed. This session stays under a new id (a new `neocloud.sid` cookie) |
+| PUT | `/password` | `{ currentPassword, newPassword }` — signs out every other session (and closes their sockets), revokes every device token and WebDAV app password, and voids approved device logins and open pairing codes not yet redeemed. This session stays under a new id (a new `neocloud.sid` cookie); from a phone, the phone's token stays |
 | POST | `/2fa/setup` | `{ currentPassword, code? }` → `{ otpauthUrl, manualKey, status }`. With 2FA already on, `code` (current TOTP or a recovery code) is required: `401 TWO_FACTOR_REQUIRED` / `INVALID_CODE` |
 | POST | `/2fa/enable` | `{ code, currentCode? }` — `code` from the new secret; with 2FA already on, `currentCode` from the factor being replaced is required as well → `{ recoveryCodes, status }` |
 | POST | `/2fa/disable` · `/2fa/recovery-codes` | `{ currentPassword, code }` |
 | GET / DELETE | `/sessions` · `/sessions/:id` | Revoking a session also closes its socket.io connections |
 | GET | `/security-keys` | → `{ securityKeys: [{ id, label, createdAt, lastUsedAt, transports, backedUp, rpId }] }`; `GET /` carries the same list |
-| POST | `/security-keys/register/options` | → `{ options }` for `navigator.credentials.create`. At most 20 keys (`400 SECURITY_KEY_LIMIT`) |
+| POST | `/security-keys/register/options` | → `{ options }` for `navigator.credentials.create`. At most 20 keys (`400 SECURITY_KEY_LIMIT`). Browser only: `403 BROWSER_REQUIRED` for a phone token (also `/register/verify`) |
 | POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N" |
 | PUT / DELETE | `/security-keys/:id` | `{ label }` to rename → `{ success, credentials }`; another account's key is `404` |
-| GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once |
+| GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once. `GET` → `{ devices: [{ id, name, platform, createdAt, lastSeenAt, current }] }`; `DELETE` of the phone asking → `400 CURRENT_DEVICE` |
 | GET | `/devices/authorize/:userCode` | → `{ name, platform, createdAt, expiresAt }` of a pending device login |
 | POST | `/devices/authorize/:userCode` | `{ approve: true\|false }` → `{ success: true }` |
+| POST | `/export` (5 / min) | `{ currentPassword, code? }` → the account's data as a JSON download (`Content-Disposition: attachment`, `Cache-Control: no-store`), see below |
+| POST | `/delete` (5 / min) | `{ currentPassword, code?, confirmUsername }` → `{ success: true }`; deletes the account with everything in it and ends this session or the phone's token (see below) |
 
 The user code is accepted in any case, with or without the dash. Unknown,
 expired or already decided codes answer `404 NOT_FOUND`; both routes allow 30
@@ -154,17 +164,137 @@ The OAuth-style device code flow from [clients.md](clients.md#1-device-login-oau
 | POST | `/authorize` | none (30 / 15 min) | `{ name, platform }` | `{ deviceCode, userCode, verificationUrl, expiresIn: 600, interval: 3 }` |
 | POST | `/token` | none (600 / 15 min) | `{ deviceCode }` | `428 AUTHORIZATION_PENDING` · `403 ACCESS_DENIED` · `410 EXPIRED_TOKEN` (also unknown or already used codes) · `200 { token, device: { id, name, platform }, user: { id, username } }` once |
 | POST | `/pair` | none (30 / 15 min) | `{ code, name, platform }` (`name`/`platform` fall back to the web page's suggestion) | `200 { token, device: { id, name, platform }, user: { id, username } }` · `410 EXPIRED_TOKEN` for used, expired or unknown codes |
+| POST | `/webauthn/options` | none (40 / 15 min) | `{ username? }` | Security key sign-in, see [clients.md](clients.md#10-security-key-sign-in) → `{ challengeId, origin, options }`; `options` are for `navigator.credentials.get`, `origin` is the public origin the key's `clientDataJSON` must name. `409 NO_SECURITY_KEYS` while no key is registered for this host |
+| POST | `/webauthn/verify` | none (40 / 15 min) | `{ challengeId, response, name, platform }` | `200 { token, device: { id, name, platform }, user: { id, username } }` like `/token` · `200 { requiresTwoFactor: true, challengeId }` for a presence-only key on an account with 2FA · `400 SECURITY_KEY_CHALLENGE_EXPIRED` (unknown, used or older than 5 minutes; every challenge is spent by its first verify) · `401 SECURITY_KEY_UNKNOWN` · `401 SECURITY_KEY_REJECTED` (wrong origin, RP ID, challenge or signature) · `400 NAME_REQUIRED` |
+| POST | `/webauthn/2fa` | none (40 / 15 min) | `{ challengeId, code }` | TOTP or recovery code within 10 minutes, at most 5 per sign-in → the token answer above · `401 INVALID_CODE` · `401 TWO_FACTOR_EXPIRED` (also after the fifth wrong code) · `429 LOGIN_LOCKED` |
 | GET | `/me` | bearer only | | `{ device: { id, name, platform, createdAt, lastSeenAt }, user: { id, username, isAdmin }, quota: { used, limit } }`; `limit` -1 = unlimited |
 
 `platform` is one of `windows`, `macos`, `linux`, `android`, `ios`, `lite`, `webdav` (an app password for WebDAV)
 or empty. `verificationUrl` is `<PUBLIC_URL origin or request origin>/app/device?code=ABCD-EFGH`.
 
-## Settings — `/api/settings` (session only)
+## Settings — `/api/settings` (session or phone)
 
 `GET /` and `PUT /` with any of: `language` (`de`/`en`/`null`), `theme`
 (`system`/`light`/`dark`), `fileView` (`list`/`grid`), `sortField`
 (`name`/`size`/`modified`/`type`), `sortOrder` (`asc`/`desc`),
-`showHiddenFiles`, `confirmDelete`, `uploadConflict` (`ask`/`replace`/`rename`).
+`showHiddenFiles`, `confirmDelete`, `uploadConflict` (`ask`/`replace`/`rename`),
+and the AI keys ([docs/ai.md](ai.md)): `ai_opt_in` (boolean, default `false`),
+`ai_model_text` · `ai_model_smart` · `ai_model_vision` · `ai_model_embedding`
+· `ai_model_transcription` (`"auto"` or a `provider::model` id, default
+`"auto"`), `ai_features` (an object of up to 32 booleans, default `{}`; a
+missing key takes its default: `names`, `folders`, `tags`, `summaries` and
+`newTags` default `true`, `onUpload`, `autoApplyHighConfidence` and
+`newFolders` default `false`, see [AI](#ai--apiai-session-or-phone)) and
+`ai_naming_template` (1–200 characters, no slashes, default
+`"{date} {issuer} – {subject}"`; placeholders `{date}` `{year}` `{month}`
+`{issuer}` `{subject}` `{type}` `{amount}` `{currency}` `{original}`). Unknown keys
+answer `400 UNKNOWN_SETTING`, bad values `400 INVALID_SETTING_VALUE`.
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| GET | `/meta/models` | | `{ models: [model] }`, every kind this account can see (below) |
+| GET | `/meta/ai-providers` | | `{ providers: [{ id, label, description, authentication, supportsApiKey, supportsBaseUrl, requiresBaseUrl, defaultBaseUrl, available, connected, healthy, credentialConfigured, baseUrlConfigured, baseUrl, customLabel, isByok, status, statusLabel, availabilityReason, modelCount, availableModelCount }] }`. A base URL from the server's environment is shown to admins only |
+| GET | `/byok` | | `{ providers: [byokProvider] }`: the providers a person can bring a key for (not NeoRouter) |
+| GET | `/byok/:providerId` | | `{ provider: byokProvider }` |
+| PUT | `/byok/:providerId` | `{ apiKey, baseUrl?, label? }` | `{ success: true, configured: true }`. The key is stored encrypted and never shown again. `400 API_KEY_REQUIRED`, `400 BASE_URL_REQUIRED` (custom endpoint, Ollama), `400 INVALID_URL`, `400 URL_NOT_ALLOWED` (the address is or resolves to loopback/private/link-local, unless it is the admin's own address for that provider), `404 UNKNOWN_PROVIDER` |
+| DELETE | `/byok/:providerId` | | `{ success: true, configured: false }` |
+| POST | `/byok/:providerId/test` | `{ apiKey?, baseUrl? }` (empty: the saved setup) | `{ success: true, ok: true, message }` or `{ success: true, ok: false, error }`; lists the provider's models, stores nothing. Same `400`s as PUT |
+
+PUT, DELETE and test share a limit of 30 per 15 minutes (`429 RATE_LIMITED`).
+
+`byokProvider`: `{ id, label, description, supportsApiKey, supportsBaseUrl,
+requiresBaseUrl, defaultBaseUrl, isCustomEndpoint, configured, baseUrl,
+customLabel }` (`baseUrl`/`customLabel` only when it is the person's own).
+
+`model`: `{ id: "provider::model", modelId, provider, label, kind:
+"chat"|"embedding"|"transcription", createdAt, supportsTools, supportsVision,
+purpose, priceTier: "free"|"cheap"|"medium"|"expensive"|null, inputCostPerM,
+available, providerStatus, providerStatusLabel, isByok, byokLabel,
+adminGranted }`. NeoRouter's auto models are `neorouter::auto:<profile>`
+(plain auto is `auto:default`); one id can appear once per kind.
+
+## AI — `/api/ai` (session or phone)
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| GET | `/status` | | `{ available, enabled, optedIn, roles: { text, smart, vision, embedding, transcription }, budget: { used, limit } }`. Each role: `{ ready, model, source: "user"\|"neorouter"\|"auto"\|null, requestedUnavailable }`. `available`: the admin switch is on and some role has a model. While the switch is off no provider is asked and every role is `ready: false`. `budget`: this month's tokens and the account's limit (`null`: none) |
+| PUT | `/folders/:id/excluded` | `{ excluded }` (boolean) | `{ node }` with `aiExcluded`. Owner only (another account's folder `404`); `400 NOT_A_FOLDER`, `400 ROOT_FOLDER`, `400 INVALID_VALUE`. Inherited by everything below the folder |
+
+Errors AI features answer with: `403 AI_DISABLED` (admin switch off), `403
+AI_NOT_OPTED_IN`, `429 AI_BUDGET_EXCEEDED`, `503 AI_MODELS_UNAVAILABLE` (no
+model for the role), `502 AI_PROVIDER_ERROR`, `502 AI_BAD_JSON`, and for a
+file `403 AI_VAULT` (vault content) or `403 AI_EXCLUDED` (inside an excluded
+folder), `403 AI_FEATURE_OFF` (the person switched that feature off).
+
+### Suggestions, jobs, rules and summaries
+
+Every id here is one of the account's own: another account's file,
+suggestion or rule, and a file only shared with the caller, answer `404`.
+Feature switches (`ai_features`): `names` (rename suggestions), `folders`
+(move suggestions), `tags`, `summaries`, `onUpload` (new files get a job by
+themselves), `autoApplyHighConfidence` (high-tier suggestions are applied at
+once, listed as `applied`), `newTags` (tags beyond the ones the account
+already has), `newFolders` (moves into a folder that doesn't exist yet).
+
+| Method | Path | Body / query | Answer |
+| --- | --- | --- | --- |
+| GET | `/suggestions` | `kind` (`rename`,`move`,`tags`), `tier` (`high`,`medium`,`low` or `all`; default high,medium), `status` (default `pending`), each comma-separated; `nodeId`, `limit` (50, max 200), `offset` | `{ items: [suggestion], total, nextOffset, counts }`, newest first |
+| GET | `/suggestions/counts` | | `counts`: `{ pending: { rename, move, tags, total }, high, hiddenLow, proposals }` (pending high + medium per kind; low ones counted apart; open rule proposals) |
+| POST | `/suggestions/:id/accept` | `{ value? }`: replaces the proposal: a name (rename), a folder id (move), a tag list (tags) | `{ suggestion }` with `status: "accepted"`. `409 AI_SUGGESTION_STALE` (the file changed; it is now `stale`), `409 AI_SUGGESTION_DECIDED`, `409 AI_TARGET_NOT_ALLOWED` (vault or excluded folder), `409 SHARE_BOUNDARY`, `400 NAME_*`, `400 INVALID_VALUE` |
+| POST | `/suggestions/:id/reject` | | `{ suggestion }` with `status: "rejected"` (pending or stale ones) |
+| POST | `/suggestions/accept-high` | `{ kind? }` (comma-separated) | `{ accepted, failed: [{ id, code }] }`: every pending high-tier one |
+| POST | `/suggestions/:id/undo` | | `{ suggestion }` with `status: "undone"`: an `accepted` or `applied` one is put back (name, folder or tags) if the file is still as it left it, else `409 AI_UNDO_CONFLICT` (or `409 NAME_EXISTS` when the old name is taken); `409 AI_NOT_UNDOABLE` for other states |
+| POST | `/jobs` | `{ nodeIds: [fileId] }` or `{ folderId }`, `kinds?: ["names","folders","tags"]` (default: every switched-on kind) | `202 { batchId, queued }`. `nodeIds` (1–1000 files): their names are suggested even when they already read well. `folderId`: a backfill of every file below it (at most 5000, else `413 TOO_MANY_FILES`) skipping vaults and excluded folders, renaming only meaningless names. `403 AI_VAULT` / `AI_EXCLUDED` for a listed file, `400 NOT_A_FILE`, `400 INVALID_KINDS`, `400 INVALID_REQUEST`, `403 AI_FEATURE_OFF`, `403 AI_DISABLED` / `AI_NOT_OPTED_IN` |
+| GET | `/jobs` | `batchId?` | `{ pending, running, done, skipped, failed, paused, batches: [{ id, createdAt, total, pending, done, skipped, failed }] }` (the last 10 requests, or the one asked for; unknown `404`). `paused`: why pending jobs wait (`AI_DISABLED`, `AI_NOT_OPTED_IN`, `AI_BUDGET_EXCEEDED`) or null. Finished jobs are kept 7 days |
+| GET | `/rules` | | `{ rules: [rule] }`, in the order they are tried |
+| POST | `/rules` | `{ name, match: { type?, issuer?, extension?, namePattern? }, targetFolderId, enabled? }` | `201 { rule }`. At least one condition (`400 INVALID_RULE`); the target must be the account's folder outside vaults and excluded folders (`409 AI_TARGET_NOT_ALLOWED`); at most 200 rules |
+| PATCH | `/rules/:id` | any field of POST | `{ rule }` |
+| DELETE | `/rules/:id` | | `{ success: true }` |
+| GET | `/rules/proposals` | | `{ proposals: [{ id, type, issuer, targetFolderId, targetPath, accepts, name }] }`: after 3 accepted moves of the same type and issuer into one folder, unless such a rule exists or it was dismissed |
+| POST | `/rules/proposals/:id` | `{ name? }` | `201 { rule }` matching type and issuer |
+| DELETE | `/rules/proposals/:id` | | `{ success: true }`: not offered again |
+| POST | `/files/:id/summary` | `{ refresh? }` | `{ summary, model, etag, createdAt, cached }`. Kept per content (`etag`) until `refresh: true`. Smart role (images: vision). `422 AI_NO_CONTENT`, `400 NOT_A_FILE`, plus the AI errors above |
+
+`POST /jobs` and `POST /files/:id/summary` share a limit of 300 per 15
+minutes (`429 RATE_LIMITED`).
+
+`suggestion`: `{ id, nodeId, kind, from, to, reason, confidence (0–1), tier,
+status, source: "ai"|"rule", ruleId, model, createdAt, decidedAt, node }`.
+`from`/`to`: a file name (`rename`), `{ id, path }` (`move`; a new folder
+is `{ id: null, parentId, name, path }` and is created on accept), a tag
+list (`tags`). `node`: the file now, with `path`, or null once deleted.
+Tiers: `high` ≥ 0.85 (rules always), `medium` ≥ 0.6, `low` below (hidden by
+default). Statuses: `pending`, `accepted`, `rejected`, `applied` (auto-apply),
+`undone`, `stale` (the file got new content, or another name for a rename,
+another folder for a move, or went to the trash).
+
+`rule`: `{ id, name, match: { type, issuer, extension, namePattern },
+targetFolderId, targetPath, enabled, createdAt }`. `type` and `issuer`
+compare case-insensitively with what the extraction found, `extension`
+without the dot, `namePattern` is a glob (`*`, `?`) over the whole name.
+
+Applying goes through the normal file operations: the change journal and
+`files:changed` as for any rename or move, `conflict: rename` for name
+clashes. Whenever counts change the account's sockets get **`ai:suggestions`**
+with `counts` as payload.
+
+
+## NeoRouter — `/api/neorouter` (session or phone)
+
+"Connect NeoRouter" with NeoRouter's device sign-in. `scope` is `server` (the
+server's connection, admins only, else `403 ADMIN_REQUIRED`) or `user` (the
+person's own, stored like a BYOK key). Roles: `chat`, `embeddings`,
+`transcription`, `images`.
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| GET | `/` | | `{ roles, isAdmin, server, user }`. A connection: `{ connected, address, roles, offer: { roles: { chat: n, … }, notAllowed: { … } } \| null, reachable }`; non-admins get `server: { connected }` only |
+| POST | `/connect` | `{ scope, address }` | `{ id, url, userCode }`: open `url` (NeoRouter's approval page) and compare `userCode`. `400 INVALID_SCOPE`, `400 INVALID_ADDRESS`, `400 NEOROUTER_UNREACHABLE`; a `user` address on a private network that isn't the server's own NeoRouter `400 URL_NOT_ALLOWED` |
+| GET | `/connect/:id` | | `{ status: "pending"\|"completed"\|"failed", error }`; only to the account that started it, and a finished result only once (then `404`) |
+| PUT | `/:scope/roles` | `{ roles: [...] }` | `{ roles }` (unknown roles dropped) |
+| DELETE | `/:scope` | | `{ success: true }` |
+
+`POST /connect`, `PUT` and `DELETE` share a limit of 30 per 15 minutes.
 
 ## Files
 
@@ -174,7 +304,7 @@ or empty. `verificationUrl` is `<PUBLIC_URL origin or request origin>/app/device
 | POST | `/folders` | `{ parentId, name, conflict? }` or `{ parentId, path: "a/b/c" }` | `path` creates missing folders and returns the deepest |
 | GET | `/nodes/:id` | | Node plus breadcrumbs |
 | PATCH | `/nodes/:id` | `{ name?, parentId?, conflict? }` | Rename and/or move |
-| POST | `/nodes/:id/copy` | `{ parentId?, name?, conflict? }` | Defaults to "name (1)" beside the original. Copies share storage. More than `NEOCLOUD_MAX_COPY_NODES` (50 000) files and folders: `413 COPY_TOO_LARGE`, nothing copied |
+| POST | `/nodes/:id/copy` | `{ parentId?, name?, conflict? }` | Defaults to "name (1)" beside the original. Copies share storage. A vault folder inside a copied folder is left out with its contents (the vault itself can't be copied: `409 VAULT_BOUNDARY`). More than `NEOCLOUD_MAX_COPY_NODES` (50 000) files and folders: `413 COPY_TOO_LARGE`, nothing copied |
 | DELETE | `/nodes/:id` | | To the trash |
 | GET | `/files/:id/versions` | | |
 | POST | `/files/:id/versions/:version/restore` | | |
@@ -201,7 +331,15 @@ account itself reads (listings, node, search, recent, favorites, trash,
 storage, the result of rename/move/copy/upload/restore), `favorite: bool`
 and `shared: bool` (shared with at least one other account). The sync feeds
 (`/api/sync/*`) leave both out; members of a shared folder never see
-`shared`.
+`shared`. Nodes read outside the sync feeds also carry `aiExcluded: bool`
+(the folder was excluded from AI by its owner, see
+[AI](#ai--apiai-session-or-phone); it applies to everything below it too). They also carry
+`aiTags` (the AI tags the owner accepted, `[]` when none) and `aiMeta` (what
+the extraction found in the current content, null when nothing or the
+content changed since: `{ date, dateSource: "content"|"exif"|"filename"|"modified",
+issuer, subject, type, amount, currency, tags, language, summary, caption,
+confidence: { date, issuer, subject, type, amount, tags }, overall, model }`).
+Members of a shared folder see neither.
 
 **Paging.** `limit` defaults to 500, at most 2000. While more follow,
 `nextCursor` is a string to pass back as `cursor` (with the same `sort` and
@@ -210,7 +348,9 @@ keyset-based: every sort (`name`, `size`, `modified`, `type`; `asc`/`desc`)
 is a total order (ties by name, then id), so items added or removed meanwhile
 never shift or repeat a page. `offset` still works without a cursor.
 
-**Search.** Every word of `q` must appear in the name (case-insensitive).
+**Search.** Every word of `q` must appear in the name (case-insensitive),
+or in the node's AI tags and extracted words (issuer, subject, type,
+caption); such matches rank with the rest.
 Ranking: exact name (or exact name without extension), then names starting
 with `q`, then names with a word starting with `q` (after a space, `-`, `_`,
 `.` or `(`), then the rest; within each, most recently modified first. `q`
@@ -409,7 +549,7 @@ the shared subtree, live and outside any vault; anything else is `404`.
 | GET | `/` `?folderId=` | `{ share: { name, type, size, mode, allowUpload, expiresAt, hasPassword, sharedBy, host, note }, node, path, items }`. `path` runs from the shared folder down to `folderId`; `items` is empty for a file link and for `upload_only` |
 | POST | `/unlock` | `{ password }` → `{ success: true }` and a 1-hour `nc_share_unlock` cookie scoped to the link's path. 20 / 15 min per address, plus the per-link throttle below |
 | GET | `/files/:nodeId/content` `?download=1` | Range, `If-None-Match`, `HEAD`, sandbox CSP as for owners. Counts as a download only with `download=1` |
-| GET | `/zip` `?folderId=` | the shared folder (or a folder inside it, or the shared file) as ZIP; vault folders are left out. Counts as a download |
+| GET | `/zip` `?folderId=` | the shared folder (or a folder inside it, or the shared file) as ZIP; vault folders are left out. Counts as a download (a `HEAD` does not) |
 | PUT | `/upload?name=&folderId=` | raw body, only in `view_upload` and `upload_only` (`403 UPLOAD_NOT_ALLOWED`). Never replaces: a taken name becomes `name (1)`. Answers the new item; on an `upload_only` link just `{ name, size }` with the name as sent. Counts against the owner's quota (`413`) and the link's `maxUploadBytes`. Optional `X-Content-SHA256`. 100 / 15 min |
 
 `sharedBy` is the owner's username, `host` the host name the link points to
@@ -466,7 +606,11 @@ ETAG_MISMATCH` if the file changed meanwhile).
    last part: the rest). Any order, repeat freely.
 3. `GET /api/uploads/:id` shows which parts arrived (resume after a drop).
 4. `POST /api/uploads/:id/complete` `{ baseEtag? }` → the file node.
+   While one complete runs, another complete or a cancel of the same upload
+   answers `409 UPLOAD_COMPLETING`; once it is done, `404 UPLOAD_NOT_FOUND`.
 5. `DELETE /api/uploads/:id` cancels. Unfinished uploads expire after 24 h.
+   A part still arriving when its upload is cancelled answers
+   `404 UPLOAD_NOT_FOUND` and is discarded.
 
 `413 QUOTA_EXCEEDED` or `413 FILE_TOO_LARGE` when it does not fit.
 `507 DISK_FULL` when the server's storage disk would drop below
@@ -502,7 +646,7 @@ takes its whole subtree with it. File `etag` is the SHA-256 of the content.
 
 The web app also receives a socket.io event `files:changed` `{ folderIds }`.
 
-## Imports — `/api/imports` (session only)
+## Imports — `/api/imports` (session or phone)
 
 Imports from hosts that resolve to a private, loopback or link-local address
 are admin-only (`403 IMPORT_HOST_BLOCKED`) unless `NEOCLOUD_IMPORT_ALLOW_PRIVATE=true`.
@@ -513,7 +657,7 @@ background. The contract is [clients.md §7](clients.md#7-imports-nextcloud-and-
 | Method | Path | Body | Notes |
 | --- | --- | --- | --- |
 | POST | `/imports/test` | `{ source, url, username, password, sourcePath? }` | → `{ ok, files, bytes, error?, code? }`. Rate-limited (20 per 15 min per address). Writes nothing |
-| POST | `/imports` | `{ source: "nextcloud"\|"webdav", url, username, password, sourcePath?: "/", targetFolderId?, includeFavorites?: true }` | `201 job`, queued at once |
+| POST | `/imports` | `{ source: "nextcloud"\|"webdav", url, username, password, sourcePath?: "/", targetFolderId?, includeFavorites?: true }` | `201 job`, queued at once. Rate-limited together with resume (20 per 15 min per address) |
 | GET | `/imports` | | `{ items: [job] }`, newest first |
 | GET | `/imports/:id` | | job |
 | POST | `/imports/:id/pause` | | queued/scanning/running → `paused`; keeps the password |
@@ -574,17 +718,44 @@ address actually connected to.
 The web app receives a socket.io event `imports:changed` `{ id }` on status
 changes and at most once a second while a job makes progress.
 
-## Admin — `/api/admin` (admin session)
+Your data (`/export`, `/delete`): both ask for the password again
+(`401 WRONG_PASSWORD`) and, with 2FA on, a TOTP or recovery code
+(`401 TWO_FACTOR_REQUIRED` / `INVALID_CODE`). The export
+(`kind: "neocloud-account"`, `format: 1`) holds `profile`, `storage`,
+`settings`, `security` (2FA on/off, passkey labels and dates), `sessions`,
+`devices`, `links`, `sharing` (`byMe`, `withMe`), `files` (every file and
+folder, flat with `parentId`, files with their earlier `versions`),
+`favorites`, `vaults`, `imports` and `audit` entries by or about the account.
+File contents are not included (download the files or a ZIP), nor anything
+that works as a credential: no password or code hashes, 2FA secrets, link
+tokens or passwords, device token hashes, passkey keys, vault keys or import
+passwords. `/delete` needs `confirmUsername` to repeat the username (any case;
+`400 CONFIRMATION_MISMATCH`) and refuses the last active admin
+(`409 LAST_ADMIN`). It removes the files and folders with their versions,
+previews, blobs on disk and search index entries, share links, shares with
+other accounts in both directions (those accounts get `shares:changed` and
+`files:changed`), vaults, imports (running ones are stopped) with their stored
+passwords, upload sessions and their parts, sessions, device tokens, WebDAV
+app passwords, device logins, pairing and QR sign-in codes, passkeys and 2FA.
+Rows go in one transaction; files on disk are removed after it commits.
+
+## Admin — `/api/admin` (admin session or phone)
+
+A browser session or the phone app's token (`android`/`ios`) of an admin
+account; the admin flag is read on every request. Anything else, desktop
+tokens included, gets `403 ADMIN_REQUIRED`.
 
 | Method | Path | Body |
 | --- | --- | --- |
 | GET | `/health` · `/logs` · `/audit` · `/version` | `/health`: counts, disks, `database` (`ok`\|`damaged`\|`pending`, the last daily `quick_check`), `databaseCheckedAt`, `damagedBlobs` (weekly blob scrub), `blobScrubCycleAt`, `minFreeDiskBytes` |
-| GET | `/users?q=` | |
+| GET | `/users?q=` | `{ users: [{ id, username, displayName, email, isAdmin, disabled, disabledAt, usedBytes, quotaBytes, quotaMode, fileCount, aiMonthlyTokens, createdAt, lastLogin }] }`. `aiMonthlyTokens`: the account's own AI token budget (`null` follows the server default, `0` is no limit) |
 | PUT | `/users/:id/quota` | `{ mode: "default"\|"unlimited"\|"custom", bytes? }` (`"50GB"` works) |
-| PUT | `/users/:id/admin` | `{ isAdmin }` |
+| PUT | `/users/:id/admin` | `{ isAdmin }`: a boolean; anything else `400 INVALID_VALUE` |
 | POST | `/users/:id/password` | `{ password }` — signs the account out everywhere: browser sessions (and their sockets), device tokens, WebDAV app passwords, approved device logins and open pairing codes |
 | POST | `/users/:id/usage/recalculate` | |
-| DELETE | `/users/:id` | Not for admins; deletes all their files |
+| PUT | `/users/:id/disabled` | `{ disabled }`: a boolean (else `400 INVALID_VALUE`) → the user. Disabling ends the account's sessions and device tokens at once (they stay ended after enabling); while disabled every sign-in (password, 2FA, passkey, QR sign-in, device login, pairing, device security key, WebDAV) answers `403 ACCOUNT_DISABLED` once the credential is right, any session or token still held answers `401`, and its share links answer `404`. `400 CANNOT_DISABLE_SELF`, `409 LAST_ADMIN` |
+| DELETE | `/users/:id/sessions` | Sign out everywhere: ends every browser session (and socket) and revokes every device token and WebDAV app password → `{ success, sessions, devices }` (counts). For your own account the session or phone asking stays |
+| DELETE | `/users/:id` | Not for admins; deletes the account like `POST /api/account/delete` |
 | GET / PUT | `/config/storage` | `defaultQuotaBytes`, `maxUploadBytes`, `trashRetentionDays`, `versionRetention` |
 | POST | `/storage/recalculate` | |
 | GET | `/access` · PUT `/access/signup` | `{ allowSignup }` — off refuses every registration but the first account's |
@@ -592,9 +763,17 @@ changes and at most once a second while a job makes progress.
 | GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun` and `lastVerification` (below, or null) |
 | POST | `/backups/targets` | `{ name, type: local\|sftp\|s3\|webdav, config, schedule: manual\|daily\|weekly, hour, weekday, retention }` |
 | PUT / DELETE | `/backups/targets/:id` | an empty secret keeps the stored one |
-| POST | `/backups/targets/:id/test` · `/backups/targets/:id/run` | run answers 202 and works in the background |
+| POST | `/backups/targets/:id/test` · `/backups/targets/:id/run` | run answers 202 and works in the background; `404 NOT_FOUND` for an unknown target, `409 BACKUP_RUNNING` while a run to it is going (in the server or `neocloud backup run`) |
 | POST | `/backups/targets/:id/verify` | checks the newest snapshot → `{ verifiedAt, ok, snapshot, database, blobsChecked, missingBlobs, error }` |
 | GET | `/backups/targets/:id/snapshots` | finished snapshots, newest first |
+| GET | `/providers` | `{ providers: [{ key, label, type: "key"\|"url", configured, hint }] }`: AI provider env keys; `hint` is the masked key (`sk-a••••1234`) or the URL |
+| PUT | `/providers` | `{ key, value }`: sets one (`""` clears it). `400 UNKNOWN_PROVIDER`, `400 INVALID_URL`. URLs may be on the LAN |
+| GET | `/models` | `{ models: [model], disabledModels, autoEnableNewModels }`: the server's catalog (its own credentials); records newly seen models and, with auto-enable off, disables them |
+| PUT | `/models/config` | `{ disabledModels: [id], autoEnableNewModels? }` → `{ ok, disabledModels, autoEnableNewModels }` |
+| GET / PUT | `/users/:id/allowed-models` | PUT `{ modelIds: [id] \| null }`: models granted to the account although disabled for everyone; `400 UNKNOWN_MODEL` for an id not in the catalog. GET answers `{ modelIds, monthlyTokens }`, `monthlyTokens` being the account's budget override as in the user list (`null`: server default, `0`: no limit) |
+| PUT | `/users/:id/ai-budget` | `{ monthlyTokens }`: a positive number, `0` (no limit) or `null` (server default) → `{ userId, monthlyTokens }` |
+| GET / PUT | `/ai` | `{ enabled, monthlyTokens }`: AI on/off for the server (default off) and the default monthly token budget per account (`null`: none). Each field optional on PUT |
+| GET | `/ai/usage` | This month: `{ since, users: [{ userId, username, tokens, calls, errors, limit }], features: [{ feature, tokens, calls }], models: [{ provider, model, tokens, calls, avgLatencyMs }] }` |
 
 Backup `config` per type: `local { path }`, `sftp { host, port, username,
 password | privateKey, passphrase, path }`, `s3 { endpoint, region, bucket,
@@ -677,9 +856,9 @@ Off until an admin turns it on; each account can opt out.
 
 | Method | Path | Body / query | Notes |
 | --- | --- | --- | --- |
-| GET / PUT | `/api/admin/config` | `{ fullTextSearch: bool }` | Admin session. Off by default (`NEOCLOUD_FULL_TEXT_SEARCH` in `.env`). Off pauses the indexer and search ignores content; the index is kept |
-| GET | `/api/admin/search-index` | | Admin session. `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office } }`. `bytes`: encrypted texts plus FTS pages. `office` is always `true` (built-in zip reader) |
-| POST | `/api/admin/search-index/rebuild` | | Admin session. `202` with the status: the index is emptied and every file read again in the background |
+| GET / PUT | `/api/admin/config` | `{ fullTextSearch: bool }` | Admin session or phone. Off by default (`NEOCLOUD_FULL_TEXT_SEARCH` in `.env`). Off pauses the indexer and search ignores content; the index is kept |
+| GET | `/api/admin/search-index` | | Admin session or phone. `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office } }`. `bytes`: encrypted texts plus FTS pages. `office` is always `true` (built-in zip reader) |
+| POST | `/api/admin/search-index/rebuild` | | Admin session or phone. `202` with the status: the index is emptied and every file read again in the background |
 | GET / PUT | `/api/settings` | `{ fullTextSearch: bool }` | Per account, default `true`. `false` drops the account's entries on the next indexer pass and stops indexing its files |
 | GET | `/api/search` | `content=1` plus everything above | Adds content matches, see below |
 

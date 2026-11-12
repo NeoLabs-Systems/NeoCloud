@@ -17,6 +17,8 @@ class _ItemCallbacks {
     this.isCut,
     this.showPath = false,
     this.hitFor,
+    this.aiPending,
+    this.onAiSuggestion,
   });
 
   final bool Function(String id) isSelected;
@@ -49,6 +51,13 @@ class _ItemCallbacks {
 
   /// Content search: why a result matched and its snippet.
   final SearchHit? Function(String id)? hitFor;
+
+  /// Whether a file has a pending AI suggestion (the sparkle chip), and
+  /// what tapping the chip does.
+  final bool Function(String id)? aiPending;
+  final ValueChanged<FileNode>? onAiSuggestion;
+
+  bool hasAiSuggestion(String id) => onAiSuggestion != null && (aiPending?.call(id) ?? false);
 
   bool get canDrag => dragSubject != null && onDropInto != null;
 }
@@ -87,6 +96,7 @@ String _describeNode(FileNode node) {
   if (modified.isNotEmpty) parts.add(modified);
   if (node.favorite) parts.add(appStrings.filesFavorite);
   if (node.shared) parts.add(appStrings.sharedWithPeople);
+  if (node.aiExcluded) parts.add(appStrings.aiFolderExcludedTag);
   return parts.join(', ');
 }
 
@@ -133,7 +143,9 @@ class _FileRowState extends State<_FileRow> {
       bottom: Radius.circular(widget.last ? AppRadius.card : 0),
     );
     final path = callbacks.showPath ? _displayPath(node) : null;
-    final secondLine = path ?? (widget.wide ? null : '$meta · ${formatDate(node.modifiedAt, locale)}');
+    final date = formatDate(node.modifiedAt, locale);
+    // A folder has no size worth a dash on the phone's second line.
+    final secondLine = path ?? (widget.wide ? null : (node.isFolder ? date : '$meta · $date'));
     final hit = callbacks.hitFor?.call(node.id);
     final snippet = hit?.snippet;
     return _DragDrop(
@@ -191,6 +203,10 @@ class _FileRowState extends State<_FileRow> {
                                   ),
                                   if (node.favorite) ...<Widget>[const SizedBox(width: 6), Icon(Icons.star_rounded, size: 15, color: _accent)],
                                   if (node.shared) ...<Widget>[const SizedBox(width: 6), const _SharedMark(size: 15)],
+                                  if (callbacks.hasAiSuggestion(node.id)) ...<Widget>[
+                                    const SizedBox(width: 8),
+                                    _AiSuggestionChip(onTap: () => callbacks.onAiSuggestion!(node)),
+                                  ],
                                   if (hit != null) ...<Widget>[const SizedBox(width: 8), _MatchBadge(match: hit.match)],
                                 ],
                               ),
@@ -289,6 +305,10 @@ class _FileTile extends StatelessWidget {
                         const Spacer(),
                         if (node.favorite) Icon(Icons.star_rounded, size: 16, color: _accent),
                         if (node.shared) const _SharedMark(size: 16),
+                        if (callbacks.hasAiSuggestion(node.id)) ...<Widget>[
+                          const SizedBox(width: 4),
+                          _AiSuggestionChip(compact: true, onTap: () => callbacks.onAiSuggestion!(node)),
+                        ],
                         _FileActionsMenu(actions: actions, title: node.name, node: node),
                       ],
                     ),

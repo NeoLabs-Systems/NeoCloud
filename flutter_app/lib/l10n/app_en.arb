@@ -250,9 +250,13 @@
   "previewTooLarge": "This file is too large to preview here.",
   "details": "Details",
   "settingsTitle": "Settings",
-  "settingsScopeAccount": "ACCOUNT",
-  "settingsScopeApp": "THIS DEVICE",
+  "settingsScopeAccount": "You",
+  "settingsScopeApp": "This app",
   "settingsAccountHint": "Saved to your account",
+  "settingsDeviceHint": "Applies to this device",
+  "settingsSearchHint": "Search settings",
+  "settingsTwoFactorOn": "2FA on",
+  "settingsTwoFactorOff": "2FA off",
   "settingsSaveHint": "Changes save automatically",
   "settingsSaveFailed": "Couldn’t save the last change",
   "pageProfile": "Profile",
@@ -274,6 +278,7 @@
   "roleUser": "User",
   "signOut": "Sign out",
   "signOutDescription": "End this session on this device.",
+  "disconnectDescription": "Sign this phone out of NeoCloud; it forgets its access and camera upload turns off.",
   "changePassword": "Change password",
   "currentPassword": "Current password",
   "newPassword": "New password",
@@ -296,6 +301,7 @@
   "recoveryCodesMessage": "Each code signs you in once if you lose your phone. They won’t be shown again.",
   "sessionsTitle": "Active sessions",
   "sessionCurrent": "This session",
+  "deviceCurrent": "This device",
   "sessionLastSeen": "Last active {date}",
   "@sessionLastSeen": {
     "placeholders": {
@@ -342,6 +348,23 @@
   "adminTabAccess": "Access",
   "adminTabServer": "Server",
   "adminUsersTitle": "Accounts",
+  "adminUsersCount": "{count, plural, =1{1 account} other{{count} accounts}}",
+  "@adminUsersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminUserYou": "{name} (you)",
+  "@adminUserYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSearchHint": "Search admin settings",
   "adminSearchUsers": "Search by name or email",
   "adminQuotaDefault": "Default ({size})",
   "@adminQuotaDefault": {
@@ -376,6 +399,51 @@
       }
     }
   },
+  "adminUserDisabled": "Disabled",
+  "adminDisableUser": "Disable",
+  "adminEnableUser": "Enable",
+  "adminSignOutEverywhere": "Sign out everywhere",
+  "adminSignOutEverywhereTitle": "Sign out {name} everywhere?",
+  "@adminSignOutEverywhereTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSignOutEverywhereMessage": "Every active session for this account ends, and its devices and WebDAV app passwords stop working. They can sign in again right away.",
+  "adminSignedOutEverywhere": "Signed {name} out of every session.",
+  "@adminSignedOutEverywhere": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDataTitle": "Your data",
+  "accountExportTitle": "Export account data",
+  "accountExportHint": "Your profile, sessions, devices, links, shares and the list of your files and folders as one file. File contents are not included: download your files, or a folder as ZIP, to keep them. Passwords and keys are not included.",
+  "accountExport": "Export",
+  "accountExported": "Downloaded.",
+  "accountDeleteTitle": "Delete account",
+  "accountDeleteHint": "Deletes your account with all files, versions, links, shares and devices. People you shared with lose access. This cannot be undone.",
+  "accountDelete": "Delete account",
+  "accountDeleteConfirm": "Everything in this account is deleted for good. Export your data first if you want to keep it.",
+  "accountDeleteTypeUsername": "Type your username {name} to confirm.",
+  "@accountDeleteTypeUsername": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDeleted": "Your account was deleted.",
+  "accountConfirmPassword": "Enter your password to continue.",
+  "accountConfirmPasswordCode": "Enter your password and a code from your authenticator app.",
+  "accountWrongPassword": "The password is not correct.",
+  "accountWrongCode": "The code is not valid.",
+  "accountLastAdmin": "You are the only admin. Make someone else an admin first.",
+  "accountConfirmMismatch": "The username doesn't match.",
   "adminFilesCount": "{count} files",
   "@adminFilesCount": {
     "placeholders": {
@@ -412,7 +480,7 @@
   "officePreviewUnavailable": "There’s no preview for this file. Download it to open it.",
   "play": "Play",
   "pause": "Pause",
-  "mediaUnavailable": "This file can’t be played in the browser.",
+  "mediaUnavailable": "This file can’t be played here.",
   "adminTabBackups": "Backups",
   "backupTargets": "Backup targets",
   "backupTargetsDescription": "Copies of every file and the database, encrypted, on another disk or server. Only new files are uploaded each time.",
@@ -475,6 +543,8 @@
   "backupRunning": "Backing up…",
   "backupDeleteMessage": "The target is removed from NeoCloud. Backups already on it stay there.",
   "backupHistory": "Recent runs",
+  "adminBackupRunOk": "Finished",
+  "adminBackupRunFailed": "Failed",
   "backupRestoreHint": "Restore with the CLI while NeoCloud is stopped: neocloud backup restore <id> <snapshot>. You need the master key.",
   "adminPreviews": "Previews",
   "adminPreviewsValue": "Images: yes · Office: {office}",
@@ -551,7 +621,7 @@
   },
   "openNeoCloud": "Open NeoCloud",
   "connectTitle": "Connect to NeoCloud",
-  "connectSubtitle": "Enter the address of your NeoCloud server. You then approve this device in your browser.",
+  "connectSubtitle": "Enter the address of your NeoCloud server, then sign in.",
   "connectServerLabel": "Server address",
   "connectButton": "Connect",
   "connectInvalidServer": "Enter a server address such as https://cloud.example.com.",
@@ -599,7 +669,7 @@
     }
   },
   "editorOverwrite": "Save anyway",
-  "vaultNoMediaPreview": "Vault videos and audio can’t be played in the browser. Download the file to play it.",
+  "vaultNoMediaPreview": "Vault videos and audio can’t be played directly. Download the file to play it.",
   "shareLink": "Share",
   "newVault": "New vault",
   "vaultLock": "Lock",
@@ -681,7 +751,7 @@
   "pageCameraUploadDescription": "Upload new photos and videos from this phone automatically.",
   "disconnect": "Disconnect",
   "disconnectTitle": "Disconnect this device?",
-  "disconnectMessage": "This device forgets its access to {server} and camera upload turns off. To connect again you approve it once more in the browser.",
+  "disconnectMessage": "This device forgets its access to {server} and camera upload turns off. To connect again you sign in once more.",
   "@disconnectMessage": {
     "placeholders": {
       "server": {
@@ -1126,6 +1196,7 @@
   },
   "filesWelcomeTitle": "Welcome to your cloud",
   "filesWelcomeUploadBody": "Upload files or drop them anywhere on this page.",
+  "filesWelcomeUploadBodyPhone": "Upload files from the New menu, or turn on camera upload.",
   "filesWelcomeDesktopBody": "Keep a folder on your computer in sync.",
   "filesWelcomeDesktopAction": "Get the app",
   "filesWelcomeKeyBody": "Without it, a restored server can't read any file. Store it somewhere safe.",
@@ -1523,12 +1594,48 @@
   "cameraNeverRun": "Not run yet",
   "cameraUnnamed": "Not read yet",
   "cameraOptions": "Options",
-  "mobileNavFiles": "Files",
   "mobileNavCamera": "Camera",
-  "mobileMore": "More",
+  "mobilePermissionsSet": "{granted} of {total} set",
+  "@mobilePermissionsSet": {
+    "placeholders": {
+      "granted": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "mobilePermissionStep": "Step {step} of {total}",
+  "@mobilePermissionStep": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "mobileQrLoginExpiresAt": "Expires {time}",
+  "@mobileQrLoginExpiresAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "mobileRecentServers": "Recent servers",
   "mobileForgetServer": "Forget",
   "filesQuickAccess": "Quick access",
+  "filesMoreActions": "More actions",
+  "filesMemberRemoveConfirm": "{name} will no longer be able to open “{item}”.",
+  "@filesMemberRemoveConfirm": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "item": {"type": "String"}
+    }
+  },
   "done": "Done",
   "deviceRevokeTitle": "Disconnect {name}?",
   "@deviceRevokeTitle": {
@@ -1539,7 +1646,7 @@
     }
   },
   "deviceRevokeMessage": "The app on that device is signed out and has to be connected again.",
-  "qrPairing": "QR Pairing",
+  "qrPairing": "QR pairing",
   "pairPhoneDescription": "Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.",
   "showQrCode": "Show QR code",
   "pairPhone": "Pair a phone",
@@ -1816,6 +1923,15 @@
   "passkeyRenameTitle": "Rename security key",
   "passkeyName": "Name",
   "passkeyRemove": "Remove",
+  "settingsPasskeyRemoveTitle": "Remove “{name}”?",
+  "@settingsPasskeyRemoveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsPasskeyRemoveMessage": "This key can no longer sign in to your account. Keep at least one other way in.",
   "passkeyAddedLastUsed": "Added {added} · Last used {lastUsed}",
   "@passkeyAddedLastUsed": {
     "placeholders": {
@@ -1830,6 +1946,7 @@
   "passkeyNotRecorded": "Not recorded",
   "passkeyNeverUsed": "Never used",
   "passkeyUnsupported": "This device cannot register security keys. Open NeoCloud in a browser over HTTPS to add one.",
+  "passkeyAddInBrowser": "Security keys and passkeys are added in the NeoCloud web app in a browser. Keys added there are listed here, and you can rename or remove them.",
   "navSharedWithMe": "Shared with me",
   "sharedWithMeSubtitle": "Files and folders other people on this server shared with you.",
   "sharedWithMeEmpty": "Nothing shared with you yet",
@@ -1965,5 +2082,794 @@
   "cameraOfferTitle": "Back up your photos?",
   "cameraOfferBody": "NeoCloud can upload new photos and videos from this phone automatically, encrypted like every other file.",
   "cameraOfferSetUp": "Set up",
-  "notNow": "Not now"
+  "notNow": "Not now",
+  "connectWithBrowser": "Sign in with the browser",
+  "connectChangeServer": "Change server",
+  "signInInvalidCredentials": "Wrong username, email or password.",
+  "signInInvalidCode": "That code isn't right. Check your authenticator app and try again.",
+  "signInLockedMinutes": "Too many failed sign-in attempts for this account. Try again in {minutes} min.",
+  "@signInLockedMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "signInLockedSeconds": "Too many failed sign-in attempts for this account. Try again in {seconds} s.",
+  "@signInLockedSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "signInRateLimited": "Too many attempts. Wait a few minutes, then try again.",
+  "approvalNeedsServerUpdate": "This server can't approve sign-ins from the app yet. Update NeoCloud on the server, or approve in a browser where you're signed in.",
+  "serverUpdateNeeded": "This server is too old for this in the app. Update NeoCloud on the server.",
+  "approvalNeedsPhone": "Approve sign-ins from the NeoCloud phone app or a browser where you're signed in.",
+  "connectWelcome": "WELCOME TO NEOCLOUD",
+  "connectReadyToSignIn": "Ready to sign in",
+  "connectEnterAddress": "Enter an address manually",
+  "connectEnterAddressHint": "Your server's address, such as cloud.example.com",
+  "connectServerAddress": "NeoCloud server address",
+  "connectConnecting": "Connecting…",
+  "connectToThisServer": "Connect to this server",
+  "connectForgetServerBody": "Remove this server from the list? You can still enter its address.",
+  "authSigningInTo": "Signing in to {host}",
+  "@authSigningInTo": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password",
+  "authForgotPasswordAskAdmin": "Forgot your password? Ask your server admin to reset it in Admin → Users.",
+  "authPhoneSignInTitle": "Sign in to NeoCloud",
+  "authPhoneSignInSubtitle": "Scan the code on a signed-in computer, or use your password.",
+  "aiPage": "AI",
+  "aiPageDescription": "Suggestions for names and folders, the models behind them and your own keys.",
+  "aiOptInTitle": "AI features",
+  "aiOptIn": "Use AI features",
+  "aiPrivacyNote": "Names, extracted text and previews of the files you ask about go to the AI provider. Vault files are never processed, and nothing changes until you approve a suggestion.",
+  "aiModelsTitle": "Default models",
+  "aiModelsDescription": "Each kind of work uses its own model. Auto uses NeoRouter or the best available model.",
+  "aiRoleText": "Text",
+  "aiRoleTextDescription": "Fast model for names, tags and sorting.",
+  "aiRoleSmart": "Smart",
+  "aiRoleSmartDescription": "Stronger model for summaries and questions about a file.",
+  "aiRoleVision": "Vision",
+  "aiRoleVisionDescription": "Reads photos, screenshots and scans. Only models that can see images.",
+  "aiRoleEmbedding": "Embedding",
+  "aiRoleEmbeddingDescription": "Finds similar files and folders for sorting.",
+  "aiRoleNotReady": "No model is available for this yet.",
+  "aiAuto": "Auto",
+  "aiAutoSubtitle": "NeoRouter or the best available model",
+  "aiSelectModel": "Select {name}",
+  "@aiSelectModel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiSearchModels": "Search…",
+  "aiNoResults": "No results for \"{query}\"",
+  "@aiNoResults": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNoModelsForRole": "No model can do this yet.",
+  "aiAll": "All",
+  "aiOther": "Other",
+  "aiProviderCustom": "Custom OpenAI-compatible",
+  "aiGranted": "Granted",
+  "aiGrantedHint": "An admin granted you this model. It is switched off for everyone else.",
+  "aiByokTag": "BYOK",
+  "aiPriceFree": "Free",
+  "aiPriceUnknown": "Price unknown",
+  "aiPricePerMillion": "${price} / 1M input",
+  "@aiPricePerMillion": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNoModelTitle": "No AI model is set up yet",
+  "aiNoModelBody": "NeoCloud needs an AI model for suggestions. Connect NeoRouter or add an API key from a provider such as OpenAI, Anthropic or Google.",
+  "aiNoModelAdminHint": "As an admin you can also set up providers for everyone under Admin → Providers.",
+  "aiOpenAdmin": "Open Admin",
+  "aiDisabledTitle": "AI is turned off",
+  "aiDisabledBody": "AI features are not turned on for this server.",
+  "aiDisabledAdminHint": "As an admin you can turn them on under Admin → Models.",
+  "aiNotAvailableTitle": "AI isn't available on this server",
+  "aiNotAvailableBody": "Update NeoCloud on the server to use AI features.",
+  "aiFeaturesTitle": "Suggestions",
+  "aiFeaturesDescription": "What AI may suggest. You review every suggestion before anything changes.",
+  "aiFeatureNames": "Suggest names",
+  "aiFeatureNamesDescription": "For files with meaningless names like IMG_1234 or scan.pdf.",
+  "aiFeatureFolders": "Suggest folders",
+  "aiFeatureFoldersDescription": "Where a file belongs among your existing folders.",
+  "aiFeatureSummaries": "Summaries",
+  "aiFeatureSummariesDescription": "A short summary in a file's details.",
+  "aiFeatureOnUpload": "On upload",
+  "aiFeatureOnUploadDescription": "Suggest for new files as they arrive.",
+  "aiNamingTemplate": "Naming template",
+  "aiNamingTemplateDescription": "How suggested names are built from the date, issuer and subject the AI finds.",
+  "aiUsageTitle": "Usage this month",
+  "aiUsageOf": "{used} of {limit} tokens",
+  "@aiUsageOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "aiUsageUnlimited": "{used} tokens · no limit",
+  "@aiUsageUnlimited": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "aiByokTitle": "Bring your own key",
+  "aiByokDescription": "Use your own keys or endpoint for your AI features. Keys are encrypted and never shown again.",
+  "aiByokNoProviders": "No providers are available to configure yet.",
+  "aiByokUsingYourKey": "Using your key",
+  "aiNotSetUp": "Not set up",
+  "aiUpdate": "Update",
+  "aiConnectEndpoint": "Connect endpoint",
+  "aiAddKey": "Add key",
+  "aiRemove": "Remove",
+  "aiRemoveKeyTitle": "Remove {provider} key?",
+  "@aiRemoveKeyTitle": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "aiRemoveKeyBody": "AI features fall back to the shared server key for {provider}, if one is configured. This can’t be undone.",
+  "@aiRemoveKeyBody": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "aiKeyRemoved": "{provider} key removed.",
+  "@aiKeyRemoved": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "aiEnterKeyFirst": "Enter an API key first.",
+  "aiConnectionGood": "Connection looks good.",
+  "aiCouldNotConnect": "Could not connect.",
+  "aiKeyRequired": "An API key is required.",
+  "aiBaseUrlRequired": "A base URL is required for this endpoint.",
+  "aiCustomEndpointTitle": "Connect a custom endpoint",
+  "aiCustomEndpointBody": "Point NeoCloud at any OpenAI-compatible Chat Completions API: your own server, a self-hosted model, or another hosted provider.",
+  "aiYourKeyTitle": "Your {provider} key",
+  "@aiYourKeyTitle": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "aiYourKeyBody": "Paste your {provider} API key below. It’s stored encrypted and only used for your own AI features.",
+  "@aiYourKeyBody": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNameOptional": "Name (optional)",
+  "aiNameHint": "e.g. My local server",
+  "aiBaseUrl": "Base URL",
+  "aiBaseUrlOptional": "Base URL (optional)",
+  "aiBaseUrlHelper": "Must be reachable on the public internet. Local and private network addresses aren't allowed.",
+  "aiApiKey": "API key",
+  "aiTestConnection": "Test connection",
+  "aiByokLimitsNote": "Server usage limits don't apply to models running on your own key.",
+  "aiShow": "Show",
+  "aiHide": "Hide",
+  "aiNeoRouterConnected": "NeoRouter is connected.",
+  "aiNeoRouterDisconnectTitle": "Disconnect NeoRouter?",
+  "aiNeoRouterDisconnectBody": "NeoCloud stops using this NeoRouter. To withdraw its key as well, revoke it under API keys in NeoRouter.",
+  "aiNeoRouterWaiting": "Approve NeoCloud in NeoRouter. It shows the code {code}.",
+  "@aiNeoRouterWaiting": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNeoRouterOpenAgain": "Open again",
+  "aiNeoRouterServerInUse": "This server already uses a NeoRouter for everyone. Connect your own NeoRouter account for your own models and budget.",
+  "aiNeoRouterUserDescription": "Use your own NeoRouter account for the work switched on under Manage instead of this server's providers.",
+  "aiNeoRouterServerDescription": "Connect your NeoRouter once and every account here uses it for the work switched on under Manage.",
+  "aiNeoRouterUnreachable": "NeoRouter cannot be reached right now.",
+  "aiNeoRouterConnect": "Connect NeoRouter",
+  "aiNeoRouterAddress": "NeoRouter address",
+  "aiNeoRouterRoleChat": "Text and vision",
+  "aiNeoRouterRoleEmbeddings": "Similarity search",
+  "aiNeoRouterRoleTranscription": "Speech to text",
+  "aiNeoRouterRoleImages": "Image generation",
+  "aiNeoRouterModelCount": "{count} available in your NeoRouter",
+  "@aiNeoRouterModelCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiNeoRouterNotAllowed": "{count} in your NeoRouter, but NeoCloud’s key may not use them yet (for example paid ones). Allow them for NeoCloud under API keys in NeoRouter.",
+  "@aiNeoRouterNotAllowed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiNeoRouterNoModels": "Nothing available in your NeoRouter yet.",
+  "aiNeoRouterCancelled": "The sign-in was cancelled.",
+  "aiNeoRouterExpired": "This sign-in expired. Start again.",
+  "aiNeoRouterFailed": "NeoRouter didn't approve the sign-in.",
+  "aiNeoRouterCouldNotOpen": "NeoRouter couldn't be opened. Use Open again.",
+  "aiConnect": "Connect",
+  "aiConnected": "Connected",
+  "aiManage": "Manage",
+  "aiAdminTitle": "AI features",
+  "aiAdminDescription": "Suggestions for names and folders, for accounts that opt in. Vault files are never processed.",
+  "aiAdminEnable": "Enable AI features",
+  "aiAdminEnableDescription": "Each account still turns them on for itself in Settings → AI.",
+  "aiAdminBudget": "Monthly token budget",
+  "aiAdminBudgetDescription": "Per account, unless an account has its own under Users. Empty means no limit.",
+  "aiBudgetInvalid": "Enter a whole number of tokens.",
+  "aiNoLimit": "No limit",
+  "aiProvidersTitle": "Server provider credentials",
+  "aiProvidersDescription": "API keys and endpoints for AI providers. They are shared by every account on this server; accounts can still add their own keys in Settings → AI.",
+  "aiProvidersSetCount": "{count} of {total} set",
+  "@aiProvidersSetCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiProvidersEmpty": "This server reports no provider settings.",
+  "aiSet": "Set",
+  "aiNotSet": "Not set",
+  "aiReplace": "Replace",
+  "aiChange": "Change",
+  "aiSetUrl": "Set URL",
+  "aiEndpointUrl": "Endpoint URL",
+  "aiUrl": "URL",
+  "aiClearTitle": "Clear {name}?",
+  "@aiClearTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiClearUrlBody": "This removes the address for every account on this server.",
+  "aiClearKeyBody": "Every account on this server loses this shared key. Accounts that added their own key keep using it.",
+  "aiCleared": "{name} cleared.",
+  "@aiCleared": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiSavedName": "{name} saved.",
+  "@aiSavedName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiPasteAKey": "Paste a key.",
+  "aiEnterAddress": "Enter an address.",
+  "aiUrlInvalid": "The address must be an http:// or https:// address.",
+  "aiPasteNewKey": "Paste a new key to replace {hint}",
+  "@aiPasteNewKey": {
+    "placeholders": {
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "aiPasteTheKey": "Paste the key",
+  "aiProviderUrlBody": "Every account on this server uses this address for {name}.",
+  "@aiProviderUrlBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiProviderKeyBody": "Used by every account on this server that has no key of its own. It is never shown again after saving.",
+  "aiModelAvailability": "Model availability",
+  "aiModelAvailabilityDescription": "Choose which models every account on this server can pick and run. While any model is switched off, models that providers add later start switched off too.",
+  "aiAutoEnable": "Enable new models automatically",
+  "aiAutoEnableHint": "When off, models a provider adds later stay disabled until you enable them.",
+  "aiSearchModelsOrProviders": "Search models or providers",
+  "aiFilterEnabled": "Enabled",
+  "aiFilterDisabled": "Disabled",
+  "aiShownCount": "{count} shown",
+  "@aiShownCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiEnableAll": "Enable all",
+  "aiEnableShown": "Enable shown",
+  "aiDisableAll": "Disable all",
+  "aiDisableShown": "Disable shown",
+  "aiCollapseAll": "Collapse all",
+  "aiExpandAll": "Expand all",
+  "aiNoModelsYet": "Add a provider credential first. Its models show up here once the provider answers.",
+  "aiNoModelMatches": "No model matches \"{query}\".",
+  "@aiNoModelMatches": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "aiUnsavedChanges": "{count} unsaved changes",
+  "@aiUnsavedChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiDiscard": "Discard",
+  "aiSaveChanges": "Save changes",
+  "aiModelsSaved": "Model availability saved.",
+  "aiEnabledCount": "{count} of {total} enabled",
+  "@aiEnabledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiKindVision": "Vision",
+  "aiKindEmbedding": "Embedding",
+  "aiKindTranscription": "Speech",
+  "aiAdminUsageDescription": "Metadata only: who used which model and how many tokens, never what was sent.",
+  "aiUsageRequests": "Requests",
+  "aiUsageTokens": "Tokens",
+  "aiUsageErrors": "Errors",
+  "aiUsageAccounts": "Busiest accounts",
+  "aiUsageModels": "Busiest models",
+  "aiUsageNone": "No AI use this month yet.",
+  "aiTokenCount": "{count} tokens",
+  "@aiTokenCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "aiAdminUserMenu": "AI models and budget",
+  "aiAdminUserTitle": "AI · {name}",
+  "@aiAdminUserTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiAdminUserSaved": "Saved AI settings for {name}",
+  "@aiAdminUserSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiUserBudgetDefault": "Server default",
+  "aiUserBudgetCustom": "Custom",
+  "aiUserBudgetDefaultValue": "Server default: {value}",
+  "@aiUserBudgetDefaultValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "aiTokensPerMonth": "Tokens per month",
+  "aiExtraModels": "Extra models",
+  "aiExtraModelsIntro": "These models are switched off for everyone. Tick the ones {name} may use anyway. Their use still counts toward this account's budget.",
+  "@aiExtraModelsIntro": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiExtraModelsEmpty": "No models are switched off for everyone, so there is nothing extra to grant.",
+  "aiAdminTabProviders": "Providers",
+  "aiAdminTabModels": "Models",
+  "aiRoleRequestedUnavailable": "Your choice isn’t available right now, so another model is used.",
+  "aiFeatureTags": "Suggest tags",
+  "aiFeatureTagsDescription": "Tags from a file’s content, like invoice or contract.",
+  "aiFeatureAutoApply": "Apply high-confidence suggestions automatically",
+  "aiFeatureAutoApplyDescription": "Otherwise every suggestion waits for you. Each applied change can be undone.",
+  "aiUsageFeatures": "By feature",
+  "aiErrorDisabled": "AI features are turned off on this server.",
+  "aiErrorNotOptedIn": "Turn on AI features in Settings → AI first.",
+  "aiErrorBudget": "This month’s AI budget is used up. It resets on the 1st.",
+  "aiErrorNoModel": "No AI model is available right now.",
+  "aiErrorProvider": "The AI provider didn’t answer properly. Try again later.",
+  "aiErrorVault": "Files in a vault are never sent to AI.",
+  "aiErrorExcluded": "This folder is excluded from AI.",
+  "aiErrorUrlNotAllowed": "This address isn’t allowed. Use one on the public internet.",
+  "aiFolderExclude": "Exclude from AI",
+  "aiFolderInclude": "Include in AI",
+  "aiFolderExcluded": "{name} is excluded from AI.",
+  "@aiFolderExcluded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiFolderIncluded": "{name} is included in AI again.",
+  "@aiFolderIncluded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiFolderExcludedTag": "excluded from AI",
+  "aiReviewNav": "Review",
+  "aiReviewTitle": "Review",
+  "aiReviewSubtitle": "AI suggestions wait here until you decide. Nothing changes before you accept, and everything accepted can be undone.",
+  "aiReviewTabNames": "Names",
+  "aiReviewTabFolders": "Folders",
+  "aiReviewTabTags": "Tags",
+  "aiAcceptHigh": "Accept all high-confidence ({count})",
+  "@aiAcceptHigh": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAcceptHighTitle": "{count, plural, =1{Accept 1 high-confidence suggestion?} other{Accept {count} high-confidence suggestions?}}",
+  "@aiAcceptHighTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAcceptHighBody": "Names, folders and tags across all tabs are applied at once. You can undo them right after.",
+  "aiAcceptHighFailed": "{count, plural, =1{1 suggestion couldn’t be applied; it stays in the list.} other{{count} suggestions couldn’t be applied; they stay in the list.}}",
+  "@aiAcceptHighFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAcceptedMany": "{count, plural, =1{1 suggestion accepted} other{{count} suggestions accepted}}",
+  "@aiAcceptedMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAcceptedRename": "Renamed to “{name}”",
+  "@aiAcceptedRename": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiAcceptedMove": "Moved to {folder}",
+  "@aiAcceptedMove": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "aiAcceptedTags": "Tags added to “{name}”",
+  "@aiAcceptedTags": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiAccept": "Accept",
+  "aiReject": "Reject",
+  "aiEditName": "Use another name",
+  "aiEditFolder": "Move somewhere else",
+  "aiEditTags": "Edit tags",
+  "aiTagsLabel": "Tags, separated by commas",
+  "aiTierHigh": "High",
+  "aiTierMedium": "Medium",
+  "aiTierLow": "Low",
+  "aiConfidence": "{percent} % confident",
+  "@aiConfidence": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "aiSourceAi": "AI",
+  "aiSourceRule": "Rule",
+  "aiSourceModel": "Suggested by {model}",
+  "@aiSourceModel": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "aiSourceRuleHint": "One of your sorting rules matched; no model was asked.",
+  "aiNewFolder": "new folder",
+  "aiShowLow": "Show low-confidence ({count})",
+  "@aiShowLow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiHideLow": "Hide low-confidence",
+  "aiLoadMore": "Load more",
+  "aiReviewEmptyTitle": "Nothing to review",
+  "aiReviewEmptyBody": "New suggestions appear here. Ask for some from a file’s ⋯ menu, or with Organize this folder.",
+  "aiReviewOffTitle": "AI is off for you",
+  "aiReviewOffBody": "Turn on AI features in Settings › AI to get suggestions for names, folders and tags.",
+  "aiOpenSettings": "Open settings",
+  "aiOpenReview": "Open Review",
+  "aiSuggestionStale": "The file changed since this was suggested, so the suggestion was removed.",
+  "aiSuggestionDecided": "This suggestion was already decided elsewhere.",
+  "aiUndoConflict": "{count, plural, =1{Can’t undo: the file changed since.} other{{count} changes can’t be undone: the files changed since.}}",
+  "@aiUndoConflict": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiRuleProposalTitle": "Always move {type} from {issuer} to {folder}?",
+  "@aiRuleProposalTitle": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "issuer": {
+        "type": "String"
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "aiRuleProposalBody": "{count, plural, =1{You accepted 1 move like this.} other{You accepted {count} moves like this. A rule does it without asking AI.}}",
+  "@aiRuleProposalBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiCreateRule": "Create rule",
+  "aiDismiss": "Dismiss",
+  "aiRuleCreated": "Rule created. Find it under Settings › AI.",
+  "aiSuggestionChip": "AI suggestion",
+  "aiSuggestionChipHint": "Show the AI suggestion",
+  "aiSuggestionTitle": "AI suggestion",
+  "aiMenu": "AI",
+  "aiSuggestName": "Suggest a name",
+  "aiSuggestFolder": "Suggest a folder",
+  "aiSuggestNames": "Suggest names",
+  "aiSuggestFolders": "Suggest folders",
+  "aiSuggestTags": "Suggest tags",
+  "aiSummarize": "Summarize",
+  "aiRequested": "{count, plural, =1{Asked AI for a suggestion. It appears in Review.} other{Asked AI about {count} files. Suggestions appear in Review.}}",
+  "@aiRequested": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiNothingSuggested": "AI has no suggestion for “{name}”.",
+  "@aiNothingSuggested": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrganizeFolder": "Organize this folder…",
+  "aiOrganizeTitle": "Organize “{name}”",
+  "@aiOrganizeTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiOrganizeIntro": "AI looks at every file in this folder and its subfolders and suggests what you pick. You decide each suggestion in Review.",
+  "aiOrganizeNames": "Names for files with meaningless names",
+  "aiOrganizeFolders": "A better folder for each file",
+  "aiOrganizeTags": "Tags",
+  "aiOrganizeKindOff": "Off in Settings › AI",
+  "aiOrganizeNote": "Vaults and folders excluded from AI are skipped. Up to 5,000 files.",
+  "aiOrganizeStart": "Start",
+  "aiOrganizeRunning": "AI is looking at the files…",
+  "aiOrganizeDone": "Done",
+  "aiOrganizeQueued": "Waiting to start…",
+  "aiOrganizeProgress": "{done} of {total} files",
+  "@aiOrganizeProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiOrganizeSkipped": "{skipped} skipped, {failed} failed",
+  "@aiOrganizeSkipped": {
+    "placeholders": {
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "aiOrganizePaused": "The work is paused for now.",
+  "aiOrganizeWaiting": "{count, plural, =1{1 suggestion is waiting in Review.} other{{count} suggestions are waiting in Review.}}",
+  "@aiOrganizeWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiOrganizeNothing": "Nothing to suggest: these files look fine.",
+  "aiOrganizeBackground": "You can close this; the work goes on and suggestions arrive in Review.",
+  "aiSummaryTitle": "Summary",
+  "aiSummaryWorking": "Summarizing…",
+  "aiSummaryRefresh": "Summarize again",
+  "aiSummaryBy": "Written by {model}",
+  "@aiSummaryBy": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "aiSummaryByAi": "Written by AI",
+  "aiDetailsTitle": "AI details",
+  "aiTagsTitle": "Tags",
+  "aiFieldsTitle": "Read from the file",
+  "aiFieldsBy": "Read by {model}",
+  "@aiFieldsBy": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "aiFieldType": "Type",
+  "aiFieldIssuer": "From",
+  "aiFieldDate": "Date",
+  "aiFieldSubject": "Subject",
+  "aiFieldAmount": "Amount",
+  "aiFieldCaption": "Caption",
+  "aiDocTypeInvoice": "Invoice",
+  "aiDocTypeReceipt": "Receipt",
+  "aiDocTypeContract": "Contract",
+  "aiDocTypePayslip": "Payslip",
+  "aiDocTypeLetter": "Letter",
+  "aiDocTypeStatement": "Statement",
+  "aiDocTypeCertificate": "Certificate",
+  "aiDocTypeManual": "Manual",
+  "aiDocTypeReport": "Report",
+  "aiDocTypeNotes": "Notes",
+  "aiDocTypePresentation": "Presentation",
+  "aiDocTypeSpreadsheet": "Spreadsheet",
+  "aiDocTypeScreenshot": "Screenshot",
+  "aiDocTypePhoto": "Photo",
+  "aiDocTypeScan": "Scan",
+  "aiDocTypeOther": "Other",
+  "aiFeatureNewTags": "Suggest new tags",
+  "aiFeatureNewTagsDescription": "Otherwise AI only uses tags you already have.",
+  "aiFeatureNewFolders": "Suggest new folders",
+  "aiFeatureNewFoldersDescription": "Lets AI propose a folder that doesn’t exist yet; it is created when you accept.",
+  "aiReviewSettingsLabel": "Suggestions to review",
+  "aiReviewSettingsDescription": "{count, plural, =0{Nothing waiting right now.} =1{1 suggestion is waiting.} other{{count} suggestions are waiting.}}",
+  "@aiReviewSettingsDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiRulesTitle": "Sorting rules",
+  "aiRulesDescription": "Checked before any model: a file that matches every condition of a rule is suggested for its folder.",
+  "aiRulesEmpty": "No rules yet. Review offers one after you accept a few similar moves.",
+  "aiRuleAdd": "Add rule",
+  "aiRuleEdit": "Edit rule",
+  "aiRuleName": "Name",
+  "aiRuleWhen": "When a file is",
+  "aiRuleAnyType": "Any type",
+  "aiRuleExtension": "Extension",
+  "aiRulePattern": "Name pattern (* and ?)",
+  "aiRuleTarget": "Move it to",
+  "aiRuleChooseFolder": "Choose folder",
+  "aiRuleSummary": "{conditions} → {folder}",
+  "@aiRuleSummary": {
+    "placeholders": {
+      "conditions": {
+        "type": "String"
+      },
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "aiRuleNeedsName": "Give the rule a name.",
+  "aiRuleNeedsCondition": "Set at least one condition.",
+  "aiRuleNeedsFolder": "Choose the folder files go to.",
+  "aiRuleDeleteTitle": "Delete rule?",
+  "aiRuleDeleteBody": "“{name}” stops sorting files. Suggestions it already made stay.",
+  "@aiRuleDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiErrorFeatureOff": "This AI feature is turned off in Settings › AI.",
+  "aiErrorNoContent": "There is no text in this file to work with.",
+  "aiErrorTooManyFiles": "That folder has too many files for one go. Pick a smaller folder.",
+  "aiErrorTargetNotAllowed": "AI can’t put files there: it is a vault or excluded from AI.",
+  "aiErrorShareBoundary": "That move would change who can see the file, so AI doesn’t make it.",
+  "aiErrorNotUndoable": "This change can’t be undone."
 }

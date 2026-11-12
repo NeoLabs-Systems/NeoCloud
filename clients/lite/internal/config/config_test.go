@@ -101,4 +101,16 @@ func TestKeyLockKeepsTokenOffDisk(t *testing.T) {
 	if err := reopened.SetUnlockedToken(""); err != nil || !reopened.Get().Locked() {
 		t.Errorf("lock: %v", err)
 	}
+
+	// A lock this system cannot run is forgotten in memory only: signed
+	// out, the file untouched.
+	if !reopened.ForgetKeyLock() || reopened.ForgetKeyLock() {
+		t.Error("ForgetKeyLock did not report the lock once")
+	}
+	if cfg := reopened.Get(); cfg.LoggedIn() || cfg.Locked() || cfg.KeyLock != nil {
+		t.Errorf("after ForgetKeyLock: logged in %v, locked %v", cfg.LoggedIn(), cfg.Locked())
+	}
+	if after, _ := os.ReadFile(store.Path()); string(after) != string(raw) {
+		t.Error("ForgetKeyLock wrote the config file")
+	}
 }

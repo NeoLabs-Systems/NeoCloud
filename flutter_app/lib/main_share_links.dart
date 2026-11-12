@@ -175,6 +175,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
       message: appStrings.shareRevokeConfirm(link.nodeName),
       confirmLabel: appStrings.shareRevoke,
       onConfirm: () async {
+        if (!mounted) return;
         setState(() => _busy = true);
         try {
           await _controller.client.deleteShare(link.id);
@@ -300,7 +301,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
             children: <Widget>[
               // People on this server first; the public link below.
               if (widget.editLink == null) ...<Widget>[
-                _SharePeopleSection(controller: _controller, nodeId: widget.nodeId, isFolder: widget.isFolder),
+                _SharePeopleSection(controller: _controller, nodeId: widget.nodeId, nodeName: widget.nodeName, isFolder: widget.isFolder),
                 const SizedBox(height: AppSpacing.md),
                 Divider(height: 1, color: _border),
                 const SizedBox(height: AppSpacing.md),

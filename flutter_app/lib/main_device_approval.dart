@@ -112,22 +112,20 @@ class _DeviceApprovalViewState extends State<DeviceApprovalView> {
       case _ApprovalState.answering:
         final busy = _state == _ApprovalState.answering;
         return <Widget>[
-          _AppCard(
+          // The device as the QR sign-in approval shows it (NeoAgent's
+          // approval dialog).
+          Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: _bgSecondary, borderRadius: BorderRadius.circular(16), border: Border.all(color: _border)),
             child: Row(
               children: <Widget>[
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(12), border: Border.all(color: _border)),
-                  child: Icon(_platformIcon(request?.platform ?? ''), size: 20, color: _textSecondary),
-                ),
-                const SizedBox(width: 14),
+                Icon(_platformIcon(request?.platform ?? ''), color: _accent),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(request?.name ?? '', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
+                      Text(request?.name ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(
                         <String>[

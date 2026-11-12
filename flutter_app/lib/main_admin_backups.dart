@@ -101,17 +101,31 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
     switch (run['status']) {
       case 'running':
         return _StatusPill(label: appStrings.backupRunning, color: _info);
+      // Status is a dot plus words, never colored text.
       case 'ok':
-        return Text(
-          appStrings.backupLastOk(formatDate(_date(run['finishedAt']), locale), (run['blobsUploaded'] as num?)?.toInt() ?? 0),
-          style: TextStyle(color: _success, fontSize: 12.5),
+        return _StatusPill(
+          label: appStrings.backupLastOk(formatDate(_date(run['finishedAt']), locale), (run['blobsUploaded'] as num?)?.toInt() ?? 0),
+          color: _success,
         );
       default:
-        return Text(
-          appStrings.backupLastFailed('${run['error'] ?? ''}'),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: _danger, fontSize: 12.5),
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: 7,
+              height: 7,
+              margin: const EdgeInsets.only(top: 6, right: 7),
+              decoration: BoxDecoration(color: _danger, shape: BoxShape.circle),
+            ),
+            Expanded(
+              child: Text(
+                appStrings.backupLastFailed('${run['error'] ?? ''}'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: _textSecondary, fontSize: 13),
+              ),
+            ),
+          ],
         );
     }
   }
@@ -124,7 +138,7 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        feedback(),
+        if (targets != null) feedback(),
         _SettingsGroup(
           title: appStrings.backupTargets,
           description: appStrings.backupTargetsDescription,
@@ -134,7 +148,17 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
             label: Text(appStrings.backupAddTarget),
           ),
           children: <Widget>[
-            if (targets == null) const _LoadingPlaceholder(),
+            if (targets == null && pageError == null) const _LoadingPlaceholder(),
+            if (targets == null && pageError != null)
+              _SettingsBlock(
+                child: _LoadError(
+                  message: pageError!,
+                  onRetry: () {
+                    setState(() => pageError = null);
+                    unawaited(_load());
+                  },
+                ),
+              ),
             if (targets != null && targets.isEmpty) _SettingsBlock(child: _EmptyText(appStrings.backupNoTargets)),
             for (final target in targets ?? const <Map<String, dynamic>>[])
               _SettingsBlock(
@@ -146,8 +170,8 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
                         Container(
                           width: 36,
                           height: 36,
-                          decoration: BoxDecoration(color: _accentMuted, borderRadius: BorderRadius.circular(10)),
-                          child: Icon(Icons.backup_outlined, size: 19, color: _accent),
+                          decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(10)),
+                          child: Icon(Icons.backup_outlined, size: 19, color: _textSecondary),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -218,7 +242,11 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
                   label: '${names[(run['targetId'] as num).toInt()] ?? '#${run['targetId']}'} · ${run['snapshot'] ?? ''}',
                   description: '${formatDate(_date(run['startedAt']), locale)} · ${formatBytes((run['bytesUploaded'] as num?)?.toInt() ?? 0)}',
                   control: _StatusPill(
-                    label: '${run['status']}',
+                    label: switch (run['status']) {
+                      'ok' => appStrings.adminBackupRunOk,
+                      'running' => appStrings.backupRunning,
+                      _ => appStrings.adminBackupRunFailed,
+                    },
                     color: switch (run['status']) {
                       'ok' => _success,
                       'running' => _info,

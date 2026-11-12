@@ -2,6 +2,11 @@
 /// page that stands in for it when the camera can't be used.
 library;
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
 /// `neocloud://pair?server=<origin>&code=<code>`, parsed.
 class PairingLinkData {
   const PairingLinkData({required this.server, required this.code});
@@ -61,4 +66,29 @@ String formatCountdown(Duration left) {
   final seconds = left.isNegative ? 0 : (left.inMilliseconds / 1000).ceil();
   final minutes = seconds ~/ 60;
   return '$minutes:${(seconds % 60).toString().padLeft(2, '0')}';
+}
+
+/// Pairing links the system opens the Android or iOS app with (the "Open
+/// in the app" button of the web pairing page): MainActivity.kt and
+/// AppDelegate.swift keep the link that started the app until it is asked
+/// for, and pass on the ones that arrive while it runs.
+const MethodChannel _appLinks = MethodChannel('systems.neolabs.neocloud/links');
+
+/// Calls [onLink] with the link that started the app, if any, and with each
+/// one that arrives later. Does nothing on the web.
+void listenForAppLinks(ValueChanged<String> onLink) {
+  if (kIsWeb) return;
+  _appLinks.setMethodCallHandler((call) async {
+    final link = call.arguments;
+    if (call.method == 'link' && link is String) onLink(link);
+  });
+  unawaited(
+    _appLinks.invokeMethod<String>('initialLink').then((link) {
+      if (link != null) onLink(link);
+    }).catchError((Object _) {}),
+  );
+}
+
+void stopListeningForAppLinks() {
+  if (!kIsWeb) _appLinks.setMethodCallHandler(null);
 }

@@ -183,8 +183,6 @@ test('approving needs a signed-in session or device token', async () => {
   await request(app).post('/api/account/qr-login/resolve').send(body).expect(401);
   await request(app).post('/api/account/qr-login/approve').send(body).expect(401);
   await request(app).post('/api/account/qr-login/approve').set('Authorization', 'Bearer nc_bogus').send(body).expect(401);
-  // The device token still reaches nothing else under /api/account.
-  await request(app).get('/api/account').set('Authorization', phoneBearer).expect(401);
   assert.equal((await status(code)).body.status, 'pending');
 });
 

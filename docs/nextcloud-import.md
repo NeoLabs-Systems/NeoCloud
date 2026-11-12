@@ -23,4 +23,4 @@ and folders move. Any other WebDAV server works too.
 
 Only admins can import from a server on the local network (or set
 `NEOCLOUD_IMPORT_ALLOW_PRIVATE=true`). The API is described under
-[Imports](api.md#imports--apiimports-session-only).
+[Imports](api.md#imports--apiimports-session-or-phone).

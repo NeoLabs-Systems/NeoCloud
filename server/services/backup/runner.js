@@ -27,7 +27,7 @@ const { sanitizeError } = require('../../utils/security');
 const { createServiceLogger } = require('../../utils/logger');
 const { httpError } = require('../../utils/http_error');
 const { version } = require('../../../package.json');
-const { openTarget, serializeRun } = require('./targets');
+const { getTargetRow, openTarget, serializeRun } = require('./targets');
 const { copyLiveDatabase, readSnapshotContents, snapshotName } = require('./database_file');
 
 const logger = createServiceLogger('Backup');
@@ -133,9 +133,11 @@ async function uploadSnapshotBlobs(adapter, blobs, run) {
       missing += 1;
       continue;
     }
+    // The size is read first: a blob purged while it uploads is gone after.
+    const { size } = fs.statSync(local);
     await adapter.put(key, () => fs.createReadStream(local));
     run.blobs += 1;
-    run.bytes += fs.statSync(local).size;
+    run.bytes += size;
     db.prepare('UPDATE backup_runs SET blobs_uploaded = ?, bytes_uploaded = ? WHERE id = ?').run(run.blobs, run.bytes, run.id);
   }
   return missing;
@@ -156,20 +158,36 @@ async function prune(adapter, retention) {
   }
 }
 
+// The CLI (`neocloud backup run`) and the server are separate processes, so
+// the run row is the lock between them: two runs to one target would each
+// prune the blobs the other has uploaded but not yet listed. A run row older
+// than a day is a CLI that died; the server marks its own at startup.
+function claimRun(targetId, name) {
+  return db.transaction(() => {
+    const busy = db.prepare(`
+      SELECT 1 FROM backup_runs
+      WHERE target_id = ? AND status = 'running' AND datetime(started_at) > datetime('now', '-1 day')
+    `).get(targetId);
+    if (busy) throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
+    const inserted = db.prepare("INSERT INTO backup_runs (target_id, status, snapshot) VALUES (?, 'running', ?)").run(targetId, name);
+    return Number(inserted.lastInsertRowid);
+  }).immediate();
+}
+
 /**
  * One backup run to the target. Returns the finished run. Only one run per
  * target at a time.
  */
 async function runBackup(targetId) {
   if (running.has(targetId)) throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
-  running.add(targetId);
+  getTargetRow(targetId);
   const name = snapshotName();
-  const inserted = db.prepare("INSERT INTO backup_runs (target_id, status, snapshot) VALUES (?, 'running', ?)").run(targetId, name);
-  const run = { id: Number(inserted.lastInsertRowid), blobs: 0, bytes: 0 };
-  ensurePrivateDirectory(UPLOAD_TMP_DIR);
+  const run = { id: claimRun(targetId, name), blobs: 0, bytes: 0 };
+  running.add(targetId);
   const copy = path.join(UPLOAD_TMP_DIR, `backup-${targetId}-${name}.db`);
   let adapter;
   try {
+    ensurePrivateDirectory(UPLOAD_TMP_DIR);
     const opened = await openTarget(targetId);
     adapter = opened.adapter;
     await copyLiveDatabase(copy);
@@ -208,8 +226,36 @@ async function runBackup(targetId) {
 /** Starts a run without waiting for it; the admin page polls the run list. */
 function startBackup(targetId) {
   if (running.has(targetId)) throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
+  getTargetRow(targetId);
+  if (db.prepare("SELECT 1 FROM backup_runs WHERE target_id = ? AND status = 'running' AND datetime(started_at) > datetime('now', '-1 day')").get(targetId)) {
+    throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
+  }
   runBackup(targetId).catch((err) => logger.error('Backup run crashed:', err.message));
   return { started: true };
+}
+
+// Database copies a killed backup or verify left in the temp folder: the
+// backup's copy is plaintext. Anything touched in the last hour may belong to
+// a CLI run that is still going.
+const DATABASE_COPY_PATTERN = /^(?:backup-\d+-.+\.db|verify-\d+-\d+\.enc(?:\.db)?)(?:-wal|-shm)?$/;
+
+function removeStaleDatabaseCopies() {
+  let entries;
+  try {
+    entries = fs.readdirSync(UPLOAD_TMP_DIR);
+  } catch {
+    return;
+  }
+  const staleBefore = Date.now() - 60 * 60 * 1000;
+  for (const entry of entries) {
+    if (!DATABASE_COPY_PATTERN.test(entry)) continue;
+    const file = path.join(UPLOAD_TMP_DIR, entry);
+    try {
+      if (fs.statSync(file).mtimeMs < staleBefore) fs.rmSync(file, { force: true });
+    } catch {
+      // Removed meanwhile.
+    }
+  }
 }
 
 /**
@@ -222,11 +268,13 @@ function markInterruptedRuns() {
     WHERE status = 'running'
   `).run();
   if (result.changes > 0) logger.warn(`Marked ${result.changes} unfinished backup run(s) as interrupted.`);
+  removeStaleDatabaseCopies();
   return result.changes;
 }
 
 async function testTarget(targetId) {
   const { adapter } = await openTarget(targetId).catch((err) => {
+    if (err.status) throw err;
     throw httpError(400, `Could not connect: ${sanitizeError(err)}`, 'BACKUP_CONNECT_FAILED');
   });
   try {
@@ -242,7 +290,10 @@ async function testTarget(targetId) {
 }
 
 async function snapshotsOf(targetId) {
-  const { adapter } = await openTarget(targetId);
+  const { adapter } = await openTarget(targetId).catch((err) => {
+    if (err.status) throw err;
+    throw httpError(400, `Could not connect: ${sanitizeError(err)}`, 'BACKUP_CONNECT_FAILED');
+  });
   try {
     return { snapshots: await listSnapshots(adapter) };
   } finally {

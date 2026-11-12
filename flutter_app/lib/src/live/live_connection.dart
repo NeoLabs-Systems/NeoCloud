@@ -35,6 +35,8 @@ typedef ChangesFetcher = Future<Map<String, dynamic>> Function(int? cursor);
 /// [onPolled] runs after every poll so the app can refresh what it shows of
 /// shared folders, and [onSharesChanged] reports the socket's
 /// `shares:changed` (a share was added, changed, removed or left).
+/// [onAiSuggestions] gets the payload of `ai:suggestions` (the review
+/// counts).
 class LiveFileUpdates {
   LiveFileUpdates({
     required this.feed,
@@ -42,6 +44,7 @@ class LiveFileUpdates {
     this.openSocket,
     this.socketUrl,
     this.onSharesChanged,
+    this.onAiSuggestions,
     this.onPolled,
     this.pollInterval = const Duration(seconds: 15),
     this.maxBackoff = const Duration(seconds: 30),
@@ -56,6 +59,7 @@ class LiveFileUpdates {
   /// Asked at each connect, since the server address can change.
   final Uri Function()? socketUrl;
   final void Function()? onSharesChanged;
+  final void Function(Map<Object?, Object?> counts)? onAiSuggestions;
   final void Function()? onPolled;
   final Duration pollInterval;
   final Duration maxBackoff;
@@ -118,6 +122,7 @@ class LiveFileUpdates {
         },
         onEvent: (event, data) {
           if (event == 'shares:changed') onSharesChanged?.call();
+          if (event == 'ai:suggestions' && data is Map) onAiSuggestions?.call(data);
           if (event != 'files:changed' || data is! Map) return;
           final ids = data['folderIds'];
           if (ids is List) feed.addFolders(ids.whereType<String>());

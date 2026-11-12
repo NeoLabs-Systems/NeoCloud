@@ -131,22 +131,33 @@ class _ProfileSettingsPageState extends State<_ProfileSettingsPage>
                 color: (user?.isAdmin ?? false) ? _accent : _accentAlt,
               ),
             ),
-          ],
-        ),
-        _SettingsGroup(
-          title: appStrings.signOut,
-          children: <Widget>[
-            _SettingsRow(
-              label: appStrings.signOut,
-              description: appStrings.signOutDescription,
-              control: OutlinedButton.icon(
-                onPressed: () => unawaited(widget.controller.logout()),
-                icon: const Icon(Icons.logout_rounded, size: 18),
-                label: Text(appStrings.signOut),
+            // NeoRouter's account page ends with Sign out, in the danger
+            // tone; the phone disconnects instead, after asking.
+            if (widget.controller.usesDeviceLogin)
+              _SettingsRow(
+                label: appStrings.disconnect,
+                description: appStrings.disconnectDescription,
+                control: OutlinedButton.icon(
+                  onPressed: () => unawaited(_confirmDisconnect(context, widget.controller)),
+                  style: OutlinedButton.styleFrom(foregroundColor: _danger),
+                  icon: const Icon(Icons.logout_rounded, size: 16),
+                  label: Text(appStrings.disconnect),
+                ),
+              )
+            else
+              _SettingsRow(
+                label: appStrings.signOut,
+                description: appStrings.signOutDescription,
+                control: OutlinedButton.icon(
+                  onPressed: () => unawaited(widget.controller.logout()),
+                  style: OutlinedButton.styleFrom(foregroundColor: _danger),
+                  icon: const Icon(Icons.logout_rounded, size: 16),
+                  label: Text(appStrings.signOut),
+                ),
               ),
-            ),
           ],
         ),
+        _AccountDataSection(controller: widget.controller),
       ],
     );
   }
@@ -207,6 +218,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
     await _controller.client.changePassword(_current.text, _next.text);
     _current.clear();
     _next.clear();
+    if (mounted) setState(() {});
   }, notice: appStrings.passwordChanged);
 
   Future<void> _setUpTwoFactor() async {
@@ -357,9 +369,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
         ),
         actions: <Widget>[
           OutlinedButton.icon(
-            onPressed: () => Clipboard.setData(
-              ClipboardData(text: recoveryCodes.join('\n')),
-            ),
+            onPressed: () => unawaited(_copyToClipboard(dialogContext, recoveryCodes.join('\n'))),
             icon: const Icon(Icons.copy_rounded, size: 16),
             label: Text(appStrings.copy),
           ),
@@ -404,7 +414,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        feedback(),
+        if (_sessions != null || pageError == null) feedback(),
         _SettingsGroup(
           title: appStrings.qrPairing,
           children: <Widget>[
@@ -432,6 +442,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
                   TextField(
                     controller: _current,
                     obscureText: true,
+                    onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       labelText: appStrings.currentPassword,
                     ),
@@ -454,7 +465,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
                       onPressed:
                           busy ||
                               !strength.acceptable ||
-                              _current.text.isEmpty && _next.text.isEmpty
+                              _current.text.isEmpty
                           ? null
                           : () => unawaited(_changePassword()),
                       child: Text(appStrings.changePassword),
@@ -467,6 +478,13 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
         ),
         _SettingsGroup(
           title: appStrings.twoFactorTitle,
+          // NeoRouter's "2FA on" tag over the section.
+          trailing: _twoFactor == null
+              ? null
+              : _StatusPill(
+                  label: twoFactorOn ? appStrings.settingsTwoFactorOn : appStrings.settingsTwoFactorOff,
+                  color: twoFactorOn ? _success : _textMuted,
+                ),
           children: <Widget>[
             _SettingsRow(
               label: appStrings.twoFactorTitle,
@@ -482,6 +500,7 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
                       onPressed: busy
                           ? null
                           : () => unawaited(_turnOffTwoFactor()),
+                      style: OutlinedButton.styleFrom(foregroundColor: _danger),
                       child: Text(appStrings.twoFactorDisable),
                     )
                   : FilledButton(
@@ -497,7 +516,17 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
         _SettingsGroup(
           title: appStrings.sessionsTitle,
           children: <Widget>[
-            if (_sessions == null) const _LoadingPlaceholder(),
+            if (_sessions == null && pageError == null) const _LoadingPlaceholder(),
+            if (_sessions == null && pageError != null)
+              _SettingsBlock(
+                child: _LoadError(
+                  message: pageError!,
+                  onRetry: () {
+                    setState(() => pageError = null);
+                    unawaited(_load());
+                  },
+                ),
+              ),
             for (final session in _sessions ?? const <SessionInfo>[])
               _SettingsRow(
                 label: session.userAgent.isEmpty
@@ -510,12 +539,14 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
                 control: session.current
                     ? null
                     : TextButton(
-                        onPressed: () => unawaited(
-                          runAction(_controller, () async {
-                            await _controller.client.revokeSession(session.id);
-                            await _load();
-                          }),
-                        ),
+                        onPressed: busy
+                            ? null
+                            : () => unawaited(
+                                runAction(_controller, () async {
+                                  await _controller.client.revokeSession(session.id);
+                                  await _load();
+                                }),
+                              ),
                         child: Text(appStrings.sessionRevoke),
                       ),
               ),
@@ -632,8 +663,7 @@ class _GeneralSettingsPage extends StatelessWidget {
             ),
           ],
         ),
-        if (!controller.usesDeviceLogin)
-          _SettingsGroup(
+        _SettingsGroup(
             title: appStrings.searchSettingsTitle,
             children: <Widget>[
               _SettingsRow(

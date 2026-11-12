@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:neocloud/main.dart';
 import 'package:neocloud/src/api/backend_client.dart';
+import 'package:neocloud/src/device/device_session.dart' hide createDeviceSessions;
 import 'package:neocloud/src/device/device_session_stub.dart';
+import 'package:neocloud/src/device/password_login.dart';
 import 'package:neocloud/src/mobile/camera_upload_stub.dart';
+import 'package:neocloud/src/mobile/qr_scanner.dart';
 import 'package:neocloud/src/mobile/share_intake_stub.dart';
 import 'package:neocloud/src/security/password_strength.dart';
 import 'package:neocloud/src/security/webauthn_client.dart';
@@ -21,6 +24,28 @@ class _FakeWebAuthnClient implements WebAuthnClient {
 
   @override
   Future<Map<String, dynamic>> getAssertion(Map<String, dynamic> options) async => const <String, dynamic>{};
+}
+
+/// A phone: it signs in as a device.
+class _PhoneSessions implements DeviceSessions {
+  @override
+  bool get supported => true;
+  @override
+  String get deviceName => 'Pixel';
+  @override
+  String get platformName => 'android';
+  @override
+  Future<DeviceConnection?> read() async => null;
+  @override
+  Future<void> write(DeviceConnection connection) async {}
+  @override
+  Future<void> clear() async {}
+  @override
+  Future<String?> lastServer() async => null;
+  @override
+  Future<PendingDeviceLogin> start(Uri server) => throw UnimplementedError();
+  @override
+  Future<DeviceConnection> pair(Uri server, String code) => throw UnimplementedError();
 }
 
 Future<NeoCloudController> _controller({bool securityKeys = true, bool registrationOpen = true}) async {
@@ -144,6 +169,44 @@ void main() {
       await tester.pump();
       expect(find.text('Password strength: strong'), findsOneWidget);
       expect(submit().onPressed, isNotNull);
+    });
+  });
+
+  group('phone sign-in card', () {
+    setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+    setUp(() => debugQrScannerSupported = true);
+    tearDown(() => debugQrScannerSupported = null);
+
+    Future<NeoCloudController> phone() async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      const server = 'https://cloud.example.com';
+      return NeoCloudController(
+          client: BackendClient(baseUrl: 'http://localhost:1'),
+          preferences: await SharedPreferences.getInstance(),
+          deviceSessions: _PhoneSessions(),
+          cameraUploads: NoCameraUploads(),
+          shareIntake: NoShareIntake(),
+        )
+        ..webAuthn = _FakeWebAuthnClient(isSupported: true)
+        ..passwordLogin = PasswordDeviceLogin(
+          server: server,
+          client: BackendClient(baseUrl: server),
+          deviceName: 'Pixel',
+          platform: 'android',
+        );
+    }
+
+    testWidgets('offers the QR code and the browser, never a security key', (tester) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(home: PhoneAuthView(controller: await phone())));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Scan QR code'), findsOneWidget);
+      expect(find.text('Sign in with the browser'), findsOneWidget);
+      expect(find.text('Sign in with security key'), findsNothing);
+      expect(find.text('Signing in to cloud.example.com'), findsOneWidget);
+      expect(find.text('Change server'), findsOneWidget);
     });
   });
 }

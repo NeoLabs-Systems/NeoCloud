@@ -32,6 +32,9 @@ server/
     members/        Sharing with other accounts: grants, the access resolver, member file/transfer ops
     settings/       Per-account preferences
     import/         Imports from Nextcloud/WebDAV: read-only client, jobs, runner
+    search_index/   Full-text index: extraction worker, encrypted texts, FTS
+    ai/             Providers, model catalog and roles, the facade (client.js), usage and budgets, exclusions
+      organize/     AI suggestions: naming, extraction, sorting, rules, review queue, jobs and worker, summaries
   utils/            Pure helpers
 runtime/            Paths and env parsing
 lib/                CLI (manager.js), schema migrations, service setup
@@ -82,11 +85,12 @@ docs/api.md         Endpoint reference — keep it in step with the routes
 
 - Never log secrets, tokens, file names of other accounts, or file contents.
 - Origin checks go through `server/config/origins.js` only.
-- Device tokens reach `files`, `transfers`, `storage`, `sync`, `shares` and `vaults` routes only (`requireAuthOrDevice`); account, settings and admin require a session, except the routes that approve another sign-in (`/api/account/qr-login/*`, `/api/account/devices/authorize/*`), which also take the phone app's token (`android`/`ios` only, `requireSessionOrPhone`).
+- The phone app is a full client: its token (`android`/`ios` only) reaches account, settings, imports and admin like a session (`requireSessionOrPhone`; `requireAdmin` takes it for an admin account, reading the flag every request). Other device tokens reach `files`, `transfers`, `storage`, `sync`, `shares` and `vaults` routes only (`requireAuthOrDevice`); WebDAV app passwords reach WebDAV only. A handler that touches the session checks `req.deviceId` (set for a phone): keep the phone where it would keep the session, or refuse with a code (`BROWSER_REQUIRED` for security key registration). Sensitive actions ask for the password or 2FA code the same way for both.
 - File routes resolve node ids through `services/members/access.js` (`resolveAccess`), so shared nodes are reached only through a live grant; keep owner-only features (versions, vaults, links, sync, WebDAV) on the account-scoped services.
 - Public share routes check every node id against the shared subtree (`services/shares/public.js`); never serve a share node through another path.
-- Import passwords (another server's credentials) are stored only with `encryptValue` and set to NULL when the job ends; imports are session-only.
+- Import passwords (another server's credentials) are stored only with `encryptValue` and set to NULL when the job ends; imports take a session or the phone app, never a desktop token.
 - Downloads always carry the sandbox CSP; active types are always attachments.
+- AI reads a file only through `assertAiAllowedForNode` (no vault, nothing excluded) and only the account's own nodes, never one shared with it. Models never write names: they return fields and NeoCloud renders the name. AI changes files only as suggestions applied through `files/operations.js`.
 
 ### Paths, env, logging
 

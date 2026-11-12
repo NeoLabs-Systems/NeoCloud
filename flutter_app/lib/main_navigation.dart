@@ -2,7 +2,7 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, shared, favorites, recent, trash, settings, admin }
+enum AppSection { files, review, shared, favorites, recent, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
 enum SidebarGroup { files, admin, settings }
@@ -12,6 +12,8 @@ extension AppSectionInfo on AppSection {
     switch (this) {
       case AppSection.files:
         return appStrings.navAllFiles;
+      case AppSection.review:
+        return appStrings.aiReviewNav;
       case AppSection.shared:
         return appStrings.navSharedWithMe;
       case AppSection.favorites:
@@ -31,6 +33,8 @@ extension AppSectionInfo on AppSection {
     switch (this) {
       case AppSection.files:
         return Icons.folder_outlined;
+      case AppSection.review:
+        return Icons.auto_awesome_outlined;
       case AppSection.shared:
         return Icons.folder_shared_outlined;
       case AppSection.favorites:
@@ -49,6 +53,7 @@ extension AppSectionInfo on AppSection {
   SidebarGroup get group {
     switch (this) {
       case AppSection.files:
+      case AppSection.review:
       case AppSection.shared:
       case AppSection.favorites:
       case AppSection.recent:
@@ -81,7 +86,8 @@ extension SidebarGroupInfo on SidebarGroup {
       case SidebarGroup.admin:
         return Icons.admin_panel_settings_outlined;
       case SidebarGroup.settings:
-        return Icons.settings_outlined;
+        // NeoAgent's sliders, also the phone's Settings tab.
+        return Icons.tune;
     }
   }
 }
@@ -89,6 +95,8 @@ extension SidebarGroupInfo on SidebarGroup {
 List<AppSection> _mainSections(NeoCloudController controller) {
   return <AppSection>[
     AppSection.files,
+    // AI suggestions wait here; only while AI runs for the account.
+    if (controller.aiReview.enabled) AppSection.review,
     AppSection.shared,
     AppSection.favorites,
     AppSection.recent,

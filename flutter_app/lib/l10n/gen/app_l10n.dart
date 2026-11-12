@@ -916,13 +916,13 @@ abstract class AppL10n {
   /// No description provided for @settingsScopeAccount.
   ///
   /// In en, this message translates to:
-  /// **'ACCOUNT'**
+  /// **'You'**
   String get settingsScopeAccount;
 
   /// No description provided for @settingsScopeApp.
   ///
   /// In en, this message translates to:
-  /// **'THIS DEVICE'**
+  /// **'This app'**
   String get settingsScopeApp;
 
   /// No description provided for @settingsAccountHint.
@@ -930,6 +930,30 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Saved to your account'**
   String get settingsAccountHint;
+
+  /// No description provided for @settingsDeviceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to this device'**
+  String get settingsDeviceHint;
+
+  /// No description provided for @settingsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// No description provided for @settingsTwoFactorOn.
+  ///
+  /// In en, this message translates to:
+  /// **'2FA on'**
+  String get settingsTwoFactorOn;
+
+  /// No description provided for @settingsTwoFactorOff.
+  ///
+  /// In en, this message translates to:
+  /// **'2FA off'**
+  String get settingsTwoFactorOff;
 
   /// No description provided for @settingsSaveHint.
   ///
@@ -1057,6 +1081,12 @@ abstract class AppL10n {
   /// **'End this session on this device.'**
   String get signOutDescription;
 
+  /// No description provided for @disconnectDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign this phone out of NeoCloud; it forgets its access and camera upload turns off.'**
+  String get disconnectDescription;
+
   /// No description provided for @changePassword.
   ///
   /// In en, this message translates to:
@@ -1146,6 +1176,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'This session'**
   String get sessionCurrent;
+
+  /// No description provided for @deviceCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get deviceCurrent;
 
   /// No description provided for @sessionLastSeen.
   ///
@@ -1339,6 +1375,24 @@ abstract class AppL10n {
   /// **'Accounts'**
   String get adminUsersTitle;
 
+  /// No description provided for @adminUsersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 account} other{{count} accounts}}'**
+  String adminUsersCount(int count);
+
+  /// No description provided for @adminUserYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (you)'**
+  String adminUserYou(String name);
+
+  /// No description provided for @adminSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search admin settings'**
+  String get adminSearchHint;
+
   /// No description provided for @adminSearchUsers.
   ///
   /// In en, this message translates to:
@@ -1416,6 +1470,150 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'{name} and all their files are deleted for good.'**
   String adminDeleteUserMessage(String name);
+
+  /// No description provided for @adminUserDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get adminUserDisabled;
+
+  /// No description provided for @adminDisableUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get adminDisableUser;
+
+  /// No description provided for @adminEnableUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get adminEnableUser;
+
+  /// No description provided for @adminSignOutEverywhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out everywhere'**
+  String get adminSignOutEverywhere;
+
+  /// No description provided for @adminSignOutEverywhereTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out {name} everywhere?'**
+  String adminSignOutEverywhereTitle(String name);
+
+  /// No description provided for @adminSignOutEverywhereMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Every active session for this account ends, and its devices and WebDAV app passwords stop working. They can sign in again right away.'**
+  String get adminSignOutEverywhereMessage;
+
+  /// No description provided for @adminSignedOutEverywhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed {name} out of every session.'**
+  String adminSignedOutEverywhere(String name);
+
+  /// No description provided for @accountDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data'**
+  String get accountDataTitle;
+
+  /// No description provided for @accountExportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export account data'**
+  String get accountExportTitle;
+
+  /// No description provided for @accountExportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile, sessions, devices, links, shares and the list of your files and folders as one file. File contents are not included: download your files, or a folder as ZIP, to keep them. Passwords and keys are not included.'**
+  String get accountExportHint;
+
+  /// No description provided for @accountExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get accountExport;
+
+  /// No description provided for @accountExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded.'**
+  String get accountExported;
+
+  /// No description provided for @accountDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get accountDeleteTitle;
+
+  /// No description provided for @accountDeleteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes your account with all files, versions, links, shares and devices. People you shared with lose access. This cannot be undone.'**
+  String get accountDeleteHint;
+
+  /// No description provided for @accountDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get accountDelete;
+
+  /// No description provided for @accountDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in this account is deleted for good. Export your data first if you want to keep it.'**
+  String get accountDeleteConfirm;
+
+  /// No description provided for @accountDeleteTypeUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your username {name} to confirm.'**
+  String accountDeleteTypeUsername(String name);
+
+  /// No description provided for @accountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account was deleted.'**
+  String get accountDeleted;
+
+  /// No description provided for @accountConfirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to continue.'**
+  String get accountConfirmPassword;
+
+  /// No description provided for @accountConfirmPasswordCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password and a code from your authenticator app.'**
+  String get accountConfirmPasswordCode;
+
+  /// No description provided for @accountWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'The password is not correct.'**
+  String get accountWrongPassword;
+
+  /// No description provided for @accountWrongCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The code is not valid.'**
+  String get accountWrongCode;
+
+  /// No description provided for @accountLastAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'You are the only admin. Make someone else an admin first.'**
+  String get accountLastAdmin;
+
+  /// No description provided for @accountConfirmMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The username doesn\'t match.'**
+  String get accountConfirmMismatch;
 
   /// No description provided for @adminFilesCount.
   ///
@@ -1594,7 +1792,7 @@ abstract class AppL10n {
   /// No description provided for @mediaUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'This file can’t be played in the browser.'**
+  /// **'This file can’t be played here.'**
   String get mediaUnavailable;
 
   /// No description provided for @adminTabBackups.
@@ -1867,6 +2065,18 @@ abstract class AppL10n {
   /// **'Recent runs'**
   String get backupHistory;
 
+  /// No description provided for @adminBackupRunOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get adminBackupRunOk;
+
+  /// No description provided for @adminBackupRunFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get adminBackupRunFailed;
+
   /// No description provided for @backupRestoreHint.
   ///
   /// In en, this message translates to:
@@ -2074,7 +2284,7 @@ abstract class AppL10n {
   /// No description provided for @connectSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Enter the address of your NeoCloud server. You then approve this device in your browser.'**
+  /// **'Enter the address of your NeoCloud server, then sign in.'**
   String get connectSubtitle;
 
   /// No description provided for @connectServerLabel.
@@ -2236,7 +2446,7 @@ abstract class AppL10n {
   /// No description provided for @vaultNoMediaPreview.
   ///
   /// In en, this message translates to:
-  /// **'Vault videos and audio can’t be played in the browser. Download the file to play it.'**
+  /// **'Vault videos and audio can’t be played directly. Download the file to play it.'**
   String get vaultNoMediaPreview;
 
   /// No description provided for @shareLink.
@@ -2518,7 +2728,7 @@ abstract class AppL10n {
   /// No description provided for @disconnectMessage.
   ///
   /// In en, this message translates to:
-  /// **'This device forgets its access to {server} and camera upload turns off. To connect again you approve it once more in the browser.'**
+  /// **'This device forgets its access to {server} and camera upload turns off. To connect again you sign in once more.'**
   String disconnectMessage(String server);
 
   /// No description provided for @syncChooseThisFolder.
@@ -3594,6 +3804,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Upload files or drop them anywhere on this page.'**
   String get filesWelcomeUploadBody;
+
+  /// No description provided for @filesWelcomeUploadBodyPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload files from the New menu, or turn on camera upload.'**
+  String get filesWelcomeUploadBodyPhone;
 
   /// No description provided for @filesWelcomeDesktopBody.
   ///
@@ -4717,23 +4933,29 @@ abstract class AppL10n {
   /// **'Options'**
   String get cameraOptions;
 
-  /// No description provided for @mobileNavFiles.
-  ///
-  /// In en, this message translates to:
-  /// **'Files'**
-  String get mobileNavFiles;
-
   /// No description provided for @mobileNavCamera.
   ///
   /// In en, this message translates to:
   /// **'Camera'**
   String get mobileNavCamera;
 
-  /// No description provided for @mobileMore.
+  /// No description provided for @mobilePermissionsSet.
   ///
   /// In en, this message translates to:
-  /// **'More'**
-  String get mobileMore;
+  /// **'{granted} of {total} set'**
+  String mobilePermissionsSet(int granted, int total);
+
+  /// No description provided for @mobilePermissionStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {total}'**
+  String mobilePermissionStep(int step, int total);
+
+  /// No description provided for @mobileQrLoginExpiresAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {time}'**
+  String mobileQrLoginExpiresAt(String time);
 
   /// No description provided for @mobileRecentServers.
   ///
@@ -4752,6 +4974,18 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Quick access'**
   String get filesQuickAccess;
+
+  /// No description provided for @filesMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get filesMoreActions;
+
+  /// No description provided for @filesMemberRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will no longer be able to open “{item}”.'**
+  String filesMemberRemoveConfirm(String name, String item);
 
   /// No description provided for @done.
   ///
@@ -4774,7 +5008,7 @@ abstract class AppL10n {
   /// No description provided for @qrPairing.
   ///
   /// In en, this message translates to:
-  /// **'QR Pairing'**
+  /// **'QR pairing'**
   String get qrPairing;
 
   /// No description provided for @pairPhoneDescription.
@@ -5773,6 +6007,18 @@ abstract class AppL10n {
   /// **'Remove'**
   String get passkeyRemove;
 
+  /// No description provided for @settingsPasskeyRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove “{name}”?'**
+  String settingsPasskeyRemoveTitle(String name);
+
+  /// No description provided for @settingsPasskeyRemoveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This key can no longer sign in to your account. Keep at least one other way in.'**
+  String get settingsPasskeyRemoveMessage;
+
   /// No description provided for @passkeyAddedLastUsed.
   ///
   /// In en, this message translates to:
@@ -5796,6 +6042,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'This device cannot register security keys. Open NeoCloud in a browser over HTTPS to add one.'**
   String get passkeyUnsupported;
+
+  /// No description provided for @passkeyAddInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Security keys and passkeys are added in the NeoCloud web app in a browser. Keys added there are listed here, and you can rename or remove them.'**
+  String get passkeyAddInBrowser;
 
   /// No description provided for @navSharedWithMe.
   ///
@@ -6174,6 +6426,2202 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Not now'**
   String get notNow;
+
+  /// No description provided for @connectWithBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the browser'**
+  String get connectWithBrowser;
+
+  /// No description provided for @connectChangeServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Change server'**
+  String get connectChangeServer;
+
+  /// No description provided for @signInInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong username, email or password.'**
+  String get signInInvalidCredentials;
+
+  /// No description provided for @signInInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That code isn\'t right. Check your authenticator app and try again.'**
+  String get signInInvalidCode;
+
+  /// No description provided for @signInLockedMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many failed sign-in attempts for this account. Try again in {minutes} min.'**
+  String signInLockedMinutes(int minutes);
+
+  /// No description provided for @signInLockedSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many failed sign-in attempts for this account. Try again in {seconds} s.'**
+  String signInLockedSeconds(int seconds);
+
+  /// No description provided for @signInRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a few minutes, then try again.'**
+  String get signInRateLimited;
+
+  /// No description provided for @approvalNeedsServerUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'This server can\'t approve sign-ins from the app yet. Update NeoCloud on the server, or approve in a browser where you\'re signed in.'**
+  String get approvalNeedsServerUpdate;
+
+  /// No description provided for @serverUpdateNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'This server is too old for this in the app. Update NeoCloud on the server.'**
+  String get serverUpdateNeeded;
+
+  /// No description provided for @approvalNeedsPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve sign-ins from the NeoCloud phone app or a browser where you\'re signed in.'**
+  String get approvalNeedsPhone;
+
+  /// No description provided for @connectWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'WELCOME TO NEOCLOUD'**
+  String get connectWelcome;
+
+  /// No description provided for @connectReadyToSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to sign in'**
+  String get connectReadyToSignIn;
+
+  /// No description provided for @connectEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address manually'**
+  String get connectEnterAddress;
+
+  /// No description provided for @connectEnterAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your server\'s address, such as cloud.example.com'**
+  String get connectEnterAddressHint;
+
+  /// No description provided for @connectServerAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud server address'**
+  String get connectServerAddress;
+
+  /// No description provided for @connectConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get connectConnecting;
+
+  /// No description provided for @connectToThisServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to this server'**
+  String get connectToThisServer;
+
+  /// No description provided for @connectForgetServerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this server from the list? You can still enter its address.'**
+  String get connectForgetServerBody;
+
+  /// No description provided for @authSigningInTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in to {host}'**
+  String authSigningInTo(String host);
+
+  /// No description provided for @authShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get authShowPassword;
+
+  /// No description provided for @authHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get authHidePassword;
+
+  /// No description provided for @authForgotPasswordAskAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot your password? Ask your server admin to reset it in Admin → Users.'**
+  String get authForgotPasswordAskAdmin;
+
+  /// No description provided for @authPhoneSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to NeoCloud'**
+  String get authPhoneSignInTitle;
+
+  /// No description provided for @authPhoneSignInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the code on a signed-in computer, or use your password.'**
+  String get authPhoneSignInSubtitle;
+
+  /// No description provided for @aiPage.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get aiPage;
+
+  /// No description provided for @aiPageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions for names and folders, the models behind them and your own keys.'**
+  String get aiPageDescription;
+
+  /// No description provided for @aiOptInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features'**
+  String get aiOptInTitle;
+
+  /// No description provided for @aiOptIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Use AI features'**
+  String get aiOptIn;
+
+  /// No description provided for @aiPrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Names, extracted text and previews of the files you ask about go to the AI provider. Vault files are never processed, and nothing changes until you approve a suggestion.'**
+  String get aiPrivacyNote;
+
+  /// No description provided for @aiModelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default models'**
+  String get aiModelsTitle;
+
+  /// No description provided for @aiModelsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Each kind of work uses its own model. Auto uses NeoRouter or the best available model.'**
+  String get aiModelsDescription;
+
+  /// No description provided for @aiRoleText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get aiRoleText;
+
+  /// No description provided for @aiRoleTextDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast model for names, tags and sorting.'**
+  String get aiRoleTextDescription;
+
+  /// No description provided for @aiRoleSmart.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart'**
+  String get aiRoleSmart;
+
+  /// No description provided for @aiRoleSmartDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Stronger model for summaries and questions about a file.'**
+  String get aiRoleSmartDescription;
+
+  /// No description provided for @aiRoleVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Vision'**
+  String get aiRoleVision;
+
+  /// No description provided for @aiRoleVisionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads photos, screenshots and scans. Only models that can see images.'**
+  String get aiRoleVisionDescription;
+
+  /// No description provided for @aiRoleEmbedding.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedding'**
+  String get aiRoleEmbedding;
+
+  /// No description provided for @aiRoleEmbeddingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Finds similar files and folders for sorting.'**
+  String get aiRoleEmbeddingDescription;
+
+  /// No description provided for @aiRoleNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'No model is available for this yet.'**
+  String get aiRoleNotReady;
+
+  /// No description provided for @aiAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get aiAuto;
+
+  /// No description provided for @aiAutoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter or the best available model'**
+  String get aiAutoSubtitle;
+
+  /// No description provided for @aiSelectModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select {name}'**
+  String aiSelectModel(String name);
+
+  /// No description provided for @aiSearchModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Search…'**
+  String get aiSearchModels;
+
+  /// No description provided for @aiNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results for \"{query}\"'**
+  String aiNoResults(String query);
+
+  /// No description provided for @aiNoModelsForRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No model can do this yet.'**
+  String get aiNoModelsForRole;
+
+  /// No description provided for @aiAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get aiAll;
+
+  /// No description provided for @aiOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get aiOther;
+
+  /// No description provided for @aiProviderCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom OpenAI-compatible'**
+  String get aiProviderCustom;
+
+  /// No description provided for @aiGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted'**
+  String get aiGranted;
+
+  /// No description provided for @aiGrantedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An admin granted you this model. It is switched off for everyone else.'**
+  String get aiGrantedHint;
+
+  /// No description provided for @aiByokTag.
+  ///
+  /// In en, this message translates to:
+  /// **'BYOK'**
+  String get aiByokTag;
+
+  /// No description provided for @aiPriceFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get aiPriceFree;
+
+  /// No description provided for @aiPriceUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Price unknown'**
+  String get aiPriceUnknown;
+
+  /// No description provided for @aiPricePerMillion.
+  ///
+  /// In en, this message translates to:
+  /// **'\${price} / 1M input'**
+  String aiPricePerMillion(String price);
+
+  /// No description provided for @aiNoModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI model is set up yet'**
+  String get aiNoModelTitle;
+
+  /// No description provided for @aiNoModelBody.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud needs an AI model for suggestions. Connect NeoRouter or add an API key from a provider such as OpenAI, Anthropic or Google.'**
+  String get aiNoModelBody;
+
+  /// No description provided for @aiNoModelAdminHint.
+  ///
+  /// In en, this message translates to:
+  /// **'As an admin you can also set up providers for everyone under Admin → Providers.'**
+  String get aiNoModelAdminHint;
+
+  /// No description provided for @aiOpenAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Admin'**
+  String get aiOpenAdmin;
+
+  /// No description provided for @aiDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is turned off'**
+  String get aiDisabledTitle;
+
+  /// No description provided for @aiDisabledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features are not turned on for this server.'**
+  String get aiDisabledBody;
+
+  /// No description provided for @aiDisabledAdminHint.
+  ///
+  /// In en, this message translates to:
+  /// **'As an admin you can turn them on under Admin → Models.'**
+  String get aiDisabledAdminHint;
+
+  /// No description provided for @aiNotAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI isn\'t available on this server'**
+  String get aiNotAvailableTitle;
+
+  /// No description provided for @aiNotAvailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Update NeoCloud on the server to use AI features.'**
+  String get aiNotAvailableBody;
+
+  /// No description provided for @aiFeaturesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions'**
+  String get aiFeaturesTitle;
+
+  /// No description provided for @aiFeaturesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What AI may suggest. You review every suggestion before anything changes.'**
+  String get aiFeaturesDescription;
+
+  /// No description provided for @aiFeatureNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest names'**
+  String get aiFeatureNames;
+
+  /// No description provided for @aiFeatureNamesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'For files with meaningless names like IMG_1234 or scan.pdf.'**
+  String get aiFeatureNamesDescription;
+
+  /// No description provided for @aiFeatureFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest folders'**
+  String get aiFeatureFolders;
+
+  /// No description provided for @aiFeatureFoldersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Where a file belongs among your existing folders.'**
+  String get aiFeatureFoldersDescription;
+
+  /// No description provided for @aiFeatureSummaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Summaries'**
+  String get aiFeatureSummaries;
+
+  /// No description provided for @aiFeatureSummariesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A short summary in a file\'s details.'**
+  String get aiFeatureSummariesDescription;
+
+  /// No description provided for @aiFeatureOnUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'On upload'**
+  String get aiFeatureOnUpload;
+
+  /// No description provided for @aiFeatureOnUploadDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest for new files as they arrive.'**
+  String get aiFeatureOnUploadDescription;
+
+  /// No description provided for @aiNamingTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Naming template'**
+  String get aiNamingTemplate;
+
+  /// No description provided for @aiNamingTemplateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How suggested names are built from the date, issuer and subject the AI finds.'**
+  String get aiNamingTemplateDescription;
+
+  /// No description provided for @aiUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage this month'**
+  String get aiUsageTitle;
+
+  /// No description provided for @aiUsageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit} tokens'**
+  String aiUsageOf(String used, String limit);
+
+  /// No description provided for @aiUsageUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} tokens · no limit'**
+  String aiUsageUnlimited(String used);
+
+  /// No description provided for @aiByokTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your own key'**
+  String get aiByokTitle;
+
+  /// No description provided for @aiByokDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your own keys or endpoint for your AI features. Keys are encrypted and never shown again.'**
+  String get aiByokDescription;
+
+  /// No description provided for @aiByokNoProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers are available to configure yet.'**
+  String get aiByokNoProviders;
+
+  /// No description provided for @aiByokUsingYourKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Using your key'**
+  String get aiByokUsingYourKey;
+
+  /// No description provided for @aiNotSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get aiNotSetUp;
+
+  /// No description provided for @aiUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get aiUpdate;
+
+  /// No description provided for @aiConnectEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect endpoint'**
+  String get aiConnectEndpoint;
+
+  /// No description provided for @aiAddKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Add key'**
+  String get aiAddKey;
+
+  /// No description provided for @aiRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get aiRemove;
+
+  /// No description provided for @aiRemoveKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {provider} key?'**
+  String aiRemoveKeyTitle(String provider);
+
+  /// No description provided for @aiRemoveKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features fall back to the shared server key for {provider}, if one is configured. This can’t be undone.'**
+  String aiRemoveKeyBody(String provider);
+
+  /// No description provided for @aiKeyRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} key removed.'**
+  String aiKeyRemoved(String provider);
+
+  /// No description provided for @aiEnterKeyFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an API key first.'**
+  String get aiEnterKeyFirst;
+
+  /// No description provided for @aiConnectionGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection looks good.'**
+  String get aiConnectionGood;
+
+  /// No description provided for @aiCouldNotConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect.'**
+  String get aiCouldNotConnect;
+
+  /// No description provided for @aiKeyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'An API key is required.'**
+  String get aiKeyRequired;
+
+  /// No description provided for @aiBaseUrlRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A base URL is required for this endpoint.'**
+  String get aiBaseUrlRequired;
+
+  /// No description provided for @aiCustomEndpointTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a custom endpoint'**
+  String get aiCustomEndpointTitle;
+
+  /// No description provided for @aiCustomEndpointBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Point NeoCloud at any OpenAI-compatible Chat Completions API: your own server, a self-hosted model, or another hosted provider.'**
+  String get aiCustomEndpointBody;
+
+  /// No description provided for @aiYourKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your {provider} key'**
+  String aiYourKeyTitle(String provider);
+
+  /// No description provided for @aiYourKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste your {provider} API key below. It’s stored encrypted and only used for your own AI features.'**
+  String aiYourKeyBody(String provider);
+
+  /// No description provided for @aiNameOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get aiNameOptional;
+
+  /// No description provided for @aiNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. My local server'**
+  String get aiNameHint;
+
+  /// No description provided for @aiBaseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get aiBaseUrl;
+
+  /// No description provided for @aiBaseUrlOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL (optional)'**
+  String get aiBaseUrlOptional;
+
+  /// No description provided for @aiBaseUrlHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be reachable on the public internet. Local and private network addresses aren\'t allowed.'**
+  String get aiBaseUrlHelper;
+
+  /// No description provided for @aiApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API key'**
+  String get aiApiKey;
+
+  /// No description provided for @aiTestConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get aiTestConnection;
+
+  /// No description provided for @aiByokLimitsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Server usage limits don\'t apply to models running on your own key.'**
+  String get aiByokLimitsNote;
+
+  /// No description provided for @aiShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get aiShow;
+
+  /// No description provided for @aiHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get aiHide;
+
+  /// No description provided for @aiNeoRouterConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter is connected.'**
+  String get aiNeoRouterConnected;
+
+  /// No description provided for @aiNeoRouterDisconnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect NeoRouter?'**
+  String get aiNeoRouterDisconnectTitle;
+
+  /// No description provided for @aiNeoRouterDisconnectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud stops using this NeoRouter. To withdraw its key as well, revoke it under API keys in NeoRouter.'**
+  String get aiNeoRouterDisconnectBody;
+
+  /// No description provided for @aiNeoRouterWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve NeoCloud in NeoRouter. It shows the code {code}.'**
+  String aiNeoRouterWaiting(String code);
+
+  /// No description provided for @aiNeoRouterOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Open again'**
+  String get aiNeoRouterOpenAgain;
+
+  /// No description provided for @aiNeoRouterServerInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This server already uses a NeoRouter for everyone. Connect your own NeoRouter account for your own models and budget.'**
+  String get aiNeoRouterServerInUse;
+
+  /// No description provided for @aiNeoRouterUserDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your own NeoRouter account for the work switched on under Manage instead of this server\'s providers.'**
+  String get aiNeoRouterUserDescription;
+
+  /// No description provided for @aiNeoRouterServerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your NeoRouter once and every account here uses it for the work switched on under Manage.'**
+  String get aiNeoRouterServerDescription;
+
+  /// No description provided for @aiNeoRouterUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter cannot be reached right now.'**
+  String get aiNeoRouterUnreachable;
+
+  /// No description provided for @aiNeoRouterConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect NeoRouter'**
+  String get aiNeoRouterConnect;
+
+  /// No description provided for @aiNeoRouterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter address'**
+  String get aiNeoRouterAddress;
+
+  /// No description provided for @aiNeoRouterRoleChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Text and vision'**
+  String get aiNeoRouterRoleChat;
+
+  /// No description provided for @aiNeoRouterRoleEmbeddings.
+  ///
+  /// In en, this message translates to:
+  /// **'Similarity search'**
+  String get aiNeoRouterRoleEmbeddings;
+
+  /// No description provided for @aiNeoRouterRoleTranscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech to text'**
+  String get aiNeoRouterRoleTranscription;
+
+  /// No description provided for @aiNeoRouterRoleImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Image generation'**
+  String get aiNeoRouterRoleImages;
+
+  /// No description provided for @aiNeoRouterModelCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} available in your NeoRouter'**
+  String aiNeoRouterModelCount(int count);
+
+  /// No description provided for @aiNeoRouterNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} in your NeoRouter, but NeoCloud’s key may not use them yet (for example paid ones). Allow them for NeoCloud under API keys in NeoRouter.'**
+  String aiNeoRouterNotAllowed(int count);
+
+  /// No description provided for @aiNeoRouterNoModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing available in your NeoRouter yet.'**
+  String get aiNeoRouterNoModels;
+
+  /// No description provided for @aiNeoRouterCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in was cancelled.'**
+  String get aiNeoRouterCancelled;
+
+  /// No description provided for @aiNeoRouterExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This sign-in expired. Start again.'**
+  String get aiNeoRouterExpired;
+
+  /// No description provided for @aiNeoRouterFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter didn\'t approve the sign-in.'**
+  String get aiNeoRouterFailed;
+
+  /// No description provided for @aiNeoRouterCouldNotOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoRouter couldn\'t be opened. Use Open again.'**
+  String get aiNeoRouterCouldNotOpen;
+
+  /// No description provided for @aiConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get aiConnect;
+
+  /// No description provided for @aiConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get aiConnected;
+
+  /// No description provided for @aiManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get aiManage;
+
+  /// No description provided for @aiAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features'**
+  String get aiAdminTitle;
+
+  /// No description provided for @aiAdminDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions for names and folders, for accounts that opt in. Vault files are never processed.'**
+  String get aiAdminDescription;
+
+  /// No description provided for @aiAdminEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable AI features'**
+  String get aiAdminEnable;
+
+  /// No description provided for @aiAdminEnableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Each account still turns them on for itself in Settings → AI.'**
+  String get aiAdminEnableDescription;
+
+  /// No description provided for @aiAdminBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly token budget'**
+  String get aiAdminBudget;
+
+  /// No description provided for @aiAdminBudgetDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Per account, unless an account has its own under Users. Empty means no limit.'**
+  String get aiAdminBudgetDescription;
+
+  /// No description provided for @aiBudgetInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of tokens.'**
+  String get aiBudgetInvalid;
+
+  /// No description provided for @aiNoLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit'**
+  String get aiNoLimit;
+
+  /// No description provided for @aiProvidersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server provider credentials'**
+  String get aiProvidersTitle;
+
+  /// No description provided for @aiProvidersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'API keys and endpoints for AI providers. They are shared by every account on this server; accounts can still add their own keys in Settings → AI.'**
+  String get aiProvidersDescription;
+
+  /// No description provided for @aiProvidersSetCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} set'**
+  String aiProvidersSetCount(int count, int total);
+
+  /// No description provided for @aiProvidersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This server reports no provider settings.'**
+  String get aiProvidersEmpty;
+
+  /// No description provided for @aiSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get aiSet;
+
+  /// No description provided for @aiNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get aiNotSet;
+
+  /// No description provided for @aiReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get aiReplace;
+
+  /// No description provided for @aiChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get aiChange;
+
+  /// No description provided for @aiSetUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Set URL'**
+  String get aiSetUrl;
+
+  /// No description provided for @aiEndpointUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint URL'**
+  String get aiEndpointUrl;
+
+  /// No description provided for @aiUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get aiUrl;
+
+  /// No description provided for @aiClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear {name}?'**
+  String aiClearTitle(String name);
+
+  /// No description provided for @aiClearUrlBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the address for every account on this server.'**
+  String get aiClearUrlBody;
+
+  /// No description provided for @aiClearKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every account on this server loses this shared key. Accounts that added their own key keep using it.'**
+  String get aiClearKeyBody;
+
+  /// No description provided for @aiCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} cleared.'**
+  String aiCleared(String name);
+
+  /// No description provided for @aiSavedName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} saved.'**
+  String aiSavedName(String name);
+
+  /// No description provided for @aiPasteAKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a key.'**
+  String get aiPasteAKey;
+
+  /// No description provided for @aiEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address.'**
+  String get aiEnterAddress;
+
+  /// No description provided for @aiUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The address must be an http:// or https:// address.'**
+  String get aiUrlInvalid;
+
+  /// No description provided for @aiPasteNewKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a new key to replace {hint}'**
+  String aiPasteNewKey(String hint);
+
+  /// No description provided for @aiPasteTheKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the key'**
+  String get aiPasteTheKey;
+
+  /// No description provided for @aiProviderUrlBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every account on this server uses this address for {name}.'**
+  String aiProviderUrlBody(String name);
+
+  /// No description provided for @aiProviderKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by every account on this server that has no key of its own. It is never shown again after saving.'**
+  String get aiProviderKeyBody;
+
+  /// No description provided for @aiModelAvailability.
+  ///
+  /// In en, this message translates to:
+  /// **'Model availability'**
+  String get aiModelAvailability;
+
+  /// No description provided for @aiModelAvailabilityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which models every account on this server can pick and run. While any model is switched off, models that providers add later start switched off too.'**
+  String get aiModelAvailabilityDescription;
+
+  /// No description provided for @aiAutoEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable new models automatically'**
+  String get aiAutoEnable;
+
+  /// No description provided for @aiAutoEnableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, models a provider adds later stay disabled until you enable them.'**
+  String get aiAutoEnableHint;
+
+  /// No description provided for @aiSearchModelsOrProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Search models or providers'**
+  String get aiSearchModelsOrProviders;
+
+  /// No description provided for @aiFilterEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get aiFilterEnabled;
+
+  /// No description provided for @aiFilterDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get aiFilterDisabled;
+
+  /// No description provided for @aiShownCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} shown'**
+  String aiShownCount(int count);
+
+  /// No description provided for @aiEnableAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable all'**
+  String get aiEnableAll;
+
+  /// No description provided for @aiEnableShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable shown'**
+  String get aiEnableShown;
+
+  /// No description provided for @aiDisableAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable all'**
+  String get aiDisableAll;
+
+  /// No description provided for @aiDisableShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable shown'**
+  String get aiDisableShown;
+
+  /// No description provided for @aiCollapseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse all'**
+  String get aiCollapseAll;
+
+  /// No description provided for @aiExpandAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand all'**
+  String get aiExpandAll;
+
+  /// No description provided for @aiNoModelsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a provider credential first. Its models show up here once the provider answers.'**
+  String get aiNoModelsYet;
+
+  /// No description provided for @aiNoModelMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No model matches \"{query}\".'**
+  String aiNoModelMatches(String query);
+
+  /// No description provided for @aiUnsavedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unsaved changes'**
+  String aiUnsavedChanges(int count);
+
+  /// No description provided for @aiDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get aiDiscard;
+
+  /// No description provided for @aiSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get aiSaveChanges;
+
+  /// No description provided for @aiModelsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Model availability saved.'**
+  String get aiModelsSaved;
+
+  /// No description provided for @aiEnabledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} enabled'**
+  String aiEnabledCount(int count, int total);
+
+  /// No description provided for @aiKindVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Vision'**
+  String get aiKindVision;
+
+  /// No description provided for @aiKindEmbedding.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedding'**
+  String get aiKindEmbedding;
+
+  /// No description provided for @aiKindTranscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech'**
+  String get aiKindTranscription;
+
+  /// No description provided for @aiAdminUsageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata only: who used which model and how many tokens, never what was sent.'**
+  String get aiAdminUsageDescription;
+
+  /// No description provided for @aiUsageRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get aiUsageRequests;
+
+  /// No description provided for @aiUsageTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens'**
+  String get aiUsageTokens;
+
+  /// No description provided for @aiUsageErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get aiUsageErrors;
+
+  /// No description provided for @aiUsageAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Busiest accounts'**
+  String get aiUsageAccounts;
+
+  /// No description provided for @aiUsageModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Busiest models'**
+  String get aiUsageModels;
+
+  /// No description provided for @aiUsageNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI use this month yet.'**
+  String get aiUsageNone;
+
+  /// No description provided for @aiTokenCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens'**
+  String aiTokenCount(String count);
+
+  /// No description provided for @aiAdminUserMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'AI models and budget'**
+  String get aiAdminUserMenu;
+
+  /// No description provided for @aiAdminUserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI · {name}'**
+  String aiAdminUserTitle(String name);
+
+  /// No description provided for @aiAdminUserSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved AI settings for {name}'**
+  String aiAdminUserSaved(String name);
+
+  /// No description provided for @aiUserBudgetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Server default'**
+  String get aiUserBudgetDefault;
+
+  /// No description provided for @aiUserBudgetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get aiUserBudgetCustom;
+
+  /// No description provided for @aiUserBudgetDefaultValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Server default: {value}'**
+  String aiUserBudgetDefaultValue(String value);
+
+  /// No description provided for @aiTokensPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens per month'**
+  String get aiTokensPerMonth;
+
+  /// No description provided for @aiExtraModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra models'**
+  String get aiExtraModels;
+
+  /// No description provided for @aiExtraModelsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'These models are switched off for everyone. Tick the ones {name} may use anyway. Their use still counts toward this account\'s budget.'**
+  String aiExtraModelsIntro(String name);
+
+  /// No description provided for @aiExtraModelsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No models are switched off for everyone, so there is nothing extra to grant.'**
+  String get aiExtraModelsEmpty;
+
+  /// No description provided for @aiAdminTabProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get aiAdminTabProviders;
+
+  /// No description provided for @aiAdminTabModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get aiAdminTabModels;
+
+  /// No description provided for @aiRoleRequestedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your choice isn’t available right now, so another model is used.'**
+  String get aiRoleRequestedUnavailable;
+
+  /// No description provided for @aiFeatureTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest tags'**
+  String get aiFeatureTags;
+
+  /// No description provided for @aiFeatureTagsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags from a file’s content, like invoice or contract.'**
+  String get aiFeatureTagsDescription;
+
+  /// No description provided for @aiFeatureAutoApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply high-confidence suggestions automatically'**
+  String get aiFeatureAutoApply;
+
+  /// No description provided for @aiFeatureAutoApplyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise every suggestion waits for you. Each applied change can be undone.'**
+  String get aiFeatureAutoApplyDescription;
+
+  /// No description provided for @aiUsageFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'By feature'**
+  String get aiUsageFeatures;
+
+  /// No description provided for @aiErrorDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features are turned off on this server.'**
+  String get aiErrorDisabled;
+
+  /// No description provided for @aiErrorNotOptedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on AI features in Settings → AI first.'**
+  String get aiErrorNotOptedIn;
+
+  /// No description provided for @aiErrorBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'This month’s AI budget is used up. It resets on the 1st.'**
+  String get aiErrorBudget;
+
+  /// No description provided for @aiErrorNoModel.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI model is available right now.'**
+  String get aiErrorNoModel;
+
+  /// No description provided for @aiErrorProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI provider didn’t answer properly. Try again later.'**
+  String get aiErrorProvider;
+
+  /// No description provided for @aiErrorVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Files in a vault are never sent to AI.'**
+  String get aiErrorVault;
+
+  /// No description provided for @aiErrorExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is excluded from AI.'**
+  String get aiErrorExcluded;
+
+  /// No description provided for @aiErrorUrlNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'This address isn’t allowed. Use one on the public internet.'**
+  String get aiErrorUrlNotAllowed;
+
+  /// No description provided for @aiFolderExclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude from AI'**
+  String get aiFolderExclude;
+
+  /// No description provided for @aiFolderInclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Include in AI'**
+  String get aiFolderInclude;
+
+  /// No description provided for @aiFolderExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is excluded from AI.'**
+  String aiFolderExcluded(String name);
+
+  /// No description provided for @aiFolderIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is included in AI again.'**
+  String aiFolderIncluded(String name);
+
+  /// No description provided for @aiFolderExcludedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'excluded from AI'**
+  String get aiFolderExcludedTag;
+
+  /// No description provided for @aiReviewNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get aiReviewNav;
+
+  /// No description provided for @aiReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get aiReviewTitle;
+
+  /// No description provided for @aiReviewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestions wait here until you decide. Nothing changes before you accept, and everything accepted can be undone.'**
+  String get aiReviewSubtitle;
+
+  /// No description provided for @aiReviewTabNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Names'**
+  String get aiReviewTabNames;
+
+  /// No description provided for @aiReviewTabFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get aiReviewTabFolders;
+
+  /// No description provided for @aiReviewTabTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get aiReviewTabTags;
+
+  /// No description provided for @aiAcceptHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept all high-confidence ({count})'**
+  String aiAcceptHigh(int count);
+
+  /// No description provided for @aiAcceptHighTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Accept 1 high-confidence suggestion?} other{Accept {count} high-confidence suggestions?}}'**
+  String aiAcceptHighTitle(int count);
+
+  /// No description provided for @aiAcceptHighBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Names, folders and tags across all tabs are applied at once. You can undo them right after.'**
+  String get aiAcceptHighBody;
+
+  /// No description provided for @aiAcceptHighFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 suggestion couldn’t be applied; it stays in the list.} other{{count} suggestions couldn’t be applied; they stay in the list.}}'**
+  String aiAcceptHighFailed(int count);
+
+  /// No description provided for @aiAcceptedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 suggestion accepted} other{{count} suggestions accepted}}'**
+  String aiAcceptedMany(int count);
+
+  /// No description provided for @aiAcceptedRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed to “{name}”'**
+  String aiAcceptedRename(String name);
+
+  /// No description provided for @aiAcceptedMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to {folder}'**
+  String aiAcceptedMove(String folder);
+
+  /// No description provided for @aiAcceptedTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags added to “{name}”'**
+  String aiAcceptedTags(String name);
+
+  /// No description provided for @aiAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get aiAccept;
+
+  /// No description provided for @aiReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get aiReject;
+
+  /// No description provided for @aiEditName.
+  ///
+  /// In en, this message translates to:
+  /// **'Use another name'**
+  String get aiEditName;
+
+  /// No description provided for @aiEditFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Move somewhere else'**
+  String get aiEditFolder;
+
+  /// No description provided for @aiEditTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tags'**
+  String get aiEditTags;
+
+  /// No description provided for @aiTagsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags, separated by commas'**
+  String get aiTagsLabel;
+
+  /// No description provided for @aiTierHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get aiTierHigh;
+
+  /// No description provided for @aiTierMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get aiTierMedium;
+
+  /// No description provided for @aiTierLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get aiTierLow;
+
+  /// No description provided for @aiConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} % confident'**
+  String aiConfidence(int percent);
+
+  /// No description provided for @aiSourceAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get aiSourceAi;
+
+  /// No description provided for @aiSourceRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule'**
+  String get aiSourceRule;
+
+  /// No description provided for @aiSourceModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested by {model}'**
+  String aiSourceModel(String model);
+
+  /// No description provided for @aiSourceRuleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One of your sorting rules matched; no model was asked.'**
+  String get aiSourceRuleHint;
+
+  /// No description provided for @aiNewFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'new folder'**
+  String get aiNewFolder;
+
+  /// No description provided for @aiShowLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show low-confidence ({count})'**
+  String aiShowLow(int count);
+
+  /// No description provided for @aiHideLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide low-confidence'**
+  String get aiHideLow;
+
+  /// No description provided for @aiLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get aiLoadMore;
+
+  /// No description provided for @aiReviewEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to review'**
+  String get aiReviewEmptyTitle;
+
+  /// No description provided for @aiReviewEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'New suggestions appear here. Ask for some from a file’s ⋯ menu, or with Organize this folder.'**
+  String get aiReviewEmptyBody;
+
+  /// No description provided for @aiReviewOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is off for you'**
+  String get aiReviewOffTitle;
+
+  /// No description provided for @aiReviewOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on AI features in Settings › AI to get suggestions for names, folders and tags.'**
+  String get aiReviewOffBody;
+
+  /// No description provided for @aiOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get aiOpenSettings;
+
+  /// No description provided for @aiOpenReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Review'**
+  String get aiOpenReview;
+
+  /// No description provided for @aiSuggestionStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The file changed since this was suggested, so the suggestion was removed.'**
+  String get aiSuggestionStale;
+
+  /// No description provided for @aiSuggestionDecided.
+  ///
+  /// In en, this message translates to:
+  /// **'This suggestion was already decided elsewhere.'**
+  String get aiSuggestionDecided;
+
+  /// No description provided for @aiUndoConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Can’t undo: the file changed since.} other{{count} changes can’t be undone: the files changed since.}}'**
+  String aiUndoConflict(int count);
+
+  /// No description provided for @aiRuleProposalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Always move {type} from {issuer} to {folder}?'**
+  String aiRuleProposalTitle(String type, String issuer, String folder);
+
+  /// No description provided for @aiRuleProposalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{You accepted 1 move like this.} other{You accepted {count} moves like this. A rule does it without asking AI.}}'**
+  String aiRuleProposalBody(int count);
+
+  /// No description provided for @aiCreateRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Create rule'**
+  String get aiCreateRule;
+
+  /// No description provided for @aiDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get aiDismiss;
+
+  /// No description provided for @aiRuleCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule created. Find it under Settings › AI.'**
+  String get aiRuleCreated;
+
+  /// No description provided for @aiSuggestionChip.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestion'**
+  String get aiSuggestionChip;
+
+  /// No description provided for @aiSuggestionChipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the AI suggestion'**
+  String get aiSuggestionChipHint;
+
+  /// No description provided for @aiSuggestionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestion'**
+  String get aiSuggestionTitle;
+
+  /// No description provided for @aiMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get aiMenu;
+
+  /// No description provided for @aiSuggestName.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a name'**
+  String get aiSuggestName;
+
+  /// No description provided for @aiSuggestFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a folder'**
+  String get aiSuggestFolder;
+
+  /// No description provided for @aiSuggestNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest names'**
+  String get aiSuggestNames;
+
+  /// No description provided for @aiSuggestFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest folders'**
+  String get aiSuggestFolders;
+
+  /// No description provided for @aiSuggestTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest tags'**
+  String get aiSuggestTags;
+
+  /// No description provided for @aiSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get aiSummarize;
+
+  /// No description provided for @aiRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Asked AI for a suggestion. It appears in Review.} other{Asked AI about {count} files. Suggestions appear in Review.}}'**
+  String aiRequested(int count);
+
+  /// No description provided for @aiNothingSuggested.
+  ///
+  /// In en, this message translates to:
+  /// **'AI has no suggestion for “{name}”.'**
+  String aiNothingSuggested(String name);
+
+  /// No description provided for @aiOrganizeFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize this folder…'**
+  String get aiOrganizeFolder;
+
+  /// No description provided for @aiOrganizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize “{name}”'**
+  String aiOrganizeTitle(String name);
+
+  /// No description provided for @aiOrganizeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'AI looks at every file in this folder and its subfolders and suggests what you pick. You decide each suggestion in Review.'**
+  String get aiOrganizeIntro;
+
+  /// No description provided for @aiOrganizeNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Names for files with meaningless names'**
+  String get aiOrganizeNames;
+
+  /// No description provided for @aiOrganizeFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'A better folder for each file'**
+  String get aiOrganizeFolders;
+
+  /// No description provided for @aiOrganizeTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get aiOrganizeTags;
+
+  /// No description provided for @aiOrganizeKindOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off in Settings › AI'**
+  String get aiOrganizeKindOff;
+
+  /// No description provided for @aiOrganizeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Vaults and folders excluded from AI are skipped. Up to 5,000 files.'**
+  String get aiOrganizeNote;
+
+  /// No description provided for @aiOrganizeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get aiOrganizeStart;
+
+  /// No description provided for @aiOrganizeRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is looking at the files…'**
+  String get aiOrganizeRunning;
+
+  /// No description provided for @aiOrganizeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get aiOrganizeDone;
+
+  /// No description provided for @aiOrganizeQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to start…'**
+  String get aiOrganizeQueued;
+
+  /// No description provided for @aiOrganizeProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} files'**
+  String aiOrganizeProgress(int done, int total);
+
+  /// No description provided for @aiOrganizeSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{skipped} skipped, {failed} failed'**
+  String aiOrganizeSkipped(int skipped, int failed);
+
+  /// No description provided for @aiOrganizePaused.
+  ///
+  /// In en, this message translates to:
+  /// **'The work is paused for now.'**
+  String get aiOrganizePaused;
+
+  /// No description provided for @aiOrganizeWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 suggestion is waiting in Review.} other{{count} suggestions are waiting in Review.}}'**
+  String aiOrganizeWaiting(int count);
+
+  /// No description provided for @aiOrganizeNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to suggest: these files look fine.'**
+  String get aiOrganizeNothing;
+
+  /// No description provided for @aiOrganizeBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'You can close this; the work goes on and suggestions arrive in Review.'**
+  String get aiOrganizeBackground;
+
+  /// No description provided for @aiSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get aiSummaryTitle;
+
+  /// No description provided for @aiSummaryWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarizing…'**
+  String get aiSummaryWorking;
+
+  /// No description provided for @aiSummaryRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize again'**
+  String get aiSummaryRefresh;
+
+  /// No description provided for @aiSummaryBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Written by {model}'**
+  String aiSummaryBy(String model);
+
+  /// No description provided for @aiSummaryByAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Written by AI'**
+  String get aiSummaryByAi;
+
+  /// No description provided for @aiDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI details'**
+  String get aiDetailsTitle;
+
+  /// No description provided for @aiTagsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get aiTagsTitle;
+
+  /// No description provided for @aiFieldsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from the file'**
+  String get aiFieldsTitle;
+
+  /// No description provided for @aiFieldsBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Read by {model}'**
+  String aiFieldsBy(String model);
+
+  /// No description provided for @aiFieldType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get aiFieldType;
+
+  /// No description provided for @aiFieldIssuer.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get aiFieldIssuer;
+
+  /// No description provided for @aiFieldDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get aiFieldDate;
+
+  /// No description provided for @aiFieldSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get aiFieldSubject;
+
+  /// No description provided for @aiFieldAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get aiFieldAmount;
+
+  /// No description provided for @aiFieldCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption'**
+  String get aiFieldCaption;
+
+  /// No description provided for @aiDocTypeInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
+  String get aiDocTypeInvoice;
+
+  /// No description provided for @aiDocTypeReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get aiDocTypeReceipt;
+
+  /// No description provided for @aiDocTypeContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract'**
+  String get aiDocTypeContract;
+
+  /// No description provided for @aiDocTypePayslip.
+  ///
+  /// In en, this message translates to:
+  /// **'Payslip'**
+  String get aiDocTypePayslip;
+
+  /// No description provided for @aiDocTypeLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter'**
+  String get aiDocTypeLetter;
+
+  /// No description provided for @aiDocTypeStatement.
+  ///
+  /// In en, this message translates to:
+  /// **'Statement'**
+  String get aiDocTypeStatement;
+
+  /// No description provided for @aiDocTypeCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate'**
+  String get aiDocTypeCertificate;
+
+  /// No description provided for @aiDocTypeManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get aiDocTypeManual;
+
+  /// No description provided for @aiDocTypeReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get aiDocTypeReport;
+
+  /// No description provided for @aiDocTypeNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get aiDocTypeNotes;
+
+  /// No description provided for @aiDocTypePresentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Presentation'**
+  String get aiDocTypePresentation;
+
+  /// No description provided for @aiDocTypeSpreadsheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Spreadsheet'**
+  String get aiDocTypeSpreadsheet;
+
+  /// No description provided for @aiDocTypeScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get aiDocTypeScreenshot;
+
+  /// No description provided for @aiDocTypePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get aiDocTypePhoto;
+
+  /// No description provided for @aiDocTypeScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get aiDocTypeScan;
+
+  /// No description provided for @aiDocTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get aiDocTypeOther;
+
+  /// No description provided for @aiFeatureNewTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest new tags'**
+  String get aiFeatureNewTags;
+
+  /// No description provided for @aiFeatureNewTagsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise AI only uses tags you already have.'**
+  String get aiFeatureNewTagsDescription;
+
+  /// No description provided for @aiFeatureNewFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest new folders'**
+  String get aiFeatureNewFolders;
+
+  /// No description provided for @aiFeatureNewFoldersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets AI propose a folder that doesn’t exist yet; it is created when you accept.'**
+  String get aiFeatureNewFoldersDescription;
+
+  /// No description provided for @aiReviewSettingsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions to review'**
+  String get aiReviewSettingsLabel;
+
+  /// No description provided for @aiReviewSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing waiting right now.} =1{1 suggestion is waiting.} other{{count} suggestions are waiting.}}'**
+  String aiReviewSettingsDescription(int count);
+
+  /// No description provided for @aiRulesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting rules'**
+  String get aiRulesTitle;
+
+  /// No description provided for @aiRulesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked before any model: a file that matches every condition of a rule is suggested for its folder.'**
+  String get aiRulesDescription;
+
+  /// No description provided for @aiRulesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No rules yet. Review offers one after you accept a few similar moves.'**
+  String get aiRulesEmpty;
+
+  /// No description provided for @aiRuleAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get aiRuleAdd;
+
+  /// No description provided for @aiRuleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit rule'**
+  String get aiRuleEdit;
+
+  /// No description provided for @aiRuleName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get aiRuleName;
+
+  /// No description provided for @aiRuleWhen.
+  ///
+  /// In en, this message translates to:
+  /// **'When a file is'**
+  String get aiRuleWhen;
+
+  /// No description provided for @aiRuleAnyType.
+  ///
+  /// In en, this message translates to:
+  /// **'Any type'**
+  String get aiRuleAnyType;
+
+  /// No description provided for @aiRuleExtension.
+  ///
+  /// In en, this message translates to:
+  /// **'Extension'**
+  String get aiRuleExtension;
+
+  /// No description provided for @aiRulePattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Name pattern (* and ?)'**
+  String get aiRulePattern;
+
+  /// No description provided for @aiRuleTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Move it to'**
+  String get aiRuleTarget;
+
+  /// No description provided for @aiRuleChooseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get aiRuleChooseFolder;
+
+  /// No description provided for @aiRuleSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{conditions} → {folder}'**
+  String aiRuleSummary(String conditions, String folder);
+
+  /// No description provided for @aiRuleNeedsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the rule a name.'**
+  String get aiRuleNeedsName;
+
+  /// No description provided for @aiRuleNeedsCondition.
+  ///
+  /// In en, this message translates to:
+  /// **'Set at least one condition.'**
+  String get aiRuleNeedsCondition;
+
+  /// No description provided for @aiRuleNeedsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the folder files go to.'**
+  String get aiRuleNeedsFolder;
+
+  /// No description provided for @aiRuleDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete rule?'**
+  String get aiRuleDeleteTitle;
+
+  /// No description provided for @aiRuleDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” stops sorting files. Suggestions it already made stay.'**
+  String aiRuleDeleteBody(String name);
+
+  /// No description provided for @aiErrorFeatureOff.
+  ///
+  /// In en, this message translates to:
+  /// **'This AI feature is turned off in Settings › AI.'**
+  String get aiErrorFeatureOff;
+
+  /// No description provided for @aiErrorNoContent.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no text in this file to work with.'**
+  String get aiErrorNoContent;
+
+  /// No description provided for @aiErrorTooManyFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'That folder has too many files for one go. Pick a smaller folder.'**
+  String get aiErrorTooManyFiles;
+
+  /// No description provided for @aiErrorTargetNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'AI can’t put files there: it is a vault or excluded from AI.'**
+  String get aiErrorTargetNotAllowed;
+
+  /// No description provided for @aiErrorShareBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'That move would change who can see the file, so AI doesn’t make it.'**
+  String get aiErrorShareBoundary;
+
+  /// No description provided for @aiErrorNotUndoable.
+  ///
+  /// In en, this message translates to:
+  /// **'This change can’t be undone.'**
+  String get aiErrorNotUndoable;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

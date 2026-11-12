@@ -486,13 +486,25 @@ class AppL10nDe extends AppL10n {
   String get settingsTitle => 'Einstellungen';
 
   @override
-  String get settingsScopeAccount => 'KONTO';
+  String get settingsScopeAccount => 'Du';
 
   @override
-  String get settingsScopeApp => 'DIESES GERÄT';
+  String get settingsScopeApp => 'Diese App';
 
   @override
   String get settingsAccountHint => 'Wird in deinem Konto gespeichert';
+
+  @override
+  String get settingsDeviceHint => 'Gilt für dieses Gerät';
+
+  @override
+  String get settingsSearchHint => 'Einstellungen suchen';
+
+  @override
+  String get settingsTwoFactorOn => '2FA an';
+
+  @override
+  String get settingsTwoFactorOff => '2FA aus';
 
   @override
   String get settingsSaveHint => 'Änderungen werden automatisch gespeichert';
@@ -561,6 +573,10 @@ class AppL10nDe extends AppL10n {
   String get signOutDescription => 'Diese Sitzung auf diesem Gerät beenden.';
 
   @override
+  String get disconnectDescription =>
+      'Dieses Handy von NeoCloud abmelden; es verliert seinen Zugang und der Kamera-Upload wird ausgeschaltet.';
+
+  @override
   String get changePassword => 'Passwort ändern';
 
   @override
@@ -609,6 +625,9 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get sessionCurrent => 'Diese Sitzung';
+
+  @override
+  String get deviceCurrent => 'Dieses Gerät';
 
   @override
   String sessionLastSeen(String date) {
@@ -712,6 +731,25 @@ class AppL10nDe extends AppL10n {
   String get adminUsersTitle => 'Konten';
 
   @override
+  String adminUsersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Konten',
+      one: '1 Konto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String adminUserYou(String name) {
+    return '$name (du)';
+  }
+
+  @override
+  String get adminSearchHint => 'Admin-Einstellungen durchsuchen';
+
+  @override
   String get adminSearchUsers => 'Nach Name oder E-Mail suchen';
 
   @override
@@ -755,6 +793,91 @@ class AppL10nDe extends AppL10n {
   String adminDeleteUserMessage(String name) {
     return '$name und alle Dateien werden endgültig gelöscht.';
   }
+
+  @override
+  String get adminUserDisabled => 'Deaktiviert';
+
+  @override
+  String get adminDisableUser => 'Deaktivieren';
+
+  @override
+  String get adminEnableUser => 'Aktivieren';
+
+  @override
+  String get adminSignOutEverywhere => 'Überall abmelden';
+
+  @override
+  String adminSignOutEverywhereTitle(String name) {
+    return '$name überall abmelden?';
+  }
+
+  @override
+  String get adminSignOutEverywhereMessage =>
+      'Jede aktive Sitzung für dieses Konto wird beendet, seine Geräte und WebDAV-App-Passwörter funktionieren nicht mehr. Die Anmeldung ist sofort wieder möglich.';
+
+  @override
+  String adminSignedOutEverywhere(String name) {
+    return '$name wurde aus allen Sitzungen abgemeldet.';
+  }
+
+  @override
+  String get accountDataTitle => 'Deine Daten';
+
+  @override
+  String get accountExportTitle => 'Kontodaten exportieren';
+
+  @override
+  String get accountExportHint =>
+      'Profil, Sitzungen, Geräte, Links, Freigaben und die Liste deiner Dateien und Ordner als eine Datei. Dateiinhalte sind nicht enthalten: Lade deine Dateien oder einen Ordner als ZIP herunter, um sie zu behalten. Passwörter und Schlüssel sind nicht enthalten.';
+
+  @override
+  String get accountExport => 'Exportieren';
+
+  @override
+  String get accountExported => 'Heruntergeladen.';
+
+  @override
+  String get accountDeleteTitle => 'Konto löschen';
+
+  @override
+  String get accountDeleteHint =>
+      'Löscht dein Konto mit allen Dateien, Versionen, Links, Freigaben und Geräten. Wer Zugriff auf deine Freigaben hatte, verliert ihn. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get accountDelete => 'Konto löschen';
+
+  @override
+  String get accountDeleteConfirm =>
+      'Alles in diesem Konto wird endgültig gelöscht. Exportiere vorher deine Daten, wenn du sie behalten willst.';
+
+  @override
+  String accountDeleteTypeUsername(String name) {
+    return 'Gib zur Bestätigung deinen Benutzernamen $name ein.';
+  }
+
+  @override
+  String get accountDeleted => 'Dein Konto wurde gelöscht.';
+
+  @override
+  String get accountConfirmPassword =>
+      'Gib dein Passwort ein, um fortzufahren.';
+
+  @override
+  String get accountConfirmPasswordCode =>
+      'Gib dein Passwort und einen Code aus deiner Authenticator-App ein.';
+
+  @override
+  String get accountWrongPassword => 'Das Passwort stimmt nicht.';
+
+  @override
+  String get accountWrongCode => 'Der Code ist ungültig.';
+
+  @override
+  String get accountLastAdmin =>
+      'Du bist der einzige Admin. Mach zuerst jemand anderen zum Admin.';
+
+  @override
+  String get accountConfirmMismatch => 'Der Benutzername stimmt nicht.';
 
   @override
   String adminFilesCount(int count) {
@@ -852,8 +975,7 @@ class AppL10nDe extends AppL10n {
   String get pause => 'Pause';
 
   @override
-  String get mediaUnavailable =>
-      'Diese Datei lässt sich im Browser nicht abspielen.';
+  String get mediaUnavailable => 'Diese Datei lässt sich hier nicht abspielen.';
 
   @override
   String get adminTabBackups => 'Backups';
@@ -998,6 +1120,12 @@ class AppL10nDe extends AppL10n {
   String get backupHistory => 'Letzte Durchläufe';
 
   @override
+  String get adminBackupRunOk => 'Fertig';
+
+  @override
+  String get adminBackupRunFailed => 'Fehlgeschlagen';
+
+  @override
   String get backupRestoreHint =>
       'Wiederherstellen per CLI bei gestoppter NeoCloud: neocloud backup restore <id> <stand>. Dafür brauchst du den Master-Key.';
 
@@ -1123,7 +1251,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get connectSubtitle =>
-      'Gib die Adresse deines NeoCloud-Servers ein. Anschließend bestätigst du dieses Gerät im Browser.';
+      'Gib die Adresse deines NeoCloud-Servers ein und melde dich dann an.';
 
   @override
   String get connectServerLabel => 'Serveradresse';
@@ -1393,7 +1521,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String disconnectMessage(String server) {
-    return 'Dieses Gerät verliert den Zugang zu $server und der Kamera-Upload wird ausgeschaltet. Zum erneuten Verbinden bestätigst du es noch einmal im Browser.';
+    return 'Dieses Gerät verliert den Zugang zu $server und der Kamera-Upload wird ausgeschaltet. Zum erneuten Verbinden meldest du dich noch einmal an.';
   }
 
   @override
@@ -2132,6 +2260,10 @@ class AppL10nDe extends AppL10n {
       'Lade Dateien hoch oder zieh sie irgendwo auf diese Seite.';
 
   @override
+  String get filesWelcomeUploadBodyPhone =>
+      'Lade Dateien mit der Plus-Schaltfläche hoch oder schalte den Kamera-Upload ein.';
+
+  @override
   String get filesWelcomeDesktopBody =>
       'Halte einen Ordner auf deinem Computer synchron.';
 
@@ -2854,13 +2986,22 @@ class AppL10nDe extends AppL10n {
   String get cameraOptions => 'Optionen';
 
   @override
-  String get mobileNavFiles => 'Dateien';
-
-  @override
   String get mobileNavCamera => 'Kamera';
 
   @override
-  String get mobileMore => 'Mehr';
+  String mobilePermissionsSet(int granted, int total) {
+    return '$granted von $total erledigt';
+  }
+
+  @override
+  String mobilePermissionStep(int step, int total) {
+    return 'Schritt $step von $total';
+  }
+
+  @override
+  String mobileQrLoginExpiresAt(String time) {
+    return 'Läuft ab $time';
+  }
 
   @override
   String get mobileRecentServers => 'Zuletzt verwendet';
@@ -2870,6 +3011,14 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get filesQuickAccess => 'Schnellzugriff';
+
+  @override
+  String get filesMoreActions => 'Weitere Aktionen';
+
+  @override
+  String filesMemberRemoveConfirm(String name, String item) {
+    return '$name kann „$item“ danach nicht mehr öffnen.';
+  }
 
   @override
   String get done => 'Fertig';
@@ -3479,6 +3628,15 @@ class AppL10nDe extends AppL10n {
   String get passkeyRemove => 'Entfernen';
 
   @override
+  String settingsPasskeyRemoveTitle(String name) {
+    return '„$name“ entfernen?';
+  }
+
+  @override
+  String get settingsPasskeyRemoveMessage =>
+      'Mit diesem Schlüssel kannst du dich nicht mehr anmelden. Behalte mindestens einen anderen Weg ins Konto.';
+
+  @override
   String passkeyAddedLastUsed(String added, String lastUsed) {
     return 'Hinzugefügt $added · Zuletzt verwendet $lastUsed';
   }
@@ -3492,6 +3650,10 @@ class AppL10nDe extends AppL10n {
   @override
   String get passkeyUnsupported =>
       'Dieses Gerät kann keine Sicherheitsschlüssel registrieren. Öffne NeoCloud in einem Browser über HTTPS, um einen hinzuzufügen.';
+
+  @override
+  String get passkeyAddInBrowser =>
+      'Sicherheitsschlüssel und Passkeys fügst du in der NeoCloud-Web-App im Browser hinzu. Dort hinzugefügte Schlüssel stehen hier, und du kannst sie umbenennen oder entfernen.';
 
   @override
   String get navSharedWithMe => 'Für mich freigegeben';
@@ -3719,4 +3881,1356 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get notNow => 'Nicht jetzt';
+
+  @override
+  String get connectWithBrowser => 'Im Browser anmelden';
+
+  @override
+  String get connectChangeServer => 'Server wechseln';
+
+  @override
+  String get signInInvalidCredentials =>
+      'Benutzername, E-Mail oder Passwort ist falsch.';
+
+  @override
+  String get signInInvalidCode =>
+      'Der Code stimmt nicht. Prüfe deine Authenticator-App und versuche es erneut.';
+
+  @override
+  String signInLockedMinutes(int minutes) {
+    return 'Zu viele fehlgeschlagene Anmeldeversuche für dieses Konto. Versuche es in $minutes Min. erneut.';
+  }
+
+  @override
+  String signInLockedSeconds(int seconds) {
+    return 'Zu viele fehlgeschlagene Anmeldeversuche für dieses Konto. Versuche es in $seconds s erneut.';
+  }
+
+  @override
+  String get signInRateLimited =>
+      'Zu viele Versuche. Warte ein paar Minuten und versuche es dann erneut.';
+
+  @override
+  String get approvalNeedsServerUpdate =>
+      'Dieser Server kann Anmeldungen noch nicht aus der App bestätigen. Aktualisiere NeoCloud auf dem Server oder bestätige im Browser, in dem du angemeldet bist.';
+
+  @override
+  String get serverUpdateNeeded =>
+      'Dieser Server ist dafür in der App zu alt. Aktualisiere NeoCloud auf dem Server.';
+
+  @override
+  String get approvalNeedsPhone =>
+      'Bestätige Anmeldungen in der NeoCloud-App auf dem Handy oder in einem Browser, in dem du angemeldet bist.';
+
+  @override
+  String get connectWelcome => 'WILLKOMMEN BEI NEOCLOUD';
+
+  @override
+  String get connectReadyToSignIn => 'Bereit zur Anmeldung';
+
+  @override
+  String get connectEnterAddress => 'Adresse manuell eingeben';
+
+  @override
+  String get connectEnterAddressHint =>
+      'Die Adresse deines Servers, z. B. cloud.example.com';
+
+  @override
+  String get connectServerAddress => 'NeoCloud-Serveradresse';
+
+  @override
+  String get connectConnecting => 'Verbindung wird hergestellt…';
+
+  @override
+  String get connectToThisServer => 'Mit diesem Server verbinden';
+
+  @override
+  String get connectForgetServerBody =>
+      'Diesen Server aus der Liste entfernen? Du kannst seine Adresse weiterhin eingeben.';
+
+  @override
+  String authSigningInTo(String host) {
+    return 'Anmeldung bei $host';
+  }
+
+  @override
+  String get authShowPassword => 'Passwort anzeigen';
+
+  @override
+  String get authHidePassword => 'Passwort verbergen';
+
+  @override
+  String get authForgotPasswordAskAdmin =>
+      'Passwort vergessen? Bitte deinen Server-Admin, es unter Admin → Benutzer zurückzusetzen.';
+
+  @override
+  String get authPhoneSignInTitle => 'Bei NeoCloud anmelden';
+
+  @override
+  String get authPhoneSignInSubtitle =>
+      'Scanne den Code auf einem angemeldeten Computer oder nutze dein Passwort.';
+
+  @override
+  String get aiPage => 'KI';
+
+  @override
+  String get aiPageDescription =>
+      'Vorschläge für Namen und Ordner, die Modelle dahinter und deine eigenen Schlüssel.';
+
+  @override
+  String get aiOptInTitle => 'KI-Funktionen';
+
+  @override
+  String get aiOptIn => 'KI-Funktionen nutzen';
+
+  @override
+  String get aiPrivacyNote =>
+      'Namen, ausgelesener Text und Vorschauen der betroffenen Dateien gehen an den KI-Anbieter. Tresordateien werden nie verarbeitet, und nichts ändert sich, bevor du einen Vorschlag annimmst.';
+
+  @override
+  String get aiModelsTitle => 'Standardmodelle';
+
+  @override
+  String get aiModelsDescription =>
+      'Jede Aufgabe nutzt ihr eigenes Modell. Auto nimmt NeoRouter oder das beste verfügbare Modell.';
+
+  @override
+  String get aiRoleText => 'Text';
+
+  @override
+  String get aiRoleTextDescription =>
+      'Schnelles Modell für Namen, Schlagwörter und Sortierung.';
+
+  @override
+  String get aiRoleSmart => 'Gründlich';
+
+  @override
+  String get aiRoleSmartDescription =>
+      'Stärkeres Modell für Zusammenfassungen und Fragen zu einer Datei.';
+
+  @override
+  String get aiRoleVision => 'Bilderkennung';
+
+  @override
+  String get aiRoleVisionDescription =>
+      'Liest Fotos, Screenshots und Scans. Nur Modelle, die Bilder verstehen.';
+
+  @override
+  String get aiRoleEmbedding => 'Embedding';
+
+  @override
+  String get aiRoleEmbeddingDescription =>
+      'Findet ähnliche Dateien und Ordner fürs Sortieren.';
+
+  @override
+  String get aiRoleNotReady => 'Dafür ist noch kein Modell verfügbar.';
+
+  @override
+  String get aiAuto => 'Auto';
+
+  @override
+  String get aiAutoSubtitle => 'NeoRouter oder das beste verfügbare Modell';
+
+  @override
+  String aiSelectModel(String name) {
+    return '$name auswählen';
+  }
+
+  @override
+  String get aiSearchModels => 'Suchen…';
+
+  @override
+  String aiNoResults(String query) {
+    return 'Keine Ergebnisse für \"$query\"';
+  }
+
+  @override
+  String get aiNoModelsForRole => 'Noch kann kein Modell das.';
+
+  @override
+  String get aiAll => 'Alle';
+
+  @override
+  String get aiOther => 'Andere';
+
+  @override
+  String get aiProviderCustom => 'Eigene OpenAI-kompatible';
+
+  @override
+  String get aiGranted => 'Freigegeben';
+
+  @override
+  String get aiGrantedHint =>
+      'Ein Admin hat dir dieses Modell freigegeben. Für alle anderen ist es ausgeschaltet.';
+
+  @override
+  String get aiByokTag => 'BYOK';
+
+  @override
+  String get aiPriceFree => 'Kostenlos';
+
+  @override
+  String get aiPriceUnknown => 'Preis unbekannt';
+
+  @override
+  String aiPricePerMillion(String price) {
+    return '\$$price / 1M Eingabe';
+  }
+
+  @override
+  String get aiNoModelTitle => 'Noch ist kein KI-Modell eingerichtet';
+
+  @override
+  String get aiNoModelBody =>
+      'NeoCloud braucht ein KI-Modell für Vorschläge. Verbinde NeoRouter oder füge einen API-Schlüssel eines Anbieters wie OpenAI, Anthropic oder Google hinzu.';
+
+  @override
+  String get aiNoModelAdminHint =>
+      'Als Admin kannst du Anbieter auch für alle unter Admin → Anbieter einrichten.';
+
+  @override
+  String get aiOpenAdmin => 'Admin öffnen';
+
+  @override
+  String get aiDisabledTitle => 'KI ist ausgeschaltet';
+
+  @override
+  String get aiDisabledBody =>
+      'KI-Funktionen sind auf diesem Server nicht eingeschaltet.';
+
+  @override
+  String get aiDisabledAdminHint =>
+      'Als Admin kannst du sie unter Admin → Modelle einschalten.';
+
+  @override
+  String get aiNotAvailableTitle => 'KI ist auf diesem Server nicht verfügbar';
+
+  @override
+  String get aiNotAvailableBody =>
+      'Aktualisiere NeoCloud auf dem Server, um KI-Funktionen zu nutzen.';
+
+  @override
+  String get aiFeaturesTitle => 'Vorschläge';
+
+  @override
+  String get aiFeaturesDescription =>
+      'Was die KI vorschlagen darf. Du prüfst jeden Vorschlag, bevor sich etwas ändert.';
+
+  @override
+  String get aiFeatureNames => 'Namen vorschlagen';
+
+  @override
+  String get aiFeatureNamesDescription =>
+      'Für Dateien mit nichtssagenden Namen wie IMG_1234 oder scan.pdf.';
+
+  @override
+  String get aiFeatureFolders => 'Ordner vorschlagen';
+
+  @override
+  String get aiFeatureFoldersDescription =>
+      'Wohin eine Datei unter deinen bestehenden Ordnern gehört.';
+
+  @override
+  String get aiFeatureSummaries => 'Zusammenfassungen';
+
+  @override
+  String get aiFeatureSummariesDescription =>
+      'Eine kurze Zusammenfassung in den Details einer Datei.';
+
+  @override
+  String get aiFeatureOnUpload => 'Beim Hochladen';
+
+  @override
+  String get aiFeatureOnUploadDescription =>
+      'Für neue Dateien Vorschläge machen, sobald sie ankommen.';
+
+  @override
+  String get aiNamingTemplate => 'Namensvorlage';
+
+  @override
+  String get aiNamingTemplateDescription =>
+      'Wie vorgeschlagene Namen aus Datum, Absender und Betreff gebaut werden, die die KI findet.';
+
+  @override
+  String get aiUsageTitle => 'Nutzung diesen Monat';
+
+  @override
+  String aiUsageOf(String used, String limit) {
+    return '$used von $limit Tokens';
+  }
+
+  @override
+  String aiUsageUnlimited(String used) {
+    return '$used Tokens · kein Limit';
+  }
+
+  @override
+  String get aiByokTitle => 'Eigenen Schlüssel verwenden';
+
+  @override
+  String get aiByokDescription =>
+      'Eigene Schlüssel oder einen eigenen Endpunkt für deine KI-Funktionen nutzen. Schlüssel werden verschlüsselt und nie wieder angezeigt.';
+
+  @override
+  String get aiByokNoProviders =>
+      'Es sind noch keine Anbieter zum Einrichten verfügbar.';
+
+  @override
+  String get aiByokUsingYourKey => 'Dein Schlüssel';
+
+  @override
+  String get aiNotSetUp => 'Nicht eingerichtet';
+
+  @override
+  String get aiUpdate => 'Ändern';
+
+  @override
+  String get aiConnectEndpoint => 'Endpunkt verbinden';
+
+  @override
+  String get aiAddKey => 'Schlüssel hinzufügen';
+
+  @override
+  String get aiRemove => 'Entfernen';
+
+  @override
+  String aiRemoveKeyTitle(String provider) {
+    return '$provider-Schlüssel entfernen?';
+  }
+
+  @override
+  String aiRemoveKeyBody(String provider) {
+    return 'KI-Funktionen greifen dann auf den gemeinsamen Serverschlüssel für $provider zurück, falls einer eingerichtet ist. Das lässt sich nicht rückgängig machen.';
+  }
+
+  @override
+  String aiKeyRemoved(String provider) {
+    return '$provider-Schlüssel entfernt.';
+  }
+
+  @override
+  String get aiEnterKeyFirst => 'Gib zuerst einen API-Schlüssel ein.';
+
+  @override
+  String get aiConnectionGood => 'Verbindung sieht gut aus.';
+
+  @override
+  String get aiCouldNotConnect => 'Verbindung fehlgeschlagen.';
+
+  @override
+  String get aiKeyRequired => 'Ein API-Schlüssel ist erforderlich.';
+
+  @override
+  String get aiBaseUrlRequired =>
+      'Für diesen Endpunkt ist eine Basis-URL erforderlich.';
+
+  @override
+  String get aiCustomEndpointTitle => 'Eigenen Endpunkt verbinden';
+
+  @override
+  String get aiCustomEndpointBody =>
+      'Richte NeoCloud auf eine beliebige OpenAI-kompatible Chat-Completions-API: deinen eigenen Server, ein selbst gehostetes Modell oder einen anderen gehosteten Anbieter.';
+
+  @override
+  String aiYourKeyTitle(String provider) {
+    return 'Dein $provider-Schlüssel';
+  }
+
+  @override
+  String aiYourKeyBody(String provider) {
+    return 'Füge deinen $provider-API-Schlüssel unten ein. Er wird verschlüsselt gespeichert und nur für deine eigenen KI-Funktionen verwendet.';
+  }
+
+  @override
+  String get aiNameOptional => 'Name (optional)';
+
+  @override
+  String get aiNameHint => 'z. B. Mein lokaler Server';
+
+  @override
+  String get aiBaseUrl => 'Basis-URL';
+
+  @override
+  String get aiBaseUrlOptional => 'Basis-URL (optional)';
+
+  @override
+  String get aiBaseUrlHelper =>
+      'Muss über das öffentliche Internet erreichbar sein. Lokale und private Netzwerkadressen sind nicht erlaubt.';
+
+  @override
+  String get aiApiKey => 'API-Schlüssel';
+
+  @override
+  String get aiTestConnection => 'Verbindung testen';
+
+  @override
+  String get aiByokLimitsNote =>
+      'Servernutzungslimits gelten nicht für Modelle mit deinem eigenen Schlüssel.';
+
+  @override
+  String get aiShow => 'Anzeigen';
+
+  @override
+  String get aiHide => 'Verbergen';
+
+  @override
+  String get aiNeoRouterConnected => 'NeoRouter ist verbunden.';
+
+  @override
+  String get aiNeoRouterDisconnectTitle => 'NeoRouter trennen?';
+
+  @override
+  String get aiNeoRouterDisconnectBody =>
+      'NeoCloud nutzt diesen NeoRouter nicht mehr. Um auch den Key zu entziehen, widerrufe ihn in NeoRouter unter API-Keys.';
+
+  @override
+  String aiNeoRouterWaiting(String code) {
+    return 'Bestätige NeoCloud in NeoRouter. Dort steht der Code $code.';
+  }
+
+  @override
+  String get aiNeoRouterOpenAgain => 'Erneut öffnen';
+
+  @override
+  String get aiNeoRouterServerInUse =>
+      'Dieser Server nutzt bereits einen NeoRouter für alle. Verbinde dein eigenes NeoRouter-Konto für eigene Modelle und eigenes Budget.';
+
+  @override
+  String get aiNeoRouterUserDescription =>
+      'Nutze für die unter Verwalten eingeschalteten Aufgaben dein eigenes NeoRouter-Konto statt der Anbieter dieses Servers.';
+
+  @override
+  String get aiNeoRouterServerDescription =>
+      'Verbinde deinen NeoRouter einmal, und jedes Konto hier nutzt ihn für die unter Verwalten eingeschalteten Aufgaben.';
+
+  @override
+  String get aiNeoRouterUnreachable => 'NeoRouter ist gerade nicht erreichbar.';
+
+  @override
+  String get aiNeoRouterConnect => 'NeoRouter verbinden';
+
+  @override
+  String get aiNeoRouterAddress => 'NeoRouter-Adresse';
+
+  @override
+  String get aiNeoRouterRoleChat => 'Text und Bilderkennung';
+
+  @override
+  String get aiNeoRouterRoleEmbeddings => 'Ähnlichkeitssuche';
+
+  @override
+  String get aiNeoRouterRoleTranscription => 'Sprache zu Text';
+
+  @override
+  String get aiNeoRouterRoleImages => 'Bilderzeugung';
+
+  @override
+  String aiNeoRouterModelCount(int count) {
+    return '$count in deinem NeoRouter verfügbar';
+  }
+
+  @override
+  String aiNeoRouterNotAllowed(int count) {
+    return '$count in deinem NeoRouter, aber der Key von NeoCloud darf sie noch nicht nutzen (z. B. Bezahl-Modelle). Erlaube sie für NeoCloud in NeoRouter unter API-Keys.';
+  }
+
+  @override
+  String get aiNeoRouterNoModels =>
+      'In deinem NeoRouter ist noch nichts verfügbar.';
+
+  @override
+  String get aiNeoRouterCancelled => 'Die Anmeldung wurde abgebrochen.';
+
+  @override
+  String get aiNeoRouterExpired =>
+      'Diese Anmeldung ist abgelaufen. Starte sie neu.';
+
+  @override
+  String get aiNeoRouterFailed =>
+      'NeoRouter hat die Anmeldung nicht bestätigt.';
+
+  @override
+  String get aiNeoRouterCouldNotOpen =>
+      'NeoRouter ließ sich nicht öffnen. Nutze „Erneut öffnen“.';
+
+  @override
+  String get aiConnect => 'Verbinden';
+
+  @override
+  String get aiConnected => 'Verbunden';
+
+  @override
+  String get aiManage => 'Verwalten';
+
+  @override
+  String get aiAdminTitle => 'KI-Funktionen';
+
+  @override
+  String get aiAdminDescription =>
+      'Vorschläge für Namen und Ordner, für Konten, die sie einschalten. Tresordateien werden nie verarbeitet.';
+
+  @override
+  String get aiAdminEnable => 'KI-Funktionen einschalten';
+
+  @override
+  String get aiAdminEnableDescription =>
+      'Jedes Konto schaltet sie trotzdem selbst unter Einstellungen → KI ein.';
+
+  @override
+  String get aiAdminBudget => 'Monatliches Token-Budget';
+
+  @override
+  String get aiAdminBudgetDescription =>
+      'Pro Konto, außer ein Konto hat unter Benutzer ein eigenes. Leer heißt kein Limit.';
+
+  @override
+  String get aiBudgetInvalid => 'Gib eine ganze Zahl von Tokens ein.';
+
+  @override
+  String get aiNoLimit => 'Kein Limit';
+
+  @override
+  String get aiProvidersTitle => 'Server-Anbieter-Zugangsdaten';
+
+  @override
+  String get aiProvidersDescription =>
+      'API-Schlüssel und Endpunkte für KI-Anbieter. Sie werden von jedem Konto auf diesem Server genutzt; Konten können weiterhin eigene Schlüssel unter Einstellungen → KI hinzufügen.';
+
+  @override
+  String aiProvidersSetCount(int count, int total) {
+    return '$count von $total festgelegt';
+  }
+
+  @override
+  String get aiProvidersEmpty =>
+      'Dieser Server meldet keine Anbietereinstellungen.';
+
+  @override
+  String get aiSet => 'Festgelegt';
+
+  @override
+  String get aiNotSet => 'Nicht festgelegt';
+
+  @override
+  String get aiReplace => 'Ersetzen';
+
+  @override
+  String get aiChange => 'Ändern';
+
+  @override
+  String get aiSetUrl => 'URL festlegen';
+
+  @override
+  String get aiEndpointUrl => 'Endpunkt-URL';
+
+  @override
+  String get aiUrl => 'URL';
+
+  @override
+  String aiClearTitle(String name) {
+    return '$name löschen?';
+  }
+
+  @override
+  String get aiClearUrlBody =>
+      'Dadurch wird die Adresse für jedes Konto auf diesem Server entfernt.';
+
+  @override
+  String get aiClearKeyBody =>
+      'Jedes Konto auf diesem Server verliert diesen gemeinsamen Schlüssel. Konten, die einen eigenen Schlüssel hinzugefügt haben, behalten ihn.';
+
+  @override
+  String aiCleared(String name) {
+    return '$name gelöscht.';
+  }
+
+  @override
+  String aiSavedName(String name) {
+    return '$name gespeichert.';
+  }
+
+  @override
+  String get aiPasteAKey => 'Füge einen Schlüssel ein.';
+
+  @override
+  String get aiEnterAddress => 'Gib eine Adresse ein.';
+
+  @override
+  String get aiUrlInvalid =>
+      'Die Adresse muss eine http://- oder https://-Adresse sein.';
+
+  @override
+  String aiPasteNewKey(String hint) {
+    return 'Neuen Schlüssel einfügen, um $hint zu ersetzen';
+  }
+
+  @override
+  String get aiPasteTheKey => 'Schlüssel einfügen';
+
+  @override
+  String aiProviderUrlBody(String name) {
+    return 'Jedes Konto auf diesem Server verwendet diese Adresse für $name.';
+  }
+
+  @override
+  String get aiProviderKeyBody =>
+      'Wird von jedem Konto auf diesem Server genutzt, das keinen eigenen Schlüssel hat. Nach dem Speichern wird er nicht mehr angezeigt.';
+
+  @override
+  String get aiModelAvailability => 'Modellverfügbarkeit';
+
+  @override
+  String get aiModelAvailabilityDescription =>
+      'Wähle, welche Modelle jedes Konto auf diesem Server auswählen und nutzen darf. Solange ein Modell ausgeschaltet ist, starten später hinzugefügte Modelle ebenfalls ausgeschaltet.';
+
+  @override
+  String get aiAutoEnable => 'Neue Modelle automatisch aktivieren';
+
+  @override
+  String get aiAutoEnableHint =>
+      'Wenn aus, bleiben Modelle, die ein Anbieter später hinzufügt, deaktiviert, bis du sie aktivierst.';
+
+  @override
+  String get aiSearchModelsOrProviders => 'Modelle oder Anbieter suchen';
+
+  @override
+  String get aiFilterEnabled => 'Aktiviert';
+
+  @override
+  String get aiFilterDisabled => 'Deaktiviert';
+
+  @override
+  String aiShownCount(int count) {
+    return '$count angezeigt';
+  }
+
+  @override
+  String get aiEnableAll => 'Alle aktivieren';
+
+  @override
+  String get aiEnableShown => 'Angezeigte aktivieren';
+
+  @override
+  String get aiDisableAll => 'Alle deaktivieren';
+
+  @override
+  String get aiDisableShown => 'Angezeigte deaktivieren';
+
+  @override
+  String get aiCollapseAll => 'Alle einklappen';
+
+  @override
+  String get aiExpandAll => 'Alle ausklappen';
+
+  @override
+  String get aiNoModelsYet =>
+      'Füge zuerst Zugangsdaten eines Anbieters hinzu. Seine Modelle erscheinen hier, sobald der Anbieter antwortet.';
+
+  @override
+  String aiNoModelMatches(String query) {
+    return 'Kein Modell passt zu \"$query\".';
+  }
+
+  @override
+  String aiUnsavedChanges(int count) {
+    return '$count ungespeicherte Änderungen';
+  }
+
+  @override
+  String get aiDiscard => 'Verwerfen';
+
+  @override
+  String get aiSaveChanges => 'Änderungen speichern';
+
+  @override
+  String get aiModelsSaved => 'Modellverfügbarkeit gespeichert.';
+
+  @override
+  String aiEnabledCount(int count, int total) {
+    return '$count von $total aktiviert';
+  }
+
+  @override
+  String get aiKindVision => 'Bilder';
+
+  @override
+  String get aiKindEmbedding => 'Embedding';
+
+  @override
+  String get aiKindTranscription => 'Sprache';
+
+  @override
+  String get aiAdminUsageDescription =>
+      'Nur Metadaten: wer welches Modell mit wie vielen Tokens genutzt hat, nie die Inhalte.';
+
+  @override
+  String get aiUsageRequests => 'Anfragen';
+
+  @override
+  String get aiUsageTokens => 'Tokens';
+
+  @override
+  String get aiUsageErrors => 'Fehler';
+
+  @override
+  String get aiUsageAccounts => 'Aktivste Konten';
+
+  @override
+  String get aiUsageModels => 'Meistgenutzte Modelle';
+
+  @override
+  String get aiUsageNone => 'Diesen Monat noch keine KI-Nutzung.';
+
+  @override
+  String aiTokenCount(String count) {
+    return '$count Tokens';
+  }
+
+  @override
+  String get aiAdminUserMenu => 'KI-Modelle und Budget';
+
+  @override
+  String aiAdminUserTitle(String name) {
+    return 'KI · $name';
+  }
+
+  @override
+  String aiAdminUserSaved(String name) {
+    return 'KI-Einstellungen für $name gespeichert';
+  }
+
+  @override
+  String get aiUserBudgetDefault => 'Serverstandard';
+
+  @override
+  String get aiUserBudgetCustom => 'Eigener Wert';
+
+  @override
+  String aiUserBudgetDefaultValue(String value) {
+    return 'Serverstandard: $value';
+  }
+
+  @override
+  String get aiTokensPerMonth => 'Tokens pro Monat';
+
+  @override
+  String get aiExtraModels => 'Zusätzliche Modelle';
+
+  @override
+  String aiExtraModelsIntro(String name) {
+    return 'Diese Modelle sind für alle ausgeschaltet. Hake die an, die $name trotzdem nutzen darf. Ihre Nutzung zählt weiter zum Budget dieses Kontos.';
+  }
+
+  @override
+  String get aiExtraModelsEmpty =>
+      'Kein Modell ist für alle ausgeschaltet, es gibt also nichts zusätzlich freizugeben.';
+
+  @override
+  String get aiAdminTabProviders => 'Anbieter';
+
+  @override
+  String get aiAdminTabModels => 'Modelle';
+
+  @override
+  String get aiRoleRequestedUnavailable =>
+      'Deine Wahl ist gerade nicht verfügbar, daher wird ein anderes Modell genutzt.';
+
+  @override
+  String get aiFeatureTags => 'Schlagwörter vorschlagen';
+
+  @override
+  String get aiFeatureTagsDescription =>
+      'Schlagwörter aus dem Inhalt einer Datei, etwa Rechnung oder Vertrag.';
+
+  @override
+  String get aiFeatureAutoApply => 'Sichere Vorschläge automatisch anwenden';
+
+  @override
+  String get aiFeatureAutoApplyDescription =>
+      'Sonst wartet jeder Vorschlag auf dich. Jede Änderung lässt sich rückgängig machen.';
+
+  @override
+  String get aiUsageFeatures => 'Nach Funktion';
+
+  @override
+  String get aiErrorDisabled =>
+      'KI-Funktionen sind auf diesem Server ausgeschaltet.';
+
+  @override
+  String get aiErrorNotOptedIn =>
+      'Schalte zuerst die KI-Funktionen unter Einstellungen → KI ein.';
+
+  @override
+  String get aiErrorBudget =>
+      'Das KI-Budget dieses Monats ist aufgebraucht. Es beginnt am 1. neu.';
+
+  @override
+  String get aiErrorNoModel => 'Gerade ist kein KI-Modell verfügbar.';
+
+  @override
+  String get aiErrorProvider =>
+      'Der KI-Anbieter hat nicht richtig geantwortet. Versuche es später noch einmal.';
+
+  @override
+  String get aiErrorVault => 'Dateien in einem Tresor gehen nie an die KI.';
+
+  @override
+  String get aiErrorExcluded => 'Dieser Ordner ist von KI ausgeschlossen.';
+
+  @override
+  String get aiErrorUrlNotAllowed =>
+      'Diese Adresse ist nicht erlaubt. Nutze eine im öffentlichen Internet.';
+
+  @override
+  String get aiFolderExclude => 'Von KI ausschließen';
+
+  @override
+  String get aiFolderInclude => 'Für KI freigeben';
+
+  @override
+  String aiFolderExcluded(String name) {
+    return '$name ist von KI ausgeschlossen.';
+  }
+
+  @override
+  String aiFolderIncluded(String name) {
+    return '$name ist wieder für KI freigegeben.';
+  }
+
+  @override
+  String get aiFolderExcludedTag => 'von KI ausgeschlossen';
+
+  @override
+  String get aiReviewNav => 'Prüfen';
+
+  @override
+  String get aiReviewTitle => 'Prüfen';
+
+  @override
+  String get aiReviewSubtitle =>
+      'KI-Vorschläge warten hier auf deine Entscheidung. Nichts ändert sich, bevor du annimmst, und alles Angenommene lässt sich rückgängig machen.';
+
+  @override
+  String get aiReviewTabNames => 'Namen';
+
+  @override
+  String get aiReviewTabFolders => 'Ordner';
+
+  @override
+  String get aiReviewTabTags => 'Tags';
+
+  @override
+  String aiAcceptHigh(int count) {
+    return 'Alle sicheren annehmen ($count)';
+  }
+
+  @override
+  String aiAcceptHighTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sichere Vorschläge annehmen?',
+      one: '1 sicheren Vorschlag annehmen?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiAcceptHighBody =>
+      'Namen, Ordner und Tags aus allen Reitern werden auf einmal übernommen. Du kannst sie gleich danach rückgängig machen.';
+
+  @override
+  String aiAcceptHighFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Vorschläge ließen sich nicht übernehmen und bleiben in der Liste.',
+      one: '1 Vorschlag ließ sich nicht übernehmen und bleibt in der Liste.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiAcceptedMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge angenommen',
+      one: '1 Vorschlag angenommen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiAcceptedRename(String name) {
+    return 'Umbenannt in „$name“';
+  }
+
+  @override
+  String aiAcceptedMove(String folder) {
+    return 'Verschoben nach $folder';
+  }
+
+  @override
+  String aiAcceptedTags(String name) {
+    return 'Tags zu „$name“ hinzugefügt';
+  }
+
+  @override
+  String get aiAccept => 'Annehmen';
+
+  @override
+  String get aiReject => 'Ablehnen';
+
+  @override
+  String get aiEditName => 'Anderen Namen verwenden';
+
+  @override
+  String get aiEditFolder => 'Woandershin verschieben';
+
+  @override
+  String get aiEditTags => 'Tags bearbeiten';
+
+  @override
+  String get aiTagsLabel => 'Tags, durch Kommas getrennt';
+
+  @override
+  String get aiTierHigh => 'Sicher';
+
+  @override
+  String get aiTierMedium => 'Mittel';
+
+  @override
+  String get aiTierLow => 'Unsicher';
+
+  @override
+  String aiConfidence(int percent) {
+    return 'Zu $percent % sicher';
+  }
+
+  @override
+  String get aiSourceAi => 'KI';
+
+  @override
+  String get aiSourceRule => 'Regel';
+
+  @override
+  String aiSourceModel(String model) {
+    return 'Vorgeschlagen von $model';
+  }
+
+  @override
+  String get aiSourceRuleHint =>
+      'Eine deiner Sortierregeln hat gepasst; kein Modell wurde gefragt.';
+
+  @override
+  String get aiNewFolder => 'neuer Ordner';
+
+  @override
+  String aiShowLow(int count) {
+    return 'Unsichere zeigen ($count)';
+  }
+
+  @override
+  String get aiHideLow => 'Unsichere ausblenden';
+
+  @override
+  String get aiLoadMore => 'Mehr laden';
+
+  @override
+  String get aiReviewEmptyTitle => 'Nichts zu prüfen';
+
+  @override
+  String get aiReviewEmptyBody =>
+      'Neue Vorschläge erscheinen hier. Frag im ⋯-Menü einer Datei danach oder mit „Diesen Ordner ordnen“.';
+
+  @override
+  String get aiReviewOffTitle => 'KI ist für dich aus';
+
+  @override
+  String get aiReviewOffBody =>
+      'Schalte KI-Funktionen unter Einstellungen › KI ein, um Vorschläge für Namen, Ordner und Tags zu bekommen.';
+
+  @override
+  String get aiOpenSettings => 'Einstellungen öffnen';
+
+  @override
+  String get aiOpenReview => 'Prüfen öffnen';
+
+  @override
+  String get aiSuggestionStale =>
+      'Die Datei hat sich seit dem Vorschlag geändert, darum wurde er entfernt.';
+
+  @override
+  String get aiSuggestionDecided =>
+      'Über diesen Vorschlag wurde schon anderswo entschieden.';
+
+  @override
+  String aiUndoConflict(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Änderungen lassen sich nicht rückgängig machen: Die Dateien haben sich seitdem geändert.',
+      one: 'Rückgängig nicht möglich: Die Datei hat sich seitdem geändert.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiRuleProposalTitle(String type, String issuer, String folder) {
+    return '$type von $issuer immer nach $folder verschieben?';
+  }
+
+  @override
+  String aiRuleProposalBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Du hast $count solche Verschiebungen angenommen. Eine Regel erledigt das, ohne die KI zu fragen.',
+      one: 'Du hast 1 solche Verschiebung angenommen.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiCreateRule => 'Regel anlegen';
+
+  @override
+  String get aiDismiss => 'Verwerfen';
+
+  @override
+  String get aiRuleCreated =>
+      'Regel angelegt. Du findest sie unter Einstellungen › KI.';
+
+  @override
+  String get aiSuggestionChip => 'KI-Vorschlag';
+
+  @override
+  String get aiSuggestionChipHint => 'KI-Vorschlag zeigen';
+
+  @override
+  String get aiSuggestionTitle => 'KI-Vorschlag';
+
+  @override
+  String get aiMenu => 'KI';
+
+  @override
+  String get aiSuggestName => 'Namen vorschlagen';
+
+  @override
+  String get aiSuggestFolder => 'Ordner vorschlagen';
+
+  @override
+  String get aiSuggestNames => 'Namen vorschlagen';
+
+  @override
+  String get aiSuggestFolders => 'Ordner vorschlagen';
+
+  @override
+  String get aiSuggestTags => 'Tags vorschlagen';
+
+  @override
+  String get aiSummarize => 'Zusammenfassen';
+
+  @override
+  String aiRequested(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'KI zu $count Dateien gefragt. Vorschläge erscheinen unter Prüfen.',
+      one: 'KI um einen Vorschlag gebeten. Er erscheint unter Prüfen.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiNothingSuggested(String name) {
+    return 'Die KI hat keinen Vorschlag für „$name“.';
+  }
+
+  @override
+  String get aiOrganizeFolder => 'Diesen Ordner ordnen …';
+
+  @override
+  String aiOrganizeTitle(String name) {
+    return '„$name“ ordnen';
+  }
+
+  @override
+  String get aiOrganizeIntro =>
+      'Die KI sieht sich jede Datei in diesem Ordner und seinen Unterordnern an und schlägt vor, was du auswählst. Über jeden Vorschlag entscheidest du unter Prüfen.';
+
+  @override
+  String get aiOrganizeNames => 'Namen für Dateien mit nichtssagenden Namen';
+
+  @override
+  String get aiOrganizeFolders => 'Einen passenderen Ordner für jede Datei';
+
+  @override
+  String get aiOrganizeTags => 'Tags';
+
+  @override
+  String get aiOrganizeKindOff => 'Aus unter Einstellungen › KI';
+
+  @override
+  String get aiOrganizeNote =>
+      'Tresore und von KI ausgeschlossene Ordner werden übersprungen. Bis zu 5.000 Dateien.';
+
+  @override
+  String get aiOrganizeStart => 'Starten';
+
+  @override
+  String get aiOrganizeRunning => 'Die KI sieht sich die Dateien an …';
+
+  @override
+  String get aiOrganizeDone => 'Fertig';
+
+  @override
+  String get aiOrganizeQueued => 'Wartet auf den Start …';
+
+  @override
+  String aiOrganizeProgress(int done, int total) {
+    return '$done von $total Dateien';
+  }
+
+  @override
+  String aiOrganizeSkipped(int skipped, int failed) {
+    return '$skipped übersprungen, $failed fehlgeschlagen';
+  }
+
+  @override
+  String get aiOrganizePaused => 'Die Arbeit ist vorerst angehalten.';
+
+  @override
+  String aiOrganizeWaiting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge warten unter Prüfen.',
+      one: '1 Vorschlag wartet unter Prüfen.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiOrganizeNothing =>
+      'Nichts vorzuschlagen: Diese Dateien sehen gut aus.';
+
+  @override
+  String get aiOrganizeBackground =>
+      'Du kannst das schließen; die Arbeit läuft weiter und Vorschläge kommen unter Prüfen an.';
+
+  @override
+  String get aiSummaryTitle => 'Zusammenfassung';
+
+  @override
+  String get aiSummaryWorking => 'Wird zusammengefasst …';
+
+  @override
+  String get aiSummaryRefresh => 'Neu zusammenfassen';
+
+  @override
+  String aiSummaryBy(String model) {
+    return 'Geschrieben von $model';
+  }
+
+  @override
+  String get aiSummaryByAi => 'Von KI geschrieben';
+
+  @override
+  String get aiDetailsTitle => 'KI-Details';
+
+  @override
+  String get aiTagsTitle => 'Tags';
+
+  @override
+  String get aiFieldsTitle => 'Aus der Datei gelesen';
+
+  @override
+  String aiFieldsBy(String model) {
+    return 'Gelesen von $model';
+  }
+
+  @override
+  String get aiFieldType => 'Art';
+
+  @override
+  String get aiFieldIssuer => 'Von';
+
+  @override
+  String get aiFieldDate => 'Datum';
+
+  @override
+  String get aiFieldSubject => 'Betreff';
+
+  @override
+  String get aiFieldAmount => 'Betrag';
+
+  @override
+  String get aiFieldCaption => 'Beschreibung';
+
+  @override
+  String get aiDocTypeInvoice => 'Rechnung';
+
+  @override
+  String get aiDocTypeReceipt => 'Beleg';
+
+  @override
+  String get aiDocTypeContract => 'Vertrag';
+
+  @override
+  String get aiDocTypePayslip => 'Gehaltsabrechnung';
+
+  @override
+  String get aiDocTypeLetter => 'Brief';
+
+  @override
+  String get aiDocTypeStatement => 'Kontoauszug';
+
+  @override
+  String get aiDocTypeCertificate => 'Bescheinigung';
+
+  @override
+  String get aiDocTypeManual => 'Anleitung';
+
+  @override
+  String get aiDocTypeReport => 'Bericht';
+
+  @override
+  String get aiDocTypeNotes => 'Notizen';
+
+  @override
+  String get aiDocTypePresentation => 'Präsentation';
+
+  @override
+  String get aiDocTypeSpreadsheet => 'Tabelle';
+
+  @override
+  String get aiDocTypeScreenshot => 'Bildschirmfoto';
+
+  @override
+  String get aiDocTypePhoto => 'Foto';
+
+  @override
+  String get aiDocTypeScan => 'Scan';
+
+  @override
+  String get aiDocTypeOther => 'Sonstiges';
+
+  @override
+  String get aiFeatureNewTags => 'Neue Tags vorschlagen';
+
+  @override
+  String get aiFeatureNewTagsDescription =>
+      'Sonst verwendet die KI nur Tags, die du schon hast.';
+
+  @override
+  String get aiFeatureNewFolders => 'Neue Ordner vorschlagen';
+
+  @override
+  String get aiFeatureNewFoldersDescription =>
+      'Erlaubt der KI, einen Ordner vorzuschlagen, den es noch nicht gibt; er wird beim Annehmen angelegt.';
+
+  @override
+  String get aiReviewSettingsLabel => 'Vorschläge zum Prüfen';
+
+  @override
+  String aiReviewSettingsDescription(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge warten.',
+      one: '1 Vorschlag wartet.',
+      zero: 'Gerade wartet nichts.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiRulesTitle => 'Sortierregeln';
+
+  @override
+  String get aiRulesDescription =>
+      'Werden vor jedem Modell geprüft: Eine Datei, die alle Bedingungen einer Regel erfüllt, wird für deren Ordner vorgeschlagen.';
+
+  @override
+  String get aiRulesEmpty =>
+      'Noch keine Regeln. Prüfen bietet eine an, wenn du ein paar ähnliche Verschiebungen angenommen hast.';
+
+  @override
+  String get aiRuleAdd => 'Regel hinzufügen';
+
+  @override
+  String get aiRuleEdit => 'Regel bearbeiten';
+
+  @override
+  String get aiRuleName => 'Name';
+
+  @override
+  String get aiRuleWhen => 'Wenn eine Datei';
+
+  @override
+  String get aiRuleAnyType => 'Jede Art';
+
+  @override
+  String get aiRuleExtension => 'Endung';
+
+  @override
+  String get aiRulePattern => 'Namensmuster (* und ?)';
+
+  @override
+  String get aiRuleTarget => 'Verschieben nach';
+
+  @override
+  String get aiRuleChooseFolder => 'Ordner wählen';
+
+  @override
+  String aiRuleSummary(String conditions, String folder) {
+    return '$conditions → $folder';
+  }
+
+  @override
+  String get aiRuleNeedsName => 'Gib der Regel einen Namen.';
+
+  @override
+  String get aiRuleNeedsCondition => 'Lege mindestens eine Bedingung fest.';
+
+  @override
+  String get aiRuleNeedsFolder => 'Wähle den Ordner, in den Dateien kommen.';
+
+  @override
+  String get aiRuleDeleteTitle => 'Regel löschen?';
+
+  @override
+  String aiRuleDeleteBody(String name) {
+    return '„$name“ sortiert keine Dateien mehr. Vorschläge, die sie schon gemacht hat, bleiben.';
+  }
+
+  @override
+  String get aiErrorFeatureOff =>
+      'Diese KI-Funktion ist unter Einstellungen › KI ausgeschaltet.';
+
+  @override
+  String get aiErrorNoContent =>
+      'In dieser Datei gibt es keinen Text, mit dem die KI arbeiten kann.';
+
+  @override
+  String get aiErrorTooManyFiles =>
+      'Dieser Ordner hat zu viele Dateien auf einmal. Wähle einen kleineren Ordner.';
+
+  @override
+  String get aiErrorTargetNotAllowed =>
+      'Dorthin kann die KI keine Dateien legen: Es ist ein Tresor oder von KI ausgeschlossen.';
+
+  @override
+  String get aiErrorShareBoundary =>
+      'Diese Verschiebung würde ändern, wer die Datei sehen kann, darum macht die KI sie nicht.';
+
+  @override
+  String get aiErrorNotUndoable =>
+      'Diese Änderung lässt sich nicht rückgängig machen.';
 }

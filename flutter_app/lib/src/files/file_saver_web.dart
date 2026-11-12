@@ -1,3 +1,6 @@
+import 'dart:js_interop';
+import 'dart:typed_data';
+
 import 'package:web/web.dart' as web;
 
 /// Lets the browser download the file: it sends the session cookie itself
@@ -11,4 +14,18 @@ Future<void> startDownload(Uri uri, {String? fileName, Map<String, String> heade
   web.document.body?.append(anchor);
   anchor.click();
   anchor.remove();
+}
+
+/// Saves bytes the app already holds (an account export) as a download.
+Future<void> saveBytes(Uint8List bytes, String fileName, {String mime = 'application/octet-stream'}) async {
+  final blob = web.Blob(<JSAny>[bytes.toJS].toJS, web.BlobPropertyBag(type: mime));
+  final url = web.URL.createObjectURL(blob);
+  final anchor = web.HTMLAnchorElement()
+    ..href = url
+    ..download = fileName
+    ..style.display = 'none';
+  web.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+  web.URL.revokeObjectURL(url);
 }

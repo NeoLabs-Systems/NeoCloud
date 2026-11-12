@@ -113,13 +113,32 @@ function serializeSession(session) {
   };
 }
 
+function uploadNotFound() {
+  return httpError(404, 'Upload not found or expired', 'UPLOAD_NOT_FOUND');
+}
+
 function getSession(userId, uploadId) {
   const session = db.prepare(`
     SELECT * FROM upload_sessions
     WHERE id = ? AND user_id = ? AND datetime(expires_at) > datetime('now')
   `).get(String(uploadId || ''), userId);
-  if (!session) throw httpError(404, 'Upload not found or expired', 'UPLOAD_NOT_FOUND');
+  if (!session) throw uploadNotFound();
   return session;
+}
+
+function liveSessionExists(uploadId) {
+  return Boolean(db.prepare('SELECT 1 FROM upload_sessions WHERE id = ?').get(uploadId));
+}
+
+// Uploads being joined right now. A second complete (a client retrying after
+// a timeout) or a cancel waits its turn instead of reading parts that the
+// first one is about to delete.
+const completing = new Set();
+
+function assertNotCompleting(uploadId) {
+  if (completing.has(uploadId)) {
+    throw httpError(409, 'This upload is being completed.', 'UPLOAD_COMPLETING');
+  }
 }
 
 /**
@@ -162,18 +181,31 @@ async function putPart(userId, uploadId, rawIndex, body, { contentLength } = {})
   }
   assertDiskSpace(expectedSize);
 
-  const blob = await writeTemporaryBlob(userId, body, {
-    limit: expectedSize,
-    limitError: () => httpError(400, `Part ${index} must be ${expectedSize} bytes.`, 'SIZE_MISMATCH'),
-    expectedSize,
-    blobId: partBlobId(session.id, index),
-    directory: path.join(PARTS_DIR, session.id),
-  });
+  let blob;
+  try {
+    blob = await writeTemporaryBlob(userId, body, {
+      limit: expectedSize,
+      limitError: () => httpError(400, `Part ${index} must be ${expectedSize} bytes.`, 'SIZE_MISMATCH'),
+      expectedSize,
+      blobId: partBlobId(session.id, index),
+      directory: path.join(PARTS_DIR, session.id),
+    });
+  } catch (err) {
+    // Cancelling removes the part folder, so the write can fail under it.
+    if (!liveSessionExists(session.id)) throw uploadNotFound();
+    throw err;
+  }
+  // The upload may have been cancelled or completed while this part arrived.
+  if (!liveSessionExists(session.id) || completing.has(session.id)) {
+    await removeQuietly(blob.tmpPath);
+    throw uploadNotFound();
+  }
   await fs.promises.rename(blob.tmpPath, partPath(session.id, index));
   db.prepare(`
-    INSERT INTO upload_parts (upload_id, part_index, size) VALUES (?, ?, ?)
+    INSERT INTO upload_parts (upload_id, part_index, size)
+    SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM upload_sessions WHERE id = ?)
     ON CONFLICT(upload_id, part_index) DO UPDATE SET size = excluded.size
-  `).run(session.id, index, blob.size);
+  `).run(session.id, index, blob.size, session.id);
   return { index, size: blob.size, sha256: blob.sha256 };
 }
 
@@ -198,31 +230,42 @@ async function removePartFiles(uploadId) {
 /** Joins the parts into one encrypted blob and adds the file to the tree. */
 async function completeUpload(userId, uploadId, { baseEtag } = {}) {
   const session = getSession(userId, uploadId);
+  assertNotCompleting(session.id);
   const { count } = db.prepare('SELECT COUNT(*) AS count FROM upload_parts WHERE upload_id = ?').get(session.id);
   if (count !== partCount(session.total_size)) {
     throw httpError(409, 'Some parts are still missing.', 'UPLOAD_INCOMPLETE');
   }
   assertDiskSpace(session.total_size);
-  const blob = await writeTemporaryBlob(userId, Readable.from(readParts(userId, session)), {
-    expectedSize: session.total_size,
-  });
-  if (session.sha256 && session.sha256 !== blob.sha256) {
-    await removeQuietly(blob.tmpPath);
-    throw httpError(422, 'The file arrived damaged (checksum mismatch).', 'CHECKSUM_MISMATCH');
+  completing.add(session.id);
+  try {
+    const source = Readable.from(readParts(userId, session));
+    let blob;
+    try {
+      blob = await writeTemporaryBlob(userId, source, { expectedSize: session.total_size });
+    } finally {
+      source.destroy();
+    }
+    if (session.sha256 && session.sha256 !== blob.sha256) {
+      await removeQuietly(blob.tmpPath);
+      throw httpError(422, 'The file arrived damaged (checksum mismatch).', 'CHECKSUM_MISMATCH');
+    }
+    const node = await commitUploadedBlob(userId, {
+      parentId: session.parent_id,
+      name: session.name,
+      conflict: session.conflict,
+      baseEtag,
+      uploadId: session.id,
+    }, blob);
+    await removePartFiles(session.id);
+    return node;
+  } finally {
+    completing.delete(session.id);
   }
-  const node = await commitUploadedBlob(userId, {
-    parentId: session.parent_id,
-    name: session.name,
-    conflict: session.conflict,
-    baseEtag,
-    uploadId: session.id,
-  }, blob);
-  await removePartFiles(session.id);
-  return node;
 }
 
 async function cancelUpload(userId, uploadId) {
   const session = getSession(userId, uploadId);
+  assertNotCompleting(session.id);
   db.prepare('DELETE FROM upload_sessions WHERE id = ?').run(session.id);
   await removePartFiles(session.id);
   return { success: true };
@@ -263,6 +306,7 @@ module.exports = {
   createUpload,
   getUpload,
   purgeExpiredUploads,
+  removePartFiles,
   putPart,
   uploadStream,
 };

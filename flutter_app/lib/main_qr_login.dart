@@ -453,13 +453,9 @@ Future<void> _approveQrLogin(BuildContext context, NeoCloudController controller
     return;
   }
   if (!context.mounted) return;
-  final approved = await showModalBottomSheet<bool>(
+  final approved = await showDialog<bool>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
-    backgroundColor: _bgCard,
-    builder: (_) => _QrLoginApprovalSheet(controller: controller, code: code, preview: preview),
+    builder: (_) => _QrLoginApprovalDialog(controller: controller, code: code, preview: preview),
   );
   if (approved == true) {
     messenger.showSnackBar(SnackBar(content: Text(appStrings.qrLoginApproved(preview.deviceLabel))));
@@ -477,20 +473,22 @@ String _qrLoginError(NeoCloudController controller, Object error) {
   return controller.friendlyError(error);
 }
 
-/// Which browser asks, from where, and Approve / Decline. Pops true once
+/// Which browser asks, from where, and Approve / Cancel, as NeoAgent's
+/// approval dialog (main_account_settings.dart). Approving happens in the
+/// dialog, so a failure stays readable next to the request. Pops true once
 /// approved, false when declined.
-class _QrLoginApprovalSheet extends StatefulWidget {
-  const _QrLoginApprovalSheet({required this.controller, required this.code, required this.preview});
+class _QrLoginApprovalDialog extends StatefulWidget {
+  const _QrLoginApprovalDialog({required this.controller, required this.code, required this.preview});
 
   final NeoCloudController controller;
   final QrLoginScanPayload code;
   final QrLoginPreview preview;
 
   @override
-  State<_QrLoginApprovalSheet> createState() => _QrLoginApprovalSheetState();
+  State<_QrLoginApprovalDialog> createState() => _QrLoginApprovalDialogState();
 }
 
-class _QrLoginApprovalSheetState extends State<_QrLoginApprovalSheet> {
+class _QrLoginApprovalDialogState extends State<_QrLoginApprovalDialog> {
   bool _busy = false;
   String? _error;
 
@@ -521,16 +519,21 @@ class _QrLoginApprovalSheetState extends State<_QrLoginApprovalSheet> {
     }
   }
 
+  /// NeoAgent's _MetaPill.
   Widget _pill(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(AppRadius.pill), border: Border.all(color: _border)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _bgCard.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _borderLight),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 14, color: _textMuted),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: _textSecondary, fontSize: 12)),
+          Icon(icon, size: 14, color: _accentAlt),
+          const SizedBox(width: 8),
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis, softWrap: false)),
         ],
       ),
     );
@@ -548,84 +551,92 @@ class _QrLoginApprovalSheetState extends State<_QrLoginApprovalSheet> {
     } else {
       note = appStrings.qrLoginApproveHint(widget.controller.accountLabel);
     }
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + MediaQuery.viewPaddingOf(context).bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(appStrings.qrLoginApproveTitle, style: _displayTitleStyle(22)),
-          const SizedBox(height: AppSpacing.md),
-          _AppCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: _accentMuted, borderRadius: BorderRadius.circular(AppRadius.control)),
-                  child: Icon(_deviceIcon, color: _accent, size: 20),
+    return AlertDialog(
+      backgroundColor: _bgCard,
+      title: Text(appStrings.qrLoginApproveTitle),
+      content: SizedBox(
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _bgSecondary,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _border),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(_preview.deviceLabel, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
-                      const SizedBox(height: 6),
-                      Row(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(_deviceIcon, color: _accent),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Icon(Icons.place_outlined, size: 15, color: _textMuted),
-                          const SizedBox(width: 6),
-                          Expanded(child: Text(_preview.locationLabel, style: TextStyle(color: _textSecondary, fontSize: 13))),
+                          Text(_preview.deviceLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          if (_preview.locationLabel.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Icon(Icons.place_outlined, size: 16, color: _textSecondary),
+                                const SizedBox(width: 6),
+                                Expanded(child: Text(_preview.locationLabel, style: TextStyle(color: _textPrimary, height: 1.4))),
+                              ],
+                            ),
+                          ],
+                          if (_preview.requestedAt != null) ...<Widget>[
+                            const SizedBox(height: 4),
+                            Text(
+                              appStrings.qrLoginRequestedAt(formatDate(_preview.requestedAt, locale)),
+                              style: TextStyle(color: _textSecondary, height: 1.4),
+                            ),
+                          ],
                         ],
                       ),
-                      if (_preview.requestedAt != null) ...<Widget>[
-                        const SizedBox(height: 4),
-                        Text(
-                          appStrings.qrLoginRequestedAt(formatDate(_preview.requestedAt, locale)),
-                          style: TextStyle(color: _textMuted, fontSize: 12.5),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  if (_preview.platformLabel.isNotEmpty) _pill(Icons.devices_outlined, _preview.platformLabel),
+                  if (_preview.browserLabel.isNotEmpty) _pill(Icons.language_outlined, _preview.browserLabel),
+                  if (_preview.expiresAt != null)
+                    _pill(Icons.timer_outlined, appStrings.mobileQrLoginExpiresAt(formatDate(_preview.expiresAt, locale))),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(note, style: TextStyle(color: _textSecondary, height: 1.45)),
+              if (_error != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.sm),
+                _InlineError(message: _error!),
               ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              if (_preview.platformLabel.isNotEmpty) _pill(Icons.devices_outlined, _preview.platformLabel),
-              if (_preview.browserLabel.isNotEmpty) _pill(Icons.language_outlined, _preview.browserLabel),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(note, style: TextStyle(color: _textSecondary, height: 1.45, fontSize: 13.5)),
-          if (_error != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.sm),
-            _InlineError(message: _error!),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton.icon(
-            onPressed: !canApprove || _busy ? null : () => unawaited(_approve()),
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            icon: _busy
-                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.verified_user_outlined, size: 18),
-            label: Text(appStrings.qrLoginApprove),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          OutlinedButton(
-            onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            child: Text(appStrings.qrLoginDecline),
-          ),
-        ],
+        ),
       ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          child: Text(appStrings.qrLoginDecline),
+        ),
+        FilledButton.icon(
+          onPressed: !canApprove || _busy ? null : () => unawaited(_approve()),
+          icon: _busy
+              ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.verified_user_outlined),
+          label: Text(appStrings.qrLoginApprove),
+        ),
+      ],
     );
   }
 }

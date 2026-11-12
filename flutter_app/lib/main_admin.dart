@@ -1,9 +1,10 @@
 part of 'main.dart';
 
-// The admin page, shaped like NeoAgent's AdminPanel: page title, a row of tab
-// chips, then section cards for the open tab.
+// The admin page, shaped like NeoRouter's AdminScreen: page title, a search
+// that jumps to the tab holding a setting, a row of tab chips, then settings
+// groups for the open tab.
 
-enum _AdminTab { users, storage, backups, access, server }
+enum _AdminTab { users, storage, backups, access, providers, models, server }
 
 extension _AdminTabInfo on _AdminTab {
   String get label {
@@ -16,6 +17,10 @@ extension _AdminTabInfo on _AdminTab {
         return appStrings.adminTabBackups;
       case _AdminTab.access:
         return appStrings.adminTabAccess;
+      case _AdminTab.providers:
+        return appStrings.aiAdminTabProviders;
+      case _AdminTab.models:
+        return appStrings.aiAdminTabModels;
       case _AdminTab.server:
         return appStrings.adminTabServer;
     }
@@ -31,6 +36,10 @@ extension _AdminTabInfo on _AdminTab {
         return Icons.backup_outlined;
       case _AdminTab.access:
         return Icons.key_outlined;
+      case _AdminTab.providers:
+        return Icons.key_outlined;
+      case _AdminTab.models:
+        return Icons.view_list_outlined;
       case _AdminTab.server:
         return Icons.dns_outlined;
     }
@@ -46,31 +55,114 @@ class AdminPanel extends StatefulWidget {
   State<AdminPanel> createState() => _AdminPanelState();
 }
 
+/// One thing an admin might look for and the tab that has it (NeoRouter's
+/// admin search).
+class _AdminSearchEntry {
+  const _AdminSearchEntry(this.title, this.tab, this.keywords);
+
+  final String title;
+  final _AdminTab tab;
+
+  /// Extra terms, English and German, people search for.
+  final String keywords;
+
+  bool matches(String query) {
+    final haystack = '${title.toLowerCase()} ${tab.label.toLowerCase()} $keywords';
+    return query.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).every(haystack.contains);
+  }
+}
+
+List<_AdminSearchEntry> _adminSearchIndex() => <_AdminSearchEntry>[
+  _AdminSearchEntry(appStrings.adminUsersTitle, _AdminTab.users, 'users accounts konten nutzer people email username admin role quota password delete'),
+  _AdminSearchEntry(appStrings.adminStorageTitle, _AdminTab.storage, 'quota kontingent upload size trash papierkorb versions versionen recalculate'),
+  _AdminSearchEntry(appStrings.backupTargets, _AdminTab.backups, 'backup sicherung sftp s3 webdav local restore verify schedule'),
+  _AdminSearchEntry(appStrings.adminAllowSignup, _AdminTab.access, 'signup sign-up registration registrierung register open close'),
+  _AdminSearchEntry(appStrings.aiAdminEnable, _AdminTab.models, 'ai ki llm suggestions vorschläge budget tokens usage nutzung'),
+  _AdminSearchEntry(appStrings.aiProvidersTitle, _AdminTab.providers, 'ai ki providers anbieter keys schlüssel api openai anthropic google gemini openrouter ollama neorouter'),
+  _AdminSearchEntry(appStrings.aiModelAvailability, _AdminTab.models, 'ai ki models modelle availability verfügbarkeit enable disable'),
+  _AdminSearchEntry(appStrings.adminServerTitle, _AdminTab.server, 'version uptime database datenbank disk health node previews libreoffice'),
+  _AdminSearchEntry(appStrings.adminSearchTitle, _AdminTab.server, 'search suche full-text volltext index rebuild'),
+  _AdminSearchEntry(appStrings.adminMasterKey, _AdminTab.server, 'master key schlüssel encryption verschlüsselung export'),
+  _AdminSearchEntry(appStrings.adminLogs, _AdminTab.server, 'logs protokoll errors fehler'),
+];
+
 class _AdminPanelState extends State<AdminPanel> {
+  final TextEditingController _search = TextEditingController();
+
   /// Kept by the controller, so the address and a reload keep the tab.
   _AdminTab get _tab => widget.controller._adminTab;
 
   @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _open(_AdminTab tab) {
+    _search.clear();
+    widget.controller._openAdminTab(tab);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
+    final query = _search.text.trim().toLowerCase();
+    final results = query.isEmpty ? const <_AdminSearchEntry>[] : _adminSearchIndex().where((entry) => entry.matches(query)).toList();
     return _PageScaffold(
       children: <Widget>[
         _PageTitle(title: appStrings.adminTitle, subtitle: appStrings.adminSubtitle),
-        _AdminSafetyCard(controller: controller, onOpenBackups: () => controller._openAdminTab(_AdminTab.backups)),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _AdminTab.values
-              .map((tab) => _AdminTabChip(tab: tab, active: tab == _tab, onTap: () => controller._openAdminTab(tab)))
-              .toList(growable: false),
+        _AdminSafetyCard(controller: controller, onOpenBackups: () => _open(_AdminTab.backups)),
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) {
+            if (results.isNotEmpty) _open(results.first.tab);
+          },
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: appStrings.adminSearchHint,
+            prefixIcon: Icon(Icons.search, size: 18, color: _textMuted),
+            suffixIcon: _search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: appStrings.clear,
+                    icon: Icon(Icons.close, size: 18, color: _textMuted),
+                    onPressed: () => setState(_search.clear),
+                  ),
+          ),
         ),
-        KeyedSubtree(
+        if (query.isNotEmpty)
+          results.isEmpty
+              ? _EmptyCard(title: appStrings.paletteNothing, subtitle: appStrings.adminSearchHint, icon: Icons.search_off_rounded)
+              : _SettingsCardList(
+                  children: <Widget>[
+                    for (final entry in results)
+                      ListTile(
+                        leading: Icon(entry.tab.icon, color: _accent),
+                        title: Text(entry.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textPrimary)),
+                        subtitle: Text(entry.tab.label, style: TextStyle(color: _textMuted, fontSize: 12)),
+                        trailing: Icon(Icons.chevron_right_rounded, color: _textMuted),
+                        onTap: () => _open(entry.tab),
+                      ),
+                  ],
+                )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _AdminTab.values.map((tab) => _AdminTabChip(tab: tab, active: tab == _tab, onTap: () => _open(tab))).toList(growable: false),
+          ),
+        if (query.isEmpty)
+          KeyedSubtree(
           key: ValueKey<_AdminTab>(_tab),
           child: switch (_tab) {
             _AdminTab.users => _AdminUsersTab(controller: controller),
             _AdminTab.storage => _AdminStorageTab(controller: controller),
             _AdminTab.backups => _AdminBackupsTab(controller: controller),
             _AdminTab.access => _AdminAccessTab(controller: controller),
+            _AdminTab.providers => AdminAiProvidersTab(controller: controller),
+            _AdminTab.models => AdminAiModelsTab(controller: controller),
             _AdminTab.server => _AdminServerTab(controller: controller),
           },
         ),
@@ -79,6 +171,7 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 }
 
+/// NeoRouter's pill-shaped tab chip: neutral, the open tab raised.
 class _AdminTabChip extends StatelessWidget {
   const _AdminTabChip({required this.tab, required this.active, required this.onTap});
 
@@ -98,17 +191,17 @@ class _AdminTabChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: radius,
-            color: active ? _accentMuted : _bgTertiary,
-            border: Border.all(color: active ? _accent.withValues(alpha: 0.3) : _border),
+            color: active ? _bgTertiary : Colors.transparent,
+            border: Border.all(color: active ? _borderLight : _border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(tab.icon, size: 15, color: active ? _accent : _textMuted),
+              Icon(tab.icon, size: 15, color: active ? _textPrimary : _textMuted),
               const SizedBox(width: 7),
               Text(
                 tab.label,
-                style: GoogleFonts.geist(fontSize: 12.5, fontWeight: FontWeight.w600, color: active ? _accentHover : _textSecondary),
+                style: GoogleFonts.geist(fontSize: 12.5, fontWeight: FontWeight.w600, color: active ? _textPrimary : _textSecondary),
               ),
             ],
           ),
@@ -225,6 +318,14 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
     await _act(() => _controller.client.adminSetQuota(user.id, result.$1, bytes: result.$2));
   }
 
+  Future<void> _editAi(AdminUser user) async {
+    final saved = await showAdaptiveSheet<bool>(
+      context: context,
+      builder: (_) => _AdminAiUserDialog(controller: _controller, user: user),
+    );
+    if (saved == true && mounted) setState(() => pageNotice = appStrings.aiAdminUserSaved(user.username));
+  }
+
   Future<void> _resetPassword(AdminUser user) async {
     final password = await _promptText(
       context,
@@ -238,9 +339,112 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
   }
 
   String _quotaLabel(AdminUser user) {
-    if (user.quotaBytes < 0) return appStrings.unlimited;
     final used = formatBytes(user.usedBytes);
+    if (user.quotaBytes < 0) return appStrings.storageUsedUnlimited(used);
     return appStrings.storageUsedOf(used, formatBytes(user.quotaBytes));
+  }
+
+  void _onMenu(AdminUser user, String action) {
+    switch (action) {
+      case 'quota':
+        unawaited(_editQuota(user));
+      case 'ai':
+        unawaited(_editAi(user));
+      case 'admin':
+        unawaited(_act(() => _controller.client.adminSetAdmin(user.id, !user.isAdmin)));
+      case 'password':
+        unawaited(_resetPassword(user));
+      case 'disable':
+        unawaited(_act(() => _controller.client.adminSetDisabled(user.id, !user.disabled)));
+      case 'signOut':
+        unawaited(_confirmDelete(
+          context,
+          title: appStrings.adminSignOutEverywhereTitle(user.username),
+          message: appStrings.adminSignOutEverywhereMessage,
+          confirmLabel: appStrings.adminSignOutEverywhere,
+          onConfirm: () => runAction(
+            _controller,
+            () => _controller.client.adminSignOutEverywhere(user.id),
+            notice: appStrings.adminSignedOutEverywhere(user.username),
+          ),
+        ));
+      case 'delete':
+        unawaited(_confirmDelete(
+          context,
+          title: appStrings.adminDeleteUser,
+          message: appStrings.adminDeleteUserMessage(user.username),
+          onConfirm: () => _act(() => _controller.client.adminDeleteUser(user.id)),
+        ));
+    }
+  }
+
+  /// One account as a settings row, like NeoRouter's user list: initial,
+  /// name and details, role tag, then the actions menu.
+  Widget _userRow(AdminUser user, {required bool self, required String locale}) {
+    final details = <String>[
+      ?user.email,
+      appStrings.adminFilesCount(user.fileCount),
+      _quotaLabel(user),
+      if (user.lastLogin != null) formatDate(user.lastLogin, locale),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _bgTertiary, border: Border.all(color: _borderLight)),
+            child: Text(
+              user.username.isEmpty ? '?' : user.username.characters.first.toUpperCase(),
+              style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  self ? appStrings.adminUserYou(user.username) : user.username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: _textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(details.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textSecondary, fontSize: 13)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // NeoRouter shows "Disabled" before the role; status is a dot and a word.
+          if (user.disabled) ...<Widget>[_StatusPill(label: appStrings.adminUserDisabled, color: _danger), const SizedBox(width: 12)],
+          _SettingsTag(label: user.isAdmin ? appStrings.roleAdmin : appStrings.roleUser),
+          PopupMenuButton<String>(
+            tooltip: appStrings.details,
+            enabled: !busy,
+            icon: Icon(Icons.more_vert_rounded, color: _textMuted),
+            onSelected: (action) => _onMenu(user, action),
+            itemBuilder: (context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(value: 'quota', child: Text(appStrings.adminSetQuota)),
+              PopupMenuItem<String>(value: 'ai', child: Text(appStrings.aiAdminUserMenu)),
+              if (!self)
+                PopupMenuItem<String>(value: 'admin', child: Text(user.isAdmin ? appStrings.adminRemoveAdmin : appStrings.adminMakeAdmin)),
+              PopupMenuItem<String>(value: 'password', child: Text(appStrings.adminResetPassword)),
+              if (!self) PopupMenuItem<String>(value: 'disable', child: Text(user.disabled ? appStrings.adminEnableUser : appStrings.adminDisableUser)),
+              if (!self) PopupMenuItem<String>(value: 'signOut', child: Text(appStrings.adminSignOutEverywhere)),
+              if (!user.isAdmin) PopupMenuItem<String>(value: 'delete', child: Text(appStrings.adminDeleteUser, style: TextStyle(color: _danger))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _retry() {
+    setState(() => pageError = null);
+    unawaited(_load());
   }
 
   @override
@@ -248,17 +452,19 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
     final users = _users;
     final ownId = _controller.user?.id;
     final locale = currentAppLanguage.code;
+    if (users == null && pageError != null) return _LoadError(message: pageError!, onRetry: _retry);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         feedback(),
-        _SectionCard(
+        _SettingsGroup(
           title: appStrings.adminUsersTitle,
-          trailing: IconButton(tooltip: appStrings.refresh, onPressed: _load, icon: const Icon(Icons.refresh_rounded, size: 20)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _SearchField(
+          description: users == null ? null : appStrings.adminUsersCount(users.length),
+          trailing: IconButton(tooltip: appStrings.refresh, onPressed: busy ? null : () => unawaited(_load()), icon: const Icon(Icons.refresh_rounded, size: 20)),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: _SearchField(
                 controller: _search,
                 hintText: appStrings.adminSearchUsers,
                 onChanged: (_) {
@@ -271,111 +477,11 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
                   _load();
                 },
               ),
-              const SizedBox(height: 14),
-              if (users == null) const _LoadingPlaceholder(),
-              for (final user in users ?? const <AdminUser>[]) ...<Widget>[
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: _bgSecondary,
-                    borderRadius: BorderRadius.circular(AppRadius.tag),
-                    border: Border.all(color: _border),
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      CircleAvatar(
-                        radius: 17,
-                        backgroundColor: user.isAdmin ? _accentMuted : _bgTertiary,
-                        child: Text(
-                          user.username.characters.first.toUpperCase(),
-                          style: TextStyle(color: user.isAdmin ? _accent : _textPrimary, fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Wrap(
-                              spacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: <Widget>[
-                                Text(user.username, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700)),
-                                if (user.isAdmin) _SettingsTag(label: appStrings.roleAdmin),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${user.email ?? '—'} · ${appStrings.adminFilesCount(user.fileCount)} · ${formatDate(user.lastLogin, locale)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: _textSecondary, fontSize: 12.5),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: <Widget>[
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: LinearProgressIndicator(
-                                      minHeight: 5,
-                                      value: user.quotaBytes <= 0 ? 0 : (user.usedBytes / user.quotaBytes).clamp(0, 1).toDouble(),
-                                      backgroundColor: _bgTertiary,
-                                      valueColor: AlwaysStoppedAnimation<Color>(_textSecondary),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(_quotaLabel(user), style: TextStyle(color: _textMuted, fontSize: 12)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        tooltip: appStrings.details,
-                        icon: Icon(Icons.more_horiz_rounded, color: _textMuted),
-                        color: _bgCard,
-                        onSelected: (action) {
-                          switch (action) {
-                            case 'quota':
-                              unawaited(_editQuota(user));
-                            case 'admin':
-                              unawaited(_act(() => _controller.client.adminSetAdmin(user.id, !user.isAdmin)));
-                            case 'password':
-                              unawaited(_resetPassword(user));
-                            case 'delete':
-                              unawaited(_confirmDelete(
-                                context,
-                                title: appStrings.adminDeleteUser,
-                                message: appStrings.adminDeleteUserMessage(user.username),
-                                onConfirm: () => _act(() => _controller.client.adminDeleteUser(user.id)),
-                              ));
-                          }
-                        },
-                        itemBuilder: (context) => <PopupMenuEntry<String>>[
-                          PopupMenuItem<String>(value: 'quota', child: Text(appStrings.adminSetQuota)),
-                          if (user.id != ownId)
-                            PopupMenuItem<String>(
-                              value: 'admin',
-                              child: Text(user.isAdmin ? appStrings.adminRemoveAdmin : appStrings.adminMakeAdmin),
-                            ),
-                          PopupMenuItem<String>(value: 'password', child: Text(appStrings.adminResetPassword)),
-                          if (!user.isAdmin)
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Text(appStrings.adminDeleteUser, style: TextStyle(color: _danger)),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
+            ),
+            if (users == null) const _LoadingPlaceholder(),
+            if (users != null && users.isEmpty) _SettingsBlock(child: _EmptyText(appStrings.paletteNothing)),
+            for (final user in users ?? const <AdminUser>[]) _userRow(user, self: user.id == ownId, locale: locale),
+          ],
         ),
       ],
     );
@@ -459,6 +565,16 @@ class _AdminStorageTabState extends State<_AdminStorageTab> with _PageLoad {
   @override
   Widget build(BuildContext context) {
     if (!_loaded && pageError == null) return const _LoadingPlaceholder();
+    // Without the current values a Save would overwrite them with blanks.
+    if (!_loaded) {
+      return _LoadError(
+        message: pageError!,
+        onRetry: () {
+          setState(() => pageError = null);
+          unawaited(_load());
+        },
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -522,6 +638,16 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
 
   @override
   Widget build(BuildContext context) {
+    if (_allowSignup == null) {
+      if (pageError == null) return const _LoadingPlaceholder();
+      return _LoadError(
+        message: pageError!,
+        onRetry: () {
+          setState(() => pageError = null);
+          unawaited(_load());
+        },
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -533,8 +659,8 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
               label: appStrings.adminAllowSignup,
               description: appStrings.adminAllowSignupDescription,
               control: Switch(
-                value: _allowSignup ?? true,
-                onChanged: _allowSignup == null || busy ? null : (value) => unawaited(_act(() => _controller.client.adminSetAllowSignup(value))),
+                value: _allowSignup!,
+                onChanged: busy ? null : (value) => unawaited(_act(() => _controller.client.adminSetAllowSignup(value))),
               ),
             ),
           ],
@@ -597,17 +723,29 @@ class _AdminServerTabState extends State<_AdminServerTab> with _PageLoad {
     final logs = _logs ?? const <Map<String, dynamic>>[];
     final disk = (health?['storageDisk'] as Map?)?.cast<String, dynamic>();
     Widget value(String text) => Text(text, style: TextStyle(color: _textSecondary));
+    if (health == null && pageError != null) {
+      return _LoadError(
+        message: pageError!,
+        onRetry: () {
+          setState(() => pageError = null);
+          unawaited(_load());
+        },
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         feedback(),
-        if (health == null && pageError == null) const _LoadingPlaceholder(),
+        if (health == null) const _LoadingPlaceholder(),
         if (health != null)
           _SettingsGroup(
             title: appStrings.adminServerTitle,
-            trailing: IconButton(tooltip: appStrings.refresh, onPressed: _load, icon: const Icon(Icons.refresh_rounded, size: 20)),
+            trailing: IconButton(tooltip: appStrings.refresh, onPressed: () => unawaited(_load()), icon: const Icon(Icons.refresh_rounded, size: 20)),
             children: <Widget>[
-              _SettingsRow(label: appStrings.adminVersion, control: value('${health['version']} · Node ${health['node']}')),
+              _SettingsRow(
+                label: appStrings.adminVersion,
+                control: Text('${health['version']} · Node ${health['node']}', style: GoogleFonts.geistMono(color: _textSecondary, fontSize: 13)),
+              ),
               _SettingsRow(label: appStrings.adminUptime, control: value(_uptime(health['uptimeSeconds'] as num?))),
               _SettingsRow(
                 label: appStrings.adminDatabase,

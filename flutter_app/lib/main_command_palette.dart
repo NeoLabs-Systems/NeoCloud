@@ -52,12 +52,16 @@ bool _paletteOpen = false;
 Future<void> showCommandPalette(BuildContext context, NeoCloudController controller) async {
   if (_paletteOpen) return;
   _paletteOpen = true;
-  final command = await showDialog<_PaletteCommand>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.35),
-    builder: (_) => _CommandPalette(controller: controller),
-  );
-  _paletteOpen = false;
+  final _PaletteCommand? command;
+  try {
+    command = await showDialog<_PaletteCommand>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (_) => _CommandPalette(controller: controller),
+    );
+  } finally {
+    _paletteOpen = false;
+  }
   command?.run();
 }
 
@@ -77,6 +81,9 @@ class _CommandPaletteState extends State<_CommandPalette> {
   List<FileNode> _folders = const <FileNode>[];
   Timer? _debounce;
   int _index = 0;
+
+  /// The highlighted row, kept in view while the arrow keys move it.
+  final GlobalKey _activeRow = GlobalKey();
 
   NeoCloudController get _controller => widget.controller;
 
@@ -141,6 +148,12 @@ class _CommandPaletteState extends State<_CommandPalette> {
       _PaletteCommand(Icons.schedule_rounded, appStrings.navRecent, () => _go(AppSection.recent)),
       _PaletteCommand(Icons.delete_outline_rounded, appStrings.navTrash, () => _go(AppSection.trash)),
       if (controller.isAdmin) _PaletteCommand(Icons.admin_panel_settings_outlined, appStrings.navAdmin, () => _go(AppSection.admin)),
+      if (controller.isAdmin)
+        for (final tab in _AdminTab.values)
+          _PaletteCommand(tab.icon, '${appStrings.navAdmin} › ${tab.label}', () {
+            controller._openAdminTab(tab);
+            _go(AppSection.admin);
+          }),
     ];
     final settings = <_PaletteCommand>[
       for (final page in SettingsPage.values.where((page) => page.visibleFor(controller)))
@@ -172,14 +185,22 @@ class _CommandPaletteState extends State<_CommandPalette> {
     ].where((group) => group.$2.isNotEmpty).toList();
   }
 
+  void _move(int index) {
+    setState(() => _index = index);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final row = _activeRow.currentContext;
+      if (row != null && row.mounted) unawaited(Scrollable.ensureVisible(row, alignment: 0.5, duration: const Duration(milliseconds: 120)));
+    });
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event, List<_PaletteCommand> flat) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      setState(() => _index = flat.isEmpty ? 0 : (_index + 1) % flat.length);
+      _move(flat.isEmpty ? 0 : (_index + 1) % flat.length);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      setState(() => _index = flat.isEmpty ? 0 : (_index - 1 + flat.length) % flat.length);
+      _move(flat.isEmpty ? 0 : (_index - 1 + flat.length) % flat.length);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter && flat.isNotEmpty) {
@@ -191,6 +212,7 @@ class _CommandPaletteState extends State<_CommandPalette> {
 
   Widget _row(_PaletteCommand command, bool active) {
     return Material(
+      key: active ? _activeRow : null,
       color: active ? _accentMuted : Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadius.control),
       child: InkWell(

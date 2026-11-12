@@ -34,10 +34,7 @@ class _WebDavCardState extends State<_WebDavCard> {
         IconButton(
           tooltip: appStrings.copy,
           visualDensity: VisualDensity.compact,
-          onPressed: () {
-            unawaited(Clipboard.setData(ClipboardData(text: value)));
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(appStrings.copied)));
-          },
+          onPressed: () => unawaited(_copyToClipboard(context, value)),
           icon: const Icon(Icons.copy_rounded, size: 16),
         ),
       ],

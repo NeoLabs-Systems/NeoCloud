@@ -97,11 +97,17 @@ func cmdRun(args []string) error {
 			logger.Printf("opening the app window: %v", err)
 		}
 	}
+	openSettings := func() {
+		if err := settings.OpenSettings(); err != nil {
+			logger.Printf("opening the app window: %v", err)
+		}
+	}
 	go single.Serve(openWindow)
 	tray.Run(tray.Options{
-		Engine:     a.engine,
-		Config:     a.cfg,
-		OpenWindow: openWindow,
+		Engine:       a.engine,
+		Config:       a.cfg,
+		OpenWindow:   openWindow,
+		OpenSettings: openSettings,
 		OnReady: func() {
 			// First run: nothing to sync until the user signs in.
 			if !a.cfg.Get().LoggedIn() {

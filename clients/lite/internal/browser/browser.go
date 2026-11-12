@@ -23,3 +23,23 @@ func Open(target string) error {
 	go cmd.Wait() // reap; the opener exits on its own
 	return nil
 }
+
+// OpenText opens a plain-text file in the desktop's text editor. Open
+// would ask which app to use for a name like ".cloudignore", which has
+// no extension.
+func OpenText(path string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", "-t", path)
+	case "windows":
+		cmd = exec.Command("notepad.exe", path)
+	default:
+		cmd = exec.Command("xdg-open", path)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait()
+	return nil
+}

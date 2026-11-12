@@ -33,7 +33,11 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
         throw httpError(413, 'Not enough storage left for this file.', 'QUOTA_EXCEEDED');
       }
       recordBlob(userId, blob);
-      if (uploadId) db.prepare('DELETE FROM upload_sessions WHERE id = ?').run(uploadId);
+      // The session ends with its file; one cancelled or completed meanwhile
+      // must not give a second file.
+      if (uploadId && db.prepare('DELETE FROM upload_sessions WHERE id = ?').run(uploadId).changes !== 1) {
+        throw httpError(404, 'Upload not found or expired', 'UPLOAD_NOT_FOUND');
+      }
 
       const existing = findLiveChildByName(parent.id, cleanName);
       if (existing && conflict === 'replace' && existing.type === 'file') {

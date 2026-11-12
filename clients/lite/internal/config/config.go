@@ -168,6 +168,18 @@ func (s *Store) SetUnlockedToken(token string) error {
 	return nil
 }
 
+// ForgetKeyLock drops the key lock in memory only, leaving the file as it
+// is until the next write; with its sealed token gone the client is signed
+// out. It reports whether there was a lock.
+func (s *Store) ForgetKeyLock() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	had := s.cfg.KeyLock != nil
+	s.cfg.KeyLock = nil
+	s.cfg.Token = ""
+	return had
+}
+
 func clone(c Config) Config {
 	if c.KeyLock != nil {
 		lock := *c.KeyLock

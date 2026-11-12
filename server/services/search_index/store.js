@@ -65,6 +65,20 @@ function saveIndexed(userId, node, text) {
   })();
 }
 
+/**
+ * What the index holds for a file's current content (a node row with id and
+ * blob_id): { status: 'indexed', text } or { status: 'failed' }, or null
+ * when it hasn't been read yet. The text is decrypted with the owner's key.
+ */
+function readIndexedText(userId, node) {
+  const row = db.prepare(`
+    SELECT node_id, status, text_enc FROM search_docs WHERE node_id = ? AND user_id = ? AND blob_id = ?
+  `).get(node.id, userId, node.blob_id);
+  if (!row) return null;
+  if (row.status !== 'indexed') return { status: row.status };
+  return { status: 'indexed', text: decryptTexts(userId, [row]).get(row.node_id) || '' };
+}
+
 /** Records that a file could not be read, so it isn't tried again until it changes. */
 function saveFailed(userId, node) {
   db.transaction(() => {
@@ -131,6 +145,7 @@ module.exports = {
   clearIndex,
   decryptTexts,
   indexTotals,
+  readIndexedText,
   readState,
   removeNode,
   removeOptedOut,

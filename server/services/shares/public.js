@@ -54,14 +54,15 @@ function assertDownloadsLeft(share) {
 
 // The link row with its state checked: unknown 404, revoked, expired or used
 // up 410 (`allowExhausted` defers the last check to the caller, for a
-// download being resumed). Carries the owner's username for the page.
+// download being resumed); a disabled owner's links are 404. Carries the
+// owner's username for the page.
 function findShare(token, { allowExhausted = false } = {}) {
   const share = db.prepare(`
-    SELECT s.*, u.username AS owner_username,
+    SELECT s.*, u.username AS owner_username, u.disabled_at AS owner_disabled_at,
            (s.expires_at IS NOT NULL AND datetime(s.expires_at) <= datetime('now')) AS is_expired
     FROM shares s JOIN users u ON u.id = s.user_id WHERE s.token = ?
   `).get(String(token || ''));
-  if (!share) throw notFound();
+  if (!share || share.owner_disabled_at) throw notFound();
   if (share.revoked_at) throw httpError(410, 'This link has been turned off.', 'SHARE_REVOKED');
   if (share.is_expired === 1) throw httpError(410, 'This link has expired.', 'SHARE_EXPIRED');
   if (!allowExhausted) assertDownloadsLeft(share);

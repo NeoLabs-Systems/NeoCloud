@@ -81,63 +81,14 @@ class _AuthViewState extends State<AuthView> {
 
   bool get _bootstrap => !widget.controller.hasUser;
 
-  Future<void> _showForgotPasswordDialog() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(appStrings.forgotPasswordTitle),
-        content: SizedBox(
-          width: 420,
-          child: SelectableText(
-            appStrings.forgotPasswordAskAdmin,
-            style: TextStyle(color: _textSecondary, height: 1.45),
-          ),
-        ),
-        actions: <Widget>[
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(appStrings.close),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _submit() async {
-    final controller = widget.controller;
-    if (controller.isAuthenticating) return;
-    if (_registerMode || _bootstrap) {
-      if (_passwordController.text != _confirmPasswordController.text) {
-        controller.showInlineError(appStrings.passwordsDoNotMatch);
-        return;
-      }
-      final strength = _passwordStrengthInfo(
-        password: _passwordController.text,
-        username: _usernameController.text,
-        email: _emailController.text,
-      );
-      if (!strength.acceptable) {
-        controller.showInlineError(strength.message);
-        return;
-      }
-      await controller.register(
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-    } else {
-      if (_usernameController.text.trim().isEmpty ||
-          _passwordController.text.isEmpty) {
-        controller.showInlineError(appStrings.enterYourUsernameOrEmail);
-        return;
-      }
-      await controller.login(
-        username: _usernameController.text.trim(),
-        password: _passwordController.text,
-      );
-    }
-    if (controller.isAuthenticated) TextInput.finishAutofillContext();
-  }
+  Future<void> _submit() => _submitCredentials(
+    widget.controller,
+    register: _registerMode || _bootstrap,
+    username: _usernameController.text,
+    email: _emailController.text,
+    password: _passwordController.text,
+    confirmPassword: _confirmPasswordController.text,
+  );
 
   Future<void> _submitCode() async {
     final code = _codeController.text.trim();
@@ -152,19 +103,6 @@ class _AuthViewState extends State<AuthView> {
     username: _usernameController.text,
     email: _emailController.text,
   );
-
-  Widget _orDivider(String label) {
-    return Row(
-      children: <Widget>[
-        Expanded(child: Divider(color: _border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(label, style: TextStyle(color: _textMuted, fontSize: 12)),
-        ),
-        Expanded(child: Divider(color: _border)),
-      ],
-    );
-  }
 
   Widget _spinnerOr(String label) {
     return widget.controller.isAuthenticating
@@ -309,11 +247,7 @@ class _AuthViewState extends State<AuthView> {
                     username: _usernameController.text,
                   ),
                 ),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(46),
-            foregroundColor: _textPrimary,
-            side: BorderSide(color: _borderLight),
-          ),
+          style: _altSignInButtonStyle(),
           icon: const Icon(Icons.key, size: 18),
           label: Text(appStrings.authSignInWithSecurityKey),
         ),
@@ -343,7 +277,7 @@ class _AuthViewState extends State<AuthView> {
               TextButton(
                 onPressed: controller.isAuthenticating
                     ? null
-                    : _showForgotPasswordDialog,
+                    : () => unawaited(_showForgotPasswordDialog(context)),
                 child: Text(appStrings.forgotPassword),
               ),
           ],
@@ -439,4 +373,67 @@ class _AuthViewState extends State<AuthView> {
       ),
     );
   }
+}
+
+/// Both sign-in cards' submit: registration (passwords match and are strong
+/// enough) or sign-in.
+Future<void> _submitCredentials(
+  NeoCloudController controller, {
+  required bool register,
+  required String username,
+  required String email,
+  required String password,
+  required String confirmPassword,
+}) async {
+  if (controller.isAuthenticating) return;
+  if (register) {
+    if (password != confirmPassword) {
+      controller.showInlineError(appStrings.passwordsDoNotMatch);
+      return;
+    }
+    final strength = _passwordStrengthInfo(password: password, username: username, email: email);
+    if (!strength.acceptable) {
+      controller.showInlineError(strength.message);
+      return;
+    }
+    await controller.register(username: username.trim(), email: email.trim(), password: password);
+  } else {
+    if (username.trim().isEmpty || password.isEmpty) {
+      controller.showInlineError(appStrings.enterYourUsernameOrEmail);
+      return;
+    }
+    await controller.login(username: username.trim(), password: password);
+  }
+  if (controller.isAuthenticated) TextInput.finishAutofillContext();
+}
+
+/// NeoCloud sends no email: an administrator sets a new password.
+Future<void> _showForgotPasswordDialog(BuildContext context) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(appStrings.forgotPasswordTitle),
+      content: SizedBox(
+        width: 420,
+        child: SelectableText(appStrings.forgotPasswordAskAdmin, style: TextStyle(color: _textSecondary, height: 1.45)),
+      ),
+      actions: <Widget>[
+        FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.close)),
+      ],
+    ),
+  );
+}
+
+/// A hairline either side of a short word ("or use your password").
+Widget _orDivider(String label) {
+  return Row(
+    children: <Widget>[
+      Expanded(child: Divider(color: _border)),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Text(label, style: TextStyle(color: _textMuted, fontSize: 12)),
+      ),
+      Expanded(child: Divider(color: _border)),
+    ],
+  );
 }

@@ -23,8 +23,8 @@ approve them in the web app.
      the desktop open another URI (`file:`, UNC paths, custom schemes).
 2. The user opens the URL, signs in, sees the device name/platform and
    approves or denies:
-   - `GET /api/account/devices/authorize/:userCode` (session) → `{ name, platform, createdAt, expiresAt }`
-   - `POST /api/account/devices/authorize/:userCode` (session) `{ approve: true|false }` → `{ success: true }`
+   - `GET /api/account/devices/authorize/:userCode` (session or phone app) → `{ name, platform, createdAt, expiresAt }`
+   - `POST /api/account/devices/authorize/:userCode` (session or phone app) `{ approve: true|false }` → `{ success: true }`
 3. `POST /api/devices/token` (no auth, rate-limited) `{ deviceCode }`:
    - `428 { code: "AUTHORIZATION_PENDING" }` — keep polling
    - `403 { code: "ACCESS_DENIED" }` — user said no
@@ -99,7 +99,8 @@ NOT_FOUND` for an unknown, expired or already decided code.
   and skips it when it changed since the scan.
 - Ignored by default: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `~$*`,
   `*.tmp`, `*.ncpart` (unless the pair turns `use_default_ignores` off).
-  Pairs add their own glob patterns. Always ignored on both sides, not a
+  Pairs add their own patterns, and `.cloudignore` files add more (see
+  "Ignoring files" below). Always ignored on both sides, not a
   pattern and not removable: a `.neocloud` file or folder in any case
   (`.NeoCloud`, …), macOS folder-icon files (`Icon\r`) anywhere and the
   `desktop.ini` at the pair's root (the folder icon on Windows).
@@ -207,6 +208,56 @@ proxy that can't be reached (checked every two minutes) is skipped, so a
 work proxy left on at home doesn't block syncing. The sign-in screen has the
 same choice under "Connection settings".
 
+#### Ignoring files (`.cloudignore`)
+
+A `.cloudignore` works like a `.gitignore`, with git's syntax
+(https://git-scm.com/docs/gitignore). One can sit in any folder of a pair,
+the root included; its patterns are relative to that folder.
+
+- Order: the default list and the pair's `ignore` patterns come first (the
+  analogue of `.git/info/exclude`), then the root's `.cloudignore`, then
+  those of deeper folders. The last pattern that matches decides, so a
+  deeper file overrides a shallower one and `!pattern` re-includes.
+- Syntax: blank lines and `#` comments are skipped; `\#` and `\!` start a
+  pattern with those characters; trailing spaces are dropped unless quoted
+  with `\`. A pattern without a slash matches a name at any depth; a
+  leading or middle slash anchors it to the file's folder; a trailing slash
+  matches folders only. `*`, `?` and `[...]` (ranges, `[!...]`, `[^...]`,
+  `[:alpha:]`-style classes) never match a slash; `**/` at the start,
+  `/**` at the end and `/**/` in the middle match across folders.
+  Matching is case-sensitive. A UTF-8 BOM and CRLF line ends are fine.
+- As in git, a path inside an ignored folder can't be re-included, and the
+  `.cloudignore` of an ignored folder is not read.
+- The `.cloudignore` files sync like any other file, so every device uses
+  the same rules, and a conflict on one is handled like any file. Patterns
+  never ignore a `.cloudignore` itself, and `include_hidden = false` doesn't
+  hide it either (on Windows, nor does the hidden attribute); ignoring its
+  folder does.
+- Both sides use the same rules: for each `.cloudignore` a pass applies the
+  version it is about to leave on both sides (the local one when it wins or
+  both agree, the cloud's when that wins, none when it is being deleted).
+  A cloud version that wins is fetched before anything else is decided, so
+  a `.cloudignore` that only exists in the cloud (a cloud-first pair, an
+  edit on another device) applies before the files it ignores would be
+  downloaded. If it can't be fetched the pass stops without acting.
+- When a change ignores files that were synced, they stop syncing and both
+  copies stay as they are: nothing is deleted on either side, and the
+  pass forgets their state rows. When they are un-ignored, both sides merge
+  like a first sync: equal files are recorded, one-sided ones copied, and
+  only files that really differ become conflict copies. Nothing is deleted
+  either way.
+
+Paths a `.cloudignore` keeps out are listed per pair, at most 200, without
+the paths inside an ignored folder (`pairs[].report.ignored`, `{ path,
+reason: "ignored", detail }`, detail like `Ignored by .cloudignore (line 3:
+*.log)`). They are not part of `notSynced`. The folder editor's "Ignore
+patterns" section opens the root `.cloudignore` in the text editor, creating
+it from a short commented template when there is none.
+`neocloud-lite check-ignore <path>...` prints, like `git check-ignore -v`,
+whether each path is ignored and by which rule (`<source>:<line>:<pattern>`,
+the source being a `.cloudignore`, `folder settings` or `default
+patterns`); it reads the `.cloudignore` files on this computer.
+
 Files a pass could not sync are listed per pair
 (`pairs[].report.failed`: `{ path, detail, both }`) next to `notSynced`
 and the new folders waiting (`newFolders`: `{ path, size }`). The app
@@ -230,8 +281,11 @@ session cookie, and no lasting secret ever appears on a command line. API
 calls also need an `X-Requested-With` header and are refused from another
 site (`Sec-Fetch-Site`) or another `Host`. The page and its files
 (`internal/settingsui/ui`, embedded) run under a CSP that allows only this
-server's own scripts, styles and images (plus the QR code's `data:` URI);
-nothing is loaded from the network.
+server's own scripts, styles, images and fonts (plus the QR code's `data:`
+URI); nothing is loaded from the network. The page wears the NeoLabs theme
+of the Flutter app (NeoRouter's tokens on NeoCloud's palette, light and dark
+from the system, Geist and Geist Mono embedded). `/launch?code=…&view=settings`
+opens it on Settings (the tray's "Settings…").
 
 The URL opens as a small app window: the first Chromium browser found
 (Chrome, Chromium, Edge, Brave; in `/Applications` and `~/Applications` on
@@ -242,7 +296,8 @@ Without one the default browser opens the URL. A click within 3 s of the
 last one is ignored; a newer window supersedes the older one, which closes
 itself. The window opens by itself when the client starts signed out.
 
-Screens: welcome (server address), approval (the code, a QR code and a
+Screens: welcome (server address, optional username, "Continue" for the
+device-code flow and "Sign in with security key", §10), approval (the code, a QR code and a
 button that opens the approval page in the user's own browser), home
 (account, storage, overall status as a dot plus a word, "needs attention"
 cards for held-back deletions, errors and not-synced items, the folder
@@ -304,6 +359,7 @@ Local API (all need the session and the header):
 | POST | `/api/pairs/:id/resolve` | `{ path, choice }`: retry a failed file (`""`), or keep `local`, `remote` or `both` |
 | GET | `/api/local/suggest?remote=&parent=` | `{ path }`: the folder the cloud-first flow would create for `remote` inside `parent` (default location when empty) |
 | POST | `/api/pairs/:id/sync` · `/open` · `/confirm-deletes` | Sync one folder · open it in the file manager · approve held-back deletions |
+| POST | `/api/pairs/:id/cloudignore` | Open the folder's root `.cloudignore` in the text editor, creating it first when missing (`/api/state` has `cloudIgnore`: pair id → whether it exists) |
 | POST | `/api/sync` | Sync everything |
 | POST | `/api/pick-folder` (`?for=parent`) | Native folder dialog → `{ path }`, `{ cancelled }` or `{ unsupported }` |
 | GET | `/api/remote/folders?id=` or `?path=` | Server folders inside `id` or `path` (root by default), vaults left out |
@@ -312,15 +368,18 @@ Local API (all need the session and the header):
 | PUT | `/api/settings` | Pause, autostart, bandwidth, device name; `global` replaces the app-wide settings (`/api/state` shows them with defaults filled in) |
 | POST · DELETE | `/api/key-lock` | Turn the security key lock on · off |
 
-The tray shows the status, Open NeoCloud, Sync now, Pause/Resume, up to
-five synced folders and Quit; its icon (the logo's glyph, a template image
+The tray menu, in the app window's words: the status line, Open NeoCloud,
+Open web app, Sync now, Pause syncing / Resume syncing, "Open <folder>" for
+up to five synced folders, Settings… and Quit NeoCloud. Signed out, Open web
+app, Sync now and Pause are greyed out. Its icon (the logo's glyph, a template image
 in the macOS menu bar) carries a badge for syncing, paused, locked and
 needs attention.
 
 ### Security key lock (lite)
 
-Optional: with it on, the lite client syncs only while one FIDO2 security
-key is plugged in and locks when it is removed. Turn it on in the app
+Optional, macOS and Linux only: with it on, the lite client syncs only
+while one FIDO2 security key is plugged in and locks when it is removed.
+Turn it on in the app
 window or with `neocloud-lite key enroll` (`key status`, `key remove`); quit
 the tray app before using the CLI for it, because the running app would
 write back its older copy of the config.
@@ -361,7 +420,7 @@ Per OS:
 | --- | --- | --- |
 | Linux | `/dev/hidraw*`, found by the FIDO usage page `0xF1D0` in the sysfs report descriptor (pure Go) | Supported. The user needs access to the hidraw node: systemd 244+ tags security keys `uaccess` itself (`60-fido-id.rules`); on older systems install libfido2's [`70-u2f.rules`](https://github.com/Yubico/libfido2/blob/main/udev/70-u2f.rules) into `/etc/udev/rules.d/` and replug the key. |
 | macOS | IOKit HID (cgo, as the tray) | Supported. |
-| Windows | — | Not available: since Windows 10 1903 only administrators may open FIDO HID devices, and webauthn.dll always shows a dialog and needs a touch. The app window and `key status` say so; the normal device token is used. |
+| Windows | — | Left out: since Windows 10 1903 only administrators may open FIDO HID devices, and webauthn.dll has no `up=false` (every assertion shows the Windows Security dialog and needs a touch), so it cannot unlock silently while the key is plugged in. `/api/state` reports `keyLock.supported: false`, the app window has no security key section, `neocloud-lite key …` answers that the lock is not available on this platform, and a `[key_lock]` in a config copied from another computer is ignored at start (logged; the client is signed out until it signs in again, which drops the section from the file). |
 
 ## 3. Share links
 
@@ -471,7 +530,7 @@ as a terminal QR on `neocloud-lite login`.
 
 ## 7. Imports (Nextcloud and other WebDAV servers)
 
-- `POST /api/imports` (session) `{ source: "nextcloud"|"webdav", url, username, password, sourcePath?: "/", targetFolderId?, includeFavorites?: true }`
+- `POST /api/imports` (session or phone app) `{ source: "nextcloud"|"webdav", url, username, password, sourcePath?: "/", targetFolderId?, includeFavorites?: true }`
   → `201 job`. `url` is the server base (Nextcloud: `https://cloud.example.com`;
   the importer derives `/remote.php/dav/files/<username>/`). The password should
   be a Nextcloud app password; it is stored encrypted and wiped when the job ends.
@@ -534,3 +593,56 @@ as a terminal QR on `neocloud-lite login`.
   cleared on the next start.
 - **Share to NeoCloud (iOS)** needs a share extension, which is not
   implemented yet; the iOS app receives no shared files.
+
+## 10. Security key sign-in
+
+A native client can sign in with one of the account's passkeys or security
+keys instead of the device-code flow. The keys are registered in the web
+app (WebAuthn, RP ID = the server's host), so the client is its own
+WebAuthn client and builds `clientDataJSON` exactly as a browser on the
+server's origin would.
+
+1. `POST /api/devices/webauthn/options` (no auth, rate-limited) `{ username? }`
+   → `{ challengeId, origin, options }`. Without a username `allowCredentials`
+   is empty and the key picks a discoverable credential; with one, it lists
+   that account's keys (an unknown name gets an empty list too).
+   `origin` and `options.rpId` come from `PUBLIC_URL` (else the address the
+   request came in on), never from an `Origin` header. The challenge is kept
+   on the server under `challengeId` for 5 minutes.
+2. The client checks that `origin` is the address the user typed and that
+   `rpId` is its host or a parent domain (the browser rule), builds
+   `{"type":"webauthn.get","challenge":<options.challenge>,"origin":<origin>,"crossOrigin":false}`
+   and has the key sign its SHA-256 (`getAssertion`, user presence always;
+   user verification for `preferred`/`required` when the key can).
+3. `POST /api/devices/webauthn/verify` `{ challengeId, response, name, platform }`,
+   `response` being the browser's `PublicKeyCredential` JSON (base64url
+   fields). The challenge is spent by this call whatever its outcome. As in
+   the browser sign-in, a key that verified the user stands in for the
+   second factor; a presence-only key on an account with 2FA answers
+   `{ requiresTwoFactor: true, challengeId }`, and
+   `POST /api/devices/webauthn/2fa` `{ challengeId, code }` finishes it.
+4. The answer is the token response of §1; the client stores it as after
+   the device-code flow.
+
+**Lite client** (`internal/securitykey`): on macOS (IOKit) and Linux
+(hidraw) it talks CTAP2 to the key itself (`internal/fido`): `getInfo`,
+then a PIN token (`clientPIN` protocol 1) when the key has a PIN, or the
+`uv` option for a key with a fingerprint reader, then `getAssertion` and
+`getNextAssertion` for further discoverable credentials (the first, newest
+one signs in; a typed username narrows it to that account). Exactly one key
+may be plugged in; the app waits up to 20 s for one. On Windows, where only
+administrators may open FIDO HID devices, `webauthn.dll`
+(`WebAuthNAuthenticatorGetAssertion`, API version 1 or later, Windows 10
+1903+) runs the ceremony and shows the Windows Security dialog, which asks
+for the PIN itself; the client still supplies its own `clientDataJSON`.
+
+App window: under "Continue" the welcome screen has an optional username
+and "Sign in with security key". The page posts `{ server, username, pin }`
+to `POST /api/login/key`, which waits for the touch ("Touch your security
+key", with Cancel) and answers `{ success: true }`, `{ next: "pin" }` (the
+key has a PIN: a PIN field appears and the next try sends it; a wrong PIN
+answers `{ next: "pin", error }`) or `{ next: "code" }` (the authenticator
+code, sent to `POST /api/login/key/code { code }`). Errors are plain words:
+no key found, more than one key, key not registered on this account,
+cancelled, not touched in time. The PIN is used for that one request and
+never stored.

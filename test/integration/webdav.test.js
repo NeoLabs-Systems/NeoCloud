@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
+const http = require('http');
 const { app, cleanup, registerUser, request, upload } = require('../helpers/app');
 const db = require('../../server/db/database');
 
@@ -42,6 +43,29 @@ function hrefs(xml) {
 
 function responseFor(xml, href) {
   return xml.split('<d:response>').find((part) => part.includes(`<d:href>${href}</d:href>`)) || '';
+}
+
+// An over-limit XML body is refused before it is read, and the connection
+// closes. Sending the megabyte for real races that close (ECONNRESET on the
+// client's write), so this declares the length and sends only the headers.
+function oversizedPropfindStatus(path) {
+  const server = app.listen(0);
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      port: server.address().port,
+      host: '127.0.0.1',
+      method: 'PROPFIND',
+      path,
+      auth: `${alice.username}:${token}`,
+      headers: { 'Content-Type': 'application/xml', 'Content-Length': String(2 * 1024 * 1024), Depth: '1' },
+    }, (res) => {
+      res.resume();
+      resolve(res.statusCode);
+      req.destroy();
+    });
+    req.on('error', reject);
+    req.flushHeaders();
+  }).finally(() => server.close());
 }
 
 async function createToken(user, platform = 'webdav') {
@@ -198,8 +222,7 @@ test('PROPFIND depth 0 and 1, named props, propname; infinity is refused', async
   await propfind(`${base}/`, {
     body: '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]><d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>',
   }).expect(400);
-  const huge = `<d:propfind xmlns:d="DAV:"><!--${'x'.repeat(1024 * 1024)}--><d:allprop/></d:propfind>`;
-  await propfind(`${base}/`, { body: huge }).expect(413);
+  assert.equal(await oversizedPropfindStatus(`${base}/`), 413);
   await propfind(`${base}/missing/`).expect(404);
 });
 

@@ -1,11 +1,12 @@
 part of 'main.dart';
 
-// What keeps camera upload running in the background, as NeoAgent's
-// permission sheet (main_call_permissions.dart): a title, a short
-// explanation, then one row per setting with its status (dot + word) and a
-// button that fixes it. Each fix happens in a system prompt or the system
-// settings; coming back re-reads them all. Also the banner on Settings ›
-// Camera upload. The checks are src/mobile/background_reliability.dart.
+// What keeps camera upload running in the background, as NeoAgent's shared
+// permission sheet (main_permission_sheet.dart): an icon, a title, a short
+// explanation and how many are set, then one card per setting with a check
+// or the button that fixes it, and "Allow all", which walks through the
+// system prompts and screens in order. Each fix happens in a system prompt or
+// the system settings; coming back re-reads them all. Also the banner on
+// Settings › Camera upload. The checks are src/mobile/background_reliability.dart.
 
 /// Shows the checklist. With [onlyIfOpen] (camera upload was just turned
 /// on) it shows only when something isn't granted yet.
@@ -18,10 +19,14 @@ Future<void> showBackgroundReliabilitySheet(BuildContext context, CameraUploads 
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: Colors.transparent,
+    showDragHandle: true,
     builder: (_) => _BackgroundReliabilitySheet(uploads: uploads, initial: initial),
   );
 }
+
+/// Whether [item] is done. The manufacturer's screens can't be read back,
+/// so they never count; "Allow all" moves on once they were visited.
+bool _backgroundItemDone(BackgroundItem item) => item.state == BackgroundCheckState.granted;
 
 class _BackgroundReliabilitySheet extends StatefulWidget {
   const _BackgroundReliabilitySheet({required this.uploads, required this.initial});
@@ -36,6 +41,17 @@ class _BackgroundReliabilitySheet extends StatefulWidget {
 class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet> with WidgetsBindingObserver {
   late BackgroundReliability _reliability = widget.initial;
 
+  /// "Allow all": what is left to ask for, the one asked now, and where it
+  /// stands. A setting left without granting it ends the walk.
+  final List<BackgroundCheck> _queue = <BackgroundCheck>[];
+  BackgroundCheck? _asking;
+  int _step = 0;
+  int _steps = 0;
+
+  /// The app went to the background since the current prompt opened: the
+  /// answer comes with the resume, not when the call returns.
+  bool _leftApp = false;
+
   @override
   void initState() {
     super.initState();
@@ -48,10 +64,19 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
     super.dispose();
   }
 
-  /// Each setting is changed in system settings; coming back re-reads them.
+  /// Each setting is changed in a system prompt or screen; coming back
+  /// re-reads them.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_refresh());
+    if (state != AppLifecycleState.resumed) {
+      _leftApp = true;
+      return;
+    }
+    if (_asking != null) {
+      unawaited(_afterReturn());
+    } else {
+      unawaited(_refresh());
+    }
   }
 
   Future<void> _refresh() async {
@@ -59,6 +84,7 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
     if (mounted) setState(() => _reliability = next);
   }
 
+  /// Opens the prompt or setting for [item].
   Future<void> _fix(BackgroundItem item) async {
     final ios = !_reliability.status.android;
     switch (item.check) {
@@ -86,60 +112,169 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
       case BackgroundCheck.lowPowerMode:
         break;
     }
+  }
+
+  /// One setting from its own button.
+  Future<void> _fixOne(BackgroundItem item) async {
+    await _fix(item);
     // In-app prompts don't leave the app, so there is no resume to wait for.
     await _refresh();
+  }
+
+  void _allowAll() {
+    _queue
+      ..clear()
+      ..addAll(<BackgroundCheck>[
+        for (final item in _reliability.items)
+          if (item.fixable && !_backgroundItemDone(item)) item.check,
+      ]);
+    _steps = _queue.length;
+    _step = 0;
+    unawaited(_askNext());
+  }
+
+  void _stopWalk() {
+    _queue.clear();
+    _asking = null;
+  }
+
+  Future<void> _askNext() async {
+    if (!mounted) return;
+    if (_queue.isEmpty) {
+      setState(_stopWalk);
+      if (_reliability.openCount == 0) Navigator.of(context).pop();
+      return;
+    }
+    final check = _queue.removeAt(0);
+    final item = _reliability.items.firstWhere((item) => item.check == check);
+    setState(() {
+      _asking = check;
+      _step += 1;
+    });
+    _leftApp = false;
+    try {
+      await _fix(item);
+    } catch (_) {
+      if (mounted) setState(_stopWalk);
+      return;
+    }
+    // A prompt answered without leaving the app (or nothing shown at all,
+    // like a permission refused for good) has no resume to wait for.
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!_leftApp && _asking == check) await _afterReturn();
+  }
+
+  /// Back from the setting [_asking] opened: on to the next one if it was
+  /// granted, else the walk ends.
+  Future<void> _afterReturn() async {
+    final asked = _asking;
+    if (asked == null) return;
+    _asking = null;
+    final next = await widget.uploads.backgroundReliability();
+    if (!mounted) return;
+    setState(() => _reliability = next);
+    final granted = asked == BackgroundCheck.manufacturer || next.stateOf(asked) == BackgroundCheckState.granted;
+    if (granted) {
+      await _askNext();
+    } else {
+      setState(_stopWalk);
+    }
+  }
+
+  Widget _header(bool android) {
+    final items = _reliability.items;
+    final granted = items.where(_backgroundItemDone).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Center(
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(color: _accent.withValues(alpha: 0.12), shape: BoxShape.circle),
+            child: Icon(Icons.cloud_upload_outlined, color: _accent, size: 30),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          appStrings.backgroundTitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          android ? appStrings.backgroundIntroAndroid : appStrings.backgroundIntroIos,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: _textSecondary, height: 1.45),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: items.isEmpty ? 0 : granted / items.length,
+                  backgroundColor: _borderLight,
+                  valueColor: AlwaysStoppedAnimation<Color>(_success),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(appStrings.mobilePermissionsSet(granted, items.length), style: GoogleFonts.geistMono(fontSize: 12, color: _textMuted)),
+          ],
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final android = _reliability.status.android;
-    return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.92),
-      decoration: BoxDecoration(
-        color: _bgCard,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2)),
-                ),
+    final walking = _asking != null;
+    final fixableOpen = _reliability.items.where((item) => item.fixable && !_backgroundItemDone(item)).length;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _header(android),
+            const SizedBox(height: AppSpacing.md),
+            for (final item in _reliability.items)
+              _BackgroundCheckRow(
+                item: item,
+                status: _reliability.status,
+                asking: _asking == item.check,
+                step: _step,
+                steps: _steps,
+                onFix: walking ? null : () => unawaited(_fixOne(item)),
               ),
-              const SizedBox(height: 24),
-              Text(
-                appStrings.backgroundTitle,
-                style: GoogleFonts.geist(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: _textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                android ? appStrings.backgroundIntroAndroid : appStrings.backgroundIntroIos,
-                style: GoogleFonts.geist(fontSize: 15, height: 1.45, color: _textSecondary),
-              ),
-              const SizedBox(height: 20),
-              for (final item in _reliability.items)
-                _BackgroundCheckRow(item: item, status: _reliability.status, onFix: () => _fix(item)),
-              if (!android) ...<Widget>[
-                const SizedBox(height: 8),
-                _BackgroundNote(icon: Icons.swipe_up_outlined, text: appStrings.backgroundSwipeHint),
-                _BackgroundNote(icon: Icons.info_outline_rounded, text: appStrings.cameraIosBackgroundTip),
-              ],
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(foregroundColor: _textSecondary, minimumSize: const Size.fromHeight(48)),
-                child: Text(_reliability.anyNeeded ? appStrings.backgroundNotNow : appStrings.done),
-              ),
+            if (!android) ...<Widget>[
+              const SizedBox(height: 4),
+              _BackgroundNote(icon: Icons.swipe_up_outlined, text: appStrings.backgroundSwipeHint),
+              _BackgroundNote(icon: Icons.info_outline_rounded, text: appStrings.cameraIosBackgroundTip),
             ],
-          ),
+            const SizedBox(height: AppSpacing.sm),
+            if (fixableOpen > 1)
+              FilledButton(
+                onPressed: walking ? null : _allowAll,
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                child: walking
+                    ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(appStrings.backgroundAllowAll),
+              ),
+            TextButton(
+              onPressed: () {
+                _stopWalk();
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(foregroundColor: _textSecondary, minimumSize: const Size.fromHeight(46)),
+              child: Text(_reliability.openCount > 0 ? appStrings.backgroundNotNow : appStrings.done),
+            ),
+          ],
         ),
       ),
     );
@@ -169,11 +304,25 @@ String _backgroundStepText(BackgroundVendorStep step) => switch (step) {
 };
 
 class _BackgroundCheckRow extends StatelessWidget {
-  const _BackgroundCheckRow({required this.item, required this.status, required this.onFix});
+  const _BackgroundCheckRow({
+    required this.item,
+    required this.status,
+    required this.asking,
+    required this.step,
+    required this.steps,
+    required this.onFix,
+  });
 
   final BackgroundItem item;
   final BackgroundPlatformStatus status;
-  final Future<void> Function() onFix;
+
+  /// Whether "Allow all" has this one's prompt or screen open.
+  final bool asking;
+  final int step;
+  final int steps;
+
+  /// Null while "Allow all" walks through the list.
+  final VoidCallback? onFix;
 
   (IconData, String, String) _describe() {
     final maker = _backgroundMakerName(status);
@@ -203,6 +352,7 @@ class _BackgroundCheckRow extends StatelessWidget {
     }
   }
 
+  /// A setting the app can't change says where it stands as a dot and a word.
   (String, Color) _statusLabel() {
     switch (item.state) {
       case BackgroundCheckState.granted:
@@ -231,63 +381,101 @@ class _BackgroundCheckRow extends StatelessWidget {
     }
   }
 
+  Widget _trailing() {
+    final (word, color) = _statusLabel();
+    if (asking) {
+      return SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _accent));
+    }
+    // The manufacturer's screens can't be read back, so their button stays.
+    if (item.fixable && (item.state != BackgroundCheckState.granted || item.check == BackgroundCheck.manufacturer)) {
+      return OutlinedButton(
+        onPressed: onFix,
+        style: OutlinedButton.styleFrom(minimumSize: const Size(72, 40), shape: const StadiumBorder()),
+        child: Text(_buttonLabel(), textAlign: TextAlign.center),
+      );
+    }
+    if (item.state == BackgroundCheckState.granted) {
+      return Icon(Icons.check_circle_rounded, color: _success, semanticLabel: word);
+    }
+    return _StatusPill(label: word, color: color);
+  }
+
   @override
   Widget build(BuildContext context) {
     final (icon, title, detail) = _describe();
-    final (word, color) = _statusLabel();
-    // The manufacturer's screens can't be read back, so their button stays.
-    final showButton = item.fixable && (item.state != BackgroundCheckState.granted || item.check == BackgroundCheck.manufacturer);
     final steps = item.check == BackgroundCheck.manufacturer ? backgroundVendorSteps(status.vendor) : const <BackgroundVendorStep>[];
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, size: 20, color: _textSecondary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _bgSecondary,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: asking ? _accent.withValues(alpha: 0.6) : _border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
               children: <Widget>[
-                Text(title, style: TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(detail, style: TextStyle(color: _textMuted, fontSize: 13, height: 1.35)),
-                for (var index = 0; index < steps.length; index++)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      '${index + 1}. ${_backgroundStepText(steps[index])}',
-                      style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.35),
-                    ),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: _accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, size: 20, color: _accent),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (asking) ...<Widget>[
+                        Text(appStrings.mobilePermissionStep(step, this.steps), style: _sectionEyebrowStyle()),
+                        const SizedBox(height: 2),
+                      ],
+                      Text(title, style: TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(detail, style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.35)),
+                    ],
                   ),
-                if (steps.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: () => unawaited(
-                      launchUrl(backgroundVendorGuide(status.vendor, status.manufacturer), mode: LaunchMode.externalApplication),
-                    ),
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: _textSecondary),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                    label: Text(appStrings.backgroundManufacturerGuide),
-                  ),
-                const SizedBox(height: 6),
-                _StatusPill(label: word, color: color),
+                ),
+                const SizedBox(width: 12),
+                // At a large font scale "Open settings" wraps instead of
+                // squeezing the description out.
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.3),
+                  child: _trailing(),
+                ),
               ],
             ),
-          ),
-          if (showButton) ...<Widget>[
-            const SizedBox(width: 12),
-            FilledButton(
-              onPressed: () => unawaited(onFix()),
-              style: FilledButton.styleFrom(minimumSize: const Size(72, 40), shape: const StadiumBorder()),
-              child: Text(_buttonLabel()),
-            ),
+            // The maker's steps take the card's full width under the row.
+            if (steps.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 58),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    for (var index = 0; index < steps.length; index++)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '${index + 1}. ${_backgroundStepText(steps[index])}',
+                          style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.35),
+                        ),
+                      ),
+                    TextButton.icon(
+                      onPressed: () => unawaited(
+                        launchUrl(backgroundVendorGuide(status.vendor, status.manufacturer), mode: LaunchMode.externalApplication),
+                      ),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: _textSecondary),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                      label: Text(appStrings.backgroundManufacturerGuide),
+                    ),
+                  ],
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }

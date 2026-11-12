@@ -101,7 +101,14 @@ mixin _FilesActions on _FilesBase {
       return;
     }
     final files = visibleItems.where((n) => !n.isFolder).toList();
-    unawaited(showFileViewer(context, controller, files, files.indexWhere((n) => n.id == node.id), readOnly: !canWrite));
+    unawaited(showFileViewer(
+      context,
+      controller,
+      files,
+      files.indexWhere((n) => n.id == node.id),
+      readOnly: !canWrite,
+      aiAllowed: aiAllowedFor,
+    ));
   }
 
   void openContainingFolder(FileNode node) {
@@ -314,6 +321,85 @@ mixin _FilesActions on _FilesBase {
     _failed(appStrings.filesFavoriteFailed, failures, () => unawaited(toggleFavorite(failures.map((f) => f.item).toList())));
   }
 
+  // AI
+
+  /// Excludes a folder of the account's own from AI, or includes it again.
+  Future<void> setAiExcluded(FileNode folder, bool excluded) async {
+    final messenger = ScaffoldMessenger.of(context);
+    updateItems((list) => <FileNode>[for (final item in list) item.id == folder.id ? item.copyWith(aiExcluded: excluded) : item]);
+    try {
+      await controller.ai.setFolderExcluded(folder.id, excluded);
+      controller.aiReview.noteFolders(<FileNode>[folder.copyWith(aiExcluded: excluded)]);
+      messenger.showSnackBar(SnackBar(content: Text(excluded ? appStrings.aiFolderExcluded(folder.name) : appStrings.aiFolderIncluded(folder.name))));
+    } catch (error) {
+      updateItems((list) => <FileNode>[for (final item in list) item.id == folder.id ? item.copyWith(aiExcluded: !excluded) : item]);
+      messenger.showSnackBar(SnackBar(content: Text(_aiFriendlyError(controller, error))));
+    }
+  }
+
+  /// Asks AI for [kinds] (`names`, `folders`, `tags`) of suggestions for
+  /// the files among [nodes]. They land in Review; for one file the
+  /// suggestion opens here once it is ready.
+  Future<void> requestAi(List<FileNode> nodes, List<String> kinds) async {
+    final files = nodes.where((node) => !node.isFolder && aiAllowedFor(node)).toList();
+    if (files.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    String batchId;
+    try {
+      batchId = await controller.ai.requestSuggestions(nodeIds: files.map((node) => node.id).toList(), kinds: kinds);
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(_aiFriendlyError(controller, error))));
+      return;
+    }
+    messenger.showSnackBar(SnackBar(
+      content: Text(appStrings.aiRequested(files.length)),
+      action: SnackBarAction(label: appStrings.aiReviewNav, onPressed: () => controller.setSelectedSection(AppSection.review)),
+    ));
+    final batch = await controller.aiReview.follow(batchId);
+    if (!mounted || files.length != 1 || controller.selectedSection != AppSection.files) return;
+    final node = files.single;
+    if (controller.aiReview.pendingFor(node.id).isNotEmpty) {
+      unawaited(showAiSuggestionsFor(context, controller, visibleItems.where((item) => item.id == node.id).firstOrNull ?? node));
+    } else if (batch != null && batch.finished) {
+      messenger.showSnackBar(SnackBar(content: Text(appStrings.aiNothingSuggested(node.name))));
+    }
+  }
+
+  /// The AI entries of a file's or folder's menu, when AI may look at it.
+  List<_FileAction> aiActionsFor(FileNode node) {
+    if (!aiAllowedFor(node)) return const <_FileAction>[];
+    final settings = controller.settings;
+    if (node.isFolder) {
+      final any = <String>['names', 'folders', 'tags'].any(settings.aiFeatureOn);
+      return <_FileAction>[
+        if (any) _FileAction(Icons.auto_awesome_outlined, appStrings.aiOrganizeFolder, () => unawaited(showAiOrganizeSheet(context, controller, node))),
+      ];
+    }
+    return <_FileAction>[
+      if (settings.aiFeatureOn('names'))
+        _FileAction(Icons.auto_awesome_outlined, appStrings.aiSuggestName, () => unawaited(requestAi(subjectFor(node), const <String>['names']))),
+      if (settings.aiFeatureOn('folders'))
+        _FileAction(Icons.drive_file_move_outline, appStrings.aiSuggestFolder, () => unawaited(requestAi(subjectFor(node), const <String>['folders']))),
+      if (settings.aiFeatureOn('summaries'))
+        _FileAction(Icons.notes_rounded, appStrings.aiSummarize, () => unawaited(showAiSummarySheet(context, controller, node))),
+    ];
+  }
+
+  /// The selection bar's AI menu: suggestions for every selected file.
+  List<_FileAction> aiSelectionActions(List<FileNode> nodes) {
+    final files = nodes.where((node) => !node.isFolder && aiAllowedFor(node)).toList();
+    if (files.isEmpty) return const <_FileAction>[];
+    final settings = controller.settings;
+    return <_FileAction>[
+      if (settings.aiFeatureOn('names'))
+        _FileAction(Icons.auto_awesome_outlined, appStrings.aiSuggestNames, () => unawaited(requestAi(files, const <String>['names']))),
+      if (settings.aiFeatureOn('folders'))
+        _FileAction(Icons.drive_file_move_outline, appStrings.aiSuggestFolders, () => unawaited(requestAi(files, const <String>['folders']))),
+      if (settings.aiFeatureOn('tags'))
+        _FileAction(Icons.sell_outlined, appStrings.aiSuggestTags, () => unawaited(requestAi(files, const <String>['tags']))),
+    ];
+  }
+
   // Menus
 
   /// What an action applies to: the selection if [node] is in it, else just [node].
@@ -346,7 +432,14 @@ mixin _FilesActions on _FilesBase {
       if (canWrite) _FileAction(Icons.content_cut_rounded, appStrings.filesCutAction, () => cut(subjectFor(node)), shortcut: _shortcutLabel('X')),
       if (canWrite) _FileAction(Icons.copy_rounded, appStrings.makeCopy, () => unawaited(copy(node))),
       if (!own) _FileAction(Icons.drive_file_move_rtl_outlined, appStrings.sharedSaveToMyFiles, () => unawaited(saveToMyFiles(node))),
+      if (own && node.isFolder && !vault)
+        _FileAction(
+          node.aiExcluded ? Icons.auto_awesome_outlined : Icons.do_not_disturb_on_outlined,
+          node.aiExcluded ? appStrings.aiFolderInclude : appStrings.aiFolderExclude,
+          () => unawaited(setAiExcluded(node, !node.aiExcluded)),
+        ),
       if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
+      ...aiActionsFor(node),
       if (canWrite) _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),
     ];
   }

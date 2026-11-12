@@ -69,7 +69,9 @@ class _HomeViewState extends State<HomeView> {
   void _syncExpanded() {
     if (_lastSection == controller.selectedSection) return;
     _lastSection = controller.selectedSection;
-    _expanded = controller.selectedSection.group;
+    // Settings has no sidebar group; the open group stays open, as in NeoRouter.
+    final group = controller.selectedSection.group;
+    if (group != SidebarGroup.settings) _expanded = group;
   }
 
   Widget _sectionSwitcher({required bool slide}) {
@@ -158,6 +160,35 @@ class _HomeViewState extends State<HomeView> {
   }
 }
 
+/// The count beside a section in the sidebar and the phone's chips: the
+/// suggestions waiting in Review.
+Widget? _sectionBadge(NeoCloudController controller, AppSection section) {
+  if (section != AppSection.review) return null;
+  final count = controller.aiReview.counts.total;
+  return count > 0 ? _CountBadge(count: count) : null;
+}
+
+/// A small neutral count, like NeoRouter's nav counters.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(AppRadius.pill), border: Border.all(color: _border)),
+      child: Text(
+        count > 999 ? '999+' : '$count',
+        textAlign: TextAlign.center,
+        style: GoogleFonts.geist(fontSize: 11, fontWeight: FontWeight.w600, color: _textSecondary),
+      ),
+    );
+  }
+}
+
 class _Sidebar extends StatelessWidget {
   const _Sidebar({required this.controller, required this.groups, required this.expanded, required this.onToggle});
 
@@ -179,14 +210,14 @@ class _Sidebar extends StatelessWidget {
       final parent = nav.sections.first;
       final hasChildren = nav.sections.length > 1;
       final open = hasChildren && expanded == nav.group;
-      final holdsCurrent = nav.sections.contains(current);
+      // As in NeoRouter and NeoAgent: the group lights up with its first page.
+      final active = current == parent;
       items.add(_SidebarButton(
         label: nav.group.label,
         icon: nav.group.icon,
-        // A closed group still shows that the open page is inside it.
-        active: holdsCurrent && !open,
+        active: active,
         trailing: hasChildren
-            ? Icon(open ? Icons.expand_less : Icons.expand_more, size: 16, color: holdsCurrent ? _textSecondary : _textMuted)
+            ? Icon(open ? Icons.expand_less : Icons.expand_more, size: 16, color: active ? _textSecondary : _textMuted)
             : null,
         onTap: hasChildren ? () => onToggle(nav.group) : () => go(parent),
       ));
@@ -194,7 +225,14 @@ class _Sidebar extends StatelessWidget {
         items.add(_SidebarSubnav(
           children: <Widget>[
             for (final section in nav.sections)
-              _SidebarButton(label: section.label, icon: section.icon, compact: true, active: current == section, onTap: () => go(section)),
+              _SidebarButton(
+                label: section.label,
+                icon: section.icon,
+                compact: true,
+                active: current == section,
+                trailing: _sectionBadge(controller, section),
+                onTap: () => go(section),
+              ),
           ],
         ));
       }
@@ -391,6 +429,8 @@ class _SectionBody extends StatelessWidget {
     switch (controller.selectedSection) {
       case AppSection.files:
         return FilesPanel(controller: controller);
+      case AppSection.review:
+        return AiReviewPage(controller: controller);
       case AppSection.shared:
         return controller.openSharedFolderId == null
             ? SharedWithMePanel(controller: controller)

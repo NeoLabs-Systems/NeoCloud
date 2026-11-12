@@ -7,7 +7,11 @@ import 'qr_scanner_stub.dart' if (dart.library.io) 'qr_scanner_io.dart' as platf
 
 /// Whether this device scans QR codes with its camera (the iOS and Android
 /// apps).
-bool get qrScannerSupported => platform.qrScannerSupported;
+bool get qrScannerSupported => debugQrScannerSupported ?? platform.qrScannerSupported;
+
+/// Set by tests that render the phone screens on a desktop host.
+@visibleForTesting
+bool? debugQrScannerSupported;
 
 /// Opens the camera full screen until a NeoCloud code that [accept] takes is
 /// seen (see [parseScannedCode]). Asks for camera access first, with an

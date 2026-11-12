@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- usesCleartextTraffic below: like NeoAgent, a server on the home network
+         is reached over plain http (normalizeBackendUrl picks http for private
+         addresses typed without a scheme). -->
     <!-- Camera upload (photo_manager) and its Wi-Fi-only check (connectivity_plus). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
@@ -12,7 +15,8 @@
     <application
         android:label="NeoCloud"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,6 +37,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- neocloud://pair?server=…&code=…: the web pairing page's "Open in
+                 the app". MainActivity hands it to Dart, not Flutter's router. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="neocloud" android:host="pair"/>
             </intent-filter>
             <!-- Share target: files from other apps' share sheets. ShareIntake.kt takes
                  content:// streams only and copies them into cacheDir/share-intake. -->

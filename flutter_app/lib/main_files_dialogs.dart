@@ -171,7 +171,11 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
       final vaults = widget.controller.vaults;
       final items = await vaults.reveal(listing.items);
       final path = listing.folder.vaultId == null ? listing.path : await vaults.revealPath(listing.path, listing.folder.vaultId!);
-      if (mounted) setState(() => _listing = FolderListing(folder: listing.folder, path: path, items: items));
+      if (!mounted) return;
+      setState(() {
+        _listing = FolderListing(folder: listing.folder, path: path, items: items);
+        _error = null;
+      });
     } catch (error) {
       if (mounted) setState(() => _error = widget.controller.friendlyError(error));
     }

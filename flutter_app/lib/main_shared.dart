@@ -59,11 +59,14 @@ class _ControlSurfaceBackdrop extends StatelessWidget {
   }
 }
 
-/// A short fade-in for content that appears after loading.
+/// A short fade-in for content that appears after loading. With [rise],
+/// NeoAgent's entrance for the phone's server and sign-in screens: a slower
+/// fade while sliding up a little.
 class _EntranceMotion extends StatefulWidget {
-  const _EntranceMotion({required this.child});
+  const _EntranceMotion({required this.child, this.rise = false});
 
   final Widget child;
+  final bool rise;
 
   @override
   State<_EntranceMotion> createState() => _EntranceMotionState();
@@ -82,11 +85,25 @@ class _EntranceMotionState extends State<_EntranceMotion> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      opacity: _visible ? 1 : 0,
-      child: widget.child,
+    if (!widget.rise) {
+      return AnimatedOpacity(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        opacity: _visible ? 1 : 0,
+        child: widget.child,
+      );
+    }
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      offset: _visible ? Offset.zero : const Offset(0, 0.035),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+        opacity: _visible ? 1 : 0,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -556,6 +573,13 @@ class _SectionCard extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Copies [text] and says so (NeoRouter's copy then "Copied" snack).
+Future<void> _copyToClipboard(BuildContext context, String text) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  await Clipboard.setData(ClipboardData(text: text));
+  messenger?.showSnackBar(SnackBar(content: Text(appStrings.copied)));
 }
 
 /// A text-field dialog with Cancel and a primary action. Resolves to the

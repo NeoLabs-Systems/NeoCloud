@@ -14,7 +14,7 @@ const {
   validateNewPassword,
   validateNewUsername,
 } = require('../services/account/credentials');
-const { getTwoFactorStatus, verifyLoginCode } = require('../services/account/two_factor');
+const { getTwoFactorStatus, verifySignInCode } = require('../services/account/two_factor');
 const { endCurrentSession, recordCurrentSession } = require('../services/account/sessions');
 const throttle = require('../services/account/login_throttle');
 const { isAdminUser } = require('../services/access/admin');
@@ -27,6 +27,7 @@ const { sendJsonError } = require('../http/errors');
 const { jsonHandler, publicOrigin } = require('./_helpers/http');
 const { httpError } = require('../utils/http_error');
 const qrLogin = require('../services/account/qr_login');
+const { accountDisabled } = require('../services/account/status');
 
 const router = express.Router();
 
@@ -104,11 +105,19 @@ function toUserPayload(user) {
 function readAuthenticatedUser(req) {
   if (!req.session?.userId) return null;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-  if (!user) req.session.destroy(() => {});
-  return user || null;
+  if (!user || user.disabled_at) {
+    req.session.destroy(() => {});
+    return null;
+  }
+  return user;
 }
 
+// Every sign-in route ends in establishSession or
+// establishPendingTwoFactorSession once the credential checked out, so a
+// disabled account is refused here, and only someone holding its credential
+// learns that it is disabled.
 function establishSession(req, res, user) {
+  if (user.disabled_at) return sendJsonError(res, accountDisabled());
   req.session.regenerate((regenerateError) => {
     if (regenerateError) return sendJsonError(res, regenerateError);
     req.session.userId = user.id;
@@ -123,6 +132,7 @@ function establishSession(req, res, user) {
 }
 
 function establishPendingTwoFactorSession(req, res, user) {
+  if (user.disabled_at) return sendJsonError(res, accountDisabled());
   req.session.regenerate((regenerateError) => {
     if (regenerateError) return sendJsonError(res, regenerateError);
     req.session.pendingTwoFactorUserId = user.id;
@@ -162,7 +172,8 @@ router.get('/status', (req, res) => {
 router.post('/register', authLimiter, requireSessionTransport, async (req, res) => {
   try {
     const username = String(req.body?.username || '').trim();
-    const password = String(req.body?.password || '');
+    // A password that isn't a string (an object, an array) is no password.
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
     const email = normalizeEmail(req.body?.email);
     if (!username || !password || !email) {
       throw httpError(400, 'Username, email, and password required', 'MISSING_FIELDS');
@@ -237,21 +248,12 @@ router.post('/login/2fa', authLimiter, requireSessionTransport, async (req, res)
     if (!req.body?.code) {
       return res.status(400).json({ error: 'Two-factor code required', code: 'MISSING_FIELDS' });
     }
-    if (throttle.challengeExhausted(challengeId)) {
-      clearPendingTwoFactor(req.session);
-      return res.status(401).json({
-        error: 'Too many wrong codes. Sign in with your password again.',
-        code: 'TWO_FACTOR_ATTEMPTS_EXCEEDED',
-      });
-    }
-    const key = throttle.accountKey({ id: pendingUserId });
-    throttle.assertSignInAllowed(key);
-    throttle.recordFailure(key, { kind: 'second_factor', challengeId });
-    if (!(await verifyLoginCode(pendingUserId, req.body.code))) {
+    try {
+      await verifySignInCode({ userId: pendingUserId, challengeId, code: req.body.code, restart: 'your password' });
+    } catch (err) {
       if (throttle.challengeExhausted(challengeId)) clearPendingTwoFactor(req.session);
-      return res.status(401).json({ error: 'Invalid 2FA code', code: 'INVALID_CODE' });
+      throw err;
     }
-    throttle.clearFailures(key);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(pendingUserId);
     if (!user) return res.status(401).json({ error: 'User not found', code: 'UNAUTHORIZED' });
     return establishSession(req, res, user);
@@ -265,7 +267,10 @@ router.post('/login/2fa', authLimiter, requireSessionTransport, async (req, res)
 // for the second factor; a key that only confirmed presence still needs the
 // authenticator code, as in NeoAgent.
 router.post('/webauthn/login/options', webauthnLimiter, requireSessionTransport, jsonHandler(async (req) => {
-  const { options, challenge } = await webauthn.beginLogin({ req, username: req.body?.username });
+  const { options, challenge } = await webauthn.beginLogin({
+    relyingParty: webauthn.resolveRelyingParty(req),
+    username: req.body?.username,
+  });
   req.session.pendingWebAuthnLogin = challenge;
   return { options };
 }));
@@ -274,7 +279,11 @@ router.post('/webauthn/login/verify', webauthnLimiter, requireSessionTransport, 
   try {
     const pending = req.session?.pendingWebAuthnLogin;
     delete req.session.pendingWebAuthnLogin;
-    const result = await webauthn.completeLogin({ req, response: req.body?.response, pending });
+    const result = await webauthn.completeLogin({
+      relyingParty: webauthn.resolveRelyingParty(req),
+      response: req.body?.response,
+      pending,
+    });
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.userId);
     if (!user) return res.status(401).json({ error: 'User not found', code: 'UNAUTHORIZED' });
     if (!result.userVerified && getTwoFactorStatus(user.id).enabled) {

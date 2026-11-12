@@ -10,7 +10,8 @@ Future<void> _scanAndPair(BuildContext context, NeoCloudController controller) a
   if (link != null) await controller.pair(link);
 }
 
-/// "Scan QR code", with the line that says where the code is.
+/// "Scan QR code", with the line that says where the code is: how a phone
+/// signs in without typing a server or a password (NeoAgent's button).
 class _ScanToPairButton extends StatelessWidget {
   const _ScanToPairButton({required this.controller});
 
@@ -18,22 +19,13 @@ class _ScanToPairButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final busy = controller.isAuthenticating || controller.isConnecting;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(child: Divider(color: _border)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(appStrings.connectOr, style: TextStyle(color: _textMuted, fontSize: 12.5)),
-            ),
-            Expanded(child: Divider(color: _border)),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
         OutlinedButton.icon(
-          onPressed: controller.isConnecting ? null : () => unawaited(_scanAndPair(context, controller)),
+          onPressed: busy ? null : () => unawaited(_scanAndPair(context, controller)),
+          style: _altSignInButtonStyle(),
           icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
           label: Text(appStrings.connectScanQr),
         ),

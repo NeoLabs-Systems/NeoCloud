@@ -106,7 +106,8 @@ function resolveAccess(userId, nodeId, { need = 'read', type = null } = {}) {
  * is shared with, no way up past the share.
  */
 function memberView(row, access) {
-  const { shared, ...node } = serializeNode(row);
+  // The owner's AI tags and metadata stay the owner's.
+  const { shared, aiTags, aiMeta, ...node } = serializeNode(row);
   return {
     ...node,
     ...(node.favorite === undefined ? {} : { favorite: false }),

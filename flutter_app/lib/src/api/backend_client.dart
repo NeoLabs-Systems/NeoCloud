@@ -5,17 +5,21 @@ import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
 import 'models.dart';
 
+part 'backend_client_ai.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
 /// the API (e.g. NAME_EXISTS); [message] is readable text for the user.
 class ApiException implements Exception {
-  const ApiException(this.statusCode, this.message, {this.code});
+  const ApiException(this.statusCode, this.message, {this.code, this.retryAfter});
 
   final int statusCode;
   final String message;
   final String? code;
+
+  /// How long a throttled sign-in must wait (`429 LOGIN_LOCKED`).
+  final Duration? retryAfter;
 
   @override
   String toString() => message;
@@ -83,16 +87,50 @@ class BackendClient {
       }
     }
     if (response.statusCode >= 200 && response.statusCode < 300) return decoded;
-    if (response.statusCode == 401 && expireOn401) onSessionExpired?.call();
     final body = decoded is Map ? decoded : const <String, dynamic>{};
+    if (response.statusCode == 401 && expireOn401) {
+      if (path != _deviceMePath && await _bearerStillWorks()) {
+        throw ApiException(403, body['error']?.toString() ?? 'HTTP 401', code: 'SERVER_UPDATE_NEEDED');
+      }
+      onSessionExpired?.call();
+    }
+    final retrySeconds = int.tryParse('${body['retryAfter'] ?? response.headers['retry-after'] ?? ''}');
     throw ApiException(
       response.statusCode,
       body['error']?.toString() ?? 'HTTP ${response.statusCode}',
       code: body['code']?.toString(),
+      retryAfter: retrySeconds == null ? null : Duration(seconds: retrySeconds),
     );
   }
 
   Map<String, dynamic> _map(dynamic value) => (value as Map).cast<String, dynamic>();
+
+  static const String _deviceMePath = '/api/devices/me';
+
+  /// A 401 on the phone's token means "signed out" only if the token no
+  /// longer works at all: a server from before full phone access refuses it
+  /// on account, settings, imports and admin while files still work. Then
+  /// the call throws `SERVER_UPDATE_NEEDED` instead of signing the phone out.
+  Future<bool> _bearerStillWorks() async {
+    if (bearerToken == null) return false;
+    try {
+      await _request('GET', _deviceMePath, expireOn401: false);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
+  /// A request that approves another sign-in (QR sign-in, device code); an
+  /// older server's refusal reads `APPROVAL_NEEDS_SESSION`.
+  Future<dynamic> _approvalRequest(String method, String path, {Object? json}) async {
+    try {
+      return await _request(method, path, json: json);
+    } on ApiException catch (error) {
+      if (error.code != 'SERVER_UPDATE_NEEDED') rethrow;
+      throw const ApiException(403, 'This server is too old to approve sign-ins from the app.', code: 'APPROVAL_NEEDS_SESSION');
+    }
+  }
 
   // Auth
 
@@ -131,6 +169,9 @@ class BackendClient {
     _http.clearSession();
   }
 
+  /// Drops the session cookie this client holds, without asking the server.
+  void forgetSession() => _http.clearSession();
+
   Future<AccountUser> me() async => AccountUser.fromJson(_map(_map(await _request('GET', '/api/auth/me'))['user']));
 
   // QR sign-in, the signed-out browser's side
@@ -167,21 +208,21 @@ class BackendClient {
 
   /// Marks the scanned code as seen and returns what asks to sign in.
   Future<QrLoginPreview> resolveQrLogin(String challengeId, String secret, Map<String, Object?> scannerMetadata) async =>
-      QrLoginPreview.fromJson(_map(await _request('POST', '/api/account/qr-login/resolve', json: {
+      QrLoginPreview.fromJson(_map(await _approvalRequest('POST', '/api/account/qr-login/resolve', json: {
         'challengeId': challengeId,
         'secret': secret,
         'scannerMetadata': scannerMetadata,
       })));
 
   Future<QrLoginPreview> approveQrLogin(String challengeId, String secret, Map<String, Object?> approvalMetadata) async =>
-      QrLoginPreview.fromJson(_map(await _request('POST', '/api/account/qr-login/approve', json: {
+      QrLoginPreview.fromJson(_map(await _approvalRequest('POST', '/api/account/qr-login/approve', json: {
         'challengeId': challengeId,
         'secret': secret,
         'approvalMetadata': approvalMetadata,
       })));
 
   Future<void> declineQrLogin(String challengeId, String secret) =>
-      _request('POST', '/api/account/qr-login/decline', json: {'challengeId': challengeId, 'secret': secret});
+      _approvalRequest('POST', '/api/account/qr-login/decline', json: {'challengeId': challengeId, 'secret': secret});
 
   // Files
 
@@ -352,6 +393,9 @@ class BackendClient {
 
   Future<Map<String, dynamic>> account() async => _map(await _request('GET', '/api/account'));
 
+  /// The signed-in account as [me] gives it, for the phone app's token.
+  Future<AccountUser> accountUser() async => AccountUser.fromJson(_map((await account())['user']));
+
   Future<StorageUsage> usage() async => StorageUsage.fromJson(_map(await _request('GET', '/api/account/usage')));
 
   Future<void> setDisplayName(String name) => _request('PUT', '/api/account/display-name', json: {'displayName': name});
@@ -385,6 +429,22 @@ class BackendClient {
           .map((e) => '$e')
           .toList();
 
+  /// Settings › Profile › Your data. A wrong password or code is a 401
+  /// about the entry, not about the session.
+  Future<Map<String, dynamic>> exportAccountData(String password, String? code) async => _map(await _request(
+    'POST',
+    '/api/account/export',
+    json: {'currentPassword': password, 'code': ?code},
+    expireOn401: false,
+  ));
+
+  Future<void> deleteMyAccount(String password, String? code, String confirmUsername) => _request(
+    'POST',
+    '/api/account/delete',
+    json: {'currentPassword': password, 'code': ?code, 'confirmUsername': confirmUsername},
+    expireOn401: false,
+  );
+
   Future<void> disableTwoFactor(String password, String code) =>
       _request('POST', '/api/account/2fa/disable', json: {'currentPassword': password, 'code': code});
 
@@ -398,21 +458,23 @@ class BackendClient {
       .map((e) => DeviceInfo.fromJson(_map(e)))
       .toList();
 
-  Future<String> createDevice(String name) async =>
-      _map(await _request('POST', '/api/account/devices', json: {'name': name}))['token'].toString();
+  /// A device token for this account, returned once. [platform] is
+  /// `android`, `ios` … (empty for a generic client).
+  Future<String> createDevice(String name, {String platform = ''}) async =>
+      _map(await _request('POST', '/api/account/devices', json: {'name': name, 'platform': platform}))['token'].toString();
 
   Future<void> revokeDevice(int id) => _request('DELETE', '/api/account/devices/$id');
 
   /// The device waiting for approval under [userCode] (docs/clients.md §1).
   Future<DeviceAuthorizationRequest> deviceAuthorization(String userCode) async => DeviceAuthorizationRequest.fromJson(
-    _map(await _request('GET', '/api/account/devices/authorize/${Uri.encodeComponent(userCode)}')),
+    _map(await _approvalRequest('GET', '/api/account/devices/authorize/${Uri.encodeComponent(userCode)}')),
   );
 
   Future<void> answerDeviceAuthorization(String userCode, {required bool approve}) =>
-      _request('POST', '/api/account/devices/authorize/${Uri.encodeComponent(userCode)}', json: {'approve': approve});
+      _approvalRequest('POST', '/api/account/devices/authorize/${Uri.encodeComponent(userCode)}', json: {'approve': approve});
 
   /// What a bearer token belongs to: the device, its account and the quota.
-  Future<Map<String, dynamic>> deviceMe() async => _map(await _request('GET', '/api/devices/me'));
+  Future<Map<String, dynamic>> deviceMe() async => _map(await _request('GET', _deviceMePath));
 
   // Share links
 
@@ -500,6 +562,11 @@ class BackendClient {
 
   Future<void> adminResetPassword(int userId, String password) =>
       _request('POST', '/api/admin/users/$userId/password', json: {'password': password});
+
+  Future<void> adminSetDisabled(int userId, bool disabled) =>
+      _request('PUT', '/api/admin/users/$userId/disabled', json: {'disabled': disabled});
+
+  Future<void> adminSignOutEverywhere(int userId) => _request('DELETE', '/api/admin/users/$userId/sessions');
 
   Future<void> adminDeleteUser(int userId) => _request('DELETE', '/api/admin/users/$userId');
 

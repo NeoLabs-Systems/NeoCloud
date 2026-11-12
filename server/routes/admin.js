@@ -11,7 +11,15 @@ const backupTargets = require('../services/backup/targets');
 const backupRunner = require('../services/backup/runner');
 const { verifyTarget } = require('../services/backup/verify');
 const { getIndexStatus, rebuildIndex } = require('../services/search_index/indexer');
+const { ownSessionId } = require('../services/account/sessions');
+const { listProviders, updateProvider } = require('../services/admin/ai_providers');
+const { getUserModelGrants, setUserModelGrants } = require('../services/admin/model_grants');
+const aiAdmin = require('../services/admin/ai');
+const { getSupportedModels } = require('../services/ai/models');
+const modelVisibility = require('../services/ai/model_visibility');
+const { usageSummary } = require('../services/ai/usage');
 const { jsonHandler, intParam } = require('./_helpers/http');
+const { httpError } = require('../utils/http_error');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -45,13 +53,22 @@ router.put('/users/:id/quota', settingsLimiter, jsonHandler((req) => users.setUs
 )));
 router.put('/users/:id/admin', settingsLimiter, jsonHandler((req) => users.setUserAdmin(
   intParam(req.params.id, 'user id'),
-  req.body?.isAdmin === true,
+  req.body?.isAdmin,
   { actorUserId: req.userId },
 )));
 router.post('/users/:id/password', settingsLimiter, jsonHandler((req) => users.resetUserPassword(
   intParam(req.params.id, 'user id'),
   req.body?.password,
   { actorUserId: req.userId },
+)));
+router.put('/users/:id/disabled', settingsLimiter, jsonHandler((req) => users.setUserDisabled(
+  intParam(req.params.id, 'user id'),
+  req.body?.disabled,
+  { actorUserId: req.userId },
+)));
+router.delete('/users/:id/sessions', settingsLimiter, jsonHandler((req) => users.revokeUserSessions(
+  intParam(req.params.id, 'user id'),
+  { actorUserId: req.userId, sessionId: ownSessionId(req), deviceId: req.deviceId || null },
 )));
 router.post('/users/:id/usage/recalculate', jsonHandler((req) => users.recalculateUserUsage(intParam(req.params.id, 'user id'))));
 router.delete('/users/:id', settingsLimiter, jsonHandler((req) => users.deleteUser(
@@ -79,6 +96,49 @@ router.get('/config', jsonHandler(() => serverConfig.getServerConfig()));
 router.put('/config', settingsLimiter, jsonHandler((req) => serverConfig.updateServerConfig(req.body)));
 router.get('/search-index', jsonHandler(() => getIndexStatus()));
 router.post('/search-index/rebuild', settingsLimiter, jsonHandler(() => rebuildIndex(), { status: 202 }));
+
+// --- AI: providers, models, grants, switches and usage (docs/ai.md) ---
+
+router.get('/providers', jsonHandler(() => listProviders()));
+router.put('/providers', settingsLimiter, jsonHandler((req) => updateProvider(req.body?.key, req.body?.value)));
+
+// Records newly discovered models and applies the auto-enable policy to them.
+router.get('/models', jsonHandler(async () => {
+  const models = await getSupportedModels(null);
+  const disabledModels = modelVisibility.reconcileModelVisibility(models.map((model) => model.id));
+  return { models, disabledModels, autoEnableNewModels: modelVisibility.getAutoEnableNewModels() };
+}));
+router.put('/models/config', settingsLimiter, jsonHandler((req) => {
+  const disabledModels = req.body?.disabledModels;
+  if (!Array.isArray(disabledModels)) throw httpError(400, 'disabledModels must be an array', 'INVALID_VALUE');
+  if (typeof req.body?.autoEnableNewModels === 'boolean') {
+    modelVisibility.setAutoEnableNewModels(req.body.autoEnableNewModels);
+  }
+  return {
+    ok: true,
+    disabledModels: modelVisibility.setDisabledModelIds(disabledModels),
+    autoEnableNewModels: modelVisibility.getAutoEnableNewModels(),
+  };
+}));
+
+router.get('/users/:id/allowed-models', jsonHandler((req) => getUserModelGrants(intParam(req.params.id, 'user id'))));
+router.put('/users/:id/allowed-models', settingsLimiter, jsonHandler(async (req) => {
+  const userId = intParam(req.params.id, 'user id');
+  const catalog = await getSupportedModels(null);
+  return setUserModelGrants(userId, req.body?.modelIds ?? null, {
+    actorUserId: req.userId,
+    catalogIds: catalog.map((model) => model.id),
+  });
+}));
+router.put('/users/:id/ai-budget', settingsLimiter, jsonHandler((req) => aiAdmin.setUserAiBudget(
+  intParam(req.params.id, 'user id'),
+  req.body?.monthlyTokens,
+  { actorUserId: req.userId },
+)));
+
+router.get('/ai', jsonHandler(() => aiAdmin.getAiConfig()));
+router.put('/ai', settingsLimiter, jsonHandler((req) => aiAdmin.updateAiConfig(req.body)));
+router.get('/ai/usage', jsonHandler(() => usageSummary()));
 
 router.post('/keys/master', keyExportLimiter, jsonHandler((req) => serverConfig.exportMasterKey(req.userId, req.body?.password)));
 

@@ -1,7 +1,8 @@
 'use strict';
 
-// Device-code sign-in for native clients, and the token self-check. The two
-// POSTs are unauthenticated (the client has nothing yet) and rate-limited.
+// Sign-in for native clients (device code, QR pairing, security key) and the
+// token self-check. The sign-in POSTs are unauthenticated (the client has
+// nothing yet) and rate-limited.
 
 const express = require('express');
 const db = require('../db/database');
@@ -9,6 +10,7 @@ const { requireDevice } = require('../middleware/auth');
 const { isAdminUser } = require('../services/access/admin');
 const { exchangeDeviceCode, startAuthorization } = require('../services/devices/authorizations');
 const { redeemPairing } = require('../services/devices/pairing');
+const securityKey = require('../services/devices/security_key_sign_in');
 const { getDeviceToken } = require('../services/devices/tokens');
 const { getUsage } = require('../services/storage/quota');
 const { jsonHandler, publicOrigin, rateLimiter } = require('./_helpers/http');
@@ -36,6 +38,32 @@ router.post('/pair', pairLimiter, jsonHandler((req) => redeemPairing({
   code: req.body?.code,
   name: req.body?.name,
   platform: req.body?.platform,
+})));
+
+// Security key sign-in (docs/clients.md section 10). The relying party is
+// this server's public origin, never the request's Origin header: the
+// client builds clientDataJSON with that origin itself. Same budget as the
+// browser's security key sign-in.
+const securityKeyLimiter = rateLimiter(40);
+
+router.post('/webauthn/options', securityKeyLimiter, jsonHandler((req) => securityKey.startSecurityKeySignIn(
+  publicOrigin(req),
+  req.body?.username,
+)));
+
+router.post('/webauthn/verify', securityKeyLimiter, jsonHandler((req) => securityKey.finishSecurityKeySignIn(
+  publicOrigin(req),
+  {
+    challengeId: req.body?.challengeId,
+    response: req.body?.response,
+    name: req.body?.name,
+    platform: req.body?.platform,
+  },
+)));
+
+router.post('/webauthn/2fa', securityKeyLimiter, jsonHandler((req) => securityKey.finishTwoFactor({
+  challengeId: req.body?.challengeId,
+  code: req.body?.code,
 })));
 
 router.get('/me', requireDevice, jsonHandler((req) => {

@@ -81,10 +81,17 @@ async function storePreview(userId, blobId, variant, buffer, mime) {
   const target = previewPath(userId, blobId, variant);
   await fs.promises.mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
   await fs.promises.rename(blob.tmpPath, target);
-  db.prepare(`
-    INSERT INTO previews (blob_id, variant, user_id, size, mime) VALUES (?, ?, ?, ?, ?)
+  // The blob may have been deleted (file purged or replaced) while this
+  // rendered; its preview folder is then removed again instead of recorded.
+  const stored = db.prepare(`
+    INSERT INTO previews (blob_id, variant, user_id, size, mime)
+    SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM blobs WHERE id = ?)
     ON CONFLICT(blob_id, variant) DO UPDATE SET size = excluded.size, mime = excluded.mime
-  `).run(blobId, variant, userId, buffer.length, mime);
+  `).run(blobId, variant, userId, buffer.length, mime, blobId);
+  if (stored.changes === 0) {
+    await fs.promises.rm(previewDirectory(userId, blobId), { recursive: true, force: true });
+    throw httpError(404, 'File not found', 'NOT_FOUND');
+  }
 }
 
 function cachedPreview(blobId, variant) {
@@ -94,12 +101,16 @@ function cachedPreview(blobId, variant) {
 async function renderThumbnail(userId, node, size) {
   if (!IMAGE_MIMES.has(node.mime)) throw httpError(415, 'No thumbnail for this file type.', 'PREVIEW_UNAVAILABLE');
   if (node.size > MAX_THUMBNAIL_SOURCE_BYTES) throw httpError(415, 'File is too large for a thumbnail.', 'PREVIEW_UNAVAILABLE');
-  const transformer = sharp({ failOn: 'none', limitInputPixels: 100_000_000 })
-    .rotate()
-    .resize(size, size, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 78 });
   try {
-    return await openBlob(userId, node.blob_id, node.size).pipe(transformer).toBuffer();
+    // Read first, then hand sharp a buffer (it would buffer a stream anyway):
+    // piping would leave a failing blob read (missing or damaged file) as an
+    // unhandled stream error, which ends the process.
+    const source = await streamToBuffer(openBlob(userId, node.blob_id, node.size));
+    return await sharp(source, { failOn: 'none', limitInputPixels: 100_000_000 })
+      .rotate()
+      .resize(size, size, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 78 })
+      .toBuffer();
   } catch (err) {
     logger.warn(`Thumbnail failed for a ${node.mime} file: ${err.message}`);
     throw httpError(415, 'This image could not be read.', 'PREVIEW_UNAVAILABLE');

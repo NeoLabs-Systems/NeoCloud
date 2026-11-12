@@ -38,6 +38,7 @@ const { startMaintenance } = require('./services/maintenance');
 const { startBackupScheduler } = require('./services/backup/scheduler');
 const { startImports, stopImports } = require('./services/import/runner');
 const { startSearchIndexer } = require('./services/search_index/indexer');
+const { startAiWorker } = require('./services/ai/organize/worker');
 const { setupConsoleInterceptor } = require('./utils/logger');
 const { DEFAULT_PORT } = require('../lib/setup/contract');
 
@@ -88,6 +89,7 @@ const stopMaintenance = startMaintenance();
 const stopBackupScheduler = startBackupScheduler();
 startImports();
 const stopSearchIndexer = startSearchIndexer();
+const stopAiWorker = startAiWorker();
 
 function removePidFile() {
   try {
@@ -109,6 +111,8 @@ function shutdown(signal) {
   stopImports();
   // The indexer finishes the file it is on; the next start continues from the tables.
   stopSearchIndexer();
+  // The AI worker finishes the files it is on; unfinished jobs wait for the next start.
+  stopAiWorker();
 
   // Connections that finish their last request go right away.
   const idleSweep = setInterval(() => httpServer.closeIdleConnections(), 1000);

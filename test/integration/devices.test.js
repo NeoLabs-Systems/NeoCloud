@@ -88,7 +88,8 @@ test('full flow: pending, approve, token once, bearer access, revoke', async () 
   assert.equal(typeof me.body.quota.limit, 'number');
   await request(app).get('/api/folders/root/children').set('Authorization', bearer).expect(200);
   await request(app).get('/api/admin/users').set('Authorization', bearer).expect(403);
-  await request(app).get('/api/account').set('Authorization', bearer).expect(401);
+  // A lite token isn't the phone app: no account routes.
+  await request(app).get('/api/account').set('Authorization', bearer).expect(403);
 
   // /me is for bearer tokens; a session alone doesn't name a device.
   await owner.agent.get('/api/devices/me').expect(401);

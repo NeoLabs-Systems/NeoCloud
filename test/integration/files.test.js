@@ -244,7 +244,7 @@ test('sync: cursor=latest starts at the head of the journal', async () => {
   assert.deepEqual(after.body.changes.map((c) => c.nodeId), [file.body.id]);
 });
 
-test('device tokens reach files and sync, nothing else', async () => {
+test('desktop device tokens reach files and sync, not account or admin', async () => {
   const created = await owner.agent.post('/api/account/devices').send({ name: 'Laptop', platform: 'macos' }).expect(201);
   const { token, device } = created.body;
   assert.match(token, /^nc_/);
@@ -253,7 +253,7 @@ test('device tokens reach files and sync, nothing else', async () => {
   await request(app).get('/api/folders/root/children').set('Authorization', `Bearer ${token}`).expect(200);
   await request(app).get('/api/sync/tree').set('Authorization', `Bearer ${token}`).expect(200);
   await request(app).put('/api/upload?name=from-device.txt').set('Authorization', `Bearer ${token}`).send(Buffer.from('d')).expect(201);
-  await request(app).get('/api/account').set('Authorization', `Bearer ${token}`).expect(401);
+  await request(app).get('/api/account').set('Authorization', `Bearer ${token}`).expect(403);
   await request(app).get('/api/admin/users').set('Authorization', `Bearer ${token}`).expect(403);
 
   await owner.agent.delete(`/api/account/devices/${device.id}`).expect(200);

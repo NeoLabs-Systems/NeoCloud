@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -20,4 +21,10 @@ Future<void> startDownload(Uri uri, {String? fileName, Map<String, String> heade
   } finally {
     client.close();
   }
+}
+
+/// Asks where to save bytes the app already holds (an account export); the
+/// system's save dialog writes them.
+Future<void> saveBytes(Uint8List bytes, String fileName, {String mime = 'application/octet-stream'}) async {
+  await FilePicker.platform.saveFile(fileName: fileName, bytes: bytes);
 }

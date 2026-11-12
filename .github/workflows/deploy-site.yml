@@ -30,7 +30,7 @@ jobs:
       - name: Assemble landing page
         run: |
           mkdir -p _site
-          cp landing/index.html _site/
+          cp landing/index.html landing/404.html _site/
           cp -R landing/assets landing/css landing/fonts landing/js _site/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

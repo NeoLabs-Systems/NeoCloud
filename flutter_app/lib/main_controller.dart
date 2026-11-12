@@ -6,9 +6,12 @@ part of 'main.dart';
 /// themselves through [client].
 ///
 /// The web app signs in with a session cookie. The Android and iOS apps sign
-/// in as a device ([usesDeviceLogin]): a bearer token approved in the web
-/// app, which reaches files, transfers, shares and vaults but not the
-/// account or settings routes, so their preferences are kept on the device.
+/// in as a device ([usesDeviceLogin]): a bearer token from QR pairing, the
+/// device login or the password form. The phone is a full client, like
+/// NeoAgent's: the token reaches the account, settings and admin routes as
+/// a session does. What stays phone-specific is signing out (disconnect
+/// forgets the token), live updates (polled, no socket) and security keys
+/// (added in a browser).
 class NeoCloudController extends ChangeNotifier {
   NeoCloudController({
     required this.client,
@@ -16,8 +19,10 @@ class NeoCloudController extends ChangeNotifier {
     DeviceSessions? deviceSessions,
     CameraUploads? cameraUploads,
     ShareIntake? shareIntake,
+    AiApi? ai,
     Uri? launchUri,
   }) : _preferences = preferences,
+       ai = ai ?? AiApi(client),
        deviceSessions = deviceSessions ?? createDeviceSessions(),
        cameraUploads = cameraUploads ?? createCameraUploads(),
        shareIntake = shareIntake ?? createShareIntake() {
@@ -25,12 +30,14 @@ class NeoCloudController extends ChangeNotifier {
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
     uploadJournal = UploadJournal(preferences, uploads);
     vaults = VaultSessions(client);
+    aiReview = AiReviewState(this.ai)..addListener(notifyListeners);
     liveUpdates = LiveFileUpdates(
       feed: fileChanges,
       fetchChanges: client.syncChanges,
       openSocket: usesDeviceLogin ? null : liveSocketOpener(),
       socketUrl: () => socketIoUri(client.uri('/')),
       onSharesChanged: _handleSharesChanged,
+      onAiSuggestions: (counts) => aiReview.applyCounts(AiSuggestionCounts.fromJson(counts)),
       onPolled: _handlePolled,
     );
     fileChanges.addListener((_) => unawaited(refreshAccount()));
@@ -44,9 +51,15 @@ class NeoCloudController extends ChangeNotifier {
   /// `settings/security` …); older versions stored the bare section name,
   /// which parses the same way.
   static const String _routePreferenceKey = 'app.section';
-  static const String _deviceSettingsKey = 'device.settings';
 
   final BackendClient client;
+
+  /// The AI calls (Settings › AI, Admin › AI); a fake in tests.
+  final AiApi ai;
+
+  /// Whether AI runs for the account, the review counts and the pending
+  /// suggestions the file list marks.
+  late final AiReviewState aiReview;
   final SharedPreferences _preferences;
   late final UploadQueue uploads;
 
@@ -139,8 +152,9 @@ class NeoCloudController extends ChangeNotifier {
   /// The browser's security key API; replaced in tests.
   WebAuthnClient webAuthn = createWebAuthnClient();
 
-  /// Only the web app can sign in with a security key or passkey.
-  bool get supportsSecurityKeys => webAuthn.isSupported;
+  /// Only the web app can sign in with a security key or passkey; the
+  /// phone apps would need the native credential APIs.
+  bool get supportsSecurityKeys => !usesDeviceLogin && webAuthn.isSupported;
   AccountUser? user;
   UserSettings settings = const UserSettings();
   String? errorMessage;
@@ -185,6 +199,7 @@ class NeoCloudController extends ChangeNotifier {
   /// Without the socket, nobody says when a shared folder changes (it is in
   /// the owner's journal, not this account's): refresh it on every poll.
   void _handlePolled() {
+    unawaited(aiReview.poll());
     if (selectedSection != AppSection.shared) return;
     unawaited(refreshSharedWithMe());
     final open = openSharedFolderId;
@@ -219,9 +234,6 @@ class NeoCloudController extends ChangeNotifier {
 
   bool get isAuthenticated => user != null;
   bool get isAdmin => user?.isAdmin ?? false;
-
-  /// Admin access on a device still requires a separate browser session.
-  bool deviceAccountIsAdmin = false;
   String get accountLabel => user?.label ?? '';
   StorageUsage? get storage => user?.storage;
 
@@ -241,6 +253,11 @@ class NeoCloudController extends ChangeNotifier {
     if (error is WebAuthnException) return error.message;
     if (error is ApiException) {
       if (error.code == 'NETWORK') return appStrings.connectionError;
+      final signIn = _signInError(error);
+      if (signIn != null) return signIn;
+      if (error.code == 'APPROVAL_NEEDS_SESSION') return appStrings.approvalNeedsServerUpdate;
+      if (error.code == 'SERVER_UPDATE_NEEDED') return appStrings.serverUpdateNeeded;
+      if (error.code == 'PHONE_REQUIRED') return appStrings.approvalNeedsPhone;
       if (error.code == 'VAULT_BOUNDARY') return appStrings.vaultBoundaryError;
       final sharing = _sharingError(error.code);
       if (sharing != null) return sharing;
@@ -250,6 +267,27 @@ class NeoCloudController extends ChangeNotifier {
       if (error.message.isNotEmpty && !error.message.startsWith('HTTP ')) return error.message;
     }
     return appStrings.genericError;
+  }
+
+  /// Sign-in refusals in the app's language: wrong password or code, and
+  /// the throttles (per account with a wait, per address without).
+  String? _signInError(ApiException error) {
+    switch (error.code) {
+      case 'INVALID_CREDENTIALS':
+        return appStrings.signInInvalidCredentials;
+      case 'INVALID_CODE':
+        return appStrings.signInInvalidCode;
+      case 'LOGIN_LOCKED':
+        final wait = error.retryAfter;
+        if (wait == null) return appStrings.signInRateLimited;
+        return wait.inSeconds >= 90
+            ? appStrings.signInLockedMinutes((wait.inSeconds / 60).ceil())
+            : appStrings.signInLockedSeconds(math.max(1, wait.inSeconds));
+      case 'RATE_LIMITED':
+        return appStrings.signInRateLimited;
+      default:
+        return null;
+    }
   }
 
   /// The sharing errors in the app's language (the server's text is English).
@@ -310,16 +348,13 @@ class NeoCloudController extends ChangeNotifier {
   /// Signs in with a stored or just-approved device token. Offline, the app
   /// still opens with what it knows.
   Future<void> _enterDeviceSession(DeviceConnection connection, {bool firstSignIn = false}) async {
-    deviceAccountIsAdmin = false;
     client
       ..baseUrl = connection.server
       ..bearerToken = connection.token;
     connectedServer = connection.server;
-    settings = UserSettings.fromJson(_storedDeviceSettings());
-    uploads.defaultConflict = settings.uploadConflict;
     var known = connection;
     try {
-      user = _deviceUser(await client.deviceMe());
+      user = await _loadDeviceUser();
       final accountId = user!.id;
       if (accountId > 0 && connection.accountId != accountId) {
         known = connection.withAccountId(accountId);
@@ -347,6 +382,8 @@ class NeoCloudController extends ChangeNotifier {
     liveUpdates.start();
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
+    unawaited(_loadSettings());
+    unawaited(aiReview.refresh());
     unawaited(_startNativeServices(known).then((_) {
       if (!firstSignIn || !cameraUploads.supported || user == null) return;
       offerCameraUpload = true;
@@ -358,23 +395,25 @@ class NeoCloudController extends ChangeNotifier {
   /// offers it once, like NeoAgent's first-run permission prompt.
   bool offerCameraUpload = false;
 
+  /// The phone's account, from `/api/account` like the web's. A server from
+  /// before full phone access refuses that (`SERVER_UPDATE_NEEDED`); its
+  /// `/api/devices/me` still names the account, admin flag included.
+  Future<AccountUser> _loadDeviceUser() async {
+    try {
+      return await client.accountUser();
+    } on ApiException catch (error) {
+      if (error.code != 'SERVER_UPDATE_NEEDED') rethrow;
+      return _deviceUser(await client.deviceMe());
+    }
+  }
+
   AccountUser _deviceUser(Map<String, dynamic> me) {
     final account = (me['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
-    deviceAccountIsAdmin = account['isAdmin'] == true;
     final quota = (me['quota'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     return AccountUser.fromJson(<String, dynamic>{
       ...account,
-      'isAdmin': false,
       'storage': <String, dynamic>{'usedBytes': quota['used'], 'quotaBytes': quota['limit'] ?? -1},
     });
-  }
-
-  Map<String, dynamic> _storedDeviceSettings() {
-    try {
-      return (jsonDecode(_preferences.getString(_deviceSettingsKey) ?? '{}') as Map).cast<String, dynamic>();
-    } catch (_) {
-      return const <String, dynamic>{};
-    }
   }
 
   Future<void> _startNativeServices(DeviceConnection connection) async {
@@ -431,6 +470,11 @@ class NeoCloudController extends ChangeNotifier {
       await deviceSessions.write(connection);
       await _rememberServer(this, connection.server);
       await _enterDeviceSession(connection, firstSignIn: true);
+      // Signed in another way while the login card was up.
+      final abandoned = passwordLogin;
+      passwordLogin = null;
+      isAwaitingTwoFactor = false;
+      if (abandoned != null) unawaited(abandoned.end());
     } on DeviceLoginFailure catch (failure) {
       errorMessage = _loginFailureText(failure);
     } catch (error) {
@@ -470,6 +514,12 @@ class NeoCloudController extends ChangeNotifier {
     liveUpdates.start();
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
+    await _loadSettings();
+    unawaited(aiReview.refresh());
+  }
+
+  /// The account's settings, on the web and the phone alike.
+  Future<void> _loadSettings() async {
     try {
       settings = await client.settings();
       uploads.defaultConflict = settings.uploadConflict;
@@ -494,6 +544,7 @@ class NeoCloudController extends ChangeNotifier {
     openSharedFolderId = null;
     sharedWithMe = const <SharedWithMe>[];
     vaults.lockAll();
+    aiReview.clear();
     _stopLiveUpdates();
     if (usesDeviceLogin) {
       // The token was revoked: forget it and ask to connect again.
@@ -518,7 +569,7 @@ class NeoCloudController extends ChangeNotifier {
   Future<void> refreshAccount() async {
     if (user == null) return;
     try {
-      user = usesDeviceLogin ? _deviceUser(await client.deviceMe()) : await client.me();
+      user = usesDeviceLogin ? await _loadDeviceUser() : await client.me();
       notifyListeners();
     } catch (_) {
       // Shown again on the next successful load.
@@ -561,14 +612,19 @@ class NeoCloudController extends ChangeNotifier {
     }
   }
 
-  Future<void> login({required String username, required String password}) =>
-      _authenticate(() => client.login(username, password));
+  Future<void> login({required String username, required String password}) => usesDeviceLogin
+      ? _authenticateDevice((login) => login.signIn(username, password))
+      : _authenticate(() => client.login(username, password));
 
-  Future<void> completeTwoFactorLogin({required String code}) => _authenticate(() => client.loginTwoFactor(code));
+  Future<void> completeTwoFactorLogin({required String code}) => usesDeviceLogin
+      ? _authenticateDevice((login) => login.verifyCode(code))
+      : _authenticate(() => client.loginTwoFactor(code));
 
   void cancelTwoFactorLogin() {
     isAwaitingTwoFactor = false;
     errorMessage = null;
+    // The half-finished session of a phone's sign-in goes with it.
+    unawaited(passwordLogin?.end());
     notifyListeners();
   }
 
@@ -576,7 +632,88 @@ class NeoCloudController extends ChangeNotifier {
     required String username,
     required String email,
     required String password,
-  }) => _authenticate(() => client.register(username: username, email: email, password: password));
+  }) => usesDeviceLogin
+      ? _authenticateDevice((login) => login.register(username: username, email: email, password: password))
+      : _authenticate(() => client.register(username: username, email: email, password: password));
+
+  // The phone's sign-in with the login form (src/device/password_login.dart).
+
+  /// Set once the connect screen has a server: the app then shows the web's
+  /// login card for it.
+  PasswordDeviceLogin? passwordLogin;
+
+  /// Checks [serverInput] is a NeoCloud server and opens its login card.
+  Future<void> chooseServer(String serverInput) async {
+    final server = normalizeBackendUrl(serverInput);
+    final uri = Uri.tryParse(server);
+    if (server.isEmpty || uri == null || !uri.hasScheme) {
+      showInlineError(appStrings.connectInvalidServer);
+      return;
+    }
+    if (isConnecting) return;
+    isConnecting = true;
+    errorMessage = null;
+    authErrorCode = null;
+    connectedServer = server;
+    notifyListeners();
+    final login = PasswordDeviceLogin(
+      server: server,
+      client: BackendClient(baseUrl: server),
+      deviceName: deviceSessions.deviceName,
+      platform: deviceSessions.platformName,
+    );
+    try {
+      final status = await login.status();
+      hasUser = status.hasUser;
+      registrationOpen = status.registrationOpen;
+      isAwaitingTwoFactor = false;
+      passwordLogin = login;
+    } catch (error) {
+      errorMessage = friendlyError(error);
+    } finally {
+      isConnecting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Back from the login card to the server field.
+  void leavePasswordLogin() {
+    final login = passwordLogin;
+    passwordLogin = null;
+    isAwaitingTwoFactor = false;
+    errorMessage = null;
+    authErrorCode = null;
+    if (login != null) unawaited(login.end());
+    notifyListeners();
+  }
+
+  Future<void> _authenticateDevice(Future<PasswordLoginResult> Function(PasswordDeviceLogin login) step) async {
+    final login = passwordLogin;
+    if (login == null || isAuthenticating) return;
+    isAuthenticating = true;
+    errorMessage = null;
+    authErrorCode = null;
+    notifyListeners();
+    try {
+      final result = await step(login);
+      final connection = result.connection;
+      if (connection == null) {
+        isAwaitingTwoFactor = result.requiresTwoFactor;
+        return;
+      }
+      passwordLogin = null;
+      isAwaitingTwoFactor = false;
+      await deviceSessions.write(connection);
+      await _rememberServer(this, connection.server);
+      await _enterDeviceSession(connection, firstSignIn: true);
+    } catch (error) {
+      errorMessage = friendlyError(error);
+      authErrorCode = error is ApiException ? error.code : null;
+    } finally {
+      isAuthenticating = false;
+      notifyListeners();
+    }
+  }
 
   /// Signs in with a security key or passkey, like NeoAgent: the server may
   /// still ask for the 2FA code when the key only confirmed presence.
@@ -597,8 +734,8 @@ class NeoCloudController extends ChangeNotifier {
 
   Future<void> logout() async {
     if (usesDeviceLogin) {
-      // Disconnect: the token stays listed under Devices in the web app
-      // until it is revoked there. Camera upload goes off with it.
+      // Disconnect: the phone forgets its token, which stays listed under
+      // Devices until it is revoked there. Camera upload goes off with it.
       await cameraUploads.signOut().catchError((Object _) {});
       await deviceSessions.clear();
       client.bearerToken = null;
@@ -615,6 +752,7 @@ class NeoCloudController extends ChangeNotifier {
     sharedWithMe = const <SharedWithMe>[];
     settingsPage = null;
     vaults.lockAll();
+    aiReview.clear();
     _stopLiveUpdates();
     notifyListeners();
   }
@@ -643,6 +781,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
+      case AppSection.review:
         return AppRoute(selectedSection.name);
     }
   }
@@ -698,6 +837,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
+      case AppSection.review:
         break;
     }
     selectedSection = section;
@@ -762,14 +902,10 @@ class NeoCloudController extends ChangeNotifier {
     settingsSaveError = null;
     notifyListeners();
     try {
-      if (usesDeviceLogin) {
-        final merged = <String, dynamic>{..._storedDeviceSettings(), ...patch};
-        await _preferences.setString(_deviceSettingsKey, jsonEncode(merged));
-        settings = UserSettings.fromJson(merged);
-      } else {
-        settings = await client.updateSettings(patch);
-      }
+      settings = await client.updateSettings(patch);
       uploads.defaultConflict = settings.uploadConflict;
+      // Opting in or out, or a feature switch, changes what AI shows.
+      if (patch.keys.any((key) => key.startsWith('ai_'))) unawaited(aiReview.refresh());
     } catch (error) {
       settingsSaveError = friendlyError(error);
     } finally {

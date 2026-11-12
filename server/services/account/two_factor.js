@@ -10,6 +10,7 @@ const {
 } = require('otplib');
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
+const throttle = require('./login_throttle');
 const {
   decryptValue,
   encryptValue,
@@ -67,6 +68,15 @@ async function assertCurrentFactor(userId, code) {
     throw httpError(401, 'Enter a code from your current authenticator or a recovery code.', 'TWO_FACTOR_REQUIRED');
   }
   if (!(await verifyLoginCode(userId, code))) throw httpError(401, 'Invalid 2FA code', 'INVALID_CODE');
+}
+
+/**
+ * Asks again who is there before something that can't be undone (exporting
+ * or deleting the account): the password, plus a code when 2FA is on.
+ */
+async function confirmIdentity(userId, { currentPassword, code }) {
+  await verifyCurrentPassword(userId, currentPassword);
+  await assertCurrentFactor(userId, code);
 }
 
 async function beginSetup(userId, currentPassword, currentCode) {
@@ -187,6 +197,25 @@ async function verifyLoginCode(userId, code) {
   return consumeRecoveryCode(userId, code);
 }
 
+/**
+ * The second step of a sign-in: one authenticator or recovery code for the
+ * pending sign-in `challengeId`, at most five per challenge on top of the
+ * account-wide throttle. Once throttle.challengeExhausted(challengeId) the
+ * caller drops the pending sign-in; `restart` says how to begin again.
+ */
+async function verifySignInCode({ userId, challengeId, code, restart }) {
+  if (throttle.challengeExhausted(challengeId)) {
+    throw httpError(401, `Too many wrong codes. Sign in with ${restart} again.`, 'TWO_FACTOR_ATTEMPTS_EXCEEDED');
+  }
+  const key = throttle.accountKey({ id: userId });
+  throttle.assertSignInAllowed(key);
+  throttle.recordFailure(key, { kind: 'second_factor', challengeId });
+  if (!(await verifyLoginCode(userId, String(code)))) {
+    throw httpError(401, 'Invalid 2FA code', 'INVALID_CODE');
+  }
+  throttle.clearFailures(key);
+}
+
 async function disable(userId, { currentPassword, code }) {
   await verifyCurrentPassword(userId, currentPassword);
   const row = getTwoFactorRow(userId);
@@ -226,9 +255,11 @@ async function regenerateRecoveryCodes(userId, { currentPassword, code }) {
 
 module.exports = {
   beginSetup,
+  confirmIdentity,
   disable,
   enable,
   getTwoFactorStatus,
   regenerateRecoveryCodes,
   verifyLoginCode,
+  verifySignInCode,
 };

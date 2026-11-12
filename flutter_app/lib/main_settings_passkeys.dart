@@ -79,15 +79,25 @@ class _SecurityKeysSectionState extends State<_SecurityKeysSection> with _PageLo
     });
   }
 
-  Future<void> _removeSecurityKey(SecurityKeyItem key) => runAction(_controller, () async {
-    final keys = await _controller.client.deleteSecurityKey(key.id);
-    if (mounted) setState(() => _keys = keys);
-  });
+  /// Removing a key asks first, like every destructive action.
+  Future<void> _removeSecurityKey(SecurityKeyItem key) => _confirmDelete(
+    context,
+    title: appStrings.settingsPasskeyRemoveTitle(key.label),
+    message: appStrings.settingsPasskeyRemoveMessage,
+    confirmLabel: appStrings.passkeyRemove,
+    onConfirm: () => runAction(_controller, () async {
+      final keys = await _controller.client.deleteSecurityKey(key.id);
+      if (mounted) setState(() => _keys = keys);
+    }),
+  );
 
-  /// Adding a key needs an authenticator this device can talk to.
+  /// Adding a key needs an authenticator this device can talk to. The
+  /// phone app would need the native credential APIs: keys are added in a
+  /// browser, and listed, renamed and removed here.
   Widget _buildAddSecurityKey() {
     if (!_controller.supportsSecurityKeys) {
-      return Text(appStrings.passkeyUnsupported, style: TextStyle(color: _textSecondary, height: 1.4));
+      final text = _controller.usesDeviceLogin ? appStrings.passkeyAddInBrowser : appStrings.passkeyUnsupported;
+      return Text(text, style: TextStyle(color: _textSecondary, height: 1.4));
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -135,7 +145,7 @@ class _SecurityKeysSectionState extends State<_SecurityKeysSection> with _PageLo
       children: <Widget>[
         if (pageError != null)
           _SettingsBlock(child: _InlineError(message: pageError!, onDismiss: () => setState(() => pageError = null))),
-        if (keys == null) const _LoadingPlaceholder(),
+        if (keys == null && pageError == null) const _LoadingPlaceholder(),
         for (final key in keys ?? const <SecurityKeyItem>[])
           _SecurityKeyCard(
             securityKey: key,
@@ -173,14 +183,15 @@ class _SecurityKeyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(securityKey.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(appStrings.passkeyAddedLastUsed(added, lastUsed), style: TextStyle(color: _textSecondary)),
+                Text(securityKey.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textPrimary)),
+                const SizedBox(height: 3),
+                Text(appStrings.passkeyAddedLastUsed(added, lastUsed), style: TextStyle(fontSize: 13, color: _textSecondary, height: 1.45)),
               ],
             ),
           ),
           PopupMenuButton<String>(
             enabled: !busy,
+            tooltip: appStrings.details,
             icon: Icon(Icons.more_horiz, color: _textSecondary),
             onSelected: (action) => action == 'rename' ? onRename() : onRemove(),
             itemBuilder: (context) => <PopupMenuEntry<String>>[

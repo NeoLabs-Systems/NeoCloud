@@ -267,6 +267,9 @@ func printStatusJSON(a *app) error {
 		if report.NotSynced == nil {
 			report.NotSynced = []sync.NotSynced{}
 		}
+		if report.Ignored == nil {
+			report.Ignored = []sync.NotSynced{}
+		}
 		pairs = append(pairs, statusPair{Pair: pair, Tracked: len(entries), Cursor: cursor, Report: report})
 	}
 	out := json.NewEncoder(os.Stdout)
@@ -334,15 +337,15 @@ func cmdKey(args []string) error {
 	}
 	defer a.close()
 	lock := keyLock(a)
+	if st := lock.Status(); !st.Supported {
+		return errors.New(st.Message)
+	}
 	ctx, cancel := signalContext()
 	defer cancel()
 	switch args[0] {
 	case "status":
-		st := lock.Status()
 		switch {
-		case !st.Supported:
-			fmt.Println("Security key lock: " + st.Message)
-		case !st.Enrolled:
+		case !lock.Status().Enrolled:
 			fmt.Println("Security key lock: off")
 		default:
 			fmt.Println("Security key lock: on; the device token is stored encrypted and syncing needs the key")

@@ -18,6 +18,7 @@ import (
 
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/proxy"
 	"github.com/neolabs/neocloud/clients/lite/internal/state"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
@@ -36,12 +37,16 @@ Usage:
   neocloud-lite sync --once
   neocloud-lite run [--headless]
   neocloud-lite status [--json]
+  neocloud-lite check-ignore <path>...
   neocloud-lite autostart on|off
   neocloud-lite key enroll|status|remove
 
 key enroll turns on the security key lock: the device token is stored
 encrypted and NeoCloud Lite syncs only while that key is plugged in. Quit
-the tray app first, or use its app window. Not available on Windows.
+the tray app first, or use its app window. macOS and Linux only.
+
+check-ignore says whether each path is ignored and by which rule (the
+folder's ignore patterns, the defaults or a .cloudignore on this computer).
 
 Config and state live in $NEOCLOUD_LITE_HOME or the OS config folder.
 `
@@ -58,14 +63,15 @@ func main() {
 		attachConsole()
 	}
 	commands := map[string]func([]string) error{
-		"login":     cmdLogin,
-		"logout":    cmdLogout,
-		"pair":      cmdPair,
-		"sync":      cmdSync,
-		"run":       cmdRun,
-		"status":    cmdStatus,
-		"autostart": cmdAutostart,
-		"key":       cmdKey,
+		"login":        cmdLogin,
+		"logout":       cmdLogout,
+		"pair":         cmdPair,
+		"sync":         cmdSync,
+		"run":          cmdRun,
+		"status":       cmdStatus,
+		"check-ignore": cmdCheckIgnore,
+		"autostart":    cmdAutostart,
+		"key":          cmdKey,
 	}
 	command, ok := commands[args[0]]
 	if !ok {
@@ -109,6 +115,9 @@ func openApp(logger *log.Logger) (*app, error) {
 	cfg, err := config.Open(dir)
 	if err != nil {
 		return nil, err
+	}
+	if keylock.IgnoreIfUnsupported(cfg) {
+		logger.Printf("ignoring the security key lock in %s: it is not available on this platform; sign in again", cfg.Path())
 	}
 	db, err := state.Open(dir)
 	if err != nil {

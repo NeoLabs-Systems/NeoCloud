@@ -62,13 +62,13 @@ class _FileActionsMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     if (MediaQuery.sizeOf(context).width < AppBreakpoints.mobile) {
       return IconButton(
-        tooltip: appStrings.details,
+        tooltip: appStrings.filesMoreActions,
         icon: Icon(Icons.more_horiz_rounded, color: _textMuted, size: 22),
         onPressed: () => unawaited(_showFileActionSheet(context, title: title, node: node, actions: actions)),
       );
     }
     return PopupMenuButton<int>(
-      tooltip: appStrings.details,
+      tooltip: appStrings.filesMoreActions,
       icon: Icon(Icons.more_horiz_rounded, color: _textMuted, size: 20),
       onSelected: (index) => actions[index].onSelected(),
       itemBuilder: (context) => _menuEntries(actions),
@@ -276,6 +276,7 @@ class _SelectionBar extends StatelessWidget {
     this.onMove,
     this.onTrash,
     this.onFavorite,
+    this.aiActions = const <_FileAction>[],
     this.compact = false,
     this.iconsOnly = false,
   });
@@ -287,6 +288,10 @@ class _SelectionBar extends StatelessWidget {
   final VoidCallback? onMove;
   final VoidCallback? onTrash;
   final VoidCallback? onFavorite;
+
+  /// Suggest names, folders or tags for the selected files; empty where AI
+  /// can't look.
+  final List<_FileAction> aiActions;
   final bool compact;
 
   /// Narrow content: actions as icons with tooltips, so the bar never overflows.
@@ -319,6 +324,13 @@ class _SelectionBar extends StatelessWidget {
             IconButton(tooltip: appStrings.clear, onPressed: onClear, icon: const Icon(Icons.close_rounded, size: 18)),
             Text(appStrings.selectedCount(count), style: TextStyle(fontWeight: FontWeight.w600, color: _textPrimary, fontSize: 13.5)),
             const Spacer(),
+            if (aiActions.isNotEmpty)
+              PopupMenuButton<int>(
+                tooltip: appStrings.aiMenu,
+                icon: const Icon(Icons.auto_awesome_outlined, size: 20),
+                onSelected: (index) => aiActions[index].onSelected(),
+                itemBuilder: (context) => _menuEntries(aiActions),
+              ),
             if (onFavorite != null) action(Icons.star_outline_rounded, appStrings.filesStar, onFavorite!),
             action(Icons.download_rounded, appStrings.download, onDownload),
             if (onMove != null) action(Icons.drive_file_move_outline, appStrings.moveTo, onMove!),

@@ -57,8 +57,11 @@ var newEndpoints = []struct{ method, path string }{
 	{http.MethodPost, "/api/open/web"},
 	{http.MethodPost, "/api/open/approval"},
 	{http.MethodPost, "/api/pairs/x/open"},
+	{http.MethodPost, "/api/pairs/x/cloudignore"},
 	{http.MethodPost, "/api/pairs/x/sync"},
 	{http.MethodDelete, "/api/login"},
+	{http.MethodPost, "/api/login/key"},
+	{http.MethodPost, "/api/login/key/code"},
 	{http.MethodGet, "/api/window"},
 }
 
@@ -69,6 +72,7 @@ func TestNewEndpointsNeedASessionAndTheHeader(t *testing.T) {
 		return nil, nil
 	}
 	s.open = func(string) error { t.Error("something was opened"); return nil }
+	s.openText = s.open
 	stranger := browserClient(t)
 	browser := signedIn(t, s)
 	for _, endpoint := range newEndpoints {
@@ -532,5 +536,48 @@ func TestSettingsEndpoints(t *testing.T) {
 	}
 	if saved, _ := s.cfg.Get().Pair(pair.ID); len(saved.ExcludePaths) != 2 {
 		t.Errorf("declined folder not excluded: %v", saved.ExcludePaths)
+	}
+}
+
+func TestOpenCloudIgnore(t *testing.T) {
+	s := startServer(t)
+	var opened []string
+	s.openText = func(target string) error { opened = append(opened, target); return nil }
+	browser := signedIn(t, s)
+	local := t.TempDir()
+	pair, err := config.NewPair(local, "Documents", "both", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.cfg.Update(func(c *config.Config) error { return c.AddPair(pair) })
+	file := filepath.Join(local, ".cloudignore")
+
+	_, state := callAPI(t, browser, s, http.MethodGet, "/api/state", "")
+	if state["cloudIgnore"].(map[string]any)[pair.ID] != false {
+		t.Errorf("cloudIgnore before = %v", state["cloudIgnore"])
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs/"+pair.ID+"/cloudignore", ""); code != http.StatusOK {
+		t.Fatalf("create: %d", code)
+	}
+	data, err := os.ReadFile(file)
+	if err != nil || !strings.HasPrefix(string(data), "# Files and folders NeoCloud does not sync") {
+		t.Fatalf("template: %q %v", data, err)
+	}
+	_, state = callAPI(t, browser, s, http.MethodGet, "/api/state", "")
+	if state["cloudIgnore"].(map[string]any)[pair.ID] != true {
+		t.Errorf("cloudIgnore after = %v", state["cloudIgnore"])
+	}
+
+	// An existing file is opened as it is.
+	os.WriteFile(file, []byte("*.log\n"), 0o644)
+	callAPI(t, browser, s, http.MethodPost, "/api/pairs/"+pair.ID+"/cloudignore", "")
+	if data, _ := os.ReadFile(file); string(data) != "*.log\n" {
+		t.Errorf("existing file changed: %q", data)
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs/nope/cloudignore", ""); code != http.StatusBadRequest {
+		t.Errorf("unknown pair: %d", code)
+	}
+	if len(opened) != 2 || opened[0] != file || opened[1] != file {
+		t.Errorf("opened %v", opened)
 	}
 }

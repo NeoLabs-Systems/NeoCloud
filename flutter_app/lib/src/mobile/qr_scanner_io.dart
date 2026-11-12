@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:neocloud_background/neocloud_background.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_language.dart';
@@ -76,9 +77,15 @@ class _ScanPageState extends State<_ScanPage> {
     });
   }
 
-  /// iOS opens the app's own settings page; Android has no such link, so
-  /// the text says where to go.
-  Future<void> _openSettings() => launchUrl(Uri.parse('app-settings:'));
+  /// The app's own page in the system settings, where a camera refused for
+  /// good is allowed again (Android asks no more once it was refused twice).
+  Future<void> _openSettings() async {
+    if (Platform.isIOS) {
+      await launchUrl(Uri.parse('app-settings:'));
+    } else {
+      await NeoCloudBackground.openAppSettings();
+    }
+  }
 
   Widget _message({required IconData icon, required String title, required String body, required List<Widget> actions}) {
     return Center(
@@ -170,7 +177,10 @@ class _ScanPageState extends State<_ScanPage> {
           body: Platform.isIOS ? appStrings.scanDeniedBodyIos : appStrings.scanDeniedBodyAndroid,
           actions: <Widget>[
             if (Platform.isIOS) FilledButton(onPressed: () => unawaited(_openSettings()), child: Text(appStrings.scanOpenSettings)),
-            if (Platform.isAndroid) FilledButton(onPressed: () => unawaited(_start()), child: Text(appStrings.retry)),
+            if (Platform.isAndroid) ...<Widget>[
+              FilledButton(onPressed: () => unawaited(_start()), child: Text(appStrings.retry)),
+              TextButton(onPressed: () => unawaited(_openSettings()), child: Text(appStrings.scanOpenSettings)),
+            ],
           ],
         );
       case _ScanState.failed:

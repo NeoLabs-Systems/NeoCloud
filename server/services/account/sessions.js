@@ -39,9 +39,16 @@ function recordCurrentSession(req, userId) {
   );
 }
 
+// The request's own browser session id. A phone app request (bearer token)
+// carries a fresh session nobody signed in to: it has none.
+function ownSessionId(req) {
+  return req?.session?.userId ? req.sessionID : null;
+}
+
 function listSessions(req, userId) {
-  recordCurrentSession(req, userId);
-  const currentHash = req?.sessionID ? sessionHash(req.sessionID) : null;
+  const ownId = ownSessionId(req);
+  if (ownId) recordCurrentSession(req, userId);
+  const currentHash = ownId ? sessionHash(ownId) : null;
   return db.prepare(`
     SELECT id, session_hash, ip_address, user_agent, created_at, last_seen_at, expires_at
     FROM user_sessions
@@ -73,7 +80,8 @@ function revokeSession(req, userId, sessionRecordId) {
     WHERE id = ? AND user_id = ? AND revoked_at IS NULL
   `).get(sessionRecordId, userId);
   if (!row) throw httpError(404, 'Session not found', 'NOT_FOUND');
-  if (req?.sessionID && row.session_hash === sessionHash(req.sessionID)) {
+  const ownId = ownSessionId(req);
+  if (ownId && row.session_hash === sessionHash(ownId)) {
     throw httpError(400, 'Use sign out to end the current session', 'CURRENT_SESSION');
   }
   deleteStoredSessions(new Set([row.session_hash]));
@@ -135,9 +143,23 @@ function regenerateCurrentSession(req) {
   });
 }
 
+/**
+ * Forgets session records that ended (signed out, revoked or expired) more
+ * than 30 days ago; every sign-in adds one, and nothing else removes them.
+ */
+function purgeEndedSessions() {
+  return db.prepare(`
+    DELETE FROM user_sessions
+    WHERE datetime(revoked_at) <= datetime('now', '-30 days')
+       OR datetime(expires_at) <= datetime('now', '-30 days')
+  `).run().changes;
+}
+
 module.exports = {
   endCurrentSession,
   listSessions,
+  ownSessionId,
+  purgeEndedSessions,
   recordCurrentSession,
   regenerateCurrentSession,
   revokeAllSessionsForUser,

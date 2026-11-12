@@ -42,6 +42,10 @@ func AppArgs(url, profileDir string) []string {
 		"--user-data-dir=" + profileDir,
 		"--no-first-run",
 		"--no-default-browser-check",
+		// The window is the app, not a web page: no translate bar (Chrome's
+		// Translate, Edge's msTranslate) and no autofill server lookups.
+		"--disable-features=Translate,msTranslate,AutofillServerCommunication",
+		"--disable-sync",
 	}
 }
 

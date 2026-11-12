@@ -7,10 +7,11 @@ part of 'main.dart';
 // unknown name gets the same answer as any name that can't be added.
 
 class _SharePeopleSection extends StatefulWidget {
-  const _SharePeopleSection({required this.controller, required this.nodeId, required this.isFolder});
+  const _SharePeopleSection({required this.controller, required this.nodeId, required this.nodeName, required this.isFolder});
 
   final NeoCloudController controller;
   final String nodeId;
+  final String nodeName;
   final bool isFolder;
 
   @override
@@ -53,6 +54,7 @@ class _SharePeopleSectionState extends State<_SharePeopleSection> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -86,11 +88,18 @@ class _SharePeopleSectionState extends State<_SharePeopleSection> {
     setState(() => _members = <ShareMember>[for (final m in _members ?? const <ShareMember>[]) m.id == member.id ? updated : m]);
   });
 
-  Future<void> _remove(ShareMember member) => _run(() async {
-    await _controller.client.removeMember(widget.nodeId, member.id);
-    if (!mounted) return;
-    setState(() => _members = (_members ?? const <ShareMember>[]).where((m) => m.id != member.id).toList());
-  });
+  /// Asks first, as NeoRouter does before removing a team member.
+  Future<void> _remove(ShareMember member) => _confirmDelete(
+    context,
+    title: appStrings.memberRemove,
+    message: appStrings.filesMemberRemoveConfirm(member.label, widget.nodeName),
+    confirmLabel: appStrings.memberRemove,
+    onConfirm: () => _run(() async {
+      await _controller.client.removeMember(widget.nodeId, member.id);
+      if (!mounted) return;
+      setState(() => _members = (_members ?? const <ShareMember>[]).where((m) => m.id != member.id).toList());
+    }),
+  );
 
   Widget _field() {
     return TextField(
@@ -197,7 +206,8 @@ class _SharePeopleSectionState extends State<_SharePeopleSection> {
           children: <Widget>[
             Expanded(child: _field()),
             const SizedBox(width: 8),
-            FilledButton(
+            // Gold is the link section's primary action; this one is outlined.
+            OutlinedButton(
               onPressed: _busy ? null : () => unawaited(_add()),
               child: Text(appStrings.memberAdd),
             ),

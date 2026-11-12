@@ -50,6 +50,23 @@ function normalizeLabel(value, fallback) {
 }
 
 /**
+ * The relying party a ceremony on `origin` runs for: the origin itself and
+ * its hostname as the RP ID.
+ */
+function relyingPartyForOrigin(origin) {
+  let hostname = '';
+  try {
+    hostname = new URL(origin).hostname;
+  } catch {
+    hostname = '';
+  }
+  if (!hostname) {
+    throw httpError(400, 'Security key sign-in requires a valid request origin.', 'INVALID_ORIGIN');
+  }
+  return { origin, rpId: hostname };
+}
+
+/**
  * WebAuthn ties a credential to the exact hostname it was created on. With
  * PUBLIC_URL set that is the relying party; otherwise it is the origin the
  * ceremony runs on (this server, or an origin in ALLOWED_ORIGINS), as in
@@ -67,16 +84,7 @@ function resolveRelyingParty(req) {
       throw httpError(403, 'Security key sign-in is not allowed from this origin.', 'ORIGIN_NOT_ALLOWED');
     }
   }
-  let hostname = '';
-  try {
-    hostname = new URL(origin).hostname;
-  } catch {
-    hostname = '';
-  }
-  if (!hostname) {
-    throw httpError(400, 'Security key sign-in requires a valid request origin.', 'INVALID_ORIGIN');
-  }
-  return { origin, rpId: hostname };
+  return relyingPartyForOrigin(origin);
 }
 
 function toCredentialPayload(row) {
@@ -192,8 +200,12 @@ async function completeRegistration({ req, userId, response, label, pending }) {
   return { success: true, credentials: listCredentials(userId) };
 }
 
-async function beginLogin({ req, username }) {
-  const { rpId } = resolveRelyingParty(req);
+/**
+ * Starts a sign-in for `relyingParty` (resolveRelyingParty for a browser,
+ * relyingPartyForOrigin(publicOrigin) for a native client).
+ */
+async function beginLogin({ relyingParty, username }) {
+  const { rpId } = relyingParty;
   const account = String(username || '').trim();
 
   // With nothing registered anywhere the browser would sit on its key prompt
@@ -239,8 +251,8 @@ function unknownKey() {
  * throttle like a password try, and stores the authenticator's new
  * signature counter; a counter that went backwards (a cloned key) fails.
  */
-async function completeLogin({ req, response, pending }) {
-  const { origin, rpId } = resolveRelyingParty(req);
+async function completeLogin({ relyingParty, response, pending }) {
+  const { origin, rpId } = relyingParty;
   const challenge = readChallenge(pending, rpId);
 
   const credentialId = String(response?.id || '').trim();
@@ -327,5 +339,7 @@ module.exports = {
   completeRegistration,
   deleteCredential,
   listCredentials,
+  relyingPartyForOrigin,
   renameCredential,
+  resolveRelyingParty,
 };

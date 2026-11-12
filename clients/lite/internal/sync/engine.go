@@ -62,6 +62,9 @@ type PairState struct {
 	NeedsConfirmation *DeleteConfirmation `json:"needsConfirmation,omitempty"`
 	// NotSynced lists what the last pass deliberately left alone.
 	NotSynced []NotSynced `json:"notSynced"`
+	// Ignored lists what .cloudignore files keep out (capped; paths
+	// inside an ignored folder are not listed).
+	Ignored []NotSynced `json:"ignored"`
 	// Failed lists the files the last pass could not sync.
 	Failed []Issue `json:"failed"`
 	// NewFolders wait for the user (new_folders "ask", big folders).
@@ -578,7 +581,7 @@ func (e *Engine) syncPair(ctx context.Context, client *api.Client, cfg config.Co
 		}
 		lastErr = p.run(tree)
 		e.watchDirs(pair.ID, p.dirs)
-		ps.NotSynced, pending = p.notSynced, p.pending
+		ps.NotSynced, ps.Ignored, pending = p.notSynced, p.ignored, p.pending
 		ps.Failed, ps.NewFolders = p.failed, p.asks
 		if len(p.newExcludes) > 0 {
 			pair.ExcludePaths = append(pair.ExcludePaths, p.newExcludes...)
@@ -597,6 +600,9 @@ func (e *Engine) syncPair(ctx context.Context, client *api.Client, cfg config.Co
 	}
 	if ps.NotSynced == nil {
 		ps.NotSynced = []NotSynced{}
+	}
+	if ps.Ignored == nil {
+		ps.Ignored = []NotSynced{}
 	}
 	if ps.Failed == nil {
 		ps.Failed = []Issue{}

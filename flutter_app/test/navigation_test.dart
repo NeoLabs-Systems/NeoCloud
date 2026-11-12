@@ -38,13 +38,13 @@ Future<(NeoCloudController, SharedPreferences)> _signedIn({bool admin = false, b
 }
 
 void main() {
-  test('mobile shows account pages and routes sensitive pages to a browser session', () async {
+  test('the phone opens every account page in the app', () async {
     final (controller, _) = await _signedIn(mobile: true);
     for (final page in <SettingsPage>[SettingsPage.profile, SettingsPage.security, SettingsPage.devices, SettingsPage.imports]) {
       expect(page.visibleFor(controller), isTrue);
-      expect(page.requiresBrowserSession, isTrue);
+      controller.setSettingsPage(page);
+      expect(controller.settingsPage, page);
     }
-    expect(SettingsPage.general.requiresBrowserSession, isFalse);
     expect(SettingsPage.sharedLinks.visibleFor(controller), isTrue);
   });
 
