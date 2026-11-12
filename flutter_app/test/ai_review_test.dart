@@ -462,7 +462,7 @@ void main() {
       final controller = await _controller(ai, listing: listing);
       expect(controller.aiReview.enabled, isFalse);
       await _pumpApp(tester, controller);
-      expect(find.text('Review'), findsNothing);
+      // Review stays: its Duplicates tab works without AI.
       expect(find.text('AI suggestion'), findsNothing);
       await openMenu(tester, 'IMG_2041.pdf');
       expect(find.text('Rename'), findsOneWidget);
