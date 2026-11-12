@@ -13,13 +13,18 @@ EdgeInsets _pagePadding(BuildContext context) {
 
 /// Scrollable page frame: header plus content, centered at a readable width.
 class _PageScaffold extends StatelessWidget {
-  const _PageScaffold({required this.children});
+  const _PageScaffold({required this.children, this.onRefresh});
 
   final List<Widget> children;
 
+  /// Pull to refresh, where the page can reload.
+  final Future<void> Function()? onRefresh;
+
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    final refresh = onRefresh;
+    final list = ListView(
+      physics: refresh == null ? null : const AlwaysScrollableScrollPhysics(),
       padding: _pagePadding(context),
       children: <Widget>[
         Center(
@@ -38,6 +43,7 @@ class _PageScaffold extends StatelessWidget {
         ),
       ],
     );
+    return refresh == null ? list : RefreshIndicator(onRefresh: refresh, child: list);
   }
 }
 
@@ -139,9 +145,9 @@ Future<void> _confirmDelete(
   required Future<void> Function() onConfirm,
   String? confirmLabel,
 }) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAdaptiveSheet<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => _AdaptiveDialog(
       title: Text(title),
       content: SizedBox(
         width: 400,
@@ -566,7 +572,7 @@ Future<String?> _promptText(
   final controller = TextEditingController(text: initialValue);
   final dot = initialValue.lastIndexOf('.');
   controller.selection = TextSelection(baseOffset: 0, extentOffset: selectStem && dot > 0 ? dot : initialValue.length);
-  return showDialog<String>(
+  return showAdaptiveSheet<String>(
     context: context,
     builder: (dialogContext) {
       void submit() {
@@ -574,7 +580,7 @@ Future<String?> _promptText(
         if (value.isNotEmpty || obscure) Navigator.of(dialogContext).pop(obscure ? controller.text : value);
       }
 
-      return AlertDialog(
+      return _AdaptiveDialog(
         title: Text(title),
         content: SizedBox(
           width: 420,

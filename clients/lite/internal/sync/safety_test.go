@@ -18,6 +18,7 @@ import (
 
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/netstate"
 	"github.com/neolabs/neocloud/clients/lite/internal/state"
 )
 
@@ -44,7 +45,7 @@ func newHarness(t *testing.T, srv *fakeServer, direction string, ignore ...strin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	pair, err := config.NewPair(root, "/Shared", direction, ignore)
+	pair, err := config.NewPair(root, "/Shared", direction, ignore, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,27 @@ func newHarness(t *testing.T, srv *fakeServer, direction string, ignore ...strin
 	}); err != nil {
 		t.Fatal(err)
 	}
-	return &harness{t: t, srv: srv, root: root, db: db, engine: New(cfg, db, log.New(io.Discard, "", 0)), pair: pair}
+	engine := New(cfg, db, log.New(io.Discard, "", 0))
+	engine.conditions = func() netstate.Conditions { return netstate.Conditions{} } // not this computer's battery
+	return &harness{t: t, srv: srv, root: root, db: db, engine: engine, pair: pair}
+}
+
+// configure changes the pair's settings in the config the engine reads.
+func (h *harness) configure(edit func(*config.Pair)) {
+	h.t.Helper()
+	err := h.engine.cfg.Update(func(c *config.Config) error {
+		for i := range c.Pairs {
+			if c.Pairs[i].ID == h.pair.ID {
+				edit(&c.Pairs[i])
+				h.pair = c.Pairs[i]
+				return c.Pairs[i].Validate()
+			}
+		}
+		return errors.New("no pair")
+	})
+	if err != nil {
+		h.t.Fatal(err)
+	}
 }
 
 func (h *harness) sync() error {
@@ -125,11 +146,17 @@ func TestGuardThresholds(t *testing.T) {
 		{501, 5000, true}, // above 500
 		{500, 5000, false},
 	}
+	defaults := guardLimits{config.DefaultGuardFiles, config.DefaultGuardPercent}
 	for _, c := range cases {
-		if got := guardTrips(c.n, c.tracked); got != c.want {
-			t.Errorf("guardTrips(%d, %d) = %v", c.n, c.tracked, got)
+		if got := defaults.trips(c.n, c.tracked); got != c.want {
+			t.Errorf("trips(%d, %d) = %v", c.n, c.tracked, got)
 		}
 	}
+	strict := guardLimits{files: 100, percent: 10}
+	if !strict.trips(101, 100000) || !strict.trips(21, 200) || strict.trips(20, 200) {
+		t.Error("custom limits not applied")
+	}
+	evaluateGuard := defaults.evaluate
 	if got := evaluateGuard(0, 3, 5, true); got == nil || got.Reason != GuardRemoteEmpty {
 		t.Errorf("remote empty: %+v", got)
 	}
@@ -337,7 +364,7 @@ func TestRemoteDrivenDeletesAndOverwritesGoToLocalTrash(t *testing.T) {
 	recent := filepath.Join(h.root, metaDir, trashDir, time.Now().AddDate(0, 0, -29).Format(trashDayFormat))
 	os.MkdirAll(old, 0o755)
 	os.MkdirAll(recent, 0o755)
-	pruneTrash(h.root, time.Now())
+	pruneTrash(h.root, time.Now(), config.DefaultTrashDays)
 	if _, err := os.Stat(old); err == nil {
 		t.Error("31-day-old trash kept")
 	}

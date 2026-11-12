@@ -83,67 +83,116 @@ class _WelcomeBanner extends StatelessWidget {
     );
   }
 
+  List<Widget> _actions() => <Widget>[
+    _action(
+      appStrings.filesWelcomeDesktopAction,
+      appStrings.filesWelcomeDesktopBody,
+      () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
+    ),
+    if (!controller.usesDeviceLogin)
+      _action(appStrings.filesWelcomeImportAction, appStrings.filesWelcomeImportBody, () {
+        controller.setSettingsPage(SettingsPage.imports);
+        controller.setSelectedSection(AppSection.settings);
+      }),
+    if (controller.isAdmin)
+      _action(appStrings.filesWelcomeKeyAction, appStrings.filesWelcomeKeyBody, () => controller.setSelectedSection(AppSection.admin)),
+  ];
+
+  Widget _dontShowAgain() {
+    return TextButton(
+      style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: _textMuted),
+      onPressed: () {
+        unawaited(_setFilesFlag(controller, 'welcomeHidden', true));
+        onClose();
+      },
+      child: Text(appStrings.filesWelcomeDontShowAgain),
+    );
+  }
+
+  Widget _closeButton() {
+    return IconButton(
+      tooltip: appStrings.close,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(Icons.close_rounded, size: 18, color: _textMuted),
+      onPressed: () {
+        _welcomeClosed = true;
+        onClose();
+      },
+    );
+  }
+
+  /// A phone: title and close on top, the line below, then the next steps
+  /// and "Don't show again" on rows of their own.
+  Widget _narrow() {
+    return _AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 4, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.waving_hand_outlined, size: 18, color: _textSecondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(appStrings.filesWelcomeTitle, style: TextStyle(color: _textPrimary, fontSize: 14.5, fontWeight: FontWeight.w600)),
+              ),
+              _closeButton(),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Text(appStrings.filesWelcomeUploadBody, style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.45)),
+          ),
+          const SizedBox(height: 4),
+          Transform.translate(
+            // Line the buttons' text up with the body text.
+            offset: const Offset(-10, 0),
+            child: Wrap(spacing: 4, children: <Widget>[..._actions(), _dontShowAgain()]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wide() {
+    return _AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.waving_hand_outlined, size: 18, color: _textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text.rich(
+                    TextSpan(
+                      children: <InlineSpan>[
+                        TextSpan(text: '${appStrings.filesWelcomeTitle} · ', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600)),
+                        TextSpan(text: appStrings.filesWelcomeUploadBody),
+                      ],
+                    ),
+                    style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.4),
+                  ),
+                ),
+                ..._actions(),
+              ],
+            ),
+          ),
+          _dontShowAgain(),
+          _closeButton(),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _EntranceMotion(
-      child: _AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
-        child: Row(
-          children: <Widget>[
-            Icon(Icons.waving_hand_outlined, size: 18, color: _textSecondary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text.rich(
-                      TextSpan(
-                        children: <InlineSpan>[
-                          TextSpan(text: '${appStrings.filesWelcomeTitle} · ', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600)),
-                          TextSpan(text: appStrings.filesWelcomeUploadBody),
-                        ],
-                      ),
-                      style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.4),
-                    ),
-                  ),
-                  _action(
-                    appStrings.filesWelcomeDesktopAction,
-                    appStrings.filesWelcomeDesktopBody,
-                    () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
-                  ),
-                  if (!controller.usesDeviceLogin)
-                    _action(appStrings.filesWelcomeImportAction, appStrings.filesWelcomeImportBody, () {
-                      controller.setSettingsPage(SettingsPage.imports);
-                      controller.setSelectedSection(AppSection.settings);
-                    }),
-                  if (controller.isAdmin)
-                    _action(appStrings.filesWelcomeKeyAction, appStrings.filesWelcomeKeyBody, () => controller.setSelectedSection(AppSection.admin)),
-                ],
-              ),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: _textMuted),
-              onPressed: () {
-                unawaited(_setFilesFlag(controller, 'welcomeHidden', true));
-                onClose();
-              },
-              child: Text(appStrings.filesWelcomeDontShowAgain),
-            ),
-            IconButton(
-              tooltip: appStrings.close,
-              visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.close_rounded, size: 18, color: _textMuted),
-              onPressed: () {
-                _welcomeClosed = true;
-                onClose();
-              },
-            ),
-          ],
-        ),
-      ),
+      child: LayoutBuilder(builder: (context, constraints) => constraints.maxWidth < 600 ? _narrow() : _wide()),
     );
   }
 }

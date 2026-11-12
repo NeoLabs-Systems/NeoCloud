@@ -228,7 +228,7 @@ class _FileRowState extends State<_FileRow> {
                               )
                             : null,
                       ),
-                      _FileActionsMenu(actions: actions),
+                      _FileActionsMenu(actions: actions, title: node.name, node: node),
                     ],
                   ),
                 ),
@@ -289,7 +289,7 @@ class _FileTile extends StatelessWidget {
                         const Spacer(),
                         if (node.favorite) Icon(Icons.star_rounded, size: 16, color: _accent),
                         if (node.shared) const _SharedMark(size: 16),
-                        _FileActionsMenu(actions: actions),
+                        _FileActionsMenu(actions: actions, title: node.name, node: node),
                       ],
                     ),
                     Expanded(

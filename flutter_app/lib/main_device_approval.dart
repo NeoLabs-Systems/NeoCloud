@@ -7,21 +7,30 @@ part of 'main.dart';
 enum _ApprovalState { entering, loading, asking, answering, approved, denied }
 
 class DeviceApprovalView extends StatefulWidget {
-  const DeviceApprovalView({super.key, required this.controller});
+  const DeviceApprovalView({super.key, required this.controller, this.userCode, this.onDone});
 
   final NeoCloudController controller;
+
+  /// The code to look up; defaults to the one from /app/device?code=….
+  final String? userCode;
+
+  /// Leaves the page; defaults to returning to the app. The phone app's
+  /// scanner pushes this page and pops it again.
+  final VoidCallback? onDone;
 
   @override
   State<DeviceApprovalView> createState() => _DeviceApprovalViewState();
 }
 
 class _DeviceApprovalViewState extends State<DeviceApprovalView> {
-  late final TextEditingController _code = TextEditingController(text: widget.controller.pendingDeviceCode ?? '');
+  late final TextEditingController _code = TextEditingController(text: widget.userCode ?? widget.controller.pendingDeviceCode ?? '');
   _ApprovalState _state = _ApprovalState.entering;
   DeviceAuthorizationRequest? _request;
   String? _error;
 
   NeoCloudController get _controller => widget.controller;
+
+  void _done() => (widget.onDone ?? _controller.finishDeviceApproval)();
 
   @override
   void initState() {
@@ -160,7 +169,7 @@ class _DeviceApprovalViewState extends State<DeviceApprovalView> {
           else
             _InlineNote(message: appStrings.deviceDenied(request?.name ?? '')),
           const SizedBox(height: AppSpacing.lg),
-          FilledButton(onPressed: _controller.finishDeviceApproval, child: Text(appStrings.openNeoCloud)),
+          FilledButton(onPressed: _done, child: Text(appStrings.openNeoCloud)),
         ];
     }
   }
@@ -198,7 +207,7 @@ class _DeviceApprovalViewState extends State<DeviceApprovalView> {
                       ..._body(),
                       if (!done) ...<Widget>[
                         const SizedBox(height: AppSpacing.sm),
-                        TextButton(onPressed: _controller.finishDeviceApproval, child: Text(appStrings.cancel)),
+                        TextButton(onPressed: _done, child: Text(appStrings.cancel)),
                       ],
                     ],
                   ),

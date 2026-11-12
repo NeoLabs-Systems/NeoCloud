@@ -34,6 +34,25 @@ function requireAuthOrDevice(req, res, next) {
   next();
 }
 
+// Approving another sign-in: a browser session or the phone app's token.
+// WebDAV app passwords and desktop tokens can't vouch for a new sign-in.
+const PHONE_PLATFORMS = new Set(['android', 'ios']);
+
+function requireSessionOrPhone(req, res, next) {
+  if (req.session?.userId) {
+    req.userId = req.session.userId;
+    return next();
+  }
+  const device = deviceFromHeader(req);
+  if (!device) return unauthorized(res);
+  if (!PHONE_PLATFORMS.has(device.platform)) {
+    return res.status(403).json({ error: 'Approve sign-ins from the NeoCloud phone app or a browser.', code: 'PHONE_REQUIRED' });
+  }
+  req.userId = device.userId;
+  req.deviceId = device.deviceId;
+  next();
+}
+
 // A device bearer token only.
 function requireDevice(req, res, next) {
   const device = deviceFromHeader(req);
@@ -82,4 +101,4 @@ function requireAppPassword(req, res, next) {
   return next();
 }
 
-module.exports = { requireAdmin, requireAppPassword, requireAuth, requireAuthOrDevice, requireDevice, requireSessionTransport };
+module.exports = { requireAdmin, requireAppPassword, requireAuth, requireAuthOrDevice, requireDevice, requireSessionOrPhone, requireSessionTransport };

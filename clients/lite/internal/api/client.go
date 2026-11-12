@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,11 +33,32 @@ type Client struct {
 func New(baseURL, token string) *Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ResponseHeaderTimeout = 60 * time.Second
+	transport.Proxy = currentProxy
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		Token:   token,
 		HTTP:    &http.Client{Transport: transport},
 	}
+}
+
+var (
+	proxyMu sync.RWMutex
+	proxy   = http.ProxyFromEnvironment
+)
+
+// SetProxy picks the proxy of every client, made before or after (the
+// proxy setting, internal/proxy).
+func SetProxy(fn func(*http.Request) (*url.URL, error)) {
+	proxyMu.Lock()
+	proxy = fn
+	proxyMu.Unlock()
+}
+
+func currentProxy(req *http.Request) (*url.URL, error) {
+	proxyMu.RLock()
+	fn := proxy
+	proxyMu.RUnlock()
+	return fn(req)
 }
 
 // Error is a non-2xx answer. Code is the server's machine code

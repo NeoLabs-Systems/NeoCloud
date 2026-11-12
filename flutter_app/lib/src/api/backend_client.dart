@@ -133,6 +133,56 @@ class BackendClient {
 
   Future<AccountUser> me() async => AccountUser.fromJson(_map(_map(await _request('GET', '/api/auth/me'))['user']));
 
+  // QR sign-in, the signed-out browser's side
+
+  Future<QrLoginChallenge> createQrLoginChallenge(Map<String, Object?> requestMetadata) async => QrLoginChallenge.fromJson(
+    _map(await _request('POST', '/api/auth/qr-login/challenge', json: {'requestMetadata': requestMetadata}, expireOn401: false)),
+  );
+
+  /// With [knownStatus] the server holds the request until the status
+  /// differs from it (up to 25 s).
+  Future<Map<String, dynamic>> qrLoginStatus(QrLoginChallenge challenge, {String? knownStatus}) async => _map(await _request(
+    'POST',
+    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/status',
+    json: {'token': challenge.pollToken, 'knownStatus': ?knownStatus},
+    expireOn401: false,
+  ));
+
+  Future<void> cancelQrLogin(QrLoginChallenge challenge) => _request(
+    'POST',
+    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/cancel',
+    json: {'token': challenge.pollToken},
+    expireOn401: false,
+  );
+
+  /// Answers like [login] once the phone approved, with the session cookie.
+  Future<Map<String, dynamic>> claimQrLogin(QrLoginChallenge challenge) async => _map(await _request(
+    'POST',
+    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/claim',
+    json: {'token': challenge.pollToken},
+    expireOn401: false,
+  ));
+
+  // QR sign-in, the signed-in phone's side (session or device token)
+
+  /// Marks the scanned code as seen and returns what asks to sign in.
+  Future<QrLoginPreview> resolveQrLogin(String challengeId, String secret, Map<String, Object?> scannerMetadata) async =>
+      QrLoginPreview.fromJson(_map(await _request('POST', '/api/account/qr-login/resolve', json: {
+        'challengeId': challengeId,
+        'secret': secret,
+        'scannerMetadata': scannerMetadata,
+      })));
+
+  Future<QrLoginPreview> approveQrLogin(String challengeId, String secret, Map<String, Object?> approvalMetadata) async =>
+      QrLoginPreview.fromJson(_map(await _request('POST', '/api/account/qr-login/approve', json: {
+        'challengeId': challengeId,
+        'secret': secret,
+        'approvalMetadata': approvalMetadata,
+      })));
+
+  Future<void> declineQrLogin(String challengeId, String secret) =>
+      _request('POST', '/api/account/qr-login/decline', json: {'challengeId': challengeId, 'secret': secret});
+
   // Files
 
   /// One page of a folder; [FolderListing.nextCursor] fetches the next.

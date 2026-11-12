@@ -8,7 +8,7 @@ All endpoints live under `/api` and speak JSON unless noted. Errors look like
 | Client | How |
 | --- | --- |
 | Web app | Session cookie `neocloud.sid` from `/api/auth/login` or `/api/auth/register`. |
-| Mobile app, lite (desktop) client | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only. |
+| Mobile app, lite (desktop) client | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults, plus approving other sign-ins (QR sign-in, device login) under `/api/account`. |
 | Share link visitors | No account: the link token in the path, plus an unlock cookie for password links. |
 
 Browsers on another origin must be listed in `ALLOWED_ORIGINS`; state-changing
@@ -42,6 +42,25 @@ While the server shuts down (up to 30 s), new uploads get
 | POST | `/webauthn/login/verify` | `{ response }` | The assertion as JSON (base64url fields). Answers like `/login`, `{ requiresTwoFactor: true }` included: a key that verified the user (PIN or biometric) stands in for the second factor, a presence-only key does not |
 | POST | `/logout` | | Ends the session and closes its socket.io connections |
 | GET | `/me` | | |
+| POST | `/qr-login/challenge` (60 / 15 min) | `{ requestMetadata? }` | QR sign-in, see below → `{ challengeId, pollToken, expiresAt, status: "pending", qrPayload, backendUrl }` |
+| POST | `/qr-login/challenge/:id/status` (400 / 15 min) | `{ token, knownStatus? }` | → `{ challengeId, status, expiresAt, approvedAt, claimedAt }`. With `knownStatus` the request is held open (up to 25 s) until the status differs, and the answer carries `longPoll: true` |
+| POST | `/qr-login/challenge/:id/cancel` (400 / 15 min) | `{ token }` | → `{ success: true }`; a pending or scanned code becomes `declined` |
+| POST | `/qr-login/challenge/:id/claim` (40 / 15 min) | `{ token }` | Once approved: answers like `/login` and sets the session cookie. `409 QR_LOGIN_NOT_APPROVED` before, `QR_LOGIN_USED` after the first claim |
+
+QR sign-in: a signed-out browser shows a code, the signed-in phone app scans
+and approves it (`/api/account/qr-login/*`), and the browser claims a session.
+`qrPayload` is
+`neocloud://qr-login?v=1&backend=<origin>&challenge=<challengeId>&secret=<approve secret>`.
+The browser keeps `pollToken`; the QR code carries the approve secret; only
+the SHA-256 of each is stored. A code lives 2 minutes. `status` is `pending`,
+`scanned` (the phone opened the preview; the answer then adds `scannedAt`,
+`scannedBy: { label, platformLabel, deviceClass }`, `requestedDevice: { label }`
+and `requestLocation: { label }`), `approved`, `claimed`, `declined` or
+`expired`; an unknown poll token reads as `expired`. `requestMetadata`
+(`deviceLabel`, `platformLabel`, `browserLabel`, `deviceClass`, `appMode`,
+`platform`) labels the browser for the phone; otherwise it is read from the
+User-Agent. Changing or resetting the password declines approved codes not
+yet claimed.
 
 Besides 20 tries per 15 minutes per address, `/login` and `/login/2fa` are
 throttled per account, whatever address a try comes from (a name no account
@@ -70,6 +89,11 @@ The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited
 
 ## Account — `/api/account` (session only)
 
+Except approving other sign-ins, which is what the phone app does: the
+`/devices/authorize/:userCode` and `/qr-login/*` routes also take the phone
+app's device bearer token (platform `android` or `ios`; other tokens get
+`403 PHONE_REQUIRED`).
+
 | Method | Path | Body |
 | --- | --- | --- |
 | GET | `/` | |
@@ -91,6 +115,21 @@ The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited
 The user code is accepted in any case, with or without the dash. Unknown,
 expired or already decided codes answer `404 NOT_FOUND`; both routes allow 30
 requests per 15 minutes per address.
+
+QR sign-in, the phone side (session or bearer, 30 / 15 min, see
+[Auth](#auth--apiauth)); each takes `{ challengeId, secret }` from the scanned
+code:
+
+| Method | Path | Extra body | Answer |
+| --- | --- | --- | --- |
+| POST | `/qr-login/resolve` | `{ scannerMetadata? }` (labels as in `requestMetadata`) | Marks the code `scanned` and returns the preview: `{ challengeId, status, requestedAt, expiresAt, scannedAt, approvedAt, claimedAt, scannedBy, requestedDevice: { label, platformLabel, browserLabel, deviceClass, userAgent, metadata }, requestLocation: { label, ipAddress } }`. A scanned code reads `pending` here |
+| POST | `/qr-login/approve` | `{ approvalMetadata? }` | → the preview with `status: "approved"` |
+| POST | `/qr-login/decline` | | → `{ success: true }` |
+
+A wrong secret, an unknown or an expired code is `404 NOT_FOUND`; a declined
+or cancelled one `409 QR_LOGIN_DECLINED`, a claimed one `409 QR_LOGIN_USED`,
+and declining an approved one `409 QR_LOGIN_APPROVED`. The location is the
+address the browser asked from; NeoCloud does no geo lookup.
 
 QR pairing ([clients.md](clients.md#5-qr-pairing)), the web side:
 

@@ -30,10 +30,15 @@ const (
 	Conflict
 	// Forget drops the state row and touches nothing on disk or server.
 	Forget
+	// KeepLocal and KeepRemote settle a conflict for one side (the
+	// conflict setting, or a choice in the issues view); the other
+	// version goes to the local trash.
+	KeepLocal
+	KeepRemote
 )
 
 func (a Action) String() string {
-	return [...]string{"none", "upload", "download", "delete-local", "delete-remote", "conflict", "forget"}[a]
+	return [...]string{"none", "upload", "download", "delete-local", "delete-remote", "conflict", "forget", "keep-local", "keep-remote"}[a]
 }
 
 // Decide is the three-way merge table of docs/clients.md for one path.

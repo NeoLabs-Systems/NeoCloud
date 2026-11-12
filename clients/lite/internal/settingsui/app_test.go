@@ -47,6 +47,9 @@ func callAPI(t *testing.T, client *http.Client, s *Server, method, path, body st
 // session and the API header.
 var newEndpoints = []struct{ method, path string }{
 	{http.MethodPost, "/api/pick-folder"},
+	{http.MethodGet, "/api/local/suggest"},
+	{http.MethodPost, "/api/pairs/x/new-folders"},
+	{http.MethodPost, "/api/pairs/x/resolve"},
 	{http.MethodGet, "/api/remote/folders"},
 	{http.MethodPost, "/api/remote/folders"},
 	{http.MethodGet, "/api/account"},
@@ -138,16 +141,16 @@ func TestPickerCommandsPerOS(t *testing.T) {
 			return "", errors.New("not found")
 		}
 	}
-	if got := pickerCommands("darwin", has()); len(got) != 1 || got[0].name != "osascript" || !strings.Contains(strings.Join(got[0].args, " "), "POSIX path of (choose folder") {
+	if got := pickerCommands("darwin", pickerTitle, has()); len(got) != 1 || got[0].name != "osascript" || !strings.Contains(strings.Join(got[0].args, " "), "POSIX path of (choose folder") {
 		t.Errorf("darwin: %+v", got)
 	}
-	if got := pickerCommands("windows", has()); len(got) != 1 || got[0].name != "powershell.exe" || !strings.Contains(got[0].args[len(got[0].args)-1], "FolderBrowserDialog") {
+	if got := pickerCommands("windows", pickerTitle, has()); len(got) != 1 || got[0].name != "powershell.exe" || !strings.Contains(got[0].args[len(got[0].args)-1], "FolderBrowserDialog") {
 		t.Errorf("windows: %+v", got)
 	}
-	if got := pickerCommands("linux", has("kdialog", "yad")); len(got) != 2 || got[0].name != "kdialog" || got[1].name != "yad" {
+	if got := pickerCommands("linux", pickerTitle, has("kdialog", "yad")); len(got) != 2 || got[0].name != "kdialog" || got[1].name != "yad" {
 		t.Errorf("linux: %+v", got)
 	}
-	if got := pickerCommands("linux", has()); len(got) != 0 {
+	if got := pickerCommands("linux", pickerTitle, has()); len(got) != 0 {
 		t.Errorf("linux without dialogs: %+v", got)
 	}
 }
@@ -156,7 +159,7 @@ func TestPickFolder(t *testing.T) {
 	s := startServer(t)
 	s.lookPath = func(name string) (string, error) { return "/usr/bin/" + name, nil }
 	browser := signedIn(t, s)
-	want := pickerCommands(runtime.GOOS, s.lookPath)[0].name
+	want := pickerCommands(runtime.GOOS, pickerTitle, s.lookPath)[0].name
 
 	var ran []string
 	s.run = func(_ context.Context, name string, _ ...string) ([]byte, error) {
@@ -321,7 +324,7 @@ func TestOpenTargetsAndPairActions(t *testing.T) {
 	callAPI(t, browser, s, http.MethodPost, "/api/open/web", "")
 
 	local := t.TempDir()
-	pair, err := config.NewPair(local, "Documents", "both", nil)
+	pair, err := config.NewPair(local, "Documents", "both", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,5 +450,87 @@ func TestCancelLogin(t *testing.T) {
 	}
 	if _, state := callAPI(t, browser, s, http.MethodGet, "/api/state", ""); state["login"].(map[string]any)["pending"] != false {
 		t.Errorf("still pending: %v", state["login"])
+	}
+}
+
+// The cloud-first flow: the server proposes ~/NeoCloud, creates it with
+// the pair, and refuses to create over an existing folder.
+func TestCloudFirstPair(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	s := startServer(t)
+	// Keep the test's folder out of this computer's real sidebar.
+	s.cfg.Update(func(c *config.Config) error { c.FileManagerSidebar = new(false); return nil })
+	browser := signedIn(t, s)
+
+	code, out := callAPI(t, browser, s, http.MethodGet, "/api/local/suggest?remote=", "")
+	want := filepath.Join(home, "NeoCloud")
+	if code != http.StatusOK || out["path"] != want {
+		t.Fatalf("suggest: %d %v", code, out)
+	}
+	body, _ := json.Marshal(map[string]any{"local": want, "remote": "", "create": true})
+	if code, out := callAPI(t, browser, s, http.MethodPost, "/api/pairs", string(body)); code != http.StatusOK || out["created"] != true {
+		t.Fatalf("add: %d %v", code, out)
+	}
+	if info, err := os.Stat(want); err != nil || !info.IsDir() {
+		t.Fatalf("folder not created: %v", err)
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs", string(body)); code != http.StatusBadRequest {
+		t.Errorf("created over an existing folder: %d", code)
+	}
+	if _, out := callAPI(t, browser, s, http.MethodGet, "/api/local/suggest?remote=Photos", ""); out["path"] != filepath.Join(home, "NeoCloud Photos") {
+		t.Errorf("suggest next to the synced NeoCloud folder: %v", out)
+	}
+	missing, _ := json.Marshal(map[string]any{"local": filepath.Join(home, "Elsewhere"), "remote": "x"})
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs", string(missing)); code != http.StatusBadRequest {
+		t.Errorf("a missing folder was created without create: %d", code)
+	}
+	if _, err := os.Stat(filepath.Join(home, "Elsewhere")); err == nil {
+		t.Error("Elsewhere was created")
+	}
+}
+
+// Folder and app settings go through validation; the state shows the
+// effective app settings.
+func TestSettingsEndpoints(t *testing.T) {
+	s := startServer(t)
+	browser := signedIn(t, s)
+	local := t.TempDir()
+	pair, _ := config.NewPair(local, "Docs", "both", nil, false)
+	s.cfg.Update(func(c *config.Config) error { return c.AddPair(pair) })
+
+	good := `{"settings":{"excludePaths":["/Photos/"],"conflict":"newer","maxFileSizeMB":5,"propagateDeletes":false}}`
+	if code, out := callAPI(t, browser, s, http.MethodPut, "/api/pairs/"+pair.ID, good); code != http.StatusOK {
+		t.Fatalf("good settings: %d %v", code, out)
+	}
+	saved, _ := s.cfg.Get().Pair(pair.ID)
+	if len(saved.ExcludePaths) != 1 || saved.ExcludePaths[0] != "Photos" || saved.Conflict != "newer" || saved.MirrorDeletes() {
+		t.Errorf("saved %+v", saved.PairSettings)
+	}
+	for _, bad := range []string{`{"settings":{"mode":"on_demand"}}`, `{"settings":{"conflict":"coin"}}`, `{"settings":{"excludePaths":["../x"]}}`} {
+		if code, _ := callAPI(t, browser, s, http.MethodPut, "/api/pairs/"+pair.ID, bad); code != http.StatusBadRequest {
+			t.Errorf("%s: %d", bad, code)
+		}
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPut, "/api/settings", `{"global":{"proxy":"manual","proxyUrl":"nope"}}`); code != http.StatusBadRequest {
+		t.Errorf("bad proxy accepted: %d", code)
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPut, "/api/settings", `{"global":{"notifications":"off","fileManagerSidebar":false}}`); code != http.StatusOK {
+		t.Errorf("global settings: %d", code)
+	}
+	_, state := callAPI(t, browser, s, http.MethodGet, "/api/state", "")
+	global := state["global"].(map[string]any)
+	if global["notifications"] != "off" || global["deleteGuardFiles"] != float64(500) || global["proxy"] != "system" {
+		t.Errorf("state global: %v", global)
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs/"+pair.ID+"/resolve", `{"path":"a.txt","choice":"coin"}`); code != http.StatusBadRequest {
+		t.Errorf("bad choice: %d", code)
+	}
+	if code, _ := callAPI(t, browser, s, http.MethodPost, "/api/pairs/"+pair.ID+"/new-folders", `{"path":"Videos","sync":false}`); code != http.StatusOK {
+		t.Errorf("new folder: %d", code)
+	}
+	if saved, _ := s.cfg.Get().Pair(pair.ID); len(saved.ExcludePaths) != 2 {
+		t.Errorf("declined folder not excluded: %v", saved.ExcludePaths)
 	}
 }

@@ -5,6 +5,7 @@ import 'package:neocloud/main.dart';
 import 'package:neocloud/src/api/models.dart';
 import 'package:neocloud/src/imports/import_progress.dart';
 import 'package:neocloud/src/pairing/pairing_link.dart';
+import 'package:neocloud/src/pairing/scanned_code.dart';
 import 'package:neocloud/src/search/snippet.dart';
 
 const String _code = 'Q2hhbmdlTWVQbGVhc2VJdHNBVGVzdENvZGVYeXo';
@@ -79,6 +80,51 @@ void main() {
     });
   });
 
+  group('scanned codes', () {
+    test('a pairing link signs this phone in', () {
+      final code = parseScannedCode('neocloud://pair?server=https%3A%2F%2Fcloud.example.com&code=$_code');
+      expect(code, isA<PairingScan>());
+      expect(code!.server.toString(), 'https://cloud.example.com');
+    });
+
+    test('a browser sign-in code gives the server, challenge and secret', () {
+      const secret = 'aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA';
+      final code = parseScannedCode(
+        'neocloud://qr-login?v=1&backend=https%3A%2F%2Fcloud.example.com%2F&challenge=0b6f7a52-2b7e-4c1f-9a7d-3f1d2c4b5a69&secret=$secret',
+      );
+      expect(code, isA<QrLoginScanPayload>());
+      final login = code! as QrLoginScanPayload;
+      expect(login.server.toString(), 'https://cloud.example.com');
+      expect(login.challengeId, '0b6f7a52-2b7e-4c1f-9a7d-3f1d2c4b5a69');
+      expect(login.secret, secret);
+      expect(sameServer(login.server, 'https://cloud.example.com/'), isTrue);
+      expect(sameServer(login.server, 'https://other.example.com'), isFalse);
+    });
+
+    test('a device approval link gives the server and the user code', () {
+      final code = parseScannedCode('https://example.com/cloud/app/device?code=abcd-efgh');
+      expect(code, isA<DeviceCodeScan>());
+      final device = code! as DeviceCodeScan;
+      expect(device.server.toString(), 'https://example.com/cloud');
+      expect(device.userCode, 'ABCD-EFGH');
+    });
+
+    test('anything else is refused', () {
+      for (final raw in <String>[
+        'https://example.com/',
+        'https://example.com/app/device?code=ABCD',
+        'https://example.com/app/device?code=ABCD-EFG1',
+        'neocloud://qr-login?v=2&backend=https%3A%2F%2Fa.example&challenge=0b6f7a52-2b7e&secret=aGVsbG8td29ybGQtdGhpcy1p',
+        'neocloud://qr-login?backend=ftp%3A%2F%2Fa.example&challenge=0b6f7a52-2b7e&secret=aGVsbG8td29ybGQtdGhpcy1p',
+        'neocloud://qr-login?backend=https%3A%2F%2Fa.example&challenge=0b6f7a52-2b7e&secret=short',
+        'neoagent://qr-login?backend=https%3A%2F%2Fa.example&challenge=0b6f7a52-2b7e&secret=aGVsbG8td29ybGQtdGhpcy1p',
+        'hello',
+      ]) {
+        expect(parseScannedCode(raw), isNull, reason: raw);
+      }
+    });
+  });
+
   group('import progress', () {
     test('progress counts bytes once known, files before, nothing while scanning', () {
       expect(importFraction(_job(totalBytes: 400, doneBytes: 100, totalFiles: 10, doneFiles: 9)), 0.25);
@@ -114,6 +160,36 @@ void main() {
       expect(meters.etaOf('j1'), const Duration(seconds: 8));
       meters.sample(<ImportJob>[_job(status: 'paused', totalBytes: 10000, doneBytes: 2000)], start.add(const Duration(seconds: 4)));
       expect(meters.speedOf('j1'), isNull);
+    });
+  });
+
+  group('adaptive sheets', () {
+    Future<void> open(WidgetTester tester, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAdaptiveSheet<void>(context: context, builder: (_) => const Text('sheet body')),
+            child: const Text('open'),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.text('sheet body'), findsOneWidget);
+    }
+
+    testWidgets('a phone gets a bottom sheet', (tester) async {
+      await open(tester, const Size(390, 844));
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+    });
+
+    testWidgets('a wide window keeps the dialog', (tester) async {
+      await open(tester, const Size(1280, 900));
+      expect(find.byType(BottomSheet), findsNothing);
     });
   });
 

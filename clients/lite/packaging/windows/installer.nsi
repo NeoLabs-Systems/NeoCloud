@@ -8,6 +8,8 @@ Unicode true
 !define RUN_KEY "Software\Microsoft\Windows\CurrentVersion\Run"
 ; Same value name as internal/autostart (autostart.Label).
 !define RUN_VALUE "com.neolabs.neocloud-lite"
+; The Explorer navigation pane entry (internal/shellfolder sidebarCLSID).
+!define SIDEBAR_CLSID "{9F4DC68E-FECA-4260-9BF2-A1C29417C317}"
 
 Name "${APP}"
 OutFile "${OUTFILE}"
@@ -59,12 +61,16 @@ Section "Install"
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair" 1
 SectionEnd
 
-; Removes the app, its shortcut and the login entry. The config and sync
-; state in %APPDATA%\neocloud-lite stay.
+; Removes the app, its shortcut, the login entry and the Explorer
+; navigation pane entry. The config and sync state in
+; %APPDATA%\neocloud-lite and the synced folders stay.
 Section "Uninstall"
   SetShellVarContext current
   !insertmacro StopNeoCloud
   DeleteRegValue HKCU "${RUN_KEY}" "${RUN_VALUE}"
+  DeleteRegKey HKCU "Software\Classes\CLSID\${SIDEBAR_CLSID}"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\${SIDEBAR_CLSID}"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" "${SIDEBAR_CLSID}"
   Delete "$SMPROGRAMS\NeoCloud.lnk"
   Delete "$INSTDIR\NeoCloud.exe"
   Delete "$INSTDIR\Uninstall.exe"

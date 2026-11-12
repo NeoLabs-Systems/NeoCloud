@@ -2970,11 +2970,11 @@ class AppL10nDe extends AppL10n {
   String get scanTitle => 'QR-Code scannen';
 
   @override
-  String get scanPrimeTitle => 'Mit der Kamera koppeln';
+  String get scanPrimeTitle => 'Mit der Kamera scannen';
 
   @override
   String get scanPrimeBody =>
-      'NeoCloud braucht die Kamera nur, um den Kopplungscode aus der Web-App zu lesen. Es wird nichts aufgenommen oder hochgeladen.';
+      'NeoCloud braucht die Kamera nur, um NeoCloud-QR-Codes zu lesen. Es wird nichts aufgenommen oder hochgeladen.';
 
   @override
   String get scanPrimeAllow => 'Kamera erlauben';
@@ -2984,7 +2984,7 @@ class AppL10nDe extends AppL10n {
       'Richte die Kamera auf den QR-Code unter Einstellungen › Anmeldung & Sicherheit';
 
   @override
-  String get scanWrongCode => 'Das ist kein NeoCloud-Kopplungscode';
+  String get scanWrongCode => 'Das ist kein NeoCloud-QR-Code';
 
   @override
   String get scanTorchOn => 'Licht einschalten';
@@ -3597,4 +3597,126 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get memberAlreadyAdded => 'Bereits mit dieser Person geteilt.';
+
+  @override
+  String get authOrUsePassword => 'oder mit Passwort';
+
+  @override
+  String get qrLoginScanTitle => 'Mit NeoCloud auf dem Smartphone scannen';
+
+  @override
+  String get qrLoginScanBody =>
+      'Öffne die NeoCloud-App auf einem angemeldeten Smartphone und tippe auf QR-Code scannen.';
+
+  @override
+  String qrLoginRefreshesIn(int seconds) {
+    return 'Neuer Code in $seconds s';
+  }
+
+  @override
+  String get qrLoginPreparing => 'Code wird vorbereitet …';
+
+  @override
+  String get qrLoginNewCode => 'Neuer Code';
+
+  @override
+  String get qrLoginShowCode => 'Mit dem Smartphone anmelden';
+
+  @override
+  String get qrLoginWaitingTitle => 'Schau auf dein Smartphone';
+
+  @override
+  String get qrLoginWaitingBody =>
+      'Bestätige die Anmeldung auf deinem Smartphone, um hier weiterzumachen.';
+
+  @override
+  String get qrLoginSigningInOn => 'Anmeldung auf';
+
+  @override
+  String get qrLoginFrom => 'Von';
+
+  @override
+  String get qrLoginWaitingForApproval => 'Warte auf Bestätigung';
+
+  @override
+  String get qrLoginCancelAndUsePassword => 'Abbrechen und Passwort verwenden';
+
+  @override
+  String get qrLoginCouldNotStart =>
+      'Der QR-Code konnte nicht vorbereitet werden.';
+
+  @override
+  String get qrLoginRateLimited =>
+      'Zu viele QR-Codes in kurzer Zeit. Warte einen Moment und versuche es dann erneut.';
+
+  @override
+  String get qrLoginDeclinedOnPhone =>
+      'Die Anmeldung wurde auf dem Smartphone abgelehnt.';
+
+  @override
+  String get qrLoginExpired => 'Der Code ist abgelaufen. Scanne den neuen.';
+
+  @override
+  String get scanQrSubtitle =>
+      'Einen Browser anmelden oder ein Gerät bestätigen';
+
+  @override
+  String get scanAnyHint =>
+      'Richte die Kamera auf den QR-Code auf dem anderen Gerät';
+
+  @override
+  String get qrLoginApproveTitle => 'Anmeldung bestätigen?';
+
+  @override
+  String qrLoginApproveHint(String account) {
+    return 'Bestätige nur, wenn du diese Anmeldung selbst gestartet hast. Sie wird als $account angemeldet.';
+  }
+
+  @override
+  String get qrLoginApprove => 'Bestätigen';
+
+  @override
+  String get qrLoginDecline => 'Ablehnen';
+
+  @override
+  String qrLoginRequestedAt(String time) {
+    return 'Angefragt $time';
+  }
+
+  @override
+  String get qrLoginPreviewExpired =>
+      'Diese Anfrage ist abgelaufen. Zeige auf dem anderen Gerät einen neuen Code an.';
+
+  @override
+  String get qrLoginPreviewUsed => 'Diese Anfrage wurde bereits verwendet.';
+
+  @override
+  String qrLoginApproved(String device) {
+    return '$device ist angemeldet.';
+  }
+
+  @override
+  String get qrLoginDeclined => 'Anmeldung abgelehnt.';
+
+  @override
+  String get qrLoginCouldNotApprove =>
+      'Die Anmeldung konnte nicht bestätigt werden.';
+
+  @override
+  String scanOtherServer(String server) {
+    return 'Dieser Code gehört zu einem anderen Server ($server).';
+  }
+
+  @override
+  String get cameraOfferTitle => 'Fotos sichern?';
+
+  @override
+  String get cameraOfferBody =>
+      'NeoCloud kann neue Fotos und Videos von diesem Smartphone automatisch hochladen, verschlüsselt wie jede andere Datei.';
+
+  @override
+  String get cameraOfferSetUp => 'Einrichten';
+
+  @override
+  String get notNow => 'Nicht jetzt';
 }

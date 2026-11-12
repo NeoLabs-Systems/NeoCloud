@@ -82,7 +82,7 @@ docs/api.md         Endpoint reference — keep it in step with the routes
 
 - Never log secrets, tokens, file names of other accounts, or file contents.
 - Origin checks go through `server/config/origins.js` only.
-- Device tokens reach `files`, `transfers`, `storage`, `sync`, `shares` and `vaults` routes only (`requireAuthOrDevice`); account, settings and admin require a session.
+- Device tokens reach `files`, `transfers`, `storage`, `sync`, `shares` and `vaults` routes only (`requireAuthOrDevice`); account, settings and admin require a session, except the routes that approve another sign-in (`/api/account/qr-login/*`, `/api/account/devices/authorize/*`), which also take the phone app's token (`android`/`ios` only, `requireSessionOrPhone`).
 - File routes resolve node ids through `services/members/access.js` (`resolveAccess`), so shared nodes are reached only through a live grant; keep owner-only features (versions, vaults, links, sync, WebDAV) on the account-scoped services.
 - Public share routes check every node id against the shared subtree (`services/shares/public.js`); never serve a share node through another path.
 - Import passwords (another server's credentials) are stored only with `encryptValue` and set to NULL when the job ends; imports are session-only.

@@ -96,17 +96,26 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
   void _cameraChanged() => unawaited(_askAboutCamera());
 
   /// Camera upload went off with a sign-out or a change of server or
-  /// account: ask once whether to set it up for this account.
+  /// account: ask once whether to set it up for this account. Right after
+  /// the first connect, offer it instead (the permissions step).
   Future<void> _askAboutCamera() async {
     final camera = _controller.cameraUploads;
+    if (_controller.offerCameraUpload) {
+      // Asking again about camera upload covers the offer.
+      _controller.offerCameraUpload = false;
+      if (!camera.needsConfirmation) {
+        if (!camera.settings.enabled && _controller.isAuthenticated) await _offerCamera();
+        return;
+      }
+    }
     if (!camera.needsConfirmation || _askingCamera || !_controller.isAuthenticated) return;
     final navigatorContext = _navigatorKey.currentContext;
     if (navigatorContext == null) return;
     _askingCamera = true;
     try {
-      final setUp = await showDialog<bool>(
+      final setUp = await showAdaptiveSheet<bool>(
         context: navigatorContext,
-        builder: (dialogContext) => AlertDialog(
+        builder: (dialogContext) => _AdaptiveDialog(
           title: Text(appStrings.cameraReconfirmTitle),
           content: SizedBox(
             width: 440,
@@ -122,6 +131,34 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
         ),
       );
       await camera.dismissConfirmation();
+      if (setUp == true && _controller.isAuthenticated) {
+        _controller.setSettingsPage(SettingsPage.cameraUpload);
+        _controller.setSelectedSection(AppSection.settings);
+      }
+    } finally {
+      _askingCamera = false;
+    }
+  }
+
+  /// NeoAgent's first-run prompt: what camera upload does, Set up or Not
+  /// now. Setting up opens its page, which asks for the permissions.
+  Future<void> _offerCamera() async {
+    final navigatorContext = _navigatorKey.currentContext;
+    if (navigatorContext == null || _askingCamera) return;
+    _askingCamera = true;
+    try {
+      final setUp = await showAdaptiveSheet<bool>(
+        context: navigatorContext,
+        builder: (dialogContext) => _AdaptiveDialog(
+          icon: Icon(Icons.photo_camera_outlined, color: _accent, size: 32),
+          title: Text(appStrings.cameraOfferTitle),
+          content: Text(appStrings.cameraOfferBody, textAlign: TextAlign.center, style: TextStyle(color: _textSecondary, height: 1.45)),
+          actions: <Widget>[
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(appStrings.notNow)),
+            FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(appStrings.cameraOfferSetUp)),
+          ],
+        ),
+      );
       if (setUp == true && _controller.isAuthenticated) {
         _controller.setSettingsPage(SettingsPage.cameraUpload);
         _controller.setSelectedSection(AppSection.settings);

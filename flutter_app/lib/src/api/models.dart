@@ -4,6 +4,7 @@ library;
 
 part 'models_features.dart';
 part 'models_members.dart';
+part 'models_qr_login.dart';
 
 int _int(Object? value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 

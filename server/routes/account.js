@@ -3,7 +3,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const db = require('../db/database');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireSessionOrPhone } = require('../middleware/auth');
 const { changePassword } = require('../services/account/credentials');
 const twoFactor = require('../services/account/two_factor');
 const webauthn = require('../services/account/webauthn');
@@ -11,12 +11,13 @@ const { listSessions, regenerateCurrentSession, revokeSession } = require('../se
 const { createDeviceToken, listDeviceTokens, revokeDeviceToken } = require('../services/devices/tokens');
 const { decideAuthorization, describeAuthorization } = require('../services/devices/authorizations');
 const { getPairingStatus, startPairing } = require('../services/devices/pairing');
+const qrLogin = require('../services/account/qr_login');
 const { getUsage } = require('../services/storage/quota');
 const { jsonHandler, intParam, publicOrigin, rateLimiter } = require('./_helpers/http');
 const { toUserPayload } = require('./auth');
+const { httpError } = require('../utils/http_error');
 
 const router = express.Router();
-router.use(requireAuth);
 
 const accountLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -25,6 +26,52 @@ const accountLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Approving another sign-in is what the phone app is for, and the phone app
+// holds a device token, not a session: these routes take either (phone
+// tokens only, see requireSessionOrPhone). Everything
+// below router.use(requireAuth) needs a session.
+
+// Approving a device-code sign-in (see /api/devices). Its own limiter: the
+// user codes are short, so guessing them must stay slow.
+const deviceCodeLimiter = rateLimiter(30);
+
+router.get('/devices/authorize/:userCode', deviceCodeLimiter, requireSessionOrPhone, jsonHandler((req) => describeAuthorization(req.params.userCode)));
+
+router.post('/devices/authorize/:userCode', deviceCodeLimiter, requireSessionOrPhone, jsonHandler((req) => decideAuthorization(
+  req.userId,
+  req.params.userCode,
+  req.body?.approve,
+)));
+
+// QR sign-in (services/account/qr_login.js): the phone scanned the code a
+// signed-out browser shows. resolve marks it scanned and returns the preview.
+function qrLoginTarget(req) {
+  const challengeId = String(req.body?.challengeId || '').trim();
+  const secret = String(req.body?.secret || '').trim();
+  if (!challengeId || !secret) throw httpError(400, 'Challenge id and QR secret are required', 'MISSING_FIELDS');
+  return { challengeId, secret };
+}
+
+router.post('/qr-login/resolve', accountLimiter, requireSessionOrPhone, jsonHandler((req) => qrLogin.markChallengeScanned({
+  ...qrLoginTarget(req),
+  scannerMetadata: req.body?.scannerMetadata,
+})));
+
+router.post('/qr-login/decline', accountLimiter, requireSessionOrPhone, jsonHandler((req) => {
+  qrLogin.declineChallenge(qrLoginTarget(req));
+  return { success: true };
+}));
+
+router.post('/qr-login/approve', accountLimiter, requireSessionOrPhone, jsonHandler((req) => qrLogin.approveChallenge({
+  ...qrLoginTarget(req),
+  userId: req.userId,
+  sessionId: req.deviceId ? null : req.sessionID,
+  deviceId: req.deviceId || null,
+  approvalMetadata: req.body?.approvalMetadata,
+})));
+
+router.use(requireAuth);
 
 function currentUser(req) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
@@ -124,18 +171,6 @@ router.post('/devices', accountLimiter, jsonHandler((req) => createDeviceToken(r
   name: req.body?.name,
   platform: req.body?.platform,
 }), { status: 201 }));
-
-// Approving a device-code sign-in (see /api/devices). Its own limiter: the
-// user codes are short, so guessing them must stay slow.
-const deviceCodeLimiter = rateLimiter(30);
-
-router.get('/devices/authorize/:userCode', deviceCodeLimiter, jsonHandler((req) => describeAuthorization(req.params.userCode)));
-
-router.post('/devices/authorize/:userCode', deviceCodeLimiter, jsonHandler((req) => decideAuthorization(
-  req.userId,
-  req.params.userCode,
-  req.body?.approve,
-)));
 
 // QR pairing: the web page shows a code for a phone to redeem at
 // POST /api/devices/pair, and polls its status (or waits for devices:paired).

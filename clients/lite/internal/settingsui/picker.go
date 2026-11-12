@@ -23,7 +23,12 @@ type pickerCommand struct {
 	args []string
 }
 
-const pickerTitle = "Choose a folder to sync"
+// Dialog titles: picking the folder to sync, or (?for=parent) where the
+// cloud-first flow creates its folder.
+const (
+	pickerTitle       = "Choose a folder to sync"
+	parentPickerTitle = "Choose where to create the NeoCloud folder"
+)
 
 // The Windows dialog is owned by an invisible topmost form so it opens in
 // front of the app window instead of behind it.
@@ -31,23 +36,24 @@ const windowsPicker = `Add-Type -AssemblyName System.Windows.Forms
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $owner = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = '` + pickerTitle + `'
+$dialog.Description = '@TITLE@'
 $dialog.ShowNewFolderButton = $true
 if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { $dialog.SelectedPath }`
 
 // pickerCommands are the native folder dialogs to try on goos, in order.
-func pickerCommands(goos string, lookPath func(string) (string, error)) []pickerCommand {
+// title is one of the constants above, so it needs no quoting.
+func pickerCommands(goos, title string, lookPath func(string) (string, error)) []pickerCommand {
 	switch goos {
 	case "darwin":
-		return []pickerCommand{{"osascript", []string{"-e", `POSIX path of (choose folder with prompt "` + pickerTitle + `")`}}}
+		return []pickerCommand{{"osascript", []string{"-e", `POSIX path of (choose folder with prompt "` + title + `")`}}}
 	case "windows":
-		return []pickerCommand{{"powershell.exe", []string{"-NoProfile", "-NonInteractive", "-STA", "-Command", windowsPicker}}}
+		return []pickerCommand{{"powershell.exe", []string{"-NoProfile", "-NonInteractive", "-STA", "-Command", strings.Replace(windowsPicker, "@TITLE@", title, 1)}}}
 	}
 	home, _ := os.UserHomeDir()
 	linux := []pickerCommand{
-		{"zenity", []string{"--file-selection", "--directory", "--title=" + pickerTitle}},
-		{"kdialog", []string{"--getexistingdirectory", home, "--title", pickerTitle}},
-		{"yad", []string{"--file", "--directory", "--title=" + pickerTitle}},
+		{"zenity", []string{"--file-selection", "--directory", "--title=" + title}},
+		{"kdialog", []string{"--getexistingdirectory", home, "--title", title}},
+		{"yad", []string{"--file", "--directory", "--title=" + title}},
 	}
 	var found []pickerCommand
 	for _, command := range linux {
@@ -77,7 +83,11 @@ func (s *Server) pickFolder(r *http.Request) (any, error) {
 		return nil, errors.New("a folder dialog is already open")
 	}
 	defer s.picking.Unlock()
-	for _, command := range pickerCommands(runtime.GOOS, s.lookPath) {
+	title := pickerTitle
+	if r.URL.Query().Get("for") == "parent" {
+		title = parentPickerTitle
+	}
+	for _, command := range pickerCommands(runtime.GOOS, title, s.lookPath) {
 		out, err := s.run(r.Context(), command.name, command.args...)
 		if errors.Is(err, errPickerCancelled) {
 			return map[string]bool{"cancelled": true}, nil

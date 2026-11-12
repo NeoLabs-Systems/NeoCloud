@@ -15,7 +15,7 @@ func TestStoreRoundTripAndPairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pair, err := NewPair(local, "/Documents/Work/", "", []string{"*.log"})
+	pair, err := NewPair(local, "/Documents/Work/", "", []string{"*.log"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestStoreRoundTripAndPairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	nested, _ := NewPair(local, "x", Up, nil)
+	nested, _ := NewPair(local, "x", Up, nil, false)
 	nested.Local = filepath.Join(local, "sub")
 	if err := store.Update(func(c *Config) error { return c.AddPair(nested) }); err == nil {
 		t.Error("overlapping pair accepted")
@@ -51,10 +51,10 @@ func TestStoreRoundTripAndPairs(t *testing.T) {
 	if !cfg.LoggedIn() || len(cfg.Pairs) != 1 || cfg.Pairs[0].Ignore[0] != "*.log" {
 		t.Errorf("round trip lost data: %+v", cfg)
 	}
-	if _, err := NewPair(local, "", "sideways", nil); err == nil {
+	if _, err := NewPair(local, "", "sideways", nil, false); err == nil {
 		t.Error("bad direction accepted")
 	}
-	if _, err := NewPair(filepath.Join(local, "missing"), "", "", nil); err == nil {
+	if _, err := NewPair(filepath.Join(local, "missing"), "", "", nil, false); err == nil {
 		t.Error("missing local folder accepted")
 	}
 }

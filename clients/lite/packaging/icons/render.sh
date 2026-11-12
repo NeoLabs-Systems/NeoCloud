@@ -5,6 +5,8 @@
 #   macos-1024.png   the tile on Apple's icon grid (824 px inside 1024)
 #   neocloud-512.png the tile edge to edge (Linux, Windows)
 #   neocloud.ico     16 to 256 px, PNG-compressed entries (Windows)
+# The PNG and the .ico are also copied to internal/shellfolder, which
+# embeds them as the icon of the folders the app creates.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 logo="$here/../../../../flutter_app/assets/branding/logo.svg"
@@ -43,4 +45,6 @@ for size, data in zip(sizes, images):
     offset += len(data)
 open(out, "wb").write(header + entries + b"".join(images))
 PY
+cp "$here/neocloud-512.png" "$here/../../internal/shellfolder/neocloud.png"
+cp "$here/neocloud.ico" "$here/../../internal/shellfolder/neocloud.ico"
 echo "rendered into $here"

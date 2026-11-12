@@ -8,9 +8,9 @@ part of 'main.dart';
 /// passphrase, recovery key, check of three recovery words. Resolves to the
 /// new folder, already unlocked.
 Future<FileNode?> showNewVaultDialog(BuildContext context, NeoCloudController controller, {required String parentId}) {
-  return showDialog<FileNode>(
+  return showAdaptiveSheet<FileNode>(
     context: context,
-    barrierDismissible: false,
+    dismissible: false,
     builder: (_) => _NewVaultDialog(controller: controller, parentId: parentId),
   );
 }
@@ -183,7 +183,7 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
       _NewVaultStep.confirm => (appStrings.vaultStepConfirm, _confirm()),
     };
     final canContinue = !_busy && (_step != _NewVaultStep.recovery || _saved);
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

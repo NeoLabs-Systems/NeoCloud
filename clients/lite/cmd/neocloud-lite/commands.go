@@ -19,6 +19,7 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
+	"github.com/neolabs/neocloud/clients/lite/internal/shellfolder"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
 
@@ -90,7 +91,8 @@ func cmdPair(args []string) error {
 	if len(args) == 0 {
 		return errUsage
 	}
-	a, err := openApp(stderrLogger(true))
+	logger := stderrLogger(true)
+	a, err := openApp(logger)
 	if err != nil {
 		return err
 	}
@@ -101,6 +103,7 @@ func cmdPair(args []string) error {
 		direction := fs.String("direction", config.Both, "both, up or down")
 		var ignore stringList
 		fs.Var(&ignore, "ignore", "glob to ignore (repeatable)")
+		create := fs.Bool("create", false, "create the local folder (it must not exist yet) and give it the NeoCloud icon")
 		positional, err := parseInterspersed(fs, args[1:])
 		if err != nil {
 			return err
@@ -108,12 +111,17 @@ func cmdPair(args []string) error {
 		if len(positional) != 2 {
 			return errUsage
 		}
-		pair, err := config.NewPair(positional[0], positional[1], *direction, ignore)
+		pair, err := config.NewPair(positional[0], positional[1], *direction, ignore, *create)
 		if err != nil {
 			return err
 		}
-		if err := a.cfg.Update(func(c *config.Config) error { return c.AddPair(pair) }); err != nil {
+		made, err := a.engine.AddPair(pair)
+		if err != nil {
 			return err
+		}
+		if pair.Created {
+			shellfolder.Created(pair.Local, made, a.dir, logger)
+			shellfolder.Reconcile(a.cfg, logger)
 		}
 		fmt.Printf("Added %s: %s <-> /%s (%s)\n", pair.ID, pair.Local, pair.Remote, pair.Direction)
 	case "list":
@@ -134,6 +142,7 @@ func cmdPair(args []string) error {
 		if err := a.engine.RemovePair(args[1]); err != nil {
 			return err
 		}
+		shellfolder.Reconcile(a.cfg, logger)
 		fmt.Println("Removed. Files stay where they are.")
 	case "confirm-deletes":
 		if len(args) != 2 {

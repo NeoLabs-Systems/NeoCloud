@@ -233,7 +233,7 @@ function paint() {
     document.getElementById("app").contains(document.activeElement);
   if (typing && painted.startsWith(name + "|")) return;
   painted = signature;
-  const screens = { welcome, approve, connected, home, add: addFolder, edit: editFolder, settings };
+  const screens = { welcome, approve, connected, home, add: addFolder, edit: editFolder, issues, settings };
   document.getElementById("app").replaceChildren(...[].concat(screens[name]()));
 }
 
@@ -243,9 +243,10 @@ function signatureOf(name) {
     case "approve": return JSON.stringify(S.login);
     case "connected": return S.username;
     case "home": return JSON.stringify([S.status, S.pairs, S.paused, S.activity, S.keyLock, quota, Math.floor(Date.now() / 30000)]);
-    case "add": return JSON.stringify([view.step, view.local, view.manual, view.remote && view.remote.folder, view.direction, view.busy]);
-    case "edit": return JSON.stringify([view.id, S.pairs.find((p) => p.id === view.id)]);
-    case "settings": return JSON.stringify([S.autostart, S.paused, S.keyLock, S.username, S.server, S.deviceName, S.logs, view.keyBusy]);
+    case "add": return JSON.stringify([view.flow, view.step, view.local, view.manual, view.remote && view.remote.folder, view.direction, view.busy, view.newFolders, view.tree && view.tree.rev]);
+    case "edit": return JSON.stringify([view.id, S.pairs.find((p) => p.id === view.id), view.rev, view.tree && view.tree.rev]);
+    case "issues": return JSON.stringify([view.id, S.status.pairs && S.status.pairs[view.id]]);
+    case "settings": return JSON.stringify([S.autostart, S.paused, S.global, S.keyLock, S.username, S.server, S.deviceName, S.logs, view.keyBusy, view.rev]);
   }
   return "";
 }
@@ -312,7 +313,7 @@ function connected() {
       el("h1", {}, "You're connected"),
       el("p", { class: "lead" }, "Signed in as ", el("strong", {}, S.username), " on ", host(S.server), ".")),
     el("div", { class: "choices" },
-      button("Choose a folder to sync", () => go(newWizard()), { kind: "primary big wide", icon: "folderPlus" }),
+      button("Choose what to sync", () => go(newWizard()), { kind: "primary big wide", icon: "folderPlus" }),
       button("Not now", () => go({ name: "home" }), { kind: "ghost wide" })));
 }
 
@@ -353,10 +354,12 @@ function pairStatus(pair) {
   const r = report(pair);
   if (S.status.state === "locked") return ["warn", "Locked"];
   if (S.paused || pair.paused) return ["", "Paused"];
+  if (r && r.held) return ["", r.held];
   if (r && r.needsConfirmation) return ["bad", "Needs attention"];
   if (r && r.error) return ["bad", S.status.state === "offline" ? "Offline" : "Error"];
   if (S.status.state === "syncing") return ["busy", "Syncing"];
-  if (r && r.notSynced && r.notSynced.length) return ["warn", r.notSynced.length + " not synced"];
+  if (r && r.failed && r.failed.length) return ["bad", r.failed.length + " not synced"];
+  if (r && r.notSynced && r.notSynced.length) return ["warn", r.notSynced.length + " left out"];
   if (r && seen(r.lastSync)) return ["ok", "Up to date"];
   return ["", "Waiting"];
 }
@@ -438,13 +441,20 @@ function attentionCards() {
         button("Edit", () => go({ name: "edit", id: pair.id })),
       ]));
     }
-    const skipped = r.notSynced || [];
-    if (skipped.length) {
-      cards.push(attention("alert", skipped.length + (skipped.length === 1 ? " item" : " items") + " in " + name + " not synced",
-        "These were left alone on purpose. Rename or move them to sync them.",
-        [button("Open folder", () => act(() => call("POST", "/api/pairs/" + pair.id + "/open")))],
-        el("ul", {}, skipped.slice(0, 50).map((item) => el("li", {}, el("code", { class: "ellipsis selectable" }, item.path), el("span", {}, item.detail)))),
-        "warn"));
+    for (const folder of r.newFolders || []) {
+      const decide = (sync) => act(() => call("POST", "/api/pairs/" + pair.id + "/new-folders", { path: folder.path, sync }), sync ? "Syncing " + folder.path : "Left out " + folder.path);
+      cards.push(attention("folderPlus", "New folder in " + remoteLabel(pair.remote) + ": " + folder.path,
+        (folder.size ? bytes(folder.size) + ". " : "") + "It is not downloaded to " + name + " until you say so.",
+        [button("Sync it", () => decide(true), { kind: "primary" }), button("Don't sync", () => decide(false))], null, "warn"));
+    }
+    const failed = (r.failed || []).length;
+    const skipped = (r.notSynced || []).length;
+    if (failed || skipped) {
+      const title = failed
+        ? failed + (failed === 1 ? " file" : " files") + " in " + name + " could not sync"
+        : skipped + (skipped === 1 ? " item" : " items") + " in " + name + " left out";
+      const text = failed ? "Retry them, or pick which version to keep." : "These were left alone on purpose (too big, links, names this system can't hold…).";
+      cards.push(attention("alert", title, text, [button("Show", () => go({ name: "issues", id: pair.id }))], null, failed ? "" : "warn"));
     }
   }
   return cards;
@@ -474,7 +484,7 @@ async function confirmDeletes(pair, pending) {
 function folderList() {
   if (!S.pairs.length) {
     return el("section", { class: "card empty" },
-      el("p", {}, "No folders yet. Pick a folder on this computer and where it should live in NeoCloud."),
+      el("p", {}, "No folders yet. Sync a folder from this computer, or bring your NeoCloud files here."),
       button("Add a folder", () => go(newWizard()), { kind: "primary", icon: "plus" }));
   }
   return el("section", { class: "card folders" }, S.pairs.map((pair) => {
@@ -496,6 +506,10 @@ function folderList() {
         iconButton(paused ? "play" : "pause", paused ? "Resume" : "Pause", () => act(() => call("PUT", "/api/pairs/" + pair.id, { paused: !paused }))),
         iconButton("edit", "Edit", () => go({ name: "edit", id: pair.id }))));
   }));
+}
+
+function sidebarTitle() {
+  return { darwin: "Show in the Finder sidebar", windows: "Show in File Explorer" }[S.os] || "Show in the file manager sidebar";
 }
 
 function fileManager() {
@@ -522,15 +536,37 @@ function activityList() {
 
 // ---------- Screens: add folder ----------
 
+// The wizard starts with a choice (step 0) between two flows of three
+// steps each: "local" picks an existing folder here, then the cloud
+// folder; "cloud" picks the cloud folder, then where NeoCloud creates the
+// folder for it (parent "" is the default location).
+const FLOWS = {
+  local: [() => stepLocal(), () => stepRemote(), () => stepDirection()],
+  cloud: [() => stepRemote(), () => stepPlace(), () => stepDirection()],
+};
+
 function newWizard() {
-  return { name: "add", step: 1, local: "", manual: false, remote: null, direction: "both", ignore: "" };
+  return { name: "add", step: 0, flow: "", local: "", parent: "", manual: false, remote: null, direction: "both", ignore: "", tree: null, newFolders: "" };
 }
 
 function addFolder() {
+  const back = view.step === 0 ? () => go({ name: "home" }) : () => go({ ...view, step: view.step - 1 });
+  if (view.step === 0) return [backBar("Add a folder", back), el("main", { class: "content" }, stepStart())];
   const steps = el("div", { class: "steps", "aria-hidden": "true" }, [1, 2, 3].map((n) => el("i", { class: n <= view.step ? "on" : "" })));
-  const back = view.step === 1 ? () => go({ name: "home" }) : () => go({ ...view, step: view.step - 1 });
-  const body = [stepLocal, stepRemote, stepDirection][view.step - 1]();
-  return [backBar("Add a folder", back), el("main", { class: "content" }, steps, body)];
+  return [backBar("Add a folder", back), el("main", { class: "content" }, steps, FLOWS[view.flow][view.step - 1]())];
+}
+
+function stepStart() {
+  const start = (flow) => go({ ...newWizard(), flow, step: 1 });
+  const choice = (iconName, title, text, flow) => el("button", { type: "button", class: "choice", onclick: () => start(flow) },
+    el("span", { class: "cicon" }, icon(iconName)),
+    el("span", {}, el("strong", {}, title), el("span", {}, text)));
+  return [
+    el("h2", { class: "step-title" }, "What do you want to sync?"),
+    el("div", { class: "choices" },
+      choice("folder", "A folder from this computer", "Pick a folder you already have and choose where it goes in NeoCloud.", "local"),
+      choice("cloud", "Files from NeoCloud", "Pick a cloud folder, or everything. A NeoCloud folder is created here and filled with your files.", "cloud")),
+  ];
 }
 
 function stepLocal() {
@@ -591,6 +627,7 @@ async function browse(id) {
 
 // The local folder's name, unless the folder or one inside it has it already.
 function suggestedName(listing) {
+  if (!view.local) return "";
   const name = baseName(view.local);
   const taken = listing.folder.name === name || listing.folders.some((folder) => folder.name === name);
   return taken ? "" : name;
@@ -620,9 +657,10 @@ function stepRemote() {
     }
   };
   name.addEventListener("keydown", (event) => { if (event.key === "Enter") create(); });
+  const cloud = view.flow === "cloud";
   return [
-    el("h2", { class: "step-title" }, "Folder in NeoCloud"),
-    el("p", { class: "step-lead" }, "Open the folder to sync with, or create a new one."),
+    el("h2", { class: "step-title" }, cloud ? "What to bring to this computer" : "Folder in NeoCloud"),
+    el("p", { class: "step-lead" }, cloud ? "Open a folder to sync just that one, or stay at NeoCloud to sync everything." : "Open the folder to sync with, or create a new one."),
     el("section", { class: "card" },
       crumbs,
       el("div", { class: "tree" }, rows),
@@ -630,7 +668,63 @@ function stepRemote() {
     el("div", { class: "target" }, icon("cloud"), "Sync with ", el("strong", { class: "ellipsis" }, remoteLabel(listing.folder.path))),
     el("div", { class: "footer" },
       el("span"),
-      button("Use this folder", () => go({ ...view, step: 3 }), { kind: "primary" })),
+      button(cloud && !listing.folder.path ? "Sync everything" : "Use this folder", () => go({ ...view, step: view.step + 1, local: cloud ? "" : view.local }), { kind: "primary" })),
+  ];
+}
+
+// Where the cloud flow creates the local folder: the server proposes a
+// free name inside view.parent (the default location when empty).
+async function suggestPlace() {
+  try {
+    const query = "?remote=" + encodeURIComponent(view.remote.folder.path) + "&parent=" + encodeURIComponent(view.parent);
+    view.local = (await call("GET", "/api/local/suggest" + query)).path;
+  } catch (err) {
+    view.parent = "";
+    toast(err.message, true);
+  }
+  painted = "";
+  paint();
+}
+
+function stepPlace() {
+  const title = el("h2", { class: "step-title" }, "Folder on this computer");
+  if (!view.local) {
+    suggestPlace();
+    return [title, el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Finding a place…")];
+  }
+  const change = async () => {
+    view.busy = true;
+    paint();
+    try {
+      const picked = await call("POST", "/api/pick-folder?for=parent");
+      if (picked.unsupported) toast("No folder dialog on this system; the folder stays in your home folder.");
+      if (picked.path) {
+        view.parent = picked.path;
+        view.local = "";
+      }
+    } catch (err) {
+      toast(err.message, true);
+    }
+    view.busy = false;
+    painted = "";
+    paint();
+  };
+  const remote = view.remote.folder.path;
+  if (!view.tree || view.tree.base !== remote) {
+    view.tree = newTree(remote, []);
+    view.newFolders = remote ? "sync" : "ask";
+  }
+  return [
+    title,
+    el("p", { class: "step-lead" }, "NeoCloud creates this folder and downloads ", el("strong", {}, remoteLabel(remote)), " into it."),
+    el("section", { class: "card picked" },
+      el("div", { class: "ficon" }, icon("folder")),
+      el("div", { class: "info" }, el("strong", { class: "ellipsis" }, baseName(view.local)), el("div", { class: "muted small ellipsis", title: view.local }, tilde(view.local))),
+      button("Change location", change, { disabled: view.busy })),
+    el("details", { class: "advanced", open: view.picking ? true : undefined, ontoggle: (event) => { view.picking = event.target.open; } },
+      el("summary", {}, icon("chevron"), "Choose folders"),
+      el("div", { class: "body" }, folderPicker(view.tree, view.newFolders, (value) => { view.newFolders = value; painted = ""; paint(); }))),
+    el("div", { class: "footer" }, el("span"), button("Next", () => go({ ...view, step: 3 }), { kind: "primary" })),
   ];
 }
 
@@ -642,13 +736,13 @@ function directionChoices(current, onPick) {
       el("span", {}, el("strong", {}, d.title), el("span", {}, d.text)))));
 }
 
-function ignoreField(value, onInput) {
+function ignoreField(value, onInput, title = "Advanced: ignore patterns") {
   const area = el("textarea", { class: "input", rows: "4", spellcheck: "false", placeholder: "*.log\nnode_modules/\nbuild/", oninput: (event) => onInput(event.target.value) });
   area.value = value;
   return el("details", { class: "advanced", open: value ? true : undefined },
-    el("summary", {}, icon("chevron"), "Advanced: ignore patterns"),
+    el("summary", {}, icon("chevron"), title),
     el("div", { class: "body" },
-      el("p", { class: "hint" }, "One pattern per line, like .gitignore. Always skipped: " + (S.defaultIgnore || []).join(", ") + "."),
+      el("p", { class: "hint" }, "One pattern per line, like .gitignore. Always skipped: " + (S.defaultIgnore || []).map((p) => p.replace("\r", "")).join(", ") + "."),
       area));
 }
 
@@ -658,7 +752,12 @@ function stepDirection() {
     view.busy = true;
     paint();
     try {
-      await call("POST", "/api/pairs", { local: view.local, remote: view.remote.folder.path, direction: view.direction, ignore: view.ignore.split("\n") });
+      const body = { local: view.local, remote: view.remote.folder.path, direction: view.direction, ignore: view.ignore.split("\n") };
+      if (view.flow === "cloud") {
+        body.create = true;
+        body.settings = { excludePaths: view.tree.excluded, newFolders: view.newFolders };
+      }
+      await call("POST", "/api/pairs", body);
       toast("Syncing " + baseName(view.local));
       go({ name: "home" });
     } catch (err) {
@@ -678,17 +777,118 @@ function stepDirection() {
   ];
 }
 
+// ---------- Folder tree (selective sync) ----------
+
+// A lazily loaded tree of the cloud folders below base (an account path).
+// excluded holds the unticked folders, relative to base, as the pair's
+// exclude_paths does; rev changes on every edit so the screen repaints.
+function newTree(base, excluded) {
+  return { base, excluded: [...(excluded || [])], children: {}, open: {}, rev: 0 };
+}
+
+function treeChanged(t) {
+  t.rev++;
+  painted = "";
+  paint();
+}
+
+async function loadTree(t, rel) {
+  t.children[rel] = t.children[rel] || null;
+  const path = [t.base, rel].filter(Boolean).join("/");
+  try {
+    const listing = await call("GET", "/api/remote/folders?path=" + encodeURIComponent(path));
+    t.children[rel] = listing.folders.map((f) => ({ name: f.name, rel: rel ? rel + "/" + f.name : f.name }));
+  } catch (err) {
+    t.children[rel] = [];
+    toast(err.message, true);
+  }
+  treeChanged(t);
+}
+
+function inExcluded(t, rel) { return t.excluded.some((ex) => rel === ex || rel.startsWith(ex + "/")); }
+
+function pickFolder(t, rel, on) {
+  t.excluded = on ? t.excluded.filter((ex) => ex !== rel) : t.excluded.filter((ex) => !ex.startsWith(rel + "/")).concat(rel);
+  treeChanged(t);
+}
+
+function folderTree(t) {
+  if (!(("") in t.children)) {
+    loadTree(t, "");
+    return el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Loading folders…");
+  }
+  if (t.children[""] === null) return el("div", { class: "waiting" }, el("span", { class: "spinner" }), "Loading folders…");
+  const rows = (rel, depth) => (t.children[rel] || []).map((f) => {
+    const off = inExcluded(t, f.rel);
+    const box = el("input", { type: "checkbox", checked: !off, disabled: rel !== "" && inExcluded(t, rel), onchange: (event) => pickFolder(t, f.rel, event.target.checked) });
+    box.indeterminate = !off && t.excluded.some((ex) => ex.startsWith(f.rel + "/"));
+    const open = t.open[f.rel];
+    const twist = el("button", {
+      type: "button", class: "twist" + (open ? " open" : ""), "aria-label": (open ? "Close " : "Open ") + f.name,
+      onclick: () => {
+        t.open[f.rel] = !open;
+        if (!open && !(f.rel in t.children)) loadTree(t, f.rel);
+        else treeChanged(t);
+      },
+    }, icon("chevron"));
+    const row = el("div", { class: "pick" }, twist, el("label", {}, box, icon("folder"), el("span", { class: "ellipsis" }, f.name)));
+    row.style.paddingLeft = 6 + depth * 18 + "px";
+    let below = null;
+    if (open) below = t.children[f.rel] ? rows(f.rel, depth + 1) : el("div", { class: "none" }, "Loading…");
+    return [row, below];
+  });
+  const list = rows("", 0).flat(Infinity);
+  return el("div", { class: "tree" }, list.length ? list : el("div", { class: "none" }, "No folders inside: everything is synced."));
+}
+
+const NEW_FOLDERS = [["sync", "Sync them"], ["ask", "Ask me first"], ["skip", "Don't sync them"]];
+
+function selectField(id, value, options, onchange) {
+  return el("select", { class: "input", id, onchange: (event) => onchange(event.target.value) },
+    options.map(([v, label]) => el("option", { value: v, selected: v === value }, label)));
+}
+
+// The tree plus the new-folders choice under it.
+function folderPicker(t, newFolders, onNewFolders) {
+  return [
+    el("section", { class: "card" }, folderTree(t)),
+    el("label", { class: "field", for: "newFolders" }, "New folders that appear in the cloud", selectField("newFolders", newFolders, NEW_FOLDERS, onNewFolders)),
+    el("p", { class: "hint" }, "Unticked folders stay in the cloud. Their copy on this computer goes to .neocloud/trash."),
+  ];
+}
+
 // ---------- Screens: edit folder ----------
+
+const PAIR_SETTINGS = ["mode", "excludePaths", "newFolders", "bigFolderPromptMB", "propagateDeletes", "useDefaultIgnores", "includeHidden",
+  "maxFileSizeMB", "symlinks", "conflict", "trashRetentionDays", "deleteGuardFiles", "deleteGuardPercent", "respectNetworkRules"];
+
+const CONFLICTS = [["keep_both", "Keep both (a conflict copy)"], ["prefer_local", "Keep this computer's"], ["prefer_remote", "Keep the cloud's"], ["newer", "Keep the newer one"]];
+
+// A number setting: empty means the default (shown as the placeholder).
+function numberField(id, label, value, placeholder, onInput) {
+  const input = el("input", { class: "input short", id, type: "number", min: "0", placeholder: String(placeholder), value: value === null || value === undefined ? "" : String(value),
+    oninput: (event) => onInput(event.target.value === "" ? null : Math.max(0, Math.floor(Number(event.target.value)))) });
+  return el("label", { class: "field", for: id }, label, input);
+}
 
 function editFolder() {
   const pair = pairOf(view.id);
   if (!pair) { view = { name: "home" }; return home(); }
-  if (view.direction === undefined) {
+  if (view.s === undefined) {
     view.direction = pair.direction;
     view.ignore = (pair.ignore || []).join("\n");
+    view.s = Object.fromEntries(PAIR_SETTINGS.map((key) => [key, pair[key] === undefined ? null : pair[key]]));
+    view.tree = newTree(pair.remote, pair.excludePaths || []);
+    view.rev = 0;
   }
+  const s = view.s;
+  const redraw = () => { view.rev++; painted = ""; paint(); };
+  const flag = (key) => s[key] !== false; // unset means on
+  const setFlag = (key) => (on) => { s[key] = on; redraw(); };
+  const g = S.global;
   const save = () => act(async () => {
-    await call("PUT", "/api/pairs/" + pair.id, { direction: view.direction, ignore: view.ignore.split("\n") });
+    const settings = { ...s, excludePaths: view.tree.excluded, maxFileSizeMB: s.maxFileSizeMB || 0, newFolders: s.newFolders || "", conflict: s.conflict || "", mode: s.mode || "", symlinks: s.symlinks || "" };
+    await call("PUT", "/api/pairs/" + pair.id, { direction: view.direction, ignore: view.ignore.split("\n"), settings });
     go({ name: "home" });
   }, "Saved");
   const remove = async () => {
@@ -708,11 +908,65 @@ function editFolder() {
           el("strong", { class: "ellipsis" }, baseName(pair.local)),
           el("div", { class: "muted small ellipsis", title: pair.local }, tilde(pair.local)),
           el("div", { class: "muted small ellipsis" }, remoteLabel(pair.remote)))),
-      directionChoices(view.direction, (value) => { view.direction = value; painted = ""; paint(); }),
-      ignoreField(view.ignore, (value) => { view.ignore = value; }),
+      directionChoices(view.direction, (value) => { view.direction = value; redraw(); }),
+      el("div", { class: "section-head" }, el("h2", {}, "Folders to sync")),
+      folderPicker(view.tree, s.newFolders || "sync", (value) => { s.newFolders = value; redraw(); }),
+      el("details", { class: "advanced", open: view.advanced ? true : undefined, ontoggle: (event) => { view.advanced = event.target.open; } },
+        el("summary", {}, icon("chevron"), "Advanced"),
+        el("div", { class: "body" },
+          el("section", { class: "card group" },
+            settingRow("Delete on the other side too", "Off: a file deleted on one side stays on the other (a backup, or an archive).",
+              toggle("propagateDeletes", flag("propagateDeletes"), setFlag("propagateDeletes")), "propagateDeletes"),
+            settingRow("Sync hidden files", "Files starting with a dot" + (S.os === "windows" ? ", and files Windows hides." : "."),
+              toggle("includeHidden", flag("includeHidden"), setFlag("includeHidden")), "includeHidden"),
+            settingRow("Skip system files", "The built-in list: " + (S.defaultIgnore || []).join(", ") + ".",
+              toggle("useDefaultIgnores", flag("useDefaultIgnores"), setFlag("useDefaultIgnores")), "useDefaultIgnores"),
+            settingRow("Pause with the network rules", "Wait on metered connections and in battery saver, as set in Settings.",
+              toggle("respectNetworkRules", flag("respectNetworkRules"), setFlag("respectNetworkRules")), "respectNetworkRules")),
+          el("label", { class: "field", for: "conflict" }, "When a file changed on both sides",
+            selectField("conflict", s.conflict || "keep_both", CONFLICTS, (value) => { s.conflict = value; redraw(); })),
+          el("div", { class: "limits" },
+            numberField("maxFileSizeMB", "Largest file (MB, 0 = any)", s.maxFileSizeMB, 0, (v) => { s.maxFileSizeMB = v; }),
+            numberField("trashRetentionDays", "Keep local trash (days, 0 = forever)", s.trashRetentionDays, 30, (v) => { s.trashRetentionDays = v; })),
+          el("div", { class: "limits" },
+            numberField("deleteGuardFiles", "Ask before deleting more than (files)", s.deleteGuardFiles, g.deleteGuardFiles, (v) => { s.deleteGuardFiles = v; }),
+            numberField("deleteGuardPercent", "…or more than (%)", s.deleteGuardPercent, g.deleteGuardPercent, (v) => { s.deleteGuardPercent = v; })),
+          numberField("bigFolderPromptMB", "Ask before syncing a new folder bigger than (MB, 0 = never)", s.bigFolderPromptMB, g.bigFolderPromptMB, (v) => { s.bigFolderPromptMB = v; }),
+          ignoreField(view.ignore, (value) => { view.ignore = value; }, "Ignore patterns"))),
       el("div", { class: "footer" },
         button("Remove", remove, { kind: "danger", icon: "trash" }),
         button("Save", save, { kind: "primary" }))),
+  ];
+}
+
+// ---------- Screens: issues ----------
+
+function issues() {
+  const pair = pairOf(view.id);
+  if (!pair) { view = { name: "home" }; return home(); }
+  const r = report(pair) || {};
+  const resolve = (item, choice, done) => act(() => call("POST", "/api/pairs/" + pair.id + "/resolve", { path: item.path, choice }), done);
+  const failed = (r.failed || []).map((item) => el("div", { class: "issue" },
+    el("code", { class: "ellipsis selectable", title: item.path }, item.path),
+    el("span", { class: "muted small" }, item.detail),
+    el("div", { class: "actions" },
+      button("Retry", () => resolve(item, "", "Retrying"), { icon: "sync" }),
+      item.both ? button("Keep this computer's", () => resolve(item, "local", "Keeping this computer's version")) : null,
+      item.both ? button("Keep the cloud's", () => resolve(item, "remote", "Keeping the cloud's version")) : null,
+      item.both ? button("Keep both", () => resolve(item, "both", "Keeping both")) : null)));
+  const skipped = (r.notSynced || []).map((item) => el("div", { class: "issue" },
+    el("code", { class: "ellipsis selectable", title: item.path }, item.path),
+    el("span", { class: "muted small" }, item.detail)));
+  return [
+    backBar("Issues in " + baseName(pair.local)),
+    el("main", { class: "content" },
+      el("div", { class: "section-head" }, el("h2", {}, "Could not sync")),
+      el("section", { class: "card issues" }, failed.length ? failed : el("div", { class: "act none" }, "Nothing failed in the last sync.")),
+      el("div", { class: "section-head" }, el("h2", {}, "Left out on purpose")),
+      el("section", { class: "card issues" }, skipped.length ? skipped : el("div", { class: "act none" }, "Nothing was left out.")),
+      el("div", { class: "footer" },
+        button("Open folder", () => act(() => call("POST", "/api/pairs/" + pair.id + "/open")), { icon: "folder" }),
+        button("Edit folder", () => go({ name: "edit", id: pair.id })))),
   ];
 }
 
@@ -732,6 +986,14 @@ function settingRow(title, text, control, forId) {
 
 function settings() {
   const set = (body, done) => act(() => call("PUT", "/api/settings", body), done);
+  if (!view.g) {
+    view.g = { ...S.global };
+    view.rev = 0;
+  }
+  const g = view.g;
+  const setGlobal = (changes, done) => { Object.assign(g, changes); set({ global: { ...S.global, ...changes } }, done); };
+  const proxyUrl = el("input", { class: "input mono", id: "proxyUrl", spellcheck: "false", placeholder: "http://proxy.example.com:3128", value: g.proxyUrl || "",
+    oninput: (event) => { g.proxyUrl = event.target.value.trim(); } });
   const up = el("input", { class: "input", id: "up", type: "number", min: "0", step: "100", value: String(S.uploadKiBps || 0) });
   const down = el("input", { class: "input", id: "down", type: "number", min: "0", step: "100", value: String(S.downloadKiBps || 0) });
   return [
@@ -742,7 +1004,23 @@ function settings() {
         settingRow("Start at login", "Start NeoCloud when you sign in to this computer.",
           toggle("autostart", S.autostart, (on) => set({ autostart: on })), "autostart"),
         settingRow("Pause syncing", "Stop all folders until you resume.",
-          toggle("paused", S.paused, (on) => set({ paused: on })), "paused")),
+          toggle("paused", S.paused, (on) => set({ paused: on })), "paused"),
+        settingRow(sidebarTitle(), "Shows the NeoCloud folder this app created for you.",
+          toggle("sidebar", S.global.fileManagerSidebar, (on) => setGlobal({ fileManagerSidebar: on })), "sidebar"),
+        settingRow("Notifications", "", selectField("notifications", S.global.notifications,
+          [["errors", "Problems only"], ["all", "Everything"], ["off", "Off"]], (value) => setGlobal({ notifications: value })), "notifications")),
+      el("div", { class: "section-head" }, el("h2", {}, "Network")),
+      el("section", { class: "card group" },
+        S.os === "darwin" ? null : settingRow("Pause on metered connections", "Like a phone hotspot or a capped plan.",
+          toggle("metered", S.global.pauseOnMetered, (on) => setGlobal({ pauseOnMetered: on })), "metered"),
+        settingRow(S.os === "darwin" ? "Pause in Low Power Mode" : "Pause in battery saver", "Folders can opt out in their advanced settings.",
+          toggle("battery", S.global.pauseOnBatterySaver, (on) => setGlobal({ pauseOnBatterySaver: on })), "battery"),
+        settingRow("Proxy", "", selectField("proxy", g.proxy, [["system", "System settings"], ["none", "No proxy"], ["manual", "Manual"]],
+          (value) => { g.proxy = value; if (value !== "manual") setGlobal({ proxy: value }); else { view.rev++; painted = ""; paint(); } }), "proxy"),
+        g.proxy === "manual" ? el("div", { class: "setting column" },
+          el("label", { class: "field", for: "proxyUrl" }, "Proxy address (http, https or socks5)", proxyUrl),
+          el("div", { class: "unit" }, el("span", { class: "ellipsis" }),
+            button("Save proxy", () => setGlobal({ proxy: "manual", proxyUrl: g.proxyUrl }, "Proxy saved")))) : null),
       el("div", { class: "section-head" }, el("h2", {}, "Bandwidth")),
       el("section", { class: "card group" },
         el("div", { class: "setting column" },
@@ -753,6 +1031,16 @@ function settings() {
             el("p", { class: "hint" }, "0 means no limit."),
             el("span", { class: "ellipsis" }),
             button("Save limits", () => set({ uploadKiBps: Number(up.value) || 0, downloadKiBps: Number(down.value) || 0 }, "Limits saved"))))),
+      el("details", { class: "advanced" },
+        el("summary", {}, icon("chevron"), "Advanced"),
+        el("div", { class: "body" },
+          el("p", { class: "hint" }, "Defaults for every folder; a folder can set its own."),
+          el("div", { class: "limits" },
+            numberField("gGuardFiles", "Ask before deleting more than (files)", g.deleteGuardFiles, 500, (v) => { g.deleteGuardFiles = v; }),
+            numberField("gGuardPercent", "…or more than (%)", g.deleteGuardPercent, 50, (v) => { g.deleteGuardPercent = v; })),
+          numberField("gBigFolder", "Ask before syncing a new folder bigger than (MB, 0 = never)", g.bigFolderPromptMB, 500, (v) => { g.bigFolderPromptMB = v; }),
+          el("div", { class: "unit" }, el("span", { class: "ellipsis" }),
+            button("Save", () => setGlobal({ deleteGuardFiles: g.deleteGuardFiles, deleteGuardPercent: g.deleteGuardPercent, bigFolderPromptMB: g.bigFolderPromptMB }, "Saved"))))),
       el("div", { class: "section-head" }, el("h2", {}, "Security key")),
       keyLockCard(),
       el("div", { class: "section-head" }, el("h2", {}, "Account")),

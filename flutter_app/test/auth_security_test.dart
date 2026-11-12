@@ -110,6 +110,18 @@ void main() {
       expect(find.text('Forgot password?'), findsOneWidget);
     });
 
+    testWidgets('the web sign-in card offers phone sign-in, registering does not', (tester) async {
+      final controller = await _controller();
+      await _pumpAuth(tester, controller);
+      expect(find.text('Scan with NeoCloud on your phone'), findsOneWidget);
+      expect(find.text('or use your password'), findsOneWidget);
+
+      await tester.tap(find.text('Need a new account? Register'));
+      await tester.pump();
+      expect(find.text('Scan with NeoCloud on your phone'), findsNothing);
+      controller.qrLogin.pause();
+    });
+
     testWidgets('registration shows the strength meter and blocks weak passwords', (tester) async {
       final controller = await _controller();
       await _pumpAuth(tester, controller);

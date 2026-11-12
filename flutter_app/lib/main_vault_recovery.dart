@@ -48,7 +48,7 @@ Future<void> showVaultRecoveryKeyDialog(
   required String vaultId,
   required String folderName,
 }) {
-  return showDialog<void>(
+  return showAdaptiveSheet<void>(
     context: context,
     builder: (_) => _ShowRecoveryKeyDialog(controller: controller, vaultId: vaultId, folderName: folderName),
   );
@@ -105,7 +105,7 @@ class _ShowRecoveryKeyDialogState extends State<_ShowRecoveryKeyDialog> {
   @override
   Widget build(BuildContext context) {
     final words = _words;
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(appStrings.vaultRecoveryTitle),
       content: SizedBox(
         width: 520,

@@ -3,7 +3,7 @@ part of 'main.dart';
 /// "already exists": both files side by side (size, date), the name "keep
 /// both" would give, and "apply to all N" for the rest of the batch.
 Future<ConflictDecision?> showConflictDialog(BuildContext context, NeoCloudController controller, UploadConflict conflict) {
-  return showDialog<ConflictDecision>(
+  return showAdaptiveSheet<ConflictDecision>(
     context: context,
     builder: (dialogContext) => _ConflictDialog(controller: controller, conflict: conflict),
   );
@@ -74,7 +74,7 @@ class _ConflictDialogState extends State<_ConflictDialog> {
     final existing = _existing;
     final remaining = widget.conflict.remaining;
     final keepBothName = nextFreeName(_source.name, _taken.isEmpty ? <String>{_source.name} : _taken);
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(appStrings.nameExistsTitle(_source.name)),
       content: SizedBox(
         width: 440,
@@ -124,7 +124,7 @@ Future<(String, String)?> showFolderPicker(
   String? confirmLabel,
   bool hideVaults = false,
 }) {
-  return showDialog<(String, String)>(
+  return showAdaptiveSheet<(String, String)>(
     context: context,
     builder: (dialogContext) => _FolderPickerDialog(
       controller: controller,
@@ -187,7 +187,7 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
             .toList() ??
         const <FileNode>[];
     final name = listing == null || listing.folder.parentId == null ? appStrings.home : (listing.path.lastOrNull?.name ?? listing.folder.name);
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(widget.title),
       content: SizedBox(
         width: 460,
@@ -236,7 +236,7 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
 }
 
 Future<void> showVersionsDialog(BuildContext context, NeoCloudController controller, FileNode node) {
-  return showDialog<void>(
+  return showAdaptiveSheet<void>(
     context: context,
     builder: (dialogContext) => _VersionsDialog(controller: controller, node: node),
   );
@@ -286,7 +286,7 @@ class _VersionsDialogState extends State<_VersionsDialog> {
     final versions = _versions;
     final locale = currentAppLanguage.code;
     final client = widget.controller.client;
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(appStrings.versionsTitle(widget.node.name)),
       content: SizedBox(
         width: 460,

@@ -98,9 +98,11 @@ NOT_FOUND` for an unknown, expired or already decided code.
 - Right before replacing or deleting a local file the engine stats it again
   and skips it when it changed since the scan.
 - Ignored by default: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `~$*`,
-  `*.tmp`, `*.ncpart`. Pairs add their own glob patterns. A `.neocloud`
-  file or folder in any case (`.NeoCloud`, …) is always ignored on both
-  sides; it is not a pattern and cannot be removed.
+  `*.tmp`, `*.ncpart` (unless the pair turns `use_default_ignores` off).
+  Pairs add their own glob patterns. Always ignored on both sides, not a
+  pattern and not removable: a `.neocloud` file or folder in any case
+  (`.NeoCloud`, …), macOS folder-icon files (`Icon\r`) anywhere and the
+  `desktop.ini` at the pair's root (the folder icon on Windows).
 - Server paths are not trusted: a node whose path relative to the pair is
   absolute, has an empty, `.` or `..` segment, or contains `\` or NUL is
   reported as `invalidName` and never written or deleted locally. Every
@@ -113,7 +115,8 @@ NOT_FOUND` for an unknown, expired or already decided code.
 - **Mass-delete guard.** Before a pass changes anything destructive, it
   counts the files it would delete on the server and locally (a folder
   counts the tracked files inside it). When either count is at least 20 and
-  more than 50 % of the pair's tracked files or more than 500, or when the
+  more than `delete_guard_percent` (50) % of the pair's tracked files or
+  more than `delete_guard_files` (500), or when the
   server folder is suddenly empty while files are tracked (`remoteEmpty`,
   any count), no deletion runs: the pair waits with
   `needsConfirmation { remoteDeletes, localDeletes, reason: massDelete|remoteEmpty, digest }`
@@ -136,11 +139,12 @@ NOT_FOUND` for an unknown, expired or already decided code.
 - **Local trash.** Remote-driven local deletes and overwrites never unlink
   user data: the old file (or folder) moves to
   `<root>/.neocloud/trash/<YYYY-MM-DD>/<relative path>` (` 2`, ` 3`… when
-  taken). Day folders older than 30 days are pruned at the start of a pass.
+  taken). Day folders older than `trash_retention_days` (30; 0 keeps them)
+  are pruned at the start of a pass.
   A folder deleted on the server moves as a whole, ignored files included,
   when everything in it may go (unchanged tracked files, ignored files);
   one that only holds empty folders and OS junk (`.DS_Store`, `Thumbs.db`,
-  `desktop.ini`) is removed, and those are the only files ever removed
+  `desktop.ini`, `Icon\r`) is removed, and those are the only files ever removed
   without a trash copy. A folder that still holds something to keep (a
   file changed since the scan, new local content) stays.
 - **One instance per pair.** A pass holds an exclusive lock file in the
@@ -159,9 +163,51 @@ is not deleted remotely). Each comes with a reason code and a text:
 | `nameClash` | differs from another name only by case or Unicode normalization (`not synced: name clashes with X`); the tracked one, else the one on the other side, else the first in sort order keeps syncing |
 | `invalidName` | a server path that would leave the pair's folder (absolute, an empty, `.` or `..` segment, `\` or NUL); on Windows also `CON`, `PRN`, `AUX`, `NUL`, `COM1–9`, `LPT1–9` (any extension), a trailing dot or space, `<>:"/\|?*` or control characters |
 | `pathTooLong` | Windows only: the local path would exceed 259 characters |
+| `tooLarge` | a file over the pair's `max_file_size_mb` |
+| `excluded` | an excluded folder kept locally because it holds files that are not in NeoCloud |
 
 The lite client lists them in `status --json` (`pairs[].report.notSynced`)
 and in its app window.
+
+### Folder settings (lite)
+
+Each `[[pairs]]` entry in `config.toml` can carry these (TOML names; the
+app window shows them per folder, the rarer ones under "Advanced"). An
+unset value means the default, so older config files keep their behaviour.
+
+| Setting | Default | Does |
+| --- | --- | --- |
+| `mode` | `mirror` | Full local copies. `on_demand` is not available yet; a hand-edited one loads as `mirror` and the API refuses it. |
+| `exclude_paths` | `[]` | Selective sync: folders (relative to the pair's remote folder) that are not synced. A local copy this client synced moves to the local trash; one holding anything not in NeoCloud stays (`excluded`), as does every local folder of an upload-only pair. The cloud copy is never touched. |
+| `new_folders` | `ask` for the whole cloud, else `sync` | A folder that appears at the top of the remote folder after the first sync: `sync`, `ask` (held until the user answers; "Don't sync" adds it to `exclude_paths`), or `skip` (excluded at once). |
+| `big_folder_prompt_mb` | global (500) | A new top-level folder bigger than this asks even with `sync`; 0 turns it off. |
+| `propagate_deletes` | `true` | `false` never deletes on the receiving side: with `up` a backup, with `down` an archive, with `both` a deleted file comes back from the other side. |
+| `use_default_ignores` | `true` | The built-in ignore list above. |
+| `include_hidden` | `true` | `false` skips names starting with `.` on both sides and, on Windows, local files marked hidden or system (left alone, never deleted). |
+| `max_file_size_mb` | 0 (any) | Bigger files are not synced (`tooLarge`). |
+| `symlinks` | `skip` | Links are never followed (`symlink`). |
+| `conflict` | `keep_both` | Both sides changed a file (two-way pairs): `keep_both` (conflict copy), `prefer_local`, `prefer_remote` or `newer` (modification times). The losing version goes to the local trash. |
+| `trash_retention_days` | 30 | 0 keeps the local trash forever. |
+| `delete_guard_files` / `delete_guard_percent` | global (500 / 50) | The mass-delete guard. |
+| `respect_network_rules` | `true` | `false` keeps the pair syncing on metered networks and in battery saver. |
+
+App-wide, at the top of `config.toml`: `big_folder_prompt_mb` (500),
+`delete_guard_files` (500), `delete_guard_percent` (50),
+`pause_on_metered` (`true`; Windows via the connection cost, Linux via
+NetworkManager; not detected on macOS), `pause_on_battery_saver` (`true`;
+Windows battery saver, macOS Low Power Mode, Linux power-profiles-daemon's
+power-saver), `notifications` (`errors`: failed runs, held deletions,
+conflicts, new folders waiting; `all` adds a line per run that changed
+files; `off`), `file_manager_sidebar` (`true`) and `proxy` (`system`:
+`HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY`, else the macOS or Windows proxy
+settings; `none`; `manual` with `proxy_url`, `http://`, `https://` or
+`socks5://`). Loopback servers never go through a proxy.
+
+Files a pass could not sync are listed per pair
+(`pairs[].report.failed`: `{ path, detail, both }`) next to `notSynced`
+and the new folders waiting (`newFolders`: `{ path, size }`). The app
+window's issues view retries one, or, when it exists on both sides, keeps
+this computer's version, the cloud's or both.
 
 ### Scheduling
 
@@ -197,13 +243,49 @@ button that opens the approval page in the user's own browser), home
 (account, storage, overall status as a dot plus a word, "needs attention"
 cards for held-back deletions, errors and not-synced items, the folder
 list with per-folder actions, the last 20 changes), the add-folder wizard
-(native folder dialog: `osascript` on macOS, a PowerShell
-`FolderBrowserDialog` on Windows, `zenity`/`kdialog`/`yad` on Linux, a text
-field otherwise; then a server folder browser that can create folders;
-then the direction and optional ignore patterns), folder editing and
-settings (start at login, pause, bandwidth, security key lock, account,
-version, logs). The page polls `/api/state` every 2 s. Recent activity is
+(first a choice: "A folder from this computer" or "Files from NeoCloud";
+see below), folder editing (direction, the folder tree for selective sync,
+new folders, and the folder settings above under "Advanced"), the issues
+view and settings (start at login, pause, sidebar entry, notifications,
+network rules, proxy, bandwidth, guard and big-folder defaults, security
+key lock, account, version, logs). The page polls `/api/state` every 2 s. Recent activity is
 kept in memory only; the log file has the full history.
+
+The two wizard flows:
+
+- **A folder from this computer**: an existing local folder (native folder
+  dialog: `osascript` on macOS, a PowerShell `FolderBrowserDialog` on
+  Windows, `zenity`/`kdialog`/`yad` on Linux, a text field otherwise), then
+  a server folder browser that can create folders, then the direction and
+  optional ignore patterns. The local folder must exist; it is never
+  created or restyled.
+- **Files from NeoCloud** (cloud-first): a server folder, or the root
+  ("Sync everything"), then the local folder the app creates for it and,
+  under "Choose folders", which folders inside to sync and what to do with
+  new ones:
+  `~/NeoCloud` for the whole cloud, `~/NeoCloud/<folder name>` for one
+  folder (`~/NeoCloud <name>` when `~/NeoCloud` is a pair itself). A taken
+  name gets ` 2`, ` 3`…; the proposal never overlaps a pair. "Change
+  location" picks another parent folder. Then the direction (both ways by
+  default). The first pass merges into the empty folder: it downloads
+  everything and deletes nothing (no state rows, so nothing counts as
+  deleted and the mass-delete guard has nothing to count). The CLI does the
+  same with `pair add <local> <remote> --create` (the folder must not
+  exist yet).
+
+Folders the app created (`created = true` on the pair) get the NeoCloud
+look, best effort (failures are logged, the pair works anyway): the logo as
+folder icon (macOS: `NSWorkspace setIcon`, which writes `Icon\r` and the
+folder's FinderInfo; Windows: a hidden system `desktop.ini` pointing at
+`neocloud.ico` in the config folder, folder marked read-only; Linux: `gio
+set metadata::custom-icon`), also on a `NeoCloud` folder made to hold it.
+The NeoCloud folder of the first such pair is added to the Finder sidebar
+Favorites (`LSSharedFileList`), the Explorer navigation pane (a per-user
+delegate folder, CLSID `{9F4DC68E-FECA-4260-9BF2-A1C29417C317}`, removed by
+the uninstaller too) or the GTK bookmarks, and taken out again when no
+created pair is left or `file_manager_sidebar` is turned off. The client remembers
+what it added (`pinned` in the config), so an entry the user removes by
+hand is not added back.
 
 Local API (all need the session and the header):
 
@@ -213,14 +295,17 @@ Local API (all need the session and the header):
 | POST · DELETE | `/api/login` | Start a device-code sign-in · stop waiting for it |
 | POST | `/api/logout` | Sign out |
 | GET | `/api/account` | `{ used, limit }` from `/api/devices/me`, cached 30 s |
-| POST | `/api/pairs` · PUT/DELETE `/api/pairs/:id` | Add · edit (direction, ignore, paused) · remove a folder |
+| POST | `/api/pairs` · PUT/DELETE `/api/pairs/:id` | Add (`create: true` makes the local folder) · edit (direction, ignore, paused; `settings`, the folder settings in camelCase, replaces them all) · remove a folder |
+| POST | `/api/pairs/:id/new-folders` | `{ path, sync }`: answer a new-folder prompt |
+| POST | `/api/pairs/:id/resolve` | `{ path, choice }`: retry a failed file (`""`), or keep `local`, `remote` or `both` |
+| GET | `/api/local/suggest?remote=&parent=` | `{ path }`: the folder the cloud-first flow would create for `remote` inside `parent` (default location when empty) |
 | POST | `/api/pairs/:id/sync` · `/open` · `/confirm-deletes` | Sync one folder · open it in the file manager · approve held-back deletions |
 | POST | `/api/sync` | Sync everything |
-| POST | `/api/pick-folder` | Native folder dialog → `{ path }`, `{ cancelled }` or `{ unsupported }` |
-| GET | `/api/remote/folders?id=` | Server folders inside `id` (root by default), vaults left out |
+| POST | `/api/pick-folder` (`?for=parent`) | Native folder dialog → `{ path }`, `{ cancelled }` or `{ unsupported }` |
+| GET | `/api/remote/folders?id=` or `?path=` | Server folders inside `id` or `path` (root by default), vaults left out |
 | POST | `/api/remote/folders` | `{ parentId, name }`: create (or reuse) a server folder |
 | POST | `/api/open/approval` · `/web` · `/logs` | Open the pending approval page, the web app or the log file |
-| PUT | `/api/settings` | Pause, autostart, bandwidth, device name |
+| PUT | `/api/settings` | Pause, autostart, bandwidth, device name; `global` replaces the app-wide settings (`/api/state` shows them with defaults filled in) |
 | POST · DELETE | `/api/key-lock` | Turn the security key lock on · off |
 
 The tray shows the status, Open NeoCloud, Sync now, Pause/Resume, up to

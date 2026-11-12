@@ -2944,11 +2944,11 @@ class AppL10nEn extends AppL10n {
   String get scanTitle => 'Scan QR code';
 
   @override
-  String get scanPrimeTitle => 'Use the camera to pair';
+  String get scanPrimeTitle => 'Use the camera to scan';
 
   @override
   String get scanPrimeBody =>
-      'NeoCloud needs the camera only to read the pairing code shown in the web app. Nothing is recorded or uploaded.';
+      'NeoCloud needs the camera only to read NeoCloud QR codes. Nothing is recorded or uploaded.';
 
   @override
   String get scanPrimeAllow => 'Allow camera';
@@ -2958,7 +2958,7 @@ class AppL10nEn extends AppL10n {
       'Point the camera at the QR code in Settings › Sign-in & security';
 
   @override
-  String get scanWrongCode => 'That\'s not a NeoCloud pairing code';
+  String get scanWrongCode => 'That\'s not a NeoCloud QR code';
 
   @override
   String get scanTorchOn => 'Turn on the light';
@@ -3568,4 +3568,122 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get memberAlreadyAdded => 'Already shared with this person.';
+
+  @override
+  String get authOrUsePassword => 'or use your password';
+
+  @override
+  String get qrLoginScanTitle => 'Scan with NeoCloud on your phone';
+
+  @override
+  String get qrLoginScanBody =>
+      'Open the NeoCloud app on a signed-in phone and tap Scan QR code.';
+
+  @override
+  String qrLoginRefreshesIn(int seconds) {
+    return 'New code in ${seconds}s';
+  }
+
+  @override
+  String get qrLoginPreparing => 'Preparing code…';
+
+  @override
+  String get qrLoginNewCode => 'New code';
+
+  @override
+  String get qrLoginShowCode => 'Sign in with your phone';
+
+  @override
+  String get qrLoginWaitingTitle => 'Check your phone';
+
+  @override
+  String get qrLoginWaitingBody =>
+      'Approve the sign-in on your phone to continue here.';
+
+  @override
+  String get qrLoginSigningInOn => 'Signing in on';
+
+  @override
+  String get qrLoginFrom => 'From';
+
+  @override
+  String get qrLoginWaitingForApproval => 'Waiting for approval';
+
+  @override
+  String get qrLoginCancelAndUsePassword => 'Cancel and use password';
+
+  @override
+  String get qrLoginCouldNotStart => 'The QR code couldn\'t be prepared.';
+
+  @override
+  String get qrLoginRateLimited =>
+      'Too many QR codes in a short time. Wait a moment, then try again.';
+
+  @override
+  String get qrLoginDeclinedOnPhone => 'The sign-in was declined on the phone.';
+
+  @override
+  String get qrLoginExpired => 'That code expired. Scan the new one.';
+
+  @override
+  String get scanQrSubtitle => 'Sign in a browser or approve a device';
+
+  @override
+  String get scanAnyHint =>
+      'Point the camera at the QR code on the other device';
+
+  @override
+  String get qrLoginApproveTitle => 'Approve sign-in?';
+
+  @override
+  String qrLoginApproveHint(String account) {
+    return 'Only approve if you started this sign-in yourself. It will be signed in as $account.';
+  }
+
+  @override
+  String get qrLoginApprove => 'Approve';
+
+  @override
+  String get qrLoginDecline => 'Decline';
+
+  @override
+  String qrLoginRequestedAt(String time) {
+    return 'Requested $time';
+  }
+
+  @override
+  String get qrLoginPreviewExpired =>
+      'This request has expired. Show a new code on the other device.';
+
+  @override
+  String get qrLoginPreviewUsed => 'This request has already been used.';
+
+  @override
+  String qrLoginApproved(String device) {
+    return '$device is signed in.';
+  }
+
+  @override
+  String get qrLoginDeclined => 'Sign-in declined.';
+
+  @override
+  String get qrLoginCouldNotApprove => 'The sign-in couldn\'t be approved.';
+
+  @override
+  String scanOtherServer(String server) {
+    return 'This code belongs to another server ($server).';
+  }
+
+  @override
+  String get cameraOfferTitle => 'Back up your photos?';
+
+  @override
+  String get cameraOfferBody =>
+      'NeoCloud can upload new photos and videos from this phone automatically, encrypted like every other file.';
+
+  @override
+  String get cameraOfferSetUp => 'Set up';
+
+  @override
+  String get notNow => 'Not now';
 }

@@ -20,10 +20,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -35,7 +37,9 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/browser"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
+	"github.com/neolabs/neocloud/clients/lite/internal/proxy"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
+	"github.com/neolabs/neocloud/clients/lite/internal/shellfolder"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
 
@@ -62,6 +66,9 @@ type Options struct {
 	LogPath string
 	// WindowProfile is the browser profile folder of the app window.
 	WindowProfile string
+	// Logger gets what goes wrong outside a request (folder icons and
+	// the sidebar entry); nil logs to the standard logger.
+	Logger *log.Logger
 }
 
 // Server serves the app window's page and API.
@@ -116,6 +123,9 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	if err != nil {
 		return nil, err
 	}
+	if opts.Logger == nil {
+		opts.Logger = log.Default()
+	}
 	s := &Server{
 		engine:   engine,
 		cfg:      cfg,
@@ -144,6 +154,8 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("PUT /api/pairs/{id}", s.api(s.updatePair))
 	mux.HandleFunc("DELETE /api/pairs/{id}", s.api(s.removePair))
 	mux.HandleFunc("POST /api/pairs/{id}/confirm-deletes", s.api(s.confirmDeletes))
+	mux.HandleFunc("POST /api/pairs/{id}/new-folders", s.api(s.decideNewFolder))
+	mux.HandleFunc("POST /api/pairs/{id}/resolve", s.api(s.resolve))
 	mux.HandleFunc("PUT /api/settings", s.api(s.updateSettings))
 	mux.HandleFunc("POST /api/key-lock", s.api(s.enrollKey))
 	mux.HandleFunc("DELETE /api/key-lock", s.api(s.removeKey))
@@ -151,6 +163,7 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("POST /api/pairs/{id}/sync", s.api(s.syncPair))
 	mux.HandleFunc("POST /api/pairs/{id}/open", s.api(s.openPair))
 	mux.HandleFunc("POST /api/pick-folder", s.api(s.pickFolder))
+	mux.HandleFunc("GET /api/local/suggest", s.api(s.suggestLocal))
 	mux.HandleFunc("GET /api/remote/folders", s.api(s.remoteFolders))
 	mux.HandleFunc("POST /api/remote/folders", s.api(s.createRemoteFolder))
 	mux.HandleFunc("GET /api/account", s.api(s.account))
@@ -325,6 +338,7 @@ func (s *Server) state(r *http.Request) (any, error) {
 		"uploadKiBps":   cfg.UploadKiBps,
 		"downloadKiBps": cfg.DownloadKiBps,
 		"autostart":     autostart.Enabled(),
+		"global":        effectiveGlobal(cfg),
 		"pairs":         pairs,
 		"status":        s.engine.Status(),
 		"login":         login,
@@ -441,6 +455,11 @@ type pairBody struct {
 	Direction string   `json:"direction"`
 	Ignore    []string `json:"ignore"`
 	Paused    *bool    `json:"paused"`
+	// Settings, when sent, replace all of the pair's settings.
+	Settings *config.PairSettings `json:"settings"`
+	// Create asks for a new local folder (the cloud-first flow); without
+	// it the folder must exist.
+	Create bool `json:"create"`
 }
 
 func (s *Server) addPair(r *http.Request) (any, error) {
@@ -448,15 +467,41 @@ func (s *Server) addPair(r *http.Request) (any, error) {
 	if err := decode(r, &body); err != nil {
 		return nil, err
 	}
-	pair, err := config.NewPair(body.Local, body.Remote, body.Direction, cleanList(body.Ignore))
+	pair, err := config.NewPair(body.Local, body.Remote, body.Direction, cleanList(body.Ignore), body.Create)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.cfg.Update(func(c *config.Config) error { return c.AddPair(pair) }); err != nil {
+	if body.Settings != nil {
+		if err := body.Settings.Validate(); err != nil {
+			return nil, err
+		}
+		pair.PairSettings = *body.Settings
+	}
+	made, err := s.engine.AddPair(pair)
+	if err != nil {
 		return nil, err
 	}
-	s.engine.SyncNow()
+	if pair.Created {
+		shellfolder.Created(pair.Local, made, filepath.Dir(s.cfg.Path()), s.opts.Logger)
+		shellfolder.Reconcile(s.cfg, s.opts.Logger)
+	}
 	return pair, nil
+}
+
+// suggestLocal answers { path }: where the cloud-first flow would create
+// the folder for ?remote= inside ?parent= (the default location when
+// empty).
+func (s *Server) suggestLocal(r *http.Request) (any, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	query := r.URL.Query()
+	local, err := config.SuggestLocal(home, query.Get("parent"), query.Get("remote"), s.cfg.Get().Pairs)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"path": local}, nil
 }
 
 func (s *Server) updatePair(r *http.Request) (any, error) {
@@ -482,6 +527,12 @@ func (s *Server) updatePair(r *http.Request) (any, error) {
 			if body.Paused != nil {
 				c.Pairs[i].Paused = *body.Paused
 			}
+			if body.Settings != nil {
+				if err := body.Settings.Validate(); err != nil {
+					return err
+				}
+				c.Pairs[i].PairSettings = *body.Settings
+			}
 			return nil
 		}
 		return errors.New("no such pair")
@@ -493,9 +544,37 @@ func (s *Server) updatePair(r *http.Request) (any, error) {
 	return ok(), nil
 }
 
+// decideNewFolder answers a new-folder prompt: { path, sync }.
+func (s *Server) decideNewFolder(r *http.Request) (any, error) {
+	var body struct {
+		Path string `json:"path"`
+		Sync bool   `json:"sync"`
+	}
+	if err := decode(r, &body); err != nil {
+		return nil, err
+	}
+	return ok(), s.engine.DecideNewFolder(r.PathValue("id"), body.Path, body.Sync)
+}
+
+// resolve is the issues view's per-file action: { path, choice } with
+// choice local, remote, both or "" (retry).
+func (s *Server) resolve(r *http.Request) (any, error) {
+	var body struct {
+		Path   string `json:"path"`
+		Choice string `json:"choice"`
+	}
+	if err := decode(r, &body); err != nil {
+		return nil, err
+	}
+	return ok(), s.engine.Resolve(r.PathValue("id"), body.Path, body.Choice)
+}
+
 func (s *Server) removePair(r *http.Request) (any, error) {
-	id := r.PathValue("id")
-	return ok(), s.engine.RemovePair(id)
+	if err := s.engine.RemovePair(r.PathValue("id")); err != nil {
+		return nil, err
+	}
+	shellfolder.Reconcile(s.cfg, s.opts.Logger)
+	return ok(), nil
 }
 
 func (s *Server) confirmDeletes(r *http.Request) (any, error) {
@@ -509,6 +588,8 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 		UploadKiBps   *int64  `json:"uploadKiBps"`
 		DownloadKiBps *int64  `json:"downloadKiBps"`
 		DeviceName    *string `json:"deviceName"`
+		// Global, when sent, replaces the app-wide settings.
+		Global *config.GlobalSettings `json:"global"`
 	}
 	if err := decode(r, &body); err != nil {
 		return nil, err
@@ -524,6 +605,16 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 			return nil, err
 		}
 	}
+	if body.Global != nil {
+		if err := body.Global.Validate(); err != nil {
+			return nil, err
+		}
+	}
+	if body.Global != nil {
+		if err := body.Global.Validate(); err != nil {
+			return nil, err
+		}
+	}
 	err := s.cfg.Update(func(c *config.Config) error {
 		if body.UploadKiBps != nil {
 			c.UploadKiBps = max(*body.UploadKiBps, 0)
@@ -534,10 +625,18 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 		if body.DeviceName != nil && strings.TrimSpace(*body.DeviceName) != "" {
 			c.DeviceName = strings.TrimSpace(*body.DeviceName)
 		}
+		if body.Global != nil {
+			c.GlobalSettings = *body.Global
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	if body.Global != nil {
+		shellfolder.Reconcile(s.cfg, s.opts.Logger)
+		api.SetProxy(proxy.For(*body.Global))
+		s.engine.SyncNow() // the network rules may let pairs run now
 	}
 	if body.Paused != nil {
 		if err := s.engine.SetPaused(*body.Paused); err != nil {
@@ -562,6 +661,24 @@ func (s *Server) enrollKey(r *http.Request) (any, error) {
 
 func (s *Server) removeKey(r *http.Request) (any, error) {
 	return ok(), s.lock.Remove(r.Context())
+}
+
+// effectiveGlobal is the app-wide settings with every default filled in,
+// as the settings page shows them.
+func effectiveGlobal(cfg config.Config) config.GlobalSettings {
+	files, percent := cfg.Guard(config.Pair{})
+	big := cfg.BigFolderMB(config.Pair{})
+	return config.GlobalSettings{
+		BigFolderPromptMB:   &big,
+		DeleteGuardFiles:    &files,
+		DeleteGuardPercent:  &percent,
+		PauseOnMetered:      new(cfg.MeteredPause()),
+		PauseOnBatterySaver: new(cfg.BatteryPause()),
+		Notifications:       cfg.NotifyLevel(),
+		FileManagerSidebar:  new(cfg.Sidebar()),
+		Proxy:               cfg.ProxyMode(),
+		ProxyURL:            cfg.ProxyURL,
+	}
 }
 
 func cleanList(values []string) []string {

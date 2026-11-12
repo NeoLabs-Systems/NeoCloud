@@ -84,6 +84,7 @@ class _RecentPanelState extends State<RecentPanel> {
     final items = _items;
     final controller = widget.controller;
     return _PageScaffold(
+      onRefresh: _load,
       children: <Widget>[
         _PageTitle(title: appStrings.recentTitle, subtitle: appStrings.recentSubtitle),
         if (_error != null) _LoadError(message: _error!, onRetry: _load),
@@ -170,6 +171,7 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
   Widget build(BuildContext context) {
     final items = _items;
     return _PageScaffold(
+      onRefresh: _load,
       children: <Widget>[
         _PageTitle(title: appStrings.filesNavFavorites, subtitle: appStrings.filesFavoritesSubtitle),
         if (_error != null) _LoadError(message: _error!, onRetry: () {
@@ -274,7 +276,9 @@ class _TrashPanelState extends State<TrashPanel> {
   Widget build(BuildContext context) {
     final items = _items;
     final locale = currentAppLanguage.code;
+    final phone = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
     return _PageScaffold(
+      onRefresh: _load,
       children: <Widget>[
         _PageTitle(
           title: appStrings.trashTitle,
@@ -305,7 +309,7 @@ class _TrashPanelState extends State<TrashPanel> {
                 for (var i = 0; i < items.length; i++) ...<Widget>[
                   if (i > 0) Divider(height: 1, color: _border),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: EdgeInsets.fromLTRB(phone ? 14 : 20, 12, phone ? 4 : 20, 12),
                     child: Row(
                       children: <Widget>[
                         _FileIcon(node: items[i], size: 34),
@@ -325,11 +329,19 @@ class _TrashPanelState extends State<TrashPanel> {
                             ],
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () => unawaited(_restore(items[i])),
-                          icon: const Icon(Icons.restore_rounded, size: 18),
-                          label: Text(appStrings.restore),
-                        ),
+                        // A phone keeps the name readable: icons only.
+                        if (phone)
+                          IconButton(
+                            tooltip: appStrings.restore,
+                            onPressed: () => unawaited(_restore(items[i])),
+                            icon: const Icon(Icons.restore_rounded, size: 20),
+                          )
+                        else
+                          TextButton.icon(
+                            onPressed: () => unawaited(_restore(items[i])),
+                            icon: const Icon(Icons.restore_rounded, size: 18),
+                            label: Text(appStrings.restore),
+                          ),
                         IconButton(
                           tooltip: appStrings.deleteForever,
                           onPressed: () => unawaited(_confirmDelete(

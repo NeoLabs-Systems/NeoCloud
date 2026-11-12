@@ -169,6 +169,12 @@ class _SettingsNav extends StatelessWidget {
                 : TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: _textPrimary),
           ),
         ),
+        // NeoAgent leads its phone settings with the QR scanner: approving
+        // a browser or a desktop sign-in is what the phone is for.
+        if (compact && qrScannerSupported && controller.usesDeviceLogin) ...<Widget>[
+          const SizedBox(height: 16),
+          _ScanQrTile(controller: controller),
+        ],
         for (final scope in SettingsScope.values)
           ..._scopeSection(scope, SettingsPage.values.where((page) => page.scope == scope && page.visibleFor(controller)).toList()),
         const SizedBox(height: 22),

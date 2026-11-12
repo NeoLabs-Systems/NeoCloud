@@ -18,14 +18,11 @@ import (
 // implements the same rules with the same numbers.
 
 const (
-	// A pass that would delete more than half of the tracked files, or
-	// more than massDeleteMax, on either side waits for a confirmation…
-	massDeleteMax = 500
-	// …but only from massDeleteMin deletions up, so ordinary clean-ups
-	// never ask.
+	// A pass that would delete more than delete_guard_percent of the
+	// tracked files (50), or more than delete_guard_files (500), on either
+	// side waits for a confirmation, but only from massDeleteMin deletions
+	// up, so ordinary clean-ups never ask.
 	massDeleteMin = 20
-	// trashDays is how long remote-driven local deletes stay recoverable.
-	trashDays = 30
 
 	metaDir        = ".neocloud"
 	markerName     = "pair-id"
@@ -75,21 +72,24 @@ func (e *NeedsConfirmationError) Error() string {
 // one (an unmounted drive's mount point, a restored backup elsewhere).
 var errMarkerMissing = errors.New("folder looks unmounted or replaced: its .neocloud/pair-id marker is missing; not syncing. Remove and re-add the pair if this is intended")
 
+// guardLimits are a pair's delete_guard_files and delete_guard_percent.
+type guardLimits struct{ files, percent int }
+
 // guardTrips decides whether deletions of n tracked files (of tracked)
 // need a confirmation.
-func guardTrips(n, tracked int) bool {
-	return n >= massDeleteMin && (n*2 > tracked || n > massDeleteMax)
+func (g guardLimits) trips(n, tracked int) bool {
+	return n >= massDeleteMin && (n*100 > g.percent*tracked || n > g.files)
 }
 
 // evaluateGuard returns the confirmation a plan needs, or nil.
 // remoteEmpty is true when the server folder has nothing left although
 // files were tracked.
-func evaluateGuard(remoteDeletes, localDeletes, tracked int, remoteEmpty bool) *DeleteConfirmation {
+func (g guardLimits) evaluate(remoteDeletes, localDeletes, tracked int, remoteEmpty bool) *DeleteConfirmation {
 	pending := DeleteConfirmation{RemoteDeletes: remoteDeletes, LocalDeletes: localDeletes}
 	switch {
 	case remoteEmpty && localDeletes > 0:
 		pending.Reason = GuardRemoteEmpty
-	case guardTrips(remoteDeletes, tracked) || guardTrips(localDeletes, tracked):
+	case g.trips(remoteDeletes, tracked) || g.trips(localDeletes, tracked):
 		pending.Reason = GuardMassDelete
 	default:
 		return nil
@@ -190,14 +190,17 @@ func moveToTrash(root, diskRel string, now time.Time) (string, error) {
 	return target, nil
 }
 
-// pruneTrash removes trash days older than trashDays.
-func pruneTrash(root string, now time.Time) {
+// pruneTrash removes trash days older than days; 0 keeps them all.
+func pruneTrash(root string, now time.Time, days int) {
+	if days <= 0 {
+		return
+	}
 	dir := filepath.Join(root, metaDir, trashDir)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
-	cutoff := now.AddDate(0, 0, -trashDays)
+	cutoff := now.AddDate(0, 0, -days)
 	for _, entry := range entries {
 		day, err := time.ParseInLocation(trashDayFormat, entry.Name(), now.Location())
 		if err != nil || !entry.IsDir() || !day.Before(cutoff) {

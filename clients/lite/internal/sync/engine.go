@@ -17,6 +17,7 @@ import (
 
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/netstate"
 	"github.com/neolabs/neocloud/clients/lite/internal/state"
 )
 
@@ -61,6 +62,12 @@ type PairState struct {
 	NeedsConfirmation *DeleteConfirmation `json:"needsConfirmation,omitempty"`
 	// NotSynced lists what the last pass deliberately left alone.
 	NotSynced []NotSynced `json:"notSynced"`
+	// Failed lists the files the last pass could not sync.
+	Failed []Issue `json:"failed"`
+	// NewFolders wait for the user (new_folders "ask", big folders).
+	NewFolders []NewFolder `json:"newFolders"`
+	// Held says why the pair was not synced (a metered network…).
+	Held string `json:"held,omitempty"`
 }
 
 // Engine syncs every configured pair of one account.
@@ -83,6 +90,9 @@ type Engine struct {
 	watched  map[string]bool
 	// stopRun cancels the sync run in progress, if any.
 	stopRun context.CancelFunc
+	// conditions reports a metered network or battery saver (a seam
+	// for the tests).
+	conditions func() netstate.Conditions
 }
 
 // New creates an engine. logger may be nil.
@@ -99,6 +109,8 @@ func New(cfg *config.Store, db *state.DB, logger *log.Logger) *Engine {
 		status: Status{State: StateIdle, PairState: map[string]PairState{}},
 		dirty:  map[string]bool{},
 		wake:   make(chan struct{}, 1),
+
+		conditions: netstate.Current,
 	}
 }
 
@@ -254,6 +266,29 @@ func (e *Engine) SignOut() error {
 	return e.db.Reset()
 }
 
+// AddPair saves a new pair. For a pair the app creates the folder of
+// (pair.Created), the folder is made once the pair was accepted; the
+// folders made are returned, outermost first.
+func (e *Engine) AddPair(pair config.Pair) ([]string, error) {
+	var made []string
+	err := e.cfg.Update(func(c *config.Config) error {
+		if err := c.AddPair(pair); err != nil {
+			return err
+		}
+		if !pair.Created {
+			return nil
+		}
+		var err error
+		made, err = config.CreateLocal(pair.Local)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	e.SyncNow()
+	return made, nil
+}
+
 // RemovePair drops a pair from the config and forgets its state. Files
 // stay where they are on both sides.
 func (e *Engine) RemovePair(key string) error {
@@ -270,6 +305,85 @@ func (e *Engine) RemovePair(key string) error {
 		return err
 	}
 	return e.db.ForgetPair(removed.ID)
+}
+
+// excludeFolders adds folders to a pair's exclude_paths.
+func (e *Engine) excludeFolders(pairID string, folders []string) error {
+	return e.cfg.Update(func(c *config.Config) error {
+		for i := range c.Pairs {
+			if c.Pairs[i].ID == pairID {
+				c.Pairs[i].ExcludePaths = append(c.Pairs[i].ExcludePaths, folders...)
+				return c.Pairs[i].Validate()
+			}
+		}
+		return fmt.Errorf("no pair %q", pairID)
+	})
+}
+
+// DecideNewFolder answers a new-folder prompt: sync the folder from now
+// on, or exclude it.
+func (e *Engine) DecideNewFolder(pairID, folder string, sync bool) error {
+	folder = config.CleanRemote(folder)
+	if folder == "" || strings.Contains(folder, "/") {
+		return errors.New("not a top-level folder")
+	}
+	if !sync {
+		if err := e.excludeFolders(pairID, []string{folder}); err != nil {
+			return err
+		}
+	} else {
+		value, err := e.db.Meta(pairID, metaAllowed)
+		if err != nil {
+			return err
+		}
+		var allowed []string
+		json.Unmarshal([]byte(value), &allowed)
+		if err := e.db.SetMeta(pairID, metaAllowed, encodeJSON(append(allowed, nfc(folder)))); err != nil {
+			return err
+		}
+	}
+	e.dropNewFolder(pairID, folder)
+	return e.SyncPair(pairID)
+}
+
+// dropNewFolder takes an answered prompt out of the shown status.
+func (e *Engine) dropNewFolder(pairID, folder string) {
+	e.setStatus(func(s *Status) {
+		ps := s.PairState[pairID]
+		var kept []NewFolder
+		for _, item := range ps.NewFolders {
+			if item.Path != folder {
+				kept = append(kept, item)
+			}
+		}
+		ps.NewFolders = kept
+		s.PairState[pairID] = ps
+	})
+}
+
+// Resolve stores the issues view's choice for a file that failed to sync
+// (ResolveLocal, ResolveRemote or ResolveBoth; "" just retries) and syncs
+// the pair again.
+func (e *Engine) Resolve(pairID, rel, choice string) error {
+	if _, ok := e.cfg.Get().Pair(pairID); !ok {
+		return fmt.Errorf("no pair %q", pairID)
+	}
+	if choice != "" {
+		if choice != ResolveLocal && choice != ResolveRemote && choice != ResolveBoth {
+			return errors.New("choice must be local, remote or both")
+		}
+		value, err := e.db.Meta(pairID, metaResolve)
+		if err != nil {
+			return err
+		}
+		choices := map[string]string{}
+		json.Unmarshal([]byte(value), &choices)
+		choices[rel] = choice
+		if err := e.db.SetMeta(pairID, metaResolve, encodeJSON(choices)); err != nil {
+			return err
+		}
+	}
+	return e.SyncPair(pairID)
 }
 
 // SetPaused pauses or resumes all syncing.
@@ -369,11 +483,21 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 	e.setStatus(func(s *Status) { s.State, s.Message, s.Changes = StateSyncing, "Syncing…", 0 })
 
 	var errs []error
+	held, ran := e.heldBy(cfg), 0
 	for _, pair := range cfg.Pairs {
 		if pair.Paused || (only != nil && !only[pair.ID]) {
 			continue
 		}
-		ps, pairErr := e.syncPair(ctx, client, cfg.DeviceName, pair)
+		if held != "" && pair.FollowsNetworkRules() {
+			e.setStatus(func(s *Status) {
+				ps := s.PairState[pair.ID]
+				ps.Held = held
+				s.PairState[pair.ID] = ps
+			})
+			continue
+		}
+		ran++
+		ps, pairErr := e.syncPair(ctx, client, cfg, pair)
 		if ctx.Err() != nil {
 			break // stopped (locked or quitting): keep the last real report
 		}
@@ -397,6 +521,8 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 	e.setStatus(func(s *Status) {
 		s.LastSync = time.Now()
 		switch {
+		case joined == nil && ran == 0 && held != "":
+			s.State, s.Message = StatePaused, held
 		case joined == nil:
 			s.State, s.Message = StateIdle, "Up to date"
 		case isOffline(joined):
@@ -410,10 +536,25 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 	return joined
 }
 
+// heldBy says why pairs that follow the network rules wait, or "".
+func (e *Engine) heldBy(cfg config.Config) string {
+	if !cfg.MeteredPause() && !cfg.BatteryPause() {
+		return ""
+	}
+	now := e.conditions()
+	switch {
+	case cfg.MeteredPause() && now.Metered:
+		return "Paused on a metered connection"
+	case cfg.BatteryPause() && now.BatterySaver:
+		return "Paused while the battery saver is on"
+	}
+	return ""
+}
+
 // syncPair repeats passes until one changes nothing: a conflict copy, a
 // file that changed mid-transfer or our own uploads all settle that way.
 // Deletions held back by the guard come back as *NeedsConfirmationError.
-func (e *Engine) syncPair(ctx context.Context, client *api.Client, device string, pair config.Pair) (PairState, error) {
+func (e *Engine) syncPair(ctx context.Context, client *api.Client, cfg config.Config, pair config.Pair) (PairState, error) {
 	var ps PairState
 	release, err := lockPair(e.db.Dir(), pair.ID)
 	if err != nil {
@@ -427,14 +568,24 @@ func (e *Engine) syncPair(ctx context.Context, client *api.Client, device string
 		if err != nil {
 			return ps, err
 		}
+		files, percent := cfg.Guard(pair)
 		p := &pass{
-			ctx: ctx, client: client, db: e.db, pair: pair, device: device,
-			logf: func(format string, args ...any) { e.log.Printf("[%s] "+format, append([]any{pair.Remote}, args...)...) },
-			note: func(kind, rel string) { e.recordActivity(pair.ID, kind, rel) },
+			ctx: ctx, client: client, db: e.db, pair: pair, device: cfg.DeviceName,
+			logf:        func(format string, args ...any) { e.log.Printf("[%s] "+format, append([]any{pair.Remote}, args...)...) },
+			note:        func(kind, rel string) { e.recordActivity(pair.ID, kind, rel) },
+			guardLimits: guardLimits{files: files, percent: percent},
+			bigFolder:   int64(cfg.BigFolderMB(pair)) << 20,
 		}
 		lastErr = p.run(tree)
 		e.watchDirs(pair.ID, p.dirs)
 		ps.NotSynced, pending = p.notSynced, p.pending
+		ps.Failed, ps.NewFolders = p.failed, p.asks
+		if len(p.newExcludes) > 0 {
+			pair.ExcludePaths = append(pair.ExcludePaths, p.newExcludes...)
+			if err := e.excludeFolders(pair.ID, p.newExcludes); err != nil {
+				return ps, err
+			}
+		}
 		if lastErr == nil || errors.Is(lastErr, context.Canceled) {
 			if err := e.db.SetCursor(pair.ID, tree.Cursor); err != nil {
 				return ps, err
@@ -446,6 +597,12 @@ func (e *Engine) syncPair(ctx context.Context, client *api.Client, device string
 	}
 	if ps.NotSynced == nil {
 		ps.NotSynced = []NotSynced{}
+	}
+	if ps.Failed == nil {
+		ps.Failed = []Issue{}
+	}
+	if ps.NewFolders == nil {
+		ps.NewFolders = []NewFolder{}
 	}
 	ps.NeedsConfirmation = pending
 	if lastErr == nil && pending != nil {

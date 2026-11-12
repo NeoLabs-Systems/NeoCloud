@@ -67,9 +67,9 @@ function revokeDeviceToken(userId, id) {
 
 /**
  * Signs every client of the account out: all bearer tokens and WebDAV app
- * passwords, plus approved device-code sign-ins and QR pairing codes not yet
- * redeemed, which would otherwise still turn into a token. Used when the
- * password changes or an admin resets it.
+ * passwords, plus approved device-code sign-ins, QR sign-ins and QR pairing
+ * codes not yet redeemed, which would otherwise still turn into a token or a
+ * session. Used when the password changes or an admin resets it.
  */
 function revokeAllDeviceTokens(userId) {
   return db.transaction(() => {
@@ -78,6 +78,9 @@ function revokeAllDeviceTokens(userId) {
     `).run(userId);
     db.prepare(`
       UPDATE device_authorizations SET status = 'denied' WHERE user_id = ? AND status = 'approved'
+    `).run(userId);
+    db.prepare(`
+      UPDATE user_qr_login_challenges SET status = 'declined' WHERE approved_by_user_id = ? AND status = 'approved'
     `).run(userId);
     db.prepare(`
       UPDATE device_pairings SET expires_at = datetime('now', '-1 second') WHERE user_id = ? AND status = 'pending'

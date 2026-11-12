@@ -120,6 +120,22 @@ class NeoCloudController extends ChangeNotifier {
   /// False once the server has an account and sign-up is turned off.
   bool registrationOpen = true;
 
+  /// The QR code on the web sign-in card, which a signed-in phone approves.
+  late final QrLoginFlow qrLogin = QrLoginFlow(
+    client: client,
+    onChanged: notifyListeners,
+    onSignedIn: _completeQrLogin,
+    describeError: friendlyError,
+  );
+
+  Future<void> _completeQrLogin(Map<String, dynamic> result) async {
+    final account = result['user'];
+    if (account is! Map) return;
+    hasUser = true;
+    await _enterSession(AccountUser.fromJson(account.cast<String, dynamic>()));
+    notifyListeners();
+  }
+
   /// The browser's security key API; replaced in tests.
   WebAuthnClient webAuthn = createWebAuthnClient();
 
@@ -293,7 +309,7 @@ class NeoCloudController extends ChangeNotifier {
 
   /// Signs in with a stored or just-approved device token. Offline, the app
   /// still opens with what it knows.
-  Future<void> _enterDeviceSession(DeviceConnection connection) async {
+  Future<void> _enterDeviceSession(DeviceConnection connection, {bool firstSignIn = false}) async {
     deviceAccountIsAdmin = false;
     client
       ..baseUrl = connection.server
@@ -331,8 +347,16 @@ class NeoCloudController extends ChangeNotifier {
     liveUpdates.start();
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
-    unawaited(_startNativeServices(known));
+    unawaited(_startNativeServices(known).then((_) {
+      if (!firstSignIn || !cameraUploads.supported || user == null) return;
+      offerCameraUpload = true;
+      notifyListeners();
+    }).catchError((Object _) {}));
   }
+
+  /// Set once camera upload is ready after a fresh connect: the app then
+  /// offers it once, like NeoAgent's first-run permission prompt.
+  bool offerCameraUpload = false;
 
   AccountUser _deviceUser(Map<String, dynamic> me) {
     final account = (me['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
@@ -406,7 +430,7 @@ class NeoCloudController extends ChangeNotifier {
       final connection = await login();
       await deviceSessions.write(connection);
       await _rememberServer(this, connection.server);
-      await _enterDeviceSession(connection);
+      await _enterDeviceSession(connection, firstSignIn: true);
     } on DeviceLoginFailure catch (failure) {
       errorMessage = _loginFailureText(failure);
     } catch (error) {
@@ -437,6 +461,7 @@ class NeoCloudController extends ChangeNotifier {
   void cancelConnect() => pendingLogin?.cancel();
 
   Future<void> _enterSession(AccountUser account) async {
+    qrLogin.clear();
     user = account;
     isAwaitingTwoFactor = false;
     errorMessage = null;

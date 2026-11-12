@@ -38,7 +38,8 @@ and Linux, a Go tray executable (Go 1.26+):
 cd clients/lite
 go build -o neocloud-lite ./cmd/neocloud-lite
 ./neocloud-lite login --server http://localhost:3344
-./neocloud-lite pair add ~/NeoCloud /Documents --direction both
+./neocloud-lite pair add ~/Documents /Documents --direction both
+./neocloud-lite pair add ~/NeoCloud / --create   # cloud-first: makes the folder
 ./neocloud-lite run              # tray icon; `run --headless` for servers
 go test ./... && go test -tags e2e ./e2e/...   # e2e spawns a real server
 ```
@@ -57,6 +58,18 @@ rebuild the binary to see a change. `run --headless` prints a one-time URL
 to open it in any browser. The tray icons in `internal/tray/icons` are
 rendered from the logo's glyph (template PNGs for macOS, colored PNG/ICO
 elsewhere); regenerate all five states together when the logo changes.
+`packaging/icons/render.sh` also refreshes the folder icon that
+`internal/shellfolder` embeds (`neocloud.png`, `neocloud.ico`). Its sidebar
+entry touches the real Finder sidebar / Explorer pane, so tests that add a
+created pair turn `file_manager_sidebar` off first.
+
+Folder and app settings ([docs/clients.md](clients.md#folder-settings-lite))
+live in `internal/config/settings.go`; the engine applies them in
+`internal/sync/selective.go` (selective sync, new folders, conflict and
+delete policies), `internal/netstate` answers the metered / battery saver
+checks, `internal/proxy` the proxy setting and `internal/notify` the desktop
+notifications. Engine tests replace `Engine.conditions` so this computer's
+battery state never pauses them.
 
 Launched without arguments (a double click) the binary runs the tray app,
 once per config folder: a second launch finds `instance.lock` taken and

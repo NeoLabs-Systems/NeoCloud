@@ -54,7 +54,7 @@ func newDevice(t *testing.T, s *server, name, direction string, ignore []string)
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	pair, err := config.NewPair(dir, "/"+remoteFolder, direction, ignore)
+	pair, err := config.NewPair(dir, "/"+remoteFolder, direction, ignore, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func assertConverged(t *testing.T, s *server, rest *api.Client, devices ...*devi
 	t.Helper()
 	remote := s.remoteSnapshot(t, rest)
 	for _, d := range devices {
-		local := localSnapshot(t, d.dir, sync.NewMatcher(d.pair.Ignore))
+		local := localSnapshot(t, d.dir, sync.MatcherFor(d.pair))
 		if out := diff(local, remote); out != "" {
 			t.Fatalf("%s differs from the server (local vs remote):\n%s", d.name, out)
 		}

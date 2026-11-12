@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/neolabs/neocloud/clients/lite/internal/api"
+	"github.com/neolabs/neocloud/clients/lite/internal/config"
 )
 
 // accountTTL is how long the quota shown on the page is reused.
@@ -21,7 +22,8 @@ type remoteFolder struct {
 	Path string `json:"path"`
 }
 
-// remoteFolders lists the folders inside ?id= (the root by default).
+// remoteFolders lists the folders inside ?id= (the root by default) or
+// ?path=.
 // Vault folders are left out: the lite client never syncs them.
 func (s *Server) remoteFolders(r *http.Request) (any, error) {
 	client, err := s.engine.Client()
@@ -35,6 +37,24 @@ func (s *Server) remoteFolders(r *http.Request) (any, error) {
 	folder, crumbs, children, err := client.Subfolders(r.Context(), id)
 	if err != nil {
 		return nil, err
+	}
+	// ?path= opens a folder by its path (a pair's remote folder).
+	for _, name := range strings.Split(config.CleanRemote(r.URL.Query().Get("path")), "/") {
+		if name == "" {
+			break
+		}
+		next := ""
+		for _, child := range children {
+			if strings.EqualFold(child.Name, name) && child.VaultID == "" {
+				next = child.ID
+			}
+		}
+		if next == "" {
+			return nil, errors.New("that folder is not in NeoCloud (any more)")
+		}
+		if folder, crumbs, children, err = client.Subfolders(r.Context(), next); err != nil {
+			return nil, err
+		}
 	}
 	trail := make([]remoteFolder, 0, len(crumbs))
 	for i, crumb := range crumbs {

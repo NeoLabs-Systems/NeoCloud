@@ -286,6 +286,7 @@ textarea.input { height: auto; min-height: 96px; padding: 10px 12px; font-family
   padding: 13px 14px; cursor: pointer;
   border-radius: var(--r-lg); border: 1px solid var(--border-strong); background: var(--surface);
 }
+button.choice { width: 100%; text-align: left; font: inherit; color: inherit; }
 .choice:hover { border-color: var(--muted); }
 .choice.on { border-color: var(--accent); background: var(--accent-wash); }
 .choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -351,3 +352,21 @@ details.advanced .body { display: flex; flex-direction: column; gap: 8px; margin
   .folder .tools .icon-btn { width: 28px; }
 }
 .setting .logo { width: 32px; height: 32px; border-radius: 8px; flex: none; }
+
+/* Folder tree with checkboxes (selective sync) */
+.tree .pick { display: flex; align-items: center; gap: 4px; padding: 5px 10px 5px 6px; }
+.tree .pick + .pick { border-top: 1px solid var(--border); }
+.tree .pick label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; font-size: 13.5px; }
+.tree .pick label svg { width: 16px; height: 16px; color: var(--text-2); flex: none; }
+.tree .pick input { accent-color: var(--accent); margin: 0; }
+.twist { border: 0; background: none; padding: 2px; color: var(--muted); cursor: pointer; display: grid; place-items: center; border-radius: var(--r-sm); }
+.twist svg { width: 14px; height: 14px; transition: transform 0.15s; }
+.twist.open svg { transform: rotate(90deg); }
+.twist:hover { background: var(--raised); }
+select.input { appearance: auto; }
+
+/* Issues view */
+.issues .issue { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; }
+.issues .issue + .issue { border-top: 1px solid var(--border); }
+.issues .issue .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.setting select.input { width: auto; min-width: 160px; flex: none; }

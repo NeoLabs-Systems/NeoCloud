@@ -3,7 +3,7 @@ part of 'main.dart';
 // The signed-in frame, ported from NeoRouter's main_shell.dart: a 276px
 // sidebar with the brand card, grouped navigation and the account button on
 // wide screens; an app bar with the logo and the same sidebar as a drawer
-// below 980px.
+// below 980px; below 640px NeoAgent's phone frame (main_mobile_shell.dart).
 
 class _NavGroup {
   const _NavGroup(this.group, this.sections);
@@ -72,11 +72,34 @@ class _HomeViewState extends State<HomeView> {
     _expanded = controller.selectedSection.group;
   }
 
+  Widget _sectionSwitcher({required bool slide}) {
+    return AnimatedSwitcher(
+      duration: Duration(milliseconds: slide ? 220 : 160),
+      switchInCurve: slide ? Curves.easeOutCubic : Curves.easeOut,
+      switchOutCurve: slide ? Curves.easeInCubic : Curves.easeIn,
+      transitionBuilder: (child, animation) {
+        final fade = FadeTransition(opacity: animation, child: child);
+        if (!slide) return fade;
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.014), end: Offset.zero).animate(animation),
+          child: fade,
+        );
+      },
+      layoutBuilder: (current, previous) => Stack(children: <Widget>[?current]),
+      child: KeyedSubtree(
+        key: ValueKey<AppSection>(controller.selectedSection),
+        child: _SectionBody(controller: controller),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _syncExpanded();
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final phone = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    // The undo bar and upload panel float above the phone's tab bar.
+    final floatingBottom = phone ? 76 + MediaQuery.paddingOf(context).bottom : 20.0;
     final sidebar = _Sidebar(
       controller: controller,
       groups: _navigationGroups(controller),
@@ -91,14 +114,13 @@ class _HomeViewState extends State<HomeView> {
           Positioned.fill(
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              appBar: wide
+              appBar: wide || phone
                   ? null
                   : AppBar(
                       backgroundColor: _bgPrimary,
                       surfaceTintColor: Colors.transparent,
                       scrolledUnderElevation: 0,
-                      automaticallyImplyLeading: !phone,
-                      titleSpacing: phone ? 16 : 0,
+                      titleSpacing: 0,
                       title: const _BrandLockup(logoSize: 26),
                       actions: <Widget>[
                         _CameraStatusChip(controller: controller),
@@ -107,28 +129,28 @@ class _HomeViewState extends State<HomeView> {
                     ),
               drawer: wide || phone ? null : Drawer(backgroundColor: _bgSecondary, shape: const RoundedRectangleBorder(), child: sidebar),
               bottomNavigationBar: phone ? _MobileTabBar(controller: controller) : null,
-              body: Row(
-                children: <Widget>[
-                  if (wide) sidebar,
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 160),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-                      layoutBuilder: (current, previous) => Stack(children: <Widget>[?current]),
-                      child: KeyedSubtree(
-                        key: ValueKey<AppSection>(controller.selectedSection),
-                        child: _SectionBody(controller: controller),
+              body: phone
+                  // Phones, like NeoAgent: a slim top bar instead of the app
+                  // bar, the tab bar below, pages sliding in a touch.
+                  ? SafeArea(
+                      bottom: false,
+                      child: Column(
+                        children: <Widget>[
+                          _MobileTopBar(controller: controller),
+                          Expanded(child: _sectionSwitcher(slide: true)),
+                        ],
                       ),
+                    )
+                  : Row(
+                      children: <Widget>[
+                        if (wide) sidebar,
+                        Expanded(child: _sectionSwitcher(slide: false)),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
-          Positioned(left: 0, right: 0, bottom: 20, child: Center(child: _UndoBar(center: controller.undo))),
-          Positioned(right: 20, bottom: 20, child: _UploadPanel(controller: controller)),
+          Positioned(left: 0, right: 0, bottom: floatingBottom, child: Center(child: _UndoBar(center: controller.undo))),
+          Positioned(right: 20, bottom: floatingBottom, child: _UploadPanel(controller: controller)),
         ],
       ),
       ),

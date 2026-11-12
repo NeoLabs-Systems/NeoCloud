@@ -30,6 +30,9 @@ type localScan struct {
 	// spellings lists every on-disk spelling of a key; more than one is a clash.
 	spellings map[string][]string
 	skipped   []NotSynced
+	// hidden are items Windows marks hidden or system, skipped when the
+	// pair leaves hidden files out.
+	hidden []string
 }
 
 // scanLocal walks the pair's folder. Symlinks and special files are
@@ -59,6 +62,13 @@ func scanLocal(root string, ignore *Matcher, excluded func(string) bool) (*local
 		raw = filepath.ToSlash(raw)
 		key := nfc(raw)
 		if ignore.Match(key, d.IsDir()) || excluded(key) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ignore.hiddenAttr && hasHiddenAttr(full) {
+			scan.hidden = append(scan.hidden, key)
 			if d.IsDir() {
 				return filepath.SkipDir
 			}

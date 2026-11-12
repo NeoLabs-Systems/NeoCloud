@@ -92,6 +92,7 @@ class _SharedWithMePanelState extends State<SharedWithMePanel> {
   Widget build(BuildContext context) {
     final shares = _controller.sharedWithMe;
     return _PageScaffold(
+      onRefresh: _load,
       children: <Widget>[
         _PageTitle(title: appStrings.navSharedWithMe, subtitle: appStrings.sharedWithMeSubtitle),
         if (_error != null) _LoadError(message: _error!, onRetry: () => unawaited(_load())),
@@ -161,7 +162,7 @@ class _SharedRow extends StatelessWidget {
               color: canWrite ? _success : _textMuted,
             ),
             const SizedBox(width: 4),
-            _FileActionsMenu(actions: actions),
+            _FileActionsMenu(actions: actions, title: share.node.name, node: share.node),
           ],
         ),
       ),

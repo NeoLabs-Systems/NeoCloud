@@ -4924,13 +4924,13 @@ abstract class AppL10n {
   /// No description provided for @scanPrimeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Use the camera to pair'**
+  /// **'Use the camera to scan'**
   String get scanPrimeTitle;
 
   /// No description provided for @scanPrimeBody.
   ///
   /// In en, this message translates to:
-  /// **'NeoCloud needs the camera only to read the pairing code shown in the web app. Nothing is recorded or uploaded.'**
+  /// **'NeoCloud needs the camera only to read NeoCloud QR codes. Nothing is recorded or uploaded.'**
   String get scanPrimeBody;
 
   /// No description provided for @scanPrimeAllow.
@@ -4948,7 +4948,7 @@ abstract class AppL10n {
   /// No description provided for @scanWrongCode.
   ///
   /// In en, this message translates to:
-  /// **'That\'s not a NeoCloud pairing code'**
+  /// **'That\'s not a NeoCloud QR code'**
   String get scanWrongCode;
 
   /// No description provided for @scanTorchOn.
@@ -5970,6 +5970,210 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Already shared with this person.'**
   String get memberAlreadyAdded;
+
+  /// No description provided for @authOrUsePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'or use your password'**
+  String get authOrUsePassword;
+
+  /// No description provided for @qrLoginScanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with NeoCloud on your phone'**
+  String get qrLoginScanTitle;
+
+  /// No description provided for @qrLoginScanBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the NeoCloud app on a signed-in phone and tap Scan QR code.'**
+  String get qrLoginScanBody;
+
+  /// No description provided for @qrLoginRefreshesIn.
+  ///
+  /// In en, this message translates to:
+  /// **'New code in {seconds}s'**
+  String qrLoginRefreshesIn(int seconds);
+
+  /// No description provided for @qrLoginPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing code…'**
+  String get qrLoginPreparing;
+
+  /// No description provided for @qrLoginNewCode.
+  ///
+  /// In en, this message translates to:
+  /// **'New code'**
+  String get qrLoginNewCode;
+
+  /// No description provided for @qrLoginShowCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your phone'**
+  String get qrLoginShowCode;
+
+  /// No description provided for @qrLoginWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your phone'**
+  String get qrLoginWaitingTitle;
+
+  /// No description provided for @qrLoginWaitingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve the sign-in on your phone to continue here.'**
+  String get qrLoginWaitingBody;
+
+  /// No description provided for @qrLoginSigningInOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in on'**
+  String get qrLoginSigningInOn;
+
+  /// No description provided for @qrLoginFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get qrLoginFrom;
+
+  /// No description provided for @qrLoginWaitingForApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval'**
+  String get qrLoginWaitingForApproval;
+
+  /// No description provided for @qrLoginCancelAndUsePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and use password'**
+  String get qrLoginCancelAndUsePassword;
+
+  /// No description provided for @qrLoginCouldNotStart.
+  ///
+  /// In en, this message translates to:
+  /// **'The QR code couldn\'t be prepared.'**
+  String get qrLoginCouldNotStart;
+
+  /// No description provided for @qrLoginRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many QR codes in a short time. Wait a moment, then try again.'**
+  String get qrLoginRateLimited;
+
+  /// No description provided for @qrLoginDeclinedOnPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in was declined on the phone.'**
+  String get qrLoginDeclinedOnPhone;
+
+  /// No description provided for @qrLoginExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'That code expired. Scan the new one.'**
+  String get qrLoginExpired;
+
+  /// No description provided for @scanQrSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in a browser or approve a device'**
+  String get scanQrSubtitle;
+
+  /// No description provided for @scanAnyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the QR code on the other device'**
+  String get scanAnyHint;
+
+  /// No description provided for @qrLoginApproveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve sign-in?'**
+  String get qrLoginApproveTitle;
+
+  /// No description provided for @qrLoginApproveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only approve if you started this sign-in yourself. It will be signed in as {account}.'**
+  String qrLoginApproveHint(String account);
+
+  /// No description provided for @qrLoginApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get qrLoginApprove;
+
+  /// No description provided for @qrLoginDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get qrLoginDecline;
+
+  /// No description provided for @qrLoginRequestedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested {time}'**
+  String qrLoginRequestedAt(String time);
+
+  /// No description provided for @qrLoginPreviewExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This request has expired. Show a new code on the other device.'**
+  String get qrLoginPreviewExpired;
+
+  /// No description provided for @qrLoginPreviewUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'This request has already been used.'**
+  String get qrLoginPreviewUsed;
+
+  /// No description provided for @qrLoginApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} is signed in.'**
+  String qrLoginApproved(String device);
+
+  /// No description provided for @qrLoginDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in declined.'**
+  String get qrLoginDeclined;
+
+  /// No description provided for @qrLoginCouldNotApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in couldn\'t be approved.'**
+  String get qrLoginCouldNotApprove;
+
+  /// No description provided for @scanOtherServer.
+  ///
+  /// In en, this message translates to:
+  /// **'This code belongs to another server ({server}).'**
+  String scanOtherServer(String server);
+
+  /// No description provided for @cameraOfferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up your photos?'**
+  String get cameraOfferTitle;
+
+  /// No description provided for @cameraOfferBody.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud can upload new photos and videos from this phone automatically, encrypted like every other file.'**
+  String get cameraOfferBody;
+
+  /// No description provided for @cameraOfferSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up'**
+  String get cameraOfferSetUp;
+
+  /// No description provided for @notNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notNow;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

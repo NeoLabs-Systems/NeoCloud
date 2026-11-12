@@ -16,7 +16,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/neolabs/neocloud/clients/lite/internal/api"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/proxy"
 	"github.com/neolabs/neocloud/clients/lite/internal/state"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
@@ -27,7 +29,7 @@ Usage:
   neocloud-lite                        the tray app (what a double click starts)
   neocloud-lite login --server URL [--no-browser]
   neocloud-lite logout
-  neocloud-lite pair add <local> <remotePath> [--direction both|up|down] [--ignore GLOB]...
+  neocloud-lite pair add <local> <remotePath> [--direction both|up|down] [--ignore GLOB]... [--create]
   neocloud-lite pair list
   neocloud-lite pair remove <id|local>
   neocloud-lite pair confirm-deletes <id>
@@ -112,6 +114,7 @@ func openApp(logger *log.Logger) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
+	api.SetProxy(proxy.For(cfg.Get().GlobalSettings))
 	return &app{dir: dir, cfg: cfg, db: db, engine: sync.New(cfg, db, logger)}, nil
 }
 

@@ -44,9 +44,9 @@ class _TextEditorPane extends StatelessWidget {
 
 /// "Discard your changes?" — true when the user lets them go.
 Future<bool> _confirmDiscardChanges(BuildContext context) async {
-  final discard = await showDialog<bool>(
+  final discard = await showAdaptiveSheet<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => _AdaptiveDialog(
       title: Text(appStrings.editorDiscardTitle),
       content: SizedBox(
         width: 400,
@@ -68,9 +68,9 @@ Future<bool> _confirmDiscardChanges(BuildContext context) async {
 /// The file changed on the server while it was being edited: true to save
 /// over that version anyway (it stays in the version history).
 Future<bool> _confirmOverwrite(BuildContext context, String name) async {
-  final overwrite = await showDialog<bool>(
+  final overwrite = await showAdaptiveSheet<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => _AdaptiveDialog(
       title: Text(appStrings.editorConflictTitle),
       content: SizedBox(
         width: 420,

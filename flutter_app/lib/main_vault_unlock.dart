@@ -54,9 +54,9 @@ class _VaultUnlockCardState extends State<_VaultUnlockCard> {
   }
 
   Future<void> _forgot() async {
-    await showDialog<void>(
+    await showAdaptiveSheet<void>(
       context: context,
-      barrierDismissible: false,
+      dismissible: false,
       builder: (_) => _VaultRecoverDialog(controller: widget.controller, vaultId: widget.vaultId),
     );
   }
@@ -200,7 +200,7 @@ class _VaultRecoverDialogState extends State<_VaultRecoverDialog> {
   @override
   Widget build(BuildContext context) {
     final (key, problem) = _parse();
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(appStrings.vaultRecoverTitle),
       content: SizedBox(
         width: 520,

@@ -6,13 +6,15 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_language.dart';
-import '../pairing/pairing_link.dart';
+import '../pairing/scanned_code.dart';
 import '../theme/palette.dart';
 
 bool get qrScannerSupported => Platform.isIOS || Platform.isAndroid;
 
-Future<PairingLinkData?> scanPairingCode(BuildContext context) =>
-    Navigator.of(context).push<PairingLinkData>(MaterialPageRoute<PairingLinkData>(fullscreenDialog: true, builder: (_) => const _ScanPage()));
+Future<ScannedCode?> scanQrCode(BuildContext context, {required bool Function(ScannedCode code) accept, required String hint}) =>
+    Navigator.of(context).push<ScannedCode>(
+      MaterialPageRoute<ScannedCode>(fullscreenDialog: true, builder: (_) => _ScanPage(accept: accept, hint: hint)),
+    );
 
 enum _ScanState { priming, scanning, denied, failed }
 
@@ -20,7 +22,10 @@ enum _ScanState { priming, scanning, denied, failed }
 const NeoCloudPalette _palette = darkPalette;
 
 class _ScanPage extends StatefulWidget {
-  const _ScanPage();
+  const _ScanPage({required this.accept, required this.hint});
+
+  final bool Function(ScannedCode code) accept;
+  final String hint;
 
   @override
   State<_ScanPage> createState() => _ScanPageState();
@@ -55,11 +60,11 @@ class _ScanPageState extends State<_ScanPage> {
   void _onDetect(BarcodeCapture capture) {
     if (_done) return;
     for (final barcode in capture.barcodes) {
-      final link = parsePairingLink(barcode.rawValue ?? '');
-      if (link != null) {
+      final code = parseScannedCode(barcode.rawValue ?? '');
+      if (code != null && widget.accept(code)) {
         _done = true;
         unawaited(_camera.stop());
-        Navigator.of(context).pop(link);
+        Navigator.of(context).pop(code);
         return;
       }
     }
@@ -123,7 +128,7 @@ class _ScanPageState extends State<_ScanPage> {
           child: Column(
             children: <Widget>[
               Text(
-                _wrongCode ? appStrings.scanWrongCode : appStrings.scanHint,
+                _wrongCode ? appStrings.scanWrongCode : widget.hint,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: _palette.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
               ),

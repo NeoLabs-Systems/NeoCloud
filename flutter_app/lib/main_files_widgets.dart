@@ -50,12 +50,23 @@ Future<void> _showContextMenu(BuildContext context, Offset position, List<_FileA
 }
 
 class _FileActionsMenu extends StatelessWidget {
-  const _FileActionsMenu({required this.actions});
+  const _FileActionsMenu({required this.actions, required this.title, this.node});
 
   final List<_FileAction> actions;
 
+  /// The item's name, heading the phone's action sheet.
+  final String title;
+  final FileNode? node;
+
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < AppBreakpoints.mobile) {
+      return IconButton(
+        tooltip: appStrings.details,
+        icon: Icon(Icons.more_horiz_rounded, color: _textMuted, size: 22),
+        onPressed: () => unawaited(_showFileActionSheet(context, title: title, node: node, actions: actions)),
+      );
+    }
     return PopupMenuButton<int>(
       tooltip: appStrings.details,
       icon: Icon(Icons.more_horiz_rounded, color: _textMuted, size: 20),
@@ -63,6 +74,51 @@ class _FileActionsMenu extends StatelessWidget {
       itemBuilder: (context) => _menuEntries(actions),
     );
   }
+}
+
+/// A file's actions on a phone: a bottom sheet with the item on top and one
+/// full-width row per action, instead of a desktop menu.
+Future<void> _showFileActionSheet(BuildContext context, {required String title, FileNode? node, required List<_FileAction> actions}) async {
+  final index = await showModalBottomSheet<int>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: _bgCard,
+    builder: (sheetContext) => SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(8, 0, 8, 12 + MediaQuery.viewPaddingOf(sheetContext).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
+              children: <Widget>[
+                if (node != null) ...<Widget>[_FileIcon(node: node, size: 36), const SizedBox(width: 12)],
+                Expanded(
+                  child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: _border),
+          const SizedBox(height: 6),
+          for (var i = 0; i < actions.length; i++) ...<Widget>[
+            if (actions[i].danger && i > 0) Divider(height: 13, color: _border, indent: 16, endIndent: 16),
+            ListTile(
+              minTileHeight: 52,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+              leading: Icon(actions[i].icon, size: 22, color: actions[i].danger ? _danger : _textSecondary),
+              title: Text(actions[i].label, style: TextStyle(fontSize: 15, color: actions[i].danger ? _danger : _textPrimary)),
+              onTap: () => Navigator.of(sheetContext).pop(i),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+  if (index != null) actions[index].onSelected();
 }
 
 /// A file's type at a glance, on a neutral tile.

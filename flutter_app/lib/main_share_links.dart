@@ -7,7 +7,7 @@ part of 'main.dart';
 // Settings › Shared links lists every link (main_shared_links_page.dart).
 
 Future<void> showShareLinkDialog(BuildContext context, NeoCloudController controller, FileNode node) {
-  return showDialog<void>(
+  return showAdaptiveSheet<void>(
     context: context,
     builder: (_) => _ShareLinkDialog(controller: controller, nodeId: node.id, nodeName: node.name, isFolder: node.isFolder),
   );
@@ -16,7 +16,7 @@ Future<void> showShareLinkDialog(BuildContext context, NeoCloudController contro
 /// The editor for one existing link, from Settings › Shared links.
 /// Resolves to true when the link was changed.
 Future<bool?> showEditShareLinkDialog(BuildContext context, NeoCloudController controller, ShareLink link) {
-  return showDialog<bool>(
+  return showAdaptiveSheet<bool>(
     context: context,
     builder: (_) => _ShareLinkDialog(
       controller: controller,
@@ -289,7 +289,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
   @override
   Widget build(BuildContext context) {
     final link = _link;
-    return AlertDialog(
+    return _AdaptiveDialog(
       title: Text(appStrings.shareLinkTitle(widget.nodeName)),
       content: SizedBox(
         width: 480,

@@ -24,8 +24,9 @@ const { getUsage } = require('../services/storage/quota');
 const { requireSessionTransport } = require('../middleware/auth');
 const { SESSION_COOKIE_NAME } = require('../http/middleware');
 const { sendJsonError } = require('../http/errors');
-const { jsonHandler } = require('./_helpers/http');
+const { jsonHandler, publicOrigin } = require('./_helpers/http');
 const { httpError } = require('../utils/http_error');
+const qrLogin = require('../services/account/qr_login');
 
 const router = express.Router();
 
@@ -41,6 +42,33 @@ const webauthnLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 40,
   message: { error: 'Too many security key attempts, try again later', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Showing a sign-in QR code is not a credential attempt, so it gets its own
+// budget instead of eating into authLimiter. A visible code rotates every two
+// minutes; its status checks are held open up to 25 seconds each.
+const qrLoginChallengeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { error: 'Too many QR sign-in requests, try again shortly', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const qrLoginPollLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 400,
+  message: { error: 'Too many QR sign-in status checks, try again shortly', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const qrLoginClaimLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: { error: 'Too many QR sign-in attempts, try again shortly', code: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -255,6 +283,68 @@ router.post('/webauthn/login/verify', webauthnLimiter, requireSessionTransport, 
     return establishSession(req, res, user);
   } catch (err) {
     return sendSignInError(res, err);
+  }
+});
+
+// QR sign-in (services/account/qr_login.js): this signed-out screen shows a
+// code, the signed-in phone approves it at /api/account/qr-login/*, and this
+// screen claims a session.
+function pollToken(req) {
+  const token = String(req.body?.token || '').trim();
+  if (!token) throw httpError(400, 'QR sign-in poll token is required', 'MISSING_FIELDS');
+  return token;
+}
+
+router.post('/qr-login/challenge', qrLoginChallengeLimiter, jsonHandler((req) => {
+  const challenge = qrLogin.createChallenge({
+    userAgent: req.get('user-agent'),
+    ipAddress: req.ip,
+    requestMetadata: req.body?.requestMetadata,
+  });
+  const server = publicOrigin(req);
+  const query = new URLSearchParams({ v: '1', backend: server, challenge: challenge.challengeId, secret: challenge.approveSecret });
+  return {
+    challengeId: challenge.challengeId,
+    pollToken: challenge.pollToken,
+    expiresAt: challenge.expiresAt,
+    status: challenge.status,
+    qrPayload: `neocloud://qr-login?${query}`,
+    backendUrl: server,
+  };
+}));
+
+// With `knownStatus`, the request is held open until the status differs from
+// it, so the signing-in screen hears about a scan or approval at once.
+router.post('/qr-login/challenge/:id/status', qrLoginPollLimiter, async (req, res) => {
+  try {
+    const token = pollToken(req);
+    const knownStatus = String(req.body?.knownStatus || '').trim();
+    if (!knownStatus) return res.json(qrLogin.getChallengeStatusForPoll({ challengeId: req.params.id, pollToken: token }));
+    const clientGone = new AbortController();
+    res.on('close', () => clientGone.abort());
+    const status = await qrLogin.waitForChallengeStatusChange({
+      challengeId: req.params.id,
+      pollToken: token,
+      knownStatus,
+      signal: clientGone.signal,
+    });
+    if (!res.writableEnded && !clientGone.signal.aborted) res.json(status);
+  } catch (err) {
+    sendJsonError(res, err);
+  }
+});
+
+router.post('/qr-login/challenge/:id/cancel', qrLoginPollLimiter, jsonHandler((req) => {
+  qrLogin.cancelChallenge({ challengeId: req.params.id, pollToken: pollToken(req) });
+  return { success: true };
+}));
+
+router.post('/qr-login/challenge/:id/claim', qrLoginClaimLimiter, requireSessionTransport, (req, res) => {
+  try {
+    const user = qrLogin.claimApprovedChallenge({ challengeId: req.params.id, pollToken: pollToken(req) });
+    return establishSession(req, res, user);
+  } catch (err) {
+    return sendJsonError(res, err);
   }
 });
 

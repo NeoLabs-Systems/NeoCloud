@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import '../pairing/pairing_link.dart';
+import '../pairing/scanned_code.dart';
 
 bool get qrScannerSupported => false;
 
-Future<PairingLinkData?> scanPairingCode(BuildContext context) async => null;
+Future<ScannedCode?> scanQrCode(BuildContext context, {required bool Function(ScannedCode code) accept, required String hint}) async => null;

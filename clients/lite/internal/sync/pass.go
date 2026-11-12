@@ -52,6 +52,21 @@ type pass struct {
 	deleteLocal  []string
 	// pending is set when the guard held this pass's deletions back.
 	pending *DeleteConfirmation
+
+	// Settings from the global config.
+	guardLimits guardLimits
+	bigFolder   int64 // bytes; 0 is off
+
+	// excludes are the folders left out this pass: exclude_paths plus new
+	// folders held back. newExcludes are new folders to exclude for good
+	// (new_folders "skip"), asks the ones that wait for the user.
+	excludes    []string
+	newExcludes []string
+	asks        []NewFolder
+	// resolve holds the issues view's per-file choices; failed is what
+	// this pass could not sync.
+	resolve map[string]string
+	failed  []Issue
 }
 
 // step is one planned action of a pass.
@@ -123,6 +138,12 @@ func (p *pass) fail(rel string, err error) {
 	}
 	p.logf("%s: %v", rel, err)
 	p.errs = append(p.errs, fmt.Errorf("%s: %w", rel, err))
+	both := false
+	if p.remote != nil {
+		_, remoteHas := p.remote.nodes[rel]
+		both = remoteHas && p.local[rel] != nil
+	}
+	p.failed = append(p.failed, Issue{Path: rel, Detail: err.Error(), Both: both})
 }
 
 // run executes the pass against a tree snapshot. Deletions held back by
@@ -136,20 +157,27 @@ func (p *pass) run(tree *api.Tree) error {
 	if err := p.checkMarker(); err != nil {
 		return err
 	}
-	pruneTrash(p.pair.Local, time.Now())
+	pruneTrash(p.pair.Local, time.Now(), p.pair.TrashDays())
 	var err error
 	if p.base, err = p.db.Entries(p.pair.ID); err != nil {
 		return err
 	}
+	if err := p.takeResolutions(); err != nil {
+		return err
+	}
 	p.dropUnsafeBase()
-	p.ignore = NewMatcher(p.pair.Ignore)
+	p.ignore = MatcherFor(p.pair)
 	if p.remote, err = buildRemoteView(p.ctx, p.client, tree, p.pair.Remote, len(p.base) == 0, p.ignore); err != nil {
 		return err
 	}
 	if err := p.checkRoot(); err != nil {
 		return err
 	}
-	scan, err := scanLocal(p.pair.Local, p.ignore, p.remote.inVault)
+	p.applyExcludes()
+	if err := p.holdNewFolders(p.bigFolder); err != nil {
+		return err
+	}
+	scan, err := scanLocal(p.pair.Local, p.ignore, func(rel string) bool { return p.remote.inVault(rel) || p.excluded(rel) })
 	if err != nil {
 		return err
 	}
@@ -237,7 +265,8 @@ func (p *pass) checkRoot() error {
 // findNotSynced collects what this pass leaves alone: links and special
 // files, name clashes and, on Windows, names and paths Windows cannot hold.
 func (p *pass) findNotSynced(scan *localScan) {
-	list := append(append([]NotSynced(nil), scan.skipped...), p.remote.skipped...)
+	list := append(append(append([]NotSynced(nil), p.notSynced...), scan.skipped...), p.remote.skipped...)
+	list = append(list, p.tooLarge()...)
 	local, remote, base := keySet(p.local), keySet(p.remote.nodes), keySet(p.base)
 	list = append(list, clashes(local, remote, base, scan.spellings)...)
 	if windowsNames {
@@ -256,6 +285,9 @@ func (p *pass) findNotSynced(scan *localScan) {
 	p.skip = map[string]bool{}
 	for _, item := range list {
 		p.skip[item.Path] = true
+	}
+	for _, rel := range scan.hidden {
+		p.skip[rel] = true // hidden files (include_hidden off): left alone on both sides, quietly
 	}
 	p.notSynced = list
 }
@@ -299,7 +331,7 @@ func (p *pass) guard(plan []step) (bool, error) {
 			return false, err
 		}
 	}
-	pending := evaluateGuard(remoteDeletes, localDeletes, tracked, tracked > 0 && len(p.remote.nodes) == 0)
+	pending := p.guardLimits.evaluate(remoteDeletes, localDeletes, tracked, tracked > 0 && len(p.remote.nodes) == 0)
 	if pending == nil {
 		return false, nil
 	}
@@ -429,7 +461,8 @@ func (p *pass) decide(rel string) (Action, bool) {
 		p.record(rel, node) // a folder replaced by one of the same name
 	}
 
-	action := Decide(localSide, remoteSide, p.pair.Direction)
+	bothFiles := bothPresent && !item.dir && !node.IsFolder()
+	action := p.policy(rel, Decide(localSide, remoteSide, p.pair.Direction), item, bothFiles)
 	if bothPresent && item.dir != node.IsFolder() && action == Upload {
 		p.fail(rel, errors.New("a file and a folder share this name; rename one of them"))
 		return None, false
@@ -453,6 +486,10 @@ func (p *pass) execute(s step) {
 		p.deleteRemote = append(p.deleteRemote, s.rel)
 	case Forget:
 		p.forget(s.rel)
+	case KeepLocal:
+		p.keepLocal(s.rel)
+	case KeepRemote:
+		p.keepRemote(s.rel)
 	}
 }
 
@@ -778,7 +815,7 @@ func (p *pass) applyLocalDeletes() {
 }
 
 // deleteLocalFolder removes a folder deleted remotely. Its content decides
-// how: only empty folders and OS junk (.DS_Store, Thumbs.db, desktop.ini)
+// how: only empty folders and OS junk (.DS_Store, Thumbs.db, desktop.ini, Icon\r)
 // are removed for good; anything else that may go (unchanged tracked
 // files, ignored files) moves to the trash with the folder. Content to
 // keep (a file changed since the scan, something new) keeps the folder;
@@ -874,7 +911,9 @@ func (p *pass) trashLocal(rel string) {
 
 // osJunk are files the desktop itself drops into folders. They are the
 // only files a sync pass ever removes without keeping them in the trash.
-var osJunk = []string{".DS_Store", "Thumbs.db", "desktop.ini"}
+// A pass never removes the pair's own folder, so the icon files of its
+// root stay.
+var osJunk = []string{".DS_Store", "Thumbs.db", "desktop.ini", iconFile}
 
 func isOSJunk(name string) bool {
 	for _, junk := range osJunk {

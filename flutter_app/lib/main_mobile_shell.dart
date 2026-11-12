@@ -73,6 +73,34 @@ extension _PhoneTabInfo on _PhoneTab {
   };
 }
 
+/// The phone's top bar (NeoAgent's _MobileTopBar): the mark and name, then
+/// camera upload's status and the QR scanner.
+class _MobileTopBar extends StatelessWidget {
+  const _MobileTopBar({required this.controller});
+
+  final NeoCloudController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 4),
+      child: Row(
+        children: <Widget>[
+          const _BrandLockup(logoSize: 28),
+          const Spacer(),
+          _CameraStatusChip(controller: controller),
+          if (qrScannerSupported && controller.usesDeviceLogin)
+            IconButton(
+              tooltip: appStrings.scanTitle,
+              onPressed: () => unawaited(_scanQrCode(context, controller)),
+              icon: Icon(Icons.qr_code_scanner_rounded, color: _textSecondary),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// One tab per phone destination (NeoAgent's _MobileTabBar).
 class _MobileTabBar extends StatelessWidget {
   const _MobileTabBar({required this.controller});

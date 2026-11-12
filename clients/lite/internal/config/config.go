@@ -33,6 +33,10 @@ type Pair struct {
 	Direction string   `toml:"direction" json:"direction"`
 	Ignore    []string `toml:"ignore,omitempty" json:"ignore"`
 	Paused    bool     `toml:"paused,omitempty" json:"paused"`
+	// Created is set when the app made the local folder (the cloud-first
+	// flow). Only such folders get the NeoCloud icon and the sidebar entry.
+	Created bool `toml:"created,omitempty" json:"created"`
+	PairSettings
 }
 
 // KeyLock is an enrolled security key lock (internal/keylock): a
@@ -63,9 +67,13 @@ type Config struct {
 	// Seconds between full local rescans, the safety net behind the watcher.
 	RescanSeconds int `toml:"rescan_seconds,omitempty"`
 	// Bandwidth caps in KiB/s; 0 is unlimited.
-	UploadKiBps   int64  `toml:"upload_kibps,omitempty"`
-	DownloadKiBps int64  `toml:"download_kibps,omitempty"`
-	Pairs         []Pair `toml:"pairs"`
+	UploadKiBps   int64 `toml:"upload_kibps,omitempty"`
+	DownloadKiBps int64 `toml:"download_kibps,omitempty"`
+	GlobalSettings
+	// Pinned is the folder the app put in the sidebar, so it can be taken
+	// out again when it is no longer wanted.
+	Pinned string `toml:"pinned,omitempty"`
+	Pairs  []Pair `toml:"pairs"`
 }
 
 // LoggedIn reports whether a device token is stored, in the clear or
@@ -117,6 +125,9 @@ func Open(dir string) (*Store, error) {
 	if store.cfg.KeyLock != nil {
 		store.cfg.Token = "" // a stray plaintext token next to a lock is not used, and dropped on the next write
 	}
+	for i := range store.cfg.Pairs {
+		store.cfg.Pairs[i].normalize()
+	}
 	return store, nil
 }
 
@@ -165,6 +176,7 @@ func clone(c Config) Config {
 	c.Pairs = append([]Pair(nil), c.Pairs...)
 	for i := range c.Pairs {
 		c.Pairs[i].Ignore = append([]string(nil), c.Pairs[i].Ignore...)
+		c.Pairs[i].ExcludePaths = append([]string(nil), c.Pairs[i].ExcludePaths...)
 	}
 	return c
 }
@@ -195,17 +207,23 @@ func write(path string, cfg Config) error {
 }
 
 // NewPair validates and normalizes a pair. The local folder must exist (an
-// unmounted drive must never look like "everything was deleted").
-func NewPair(local, remote, direction string, ignore []string) (Pair, error) {
+// unmounted drive must never look like "everything was deleted"), unless
+// create is set: then it must not exist yet, and the caller makes it with
+// CreateLocal once the pair was accepted.
+func NewPair(local, remote, direction string, ignore []string, create bool) (Pair, error) {
 	abs, err := filepath.Abs(local)
 	if err != nil {
 		return Pair{}, err
 	}
 	info, err := os.Stat(abs)
-	if err != nil {
+	switch {
+	case create && err == nil:
+		return Pair{}, fmt.Errorf("%s already exists; choose another name", abs)
+	case create && !errors.Is(err, os.ErrNotExist):
 		return Pair{}, fmt.Errorf("local folder: %w", err)
-	}
-	if !info.IsDir() {
+	case !create && err != nil:
+		return Pair{}, fmt.Errorf("local folder: %w", err)
+	case !create && !info.IsDir():
 		return Pair{}, fmt.Errorf("%s is not a folder", abs)
 	}
 	if direction == "" {
@@ -214,13 +232,20 @@ func NewPair(local, remote, direction string, ignore []string) (Pair, error) {
 	if direction != Both && direction != Up && direction != Down {
 		return Pair{}, fmt.Errorf("direction must be both, up or down")
 	}
-	return Pair{
+	pair := Pair{
 		ID:        randomID(),
 		Local:     abs,
 		Remote:    CleanRemote(remote),
 		Direction: direction,
 		Ignore:    ignore,
-	}, nil
+		Created:   create,
+	}
+	if pair.Remote == "" {
+		// The whole cloud: a folder someone adds later is not pulled down
+		// without asking.
+		pair.NewFolders = NewFoldersAsk
+	}
+	return pair, nil
 }
 
 // CleanRemote turns "/a/b/", "a/b" or "" into "a/b" or "" (the root).

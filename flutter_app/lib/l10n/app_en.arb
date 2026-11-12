@@ -1578,11 +1578,11 @@
   "connectScanQr": "Scan QR code",
   "connectScanQrHint": "In the web app, open Settings › Sign-in & security › Pair a phone.",
   "scanTitle": "Scan QR code",
-  "scanPrimeTitle": "Use the camera to pair",
-  "scanPrimeBody": "NeoCloud needs the camera only to read the pairing code shown in the web app. Nothing is recorded or uploaded.",
+  "scanPrimeTitle": "Use the camera to scan",
+  "scanPrimeBody": "NeoCloud needs the camera only to read NeoCloud QR codes. Nothing is recorded or uploaded.",
   "scanPrimeAllow": "Allow camera",
   "scanHint": "Point the camera at the QR code in Settings › Sign-in & security",
-  "scanWrongCode": "That's not a NeoCloud pairing code",
+  "scanWrongCode": "That's not a NeoCloud QR code",
   "scanTorchOn": "Turn on the light",
   "scanTorchOff": "Turn off the light",
   "scanDeniedTitle": "Camera access is off",
@@ -1896,5 +1896,74 @@
   "memberExpired": "Expired",
   "membersEmpty": "Not shared with anyone yet.",
   "memberNotFound": "No account found that this can be shared with. Check the exact email address or username.",
-  "memberAlreadyAdded": "Already shared with this person."
+  "memberAlreadyAdded": "Already shared with this person.",
+  "authOrUsePassword": "or use your password",
+  "qrLoginScanTitle": "Scan with NeoCloud on your phone",
+  "qrLoginScanBody": "Open the NeoCloud app on a signed-in phone and tap Scan QR code.",
+  "qrLoginRefreshesIn": "New code in {seconds}s",
+  "@qrLoginRefreshesIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "qrLoginPreparing": "Preparing code…",
+  "qrLoginNewCode": "New code",
+  "qrLoginShowCode": "Sign in with your phone",
+  "qrLoginWaitingTitle": "Check your phone",
+  "qrLoginWaitingBody": "Approve the sign-in on your phone to continue here.",
+  "qrLoginSigningInOn": "Signing in on",
+  "qrLoginFrom": "From",
+  "qrLoginWaitingForApproval": "Waiting for approval",
+  "qrLoginCancelAndUsePassword": "Cancel and use password",
+  "qrLoginCouldNotStart": "The QR code couldn't be prepared.",
+  "qrLoginRateLimited": "Too many QR codes in a short time. Wait a moment, then try again.",
+  "qrLoginDeclinedOnPhone": "The sign-in was declined on the phone.",
+  "qrLoginExpired": "That code expired. Scan the new one.",
+  "scanQrSubtitle": "Sign in a browser or approve a device",
+  "scanAnyHint": "Point the camera at the QR code on the other device",
+  "qrLoginApproveTitle": "Approve sign-in?",
+  "qrLoginApproveHint": "Only approve if you started this sign-in yourself. It will be signed in as {account}.",
+  "@qrLoginApproveHint": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "qrLoginApprove": "Approve",
+  "qrLoginDecline": "Decline",
+  "qrLoginRequestedAt": "Requested {time}",
+  "@qrLoginRequestedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "qrLoginPreviewExpired": "This request has expired. Show a new code on the other device.",
+  "qrLoginPreviewUsed": "This request has already been used.",
+  "qrLoginApproved": "{device} is signed in.",
+  "@qrLoginApproved": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "qrLoginDeclined": "Sign-in declined.",
+  "qrLoginCouldNotApprove": "The sign-in couldn't be approved.",
+  "scanOtherServer": "This code belongs to another server ({server}).",
+  "@scanOtherServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraOfferTitle": "Back up your photos?",
+  "cameraOfferBody": "NeoCloud can upload new photos and videos from this phone automatically, encrypted like every other file.",
+  "cameraOfferSetUp": "Set up",
+  "notNow": "Not now"
 }

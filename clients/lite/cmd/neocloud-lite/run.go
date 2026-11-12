@@ -11,6 +11,7 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
 	"github.com/neolabs/neocloud/clients/lite/internal/instance"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
+	"github.com/neolabs/neocloud/clients/lite/internal/notify"
 	"github.com/neolabs/neocloud/clients/lite/internal/settingsui"
 	"github.com/neolabs/neocloud/clients/lite/internal/tray"
 )
@@ -63,7 +64,7 @@ func cmdRun(args []string) error {
 	if *headless {
 		lock.Prompt = func(message string) { fmt.Fprintln(os.Stderr, message) }
 	}
-	opts := settingsui.Options{WindowProfile: filepath.Join(a.dir, "app-window")}
+	opts := settingsui.Options{WindowProfile: filepath.Join(a.dir, "app-window"), Logger: logger}
 	if !*headless {
 		opts.LogPath = filepath.Join(a.dir, logFileName)
 	}
@@ -86,6 +87,7 @@ func cmdRun(args []string) error {
 		<-ctx.Done()
 		return <-done
 	}
+	notify.Watch(a.engine, a.cfg, logger)
 	go func() {
 		<-ctx.Done() // Ctrl-C in a terminal also ends the tray
 		tray.Quit()

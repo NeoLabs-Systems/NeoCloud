@@ -24,8 +24,53 @@ class _AuthViewState extends State<AuthView> {
   final TextEditingController _codeController = TextEditingController();
   bool _registerMode = false;
 
+  // The QR code is watched only while someone can see it: the card shows
+  // it (or its dialog is open) and the tab is in front.
+  late final AppLifecycleListener _lifecycle;
+  bool _appInFront = true;
+  bool _qrShown = false;
+  bool _qrDialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onStateChange: (state) {
+      _appInFront = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+      _applyQrVisibility();
+    });
+  }
+
+  void _setQrShown(bool shown) {
+    if (_qrShown == shown) return;
+    _qrShown = shown;
+    // Called during build; start or pause after the frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyQrVisibility());
+  }
+
+  void _setQrDialogOpen(bool open) {
+    _qrDialogOpen = open;
+    _applyQrVisibility();
+  }
+
+  void _applyQrVisibility() {
+    if (!mounted) return;
+    final flow = widget.controller.qrLogin;
+    if ((_qrShown || _qrDialogOpen) && _appInFront) {
+      unawaited(flow.prepare());
+    } else {
+      flow.pause();
+    }
+  }
+
+  /// Phone sign-in is for the web card's own sign-in only: not the first
+  /// account, not registering, not the second factor.
+  bool get _offersQrLogin =>
+      !widget.controller.usesDeviceLogin && !widget.controller.isAwaitingTwoFactor && !_bootstrap && !_registerMode;
+
   @override
   void dispose() {
+    _lifecycle.dispose();
+    widget.controller.qrLogin.pause();
     _usernameController.dispose();
     _passwordController.dispose();
     _emailController.dispose();
@@ -177,6 +222,12 @@ class _AuthViewState extends State<AuthView> {
     final strength = _registerPasswordStrength;
     final showSecurityKeySignIn = !register && controller.supportsSecurityKeys;
     return <Widget>[
+      if (_offersQrLogin) ...<Widget>[
+        _QrLoginBlock(controller: controller, onDialogOpen: _setQrDialogOpen),
+        const SizedBox(height: 20),
+        _orDivider(appStrings.authOrUsePassword),
+        const SizedBox(height: AppSpacing.md),
+      ],
       TextField(
         controller: _usernameController,
         autofillHints: const <String>[AutofillHints.username],
@@ -305,9 +356,14 @@ class _AuthViewState extends State<AuthView> {
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final twoFactor = controller.isAwaitingTwoFactor;
+    _setQrShown(_offersQrLogin);
+    final qrScan = _offersQrLogin ? controller.qrLogin.scan : null;
     final String title;
     final String subtitle;
-    if (twoFactor) {
+    if (qrScan != null) {
+      title = appStrings.qrLoginWaitingTitle;
+      subtitle = appStrings.qrLoginWaitingBody;
+    } else if (twoFactor) {
       title = appStrings.enter2faCode;
       subtitle = appStrings.openYourAuthenticator;
     } else if (_bootstrap) {
@@ -362,7 +418,9 @@ class _AuthViewState extends State<AuthView> {
                                       ?.copyWith(color: _textSecondary),
                                 ),
                                 const SizedBox(height: AppSpacing.lg),
-                                if (twoFactor)
+                                if (qrScan != null)
+                                  _QrLoginWaiting(controller: controller, scan: qrScan)
+                                else if (twoFactor)
                                   ..._twoFactorFields(controller)
                                 else
                                   ..._credentialFields(controller),
