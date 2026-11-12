@@ -288,7 +288,40 @@ function welcome() {
   submit,
   el("p", { class: "hint" }, "You will approve this computer once in NeoCloud. Your password never goes through this app."));
   setTimeout(() => input.focus(), 0);
-  return el("div", { class: "welcome" }, brand("Keep folders on this computer in sync with your NeoCloud."), form);
+  return el("div", { class: "welcome" }, brand("Keep folders on this computer in sync with your NeoCloud."), form, connectionSettings());
+}
+
+// The proxy choice before signing in: a work network's proxy may block the
+// server, or the system proxy may belong to another network.
+function connectionSettings() {
+  const g = { ...(S.global || {}) };
+  const saved = el("span", { class: "hint" }, "");
+  const save = async (changes) => {
+    saved.textContent = "";
+    try {
+      await call("PUT", "/api/settings", { global: { ...g, ...changes } });
+      Object.assign(g, changes);
+      saved.textContent = "Saved";
+    } catch (err) {
+      saved.textContent = err.message;
+    }
+  };
+  const proxyUrl = el("input", { class: "input mono", id: "welcomeProxyUrl", spellcheck: "false", placeholder: "http://proxy.example.com:3128", value: g.proxyUrl || "" });
+  const manual = el("div", { class: "stack", hidden: g.proxy === "manual" ? undefined : true },
+    el("label", { class: "field", for: "welcomeProxyUrl" }, "Proxy address (http, https or socks5)", proxyUrl),
+    button("Save proxy", () => save({ proxy: "manual", proxyUrl: proxyUrl.value.trim() })));
+  const mode = selectField("welcomeProxy", g.proxy || "system",
+    [["system", "System settings"], ["none", "No proxy"], ["manual", "Manual"]],
+    (value) => {
+      manual.hidden = value !== "manual";
+      if (value !== "manual") save({ proxy: value });
+    });
+  return el("details", { class: "advanced", open: g.proxy && g.proxy !== "system" ? true : undefined },
+    el("summary", {}, icon("chevron"), "Connection settings"),
+    el("div", { class: "body" },
+      el("label", { class: "field", for: "welcomeProxy" }, "Proxy", mode),
+      manual,
+      saved));
 }
 
 function approve() {

@@ -370,3 +370,6 @@ select.input { appearance: auto; }
 .issues .issue + .issue { border-top: 1px solid var(--border); }
 .issues .issue .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .setting select.input { width: auto; min-width: 160px; flex: none; }
+.welcome details.advanced { margin-top: 18px; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.stack[hidden] { display: none; }

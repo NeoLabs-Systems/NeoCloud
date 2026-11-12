@@ -201,7 +201,11 @@ conflicts, new folders waiting; `all` adds a line per run that changed
 files; `off`), `file_manager_sidebar` (`true`) and `proxy` (`system`:
 `HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY`, else the macOS or Windows proxy
 settings; `none`; `manual` with `proxy_url`, `http://`, `https://` or
-`socks5://`). Loopback servers never go through a proxy.
+`socks5://`). Loopback servers never go through a proxy. With `system`,
+hosts on the Windows "don't use the proxy for" list go direct, and a system
+proxy that can't be reached (checked every two minutes) is skipped, so a
+work proxy left on at home doesn't block syncing. The sign-in screen has the
+same choice under "Connection settings".
 
 Files a pass could not sync are listed per pair
 (`pairs[].report.failed`: `{ path, detail, both }`) next to `notSynced`

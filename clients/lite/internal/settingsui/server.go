@@ -610,11 +610,6 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 			return nil, err
 		}
 	}
-	if body.Global != nil {
-		if err := body.Global.Validate(); err != nil {
-			return nil, err
-		}
-	}
 	err := s.cfg.Update(func(c *config.Config) error {
 		if body.UploadKiBps != nil {
 			c.UploadKiBps = max(*body.UploadKiBps, 0)

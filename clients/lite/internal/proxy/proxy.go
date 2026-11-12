@@ -39,11 +39,55 @@ func systemProxy(req *http.Request) (*url.URL, error) {
 	if loopback(req) {
 		return nil, nil
 	}
-	settings := cachedSystem()
-	if req.URL.Scheme == "https" && settings.https != nil {
-		return settings.https, nil
+	return fromSettings(req, cachedSystem()), nil
+}
+
+// fromSettings picks the OS settings' proxy for req; nil is direct.
+func fromSettings(req *http.Request, settings systemSettings) *url.URL {
+	if bypasses(settings.bypass, req.URL.Hostname()) {
+		return nil
 	}
-	return settings.http, nil
+	chosen := settings.http
+	if req.URL.Scheme == "https" && settings.https != nil {
+		chosen = settings.https
+	}
+	// A system proxy left over from another network (the office proxy at
+	// home, a VPN that is off) would block every request: go direct while
+	// it can't be reached. A manual proxy is always used.
+	if chosen != nil && !reachable(chosen.Host) {
+		return nil
+	}
+	return chosen
+}
+
+var (
+	reachMu    sync.Mutex
+	reachCache = map[string]reachResult{}
+	dialProxy  = func(address string) error {
+		conn, err := net.DialTimeout("tcp", address, 3*time.Second)
+		if err == nil {
+			conn.Close()
+		}
+		return err
+	}
+)
+
+type reachResult struct {
+	ok bool
+	at time.Time
+}
+
+// reachable reports whether a TCP connection to the proxy opens, checked
+// at most every two minutes per proxy.
+func reachable(address string) bool {
+	reachMu.Lock()
+	defer reachMu.Unlock()
+	if r, ok := reachCache[address]; ok && time.Since(r.at) < 2*time.Minute {
+		return r.ok
+	}
+	ok := dialProxy(address) == nil
+	reachCache[address] = reachResult{ok: ok, at: time.Now()}
+	return ok
 }
 
 func loopback(req *http.Request) bool {
@@ -56,7 +100,10 @@ func loopback(req *http.Request) bool {
 }
 
 // systemSettings are the proxies of the OS settings; nil is direct.
-type systemSettings struct{ http, https *url.URL }
+type systemSettings struct {
+	http, https *url.URL
+	bypass      []string // hosts that go direct (Windows ProxyOverride)
+}
 
 var (
 	cacheMu  sync.Mutex
