@@ -4531,6 +4531,12 @@ abstract class AppL10n {
   /// **'Photos may use mobile data, videos wait for Wi-Fi.'**
   String get cameraVideosWifiOnlyHint;
 
+  /// No description provided for @cameraSkipSimilar.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip photos that are almost identical to ones already in NeoCloud'**
+  String get cameraSkipSimilar;
+
   /// No description provided for @cameraLimitedMessage.
   ///
   /// In en, this message translates to:
@@ -4914,6 +4920,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'the system couldn’t provide this file'**
   String get cameraReasonNotAvailable;
+
+  /// No description provided for @cameraReasonSimilar.
+  ///
+  /// In en, this message translates to:
+  /// **'similar to a photo already in NeoCloud'**
+  String get cameraReasonSimilar;
 
   /// No description provided for @cameraAttempts.
   ///

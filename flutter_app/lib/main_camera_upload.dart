@@ -309,6 +309,10 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
                   onChanged: busy ? null : (value) => unawaited(_set(settings.copyWith(videosWifiOnly: value))),
                 ),
               ),
+            _SettingsRow(
+              label: appStrings.cameraSkipSimilar,
+              control: Switch(value: settings.skipSimilar, onChanged: busy ? null : (value) => unawaited(_set(settings.copyWith(skipSimilar: value)))),
+            ),
           ],
         ),
       ],

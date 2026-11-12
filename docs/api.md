@@ -690,6 +690,20 @@ asks before each photo, so photos it sent before are not sent again, even
 after they were sorted into subfolders or its records were lost. `400
 INVALID_HASH` / `INVALID_SIZE`; a folder of a share uses the owner's tree.
 
+**Almost the same photo there?** — `POST /api/uploads/similar`
+`{ hash }` or `{ hashes: [...] }` (up to 200; each the 64-bit dHash of the
+photo as 16 hex characters, made like Review › Duplicates: oriented, white
+behind transparency, grayscale, resized to 9×8 with Lanczos-3, each bit set when a pixel is
+brighter than its right neighbour, rows top to bottom, most significant bit
+first) → `{ matches: [{ hash, nodeId, similarity }] }`, one entry per asked
+hash that has an own photo (not in a vault or the trash) at most 3 bits apart
+(≥ 95 %); `similarity` in percent. Only photos already hashed can match;
+asking starts hashing the rest in the background. Session or phone token
+(`403 PHONE_REQUIRED` for desktop tokens). `400 INVALID_HASH` /
+`TOO_MANY_HASHES`. Camera upload skips matched photos unless its "skip
+similar" setting is off; against a server without this route (404) it uploads
+normally.
+
 `413 QUOTA_EXCEEDED` or `413 FILE_TOO_LARGE` when it does not fit.
 `507 DISK_FULL` when the server's storage disk would drop below
 `NEOCLOUD_MIN_FREE_DISK` (default 1 GiB): single uploads, parts, completing

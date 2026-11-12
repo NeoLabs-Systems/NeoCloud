@@ -15,6 +15,7 @@ import '../files/upload_queue.dart';
 import '../l10n/app_language.dart';
 import 'background_reliability.dart';
 import 'camera_backup.dart';
+import 'camera_dhash.dart';
 import 'camera_lease.dart';
 import 'camera_upload.dart';
 import 'camera_upload_stub.dart';
@@ -185,7 +186,7 @@ class _FileLedgerStore implements CameraLedgerStore {
   }
 }
 
-class _PhotoLibrary implements CameraLibrary {
+class _PhotoLibrary implements CameraLibrary, CameraPhotoHasher {
   final Map<String, AssetEntity> _entities = <String, AssetEntity>{};
 
   @override
@@ -249,6 +250,22 @@ class _PhotoLibrary implements CameraLibrary {
     }
   }
 
+  /// From a thumbnail of about 256 pixels, the photo's shape kept so
+  /// nothing is cropped. Never pulls the original from iCloud.
+  @override
+  Future<String?> dHash(CameraAsset asset) async {
+    final entity = _entities[asset.id];
+    if (entity == null || entity.type != AssetType.image) return null;
+    final width = entity.orientatedWidth;
+    final height = entity.orientatedHeight;
+    if (width <= 0 || height <= 0) return null;
+    final scale = 256 / (width > height ? width : height);
+    final size = ThumbnailSize((width * scale).round().clamp(9, 256), (height * scale).round().clamp(8, 256));
+    final bytes = await entity.thumbnailDataWithSize(size, quality: 95);
+    if (bytes == null) return null;
+    return dHashOfEncoded(bytes);
+  }
+
   /// Count of the library and a size estimate from up to 120 local files.
   Future<CameraLibrarySize> size({required bool includeVideos}) async {
     final list = await assets(includeVideos: includeVideos);
@@ -270,7 +287,7 @@ class _PhotoLibrary implements CameraLibrary {
   }
 }
 
-class _ServerTarget implements CameraTarget {
+class _ServerTarget implements CameraTarget, CameraSimilarityTarget {
   _ServerTarget(this._client) : _queue = UploadQueue(client: _client, onFileUploaded: (_) {})..defaultConflict = 'rename';
 
   final BackendClient _client;
@@ -316,6 +333,19 @@ class _ServerTarget implements CameraTarget {
       final failure = _classify(error);
       // A server from before the check answers 404: it can't tell.
       if (failure.kind == CameraFailureKind.file) return false;
+      throw failure;
+    }
+  }
+
+  @override
+  Future<Set<String>?> similar(List<String> hashes) async {
+    try {
+      return await _client.similarUploads(hashes);
+    } catch (error) {
+      // A server from before the check answers 404: upload as before.
+      if (error is ApiException && error.statusCode == 404) return null;
+      final failure = _classify(error);
+      if (failure.kind == CameraFailureKind.file) return const <String>{};
       throw failure;
     }
   }
@@ -386,6 +416,7 @@ Future<CameraPassResult?> _pass(
         videosWifiOnly: settings.videosWifiOnly,
         scope: settings.scope,
         since: settings.enabledAt,
+        skipSimilar: settings.skipSimilar,
       ),
       CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
       manual: manual,

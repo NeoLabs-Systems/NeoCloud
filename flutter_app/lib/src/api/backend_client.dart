@@ -394,6 +394,17 @@ class BackendClient {
   Future<bool> uploadContentExists(String parentId, String sha256, int size) async =>
       _map(await _request('POST', '/api/uploads/check', json: {'parentId': parentId, 'sha256': sha256, 'size': size}))['exists'] == true;
 
+  /// Of [hashes] (photo dHashes, 16 hex characters, up to 200), the ones
+  /// with an almost identical photo (≥ 95 %) already in the account.
+  Future<Set<String>> similarUploads(List<String> hashes) async {
+    final matches = _map(await _request('POST', '/api/uploads/similar', json: {'hashes': hashes}))['matches'];
+    return <String>{
+      if (matches is List)
+        for (final match in matches)
+          if (match is Map && match['hash'] is String) match['hash'] as String,
+    };
+  }
+
   Future<void> uploadPart(String uploadId, int index, Uint8List bytes) =>
       _request('PUT', '/api/uploads/$uploadId/parts/$index', bytes: bytes);
 

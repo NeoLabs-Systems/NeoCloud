@@ -1489,6 +1489,7 @@
   "cameraChargingHint": "In the background Android waits for the charger. iOS can’t tell apps, so it backs up when you open NeoCloud or tap Back up now.",
   "cameraVideosWifiOnly": "Videos only on Wi-Fi",
   "cameraVideosWifiOnlyHint": "Photos may use mobile data, videos wait for Wi-Fi.",
+  "cameraSkipSimilar": "Skip photos that are almost identical to ones already in NeoCloud",
   "cameraLimitedMessage": "NeoCloud can only see the photos you selected. The others aren’t backed up.",
   "cameraAllowFullAccess": "Allow full access",
   "cameraIosBackgroundTip": "iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.",
@@ -1591,6 +1592,7 @@
   "cameraReasonWifi": "waiting for Wi-Fi",
   "cameraReasonIcloud": "waiting on iCloud",
   "cameraReasonNotAvailable": "the system couldn’t provide this file",
+  "cameraReasonSimilar": "similar to a photo already in NeoCloud",
   "cameraAttempts": "{count, plural, =1{1 attempt} other{{count} attempts}}",
   "@cameraAttempts": {
     "placeholders": {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:crypto/crypto.dart';
 
+import 'camera_dhash.dart';
 import 'camera_ledger.dart';
 
 export 'camera_ledger.dart';
@@ -108,6 +109,21 @@ abstract class CameraTarget {
   Future<void> upload(String folderId, CameraFile file, {required String sha256});
 }
 
+/// A library that can make a photo's perceptual hash (camera_dhash.dart)
+/// from a small thumbnail, without loading the original.
+abstract class CameraPhotoHasher {
+  /// The photo's dHash, or null when it can't be made.
+  Future<String?> dHash(CameraAsset asset);
+}
+
+/// A server that can tell which photos are almost identical (at least 95 %)
+/// to one it already has.
+abstract class CameraSimilarityTarget {
+  /// The asked hashes that have such a photo, or null when the server can't
+  /// tell (older server). Throws [CameraUploadFailure] for what stops a pass.
+  Future<Set<String>?> similar(List<String> hashes);
+}
+
 /// Scope chosen when backup was turned on.
 enum CameraScope { newOnly, everything }
 
@@ -120,6 +136,7 @@ class CameraPassOptions {
     this.videosWifiOnly = true,
     this.scope = CameraScope.everything,
     this.since,
+    this.skipSimilar = true,
   });
 
   final String? folderId;
@@ -133,6 +150,9 @@ class CameraPassOptions {
   /// library then stays out ([CameraLedger.baseline]); what arrives later is
   /// backed up, whatever date it carries.
   final DateTime? since;
+
+  /// Photos almost identical to one already in NeoCloud are not sent.
+  final bool skipSimilar;
 }
 
 /// The device right now. [charging] is null when the platform can't tell.
@@ -178,8 +198,7 @@ class _DigestSink implements Sink<Digest> {
 }
 
 class CameraBackupEngine {
-  CameraBackupEngine({required this.store, required this.library, required this.target, DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
+  CameraBackupEngine({required this.store, required this.library, required this.target, DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
   final CameraLedgerStore store;
   final CameraLibrary library;
@@ -246,6 +265,13 @@ class CameraBackupEngine {
           ..reason = null;
       }
       record.modified = asset.modified ?? record.modified;
+      // Skipping similar photos was turned off: send the ones it skipped.
+      if (!options.skipSimilar && record.status == CameraRecordStatus.done && record.reason == CameraReason.similar) {
+        record
+          ..status = CameraRecordStatus.pending
+          ..attempts = 0
+          ..reason = null;
+      }
     }
     for (final record in ledger.records.values) {
       record.present = inScope.contains(record.assetId);
@@ -283,6 +309,11 @@ class CameraBackupEngine {
     var streak = 0;
     var sinceSave = 0;
     var current = conditions;
+    final similarity = _SimilarPhotos(
+      enabled: options.skipSimilar,
+      hasher: library is CameraPhotoHasher ? library as CameraPhotoHasher : null,
+      target: target is CameraSimilarityTarget ? target as CameraSimilarityTarget : null,
+    );
     for (var index = 0; index < queue.length; index++) {
       CameraPassResult partial() => CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited);
       final interrupted = await interruption?.call();
@@ -314,9 +345,14 @@ class CameraBackupEngine {
         final hash = await sha256OfStream(file.openRead());
         record.sha256 = hash;
         final sameName = byName[file.name];
+        String? doneReason;
         if (etags.contains(hash) || await target.contains(folderId, hash, file.size)) {
           skipped += 1;
           ledger.addLog('already on server: ${file.name}', _clock());
+        } else if (!asset.isVideo && await similarity.matches(queue, index)) {
+          skipped += 1;
+          doneReason = CameraReason.similar;
+          ledger.addLog('similar to a photo on the server: ${file.name}', _clock());
         } else {
           // A different file under the same name is uploaded too; the
           // server picks a free name.
@@ -324,21 +360,18 @@ class CameraBackupEngine {
           uploaded += 1;
           etags.add(hash);
           if (sameName == null) byName[file.name] = RemoteCameraFile(name: file.name, size: file.size, etag: hash);
+          similarity.uploaded(asset);
           ledger.addLog('uploaded: ${file.name}', _clock());
         }
         record
           ..status = CameraRecordStatus.done
-          ..reason = null
+          ..reason = doneReason
           ..doneAt = _clock();
         streak = 0;
       } on CameraUploadFailure catch (failure) {
         if (failure.kind != CameraFailureKind.file) {
           record.reason = null;
-          return stop(
-            _blockFor(failure.kind),
-            partial: partial(),
-            detail: failure.message,
-          );
+          return stop(_blockFor(failure.kind), partial: partial(), detail: failure.message);
         }
         _fail(ledger, record, failure.message);
         failed += 1;
@@ -349,10 +382,7 @@ class CameraBackupEngine {
         streak += 1;
       }
       if (streak >= cameraFailureStreakLimit) {
-        return stop(
-          CameraBlock.tooManyFailures,
-          partial: partial(),
-        );
+        return stop(CameraBlock.tooManyFailures, partial: partial());
       }
       sinceSave += 1;
       if (sinceSave >= _saveEvery) {
@@ -419,4 +449,65 @@ class CameraBackupEngine {
     CameraFailureKind.serverFull => CameraBlock.serverFull,
     CameraFailureKind.file => CameraBlock.tooManyFailures,
   };
+}
+
+/// Which photos of a pass are almost identical (dHashes at most 3 bits
+/// apart) to one already in NeoCloud: asked of the server for a batch of
+/// coming photos at a time, and compared with what this pass uploaded.
+class _SimilarPhotos {
+  _SimilarPhotos({required bool enabled, this.hasher, this.target}) : _active = enabled && hasher != null && target != null;
+
+  static const int batch = 50;
+  static const int maxDistance = 3;
+
+  final CameraPhotoHasher? hasher;
+  final CameraSimilarityTarget? target;
+  bool _active;
+  final Map<String, String?> _hashes = <String, String?>{};
+  final Set<String> _matched = <String>{};
+  final List<String> _sent = <String>[];
+
+  /// Whether the photo at [index] of [queue] is like one already there.
+  Future<bool> matches(List<CameraAsset> queue, int index) async {
+    if (!_active) return false;
+    final asset = queue[index];
+    if (!_hashes.containsKey(asset.id)) await _ask(queue, index);
+    if (!_active) return false;
+    final hash = _hashes[asset.id];
+    if (hash == null) return false;
+    if (_matched.contains(hash)) return true;
+    return _sent.any((sent) => dHashDistance(sent, hash) <= maxDistance);
+  }
+
+  /// [asset] was uploaded: later photos like it are skipped too.
+  void uploaded(CameraAsset asset) {
+    final hash = _hashes[asset.id];
+    if (_active && hash != null) _sent.add(hash);
+  }
+
+  Future<void> _ask(List<CameraAsset> queue, int from) async {
+    final asked = <String>[];
+    var photos = 0;
+    for (var i = from; i < queue.length && photos < batch; i++) {
+      final asset = queue[i];
+      if (asset.isVideo || _hashes.containsKey(asset.id)) continue;
+      photos += 1;
+      String? hash;
+      try {
+        hash = await hasher!.dHash(asset);
+      } catch (_) {
+        hash = null;
+      }
+      _hashes[asset.id] = hash;
+      if (hash != null) asked.add(hash);
+    }
+    if (asked.isEmpty) return;
+    final found = await target!.similar(asked);
+    // A server without the check: upload as before.
+    if (found == null) {
+      _active = false;
+      return;
+    }
+    _matched.addAll(found);
+  }
 }

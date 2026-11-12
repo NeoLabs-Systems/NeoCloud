@@ -6,12 +6,15 @@ import 'dart:convert';
 
 enum CameraRecordStatus { pending, done, failed }
 
-/// Why a pending record is still waiting.
+/// Why a pending record is still waiting, or why a done one was not sent.
 abstract final class CameraReason {
   static const String icloud = 'icloud';
   static const String wifi = 'wifi';
   static const String notAvailable = 'notAvailable';
   static const String alreadyOnServer = 'alreadyOnServer';
+
+  /// On a done record: not sent, an almost identical photo is in NeoCloud.
+  static const String similar = 'similar';
 }
 
 /// Automatic retries of a failing file; after that it waits for "Retry".

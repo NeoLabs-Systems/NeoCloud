@@ -3,8 +3,9 @@
 // Moving bytes: uploads (single request or resumable) and downloads.
 
 const express = require('express');
-const { requireAuthOrDevice } = require('../middleware/auth');
+const { requireAuthOrDevice, requireSessionOrPhone } = require('../middleware/auth');
 const transfers = require('../services/members/transfers');
+const similarUploads = require('../services/photos/similar_uploads');
 const previews = require('../services/preview/previews');
 const { ROOT_ALIAS } = require('../services/files/tree');
 const { jsonHandler, streaming } = require('./_helpers/http');
@@ -38,6 +39,10 @@ router.post('/uploads/check', jsonHandler((req) => transfers.contentExists(req.u
   sha256: req.body?.sha256,
   size: req.body?.size,
 })));
+
+// Before sending a photo: is an almost identical one (≥ 95 %) already among
+// the account's own photos? Camera upload skips those.
+router.post('/uploads/similar', requireSessionOrPhone, jsonHandler((req) => similarUploads.findSimilar(req.userId, req.body)));
 
 router.get('/uploads/:id', jsonHandler((req) => transfers.getUpload(req.userId, req.params.id)));
 

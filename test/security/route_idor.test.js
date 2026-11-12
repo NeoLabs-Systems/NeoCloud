@@ -172,6 +172,7 @@ const CLASSIFIED = {
   'PUT /api/upload': () => ['PUT', `/api/upload?parentId=${v.folder}&name=x.txt`, Buffer.from('x')],
   'POST /api/uploads': () => ['POST', '/api/uploads', { parentId: v.folder, name: 'x.bin', size: 1 }],
   'POST /api/uploads/check': () => ['POST', '/api/uploads/check', { parentId: v.folder, sha256: '0'.repeat(64), size: 1 }],
+  'POST /api/uploads/similar': OWN,
   'GET /api/uploads/:id': () => ['GET', `/api/uploads/${v.upload}`],
   'PUT /api/uploads/:id/parts/:index': () => ['PUT', `/api/uploads/${v.upload}/parts/0`, Buffer.from('x')],
   'POST /api/uploads/:id/complete': () => ['POST', `/api/uploads/${v.upload}/complete`],

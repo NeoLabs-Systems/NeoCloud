@@ -48,6 +48,8 @@ String _cameraReasonText(String? reason) {
       return appStrings.cameraReasonIcloud;
     case CameraReason.notAvailable:
       return appStrings.cameraReasonNotAvailable;
+    case CameraReason.similar:
+      return appStrings.cameraReasonSimilar;
     default:
       return reason;
   }

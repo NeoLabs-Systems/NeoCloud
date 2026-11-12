@@ -34,6 +34,7 @@ dependencies:
   neocloud_background:
     path: packages/neocloud_background
   crypto: ^3.0.6
+  image: ^4.5.0
   cryptography: ^2.7.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.5.0

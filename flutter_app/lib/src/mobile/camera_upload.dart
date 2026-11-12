@@ -27,6 +27,7 @@ class CameraUploadSettings {
     this.videosWifiOnly = true,
     this.scope = CameraScope.everything,
     this.enabledAt,
+    this.skipSimilar = true,
   });
 
   factory CameraUploadSettings.decode(String? raw) {
@@ -45,6 +46,7 @@ class CameraUploadSettings {
         // Settings from before the choice existed only uploaded new photos.
         scope: json['scope'] == 'everything' ? CameraScope.everything : CameraScope.newOnly,
         enabledAt: DateTime.tryParse(json['enabledAt'] as String? ?? ''),
+        skipSimilar: json['skipSimilar'] != false,
       );
     } catch (_) {
       return const CameraUploadSettings();
@@ -68,6 +70,10 @@ class CameraUploadSettings {
   /// With [CameraScope.newOnly], photos taken before this stay out.
   final DateTime? enabledAt;
 
+  /// Photos almost identical (at least 95 %) to one already in NeoCloud
+  /// are not sent.
+  final bool skipSimilar;
+
   /// On, and for [accountKey].
   bool activeFor(String? accountKey) => enabled && accountKey != null && account == accountKey;
 
@@ -79,6 +85,7 @@ class CameraUploadSettings {
     chargingOnly: chargingOnly,
     videosWifiOnly: videosWifiOnly,
     scope: scope,
+    skipSimilar: skipSimilar,
   );
 
   CameraUploadSettings copyWith({
@@ -92,6 +99,7 @@ class CameraUploadSettings {
     bool? videosWifiOnly,
     CameraScope? scope,
     DateTime? enabledAt,
+    bool? skipSimilar,
   }) => CameraUploadSettings(
     enabled: enabled ?? this.enabled,
     account: account ?? this.account,
@@ -103,6 +111,7 @@ class CameraUploadSettings {
     videosWifiOnly: videosWifiOnly ?? this.videosWifiOnly,
     scope: scope ?? this.scope,
     enabledAt: enabledAt ?? this.enabledAt,
+    skipSimilar: skipSimilar ?? this.skipSimilar,
   );
 
   String encode() => jsonEncode(<String, Object?>{
@@ -116,6 +125,7 @@ class CameraUploadSettings {
     'videosWifiOnly': videosWifiOnly,
     'scope': scope == CameraScope.everything ? 'everything' : 'new',
     'enabledAt': enabledAt?.toIso8601String(),
+    'skipSimilar': skipSimilar,
   });
 }
 

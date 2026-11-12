@@ -2734,6 +2734,10 @@ class AppL10nDe extends AppL10n {
       'Fotos dürfen mobile Daten nutzen, Videos warten aufs WLAN.';
 
   @override
+  String get cameraSkipSimilar =>
+      'Fotos überspringen, die fast gleich sind wie welche, die du schon in NeoCloud hast';
+
+  @override
   String get cameraLimitedMessage =>
       'NeoCloud sieht nur die ausgewählten Fotos. Die anderen werden nicht gesichert.';
 
@@ -2969,6 +2973,10 @@ class AppL10nDe extends AppL10n {
   @override
   String get cameraReasonNotAvailable =>
       'das System konnte die Datei nicht liefern';
+
+  @override
+  String get cameraReasonSimilar =>
+      'ähnlich wie ein Foto, das schon in NeoCloud ist';
 
   @override
   String cameraAttempts(int count) {
