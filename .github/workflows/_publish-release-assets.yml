@@ -1,0 +1,42 @@
+name: Reusable release assets
+
+# Publishes a checksum list after all client builds have completed.
+# The builds attach their own assets as soon as they finish.
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Release tag to attach the assets to
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    name: Publish release checksums
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Only the client builds: docker/build-push-action can upload its own
+      # build-record artifacts, which are not release assets.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lite-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+      - name: Upload checksums to the release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          sha256sum -- * > SHA256SUMS.txt
+          gh release upload --clobber --repo "$REPOSITORY" "$RELEASE_TAG" SHA256SUMS.txt

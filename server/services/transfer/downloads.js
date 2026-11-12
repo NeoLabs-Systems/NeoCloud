@@ -175,4 +175,4 @@ async function sendZip(res, userId, rawIds, { skipVaults = false } = {}) {
   await done;
 }
 
-module.exports = { sendFile, sendPreview, sendZip };
+module.exports = { MAX_ZIP_SELECTION, sendFile, sendPreview, sendZip };

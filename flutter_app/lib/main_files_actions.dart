@@ -36,6 +36,7 @@ mixin _FilesActions on _FilesBase {
   // Uploads
 
   Future<void> pickAndUpload() async {
+    if (!canWrite) return;
     final result = await FilePicker.platform.pickFiles(allowMultiple: true, withReadStream: true);
     if (result == null) return;
     final sources = <UploadSource>[
@@ -66,7 +67,7 @@ mixin _FilesActions on _FilesBase {
       ));
     }
 
-    if (vaultLocked) return;
+    if (vaultLocked || !canWrite) return;
     for (final item in dropped) {
       await collect(item, '');
     }
@@ -76,6 +77,7 @@ mixin _FilesActions on _FilesBase {
   // Creating
 
   Future<void> newFolder() async {
+    if (!canWrite) return;
     final name = await _promptText(context, title: appStrings.newFolder, label: appStrings.folderName, confirmLabel: appStrings.create);
     if (name == null) return;
     await guard(() async {
@@ -85,6 +87,7 @@ mixin _FilesActions on _FilesBase {
   }
 
   Future<void> newVault() async {
+    if (inShare) return;
     final folder = await showNewVaultDialog(context, controller, parentId: currentFolderId);
     if (folder != null) controller.openFolder(folder.id);
   }
@@ -94,11 +97,11 @@ mixin _FilesActions on _FilesBase {
   void open(FileNode node) {
     if (node.isFolder) {
       if (searching) clearSearch();
-      controller.openFolder(node.id);
+      goToFolder(node.id);
       return;
     }
     final files = visibleItems.where((n) => !n.isFolder).toList();
-    unawaited(showFileViewer(context, controller, files, files.indexWhere((n) => n.id == node.id)));
+    unawaited(showFileViewer(context, controller, files, files.indexWhere((n) => n.id == node.id), readOnly: !canWrite));
   }
 
   void openContainingFolder(FileNode node) {
@@ -127,7 +130,7 @@ mixin _FilesActions on _FilesBase {
 
   /// Moves [nodes] to the trash right away; Undo restores them.
   Future<void> trash(List<FileNode> nodes) async {
-    if (nodes.isEmpty) return;
+    if (nodes.isEmpty || !canWrite) return;
     final before = visibleItems;
     final ids = nodes.map((node) => node.id).toSet();
     selection.clear();
@@ -170,7 +173,7 @@ mixin _FilesActions on _FilesBase {
   /// folder picker. Undo moves each back where it came from.
   Future<void> moveTo(List<FileNode> nodes, String targetId, String targetName) async {
     final moving = nodes.where((node) => node.id != targetId && node.parentId != targetId).toList();
-    if (moving.isEmpty) return;
+    if (moving.isEmpty || !canWrite) return;
     final before = visibleItems;
     final ids = moving.map((node) => node.id).toSet();
     selection.clear();
@@ -202,6 +205,7 @@ mixin _FilesActions on _FilesBase {
   }
 
   Future<void> move(List<FileNode> nodes) async {
+    if (inShare) return;
     final target = await showFolderPicker(context, controller, exclude: nodes.map((n) => n.id).toSet());
     if (target == null) return;
     await moveTo(nodes, target.$1, target.$2);
@@ -209,14 +213,14 @@ mixin _FilesActions on _FilesBase {
 
   /// Ctrl/⌘+X: remembers what to move; Ctrl/⌘+V in another folder moves it.
   void cut(List<FileNode> nodes) {
-    if (nodes.isEmpty) return;
+    if (nodes.isEmpty || !canWrite) return;
     setState(() => _cutNodes = List<FileNode>.unmodifiable(nodes));
     _announceUndo(appStrings.filesCut(nodes.length));
   }
 
   Future<void> paste() async {
     final nodes = _cutNodes;
-    if (nodes.isEmpty || searching || vaultLocked) return;
+    if (nodes.isEmpty || searching || vaultLocked || !canWrite) return;
     setState(() => _cutNodes = const <FileNode>[]);
     await moveTo(nodes, currentFolderId, folderName);
   }
@@ -224,16 +228,22 @@ mixin _FilesActions on _FilesBase {
   // Renaming and copying
 
   Future<void> rename(FileNode node) async {
-    final name = await _promptText(
-      context,
-      title: appStrings.rename,
-      label: appStrings.newName,
-      confirmLabel: appStrings.rename,
-      initialValue: node.name,
-      selectStem: !node.isFolder,
-    );
-    if (name == null || name == node.name) return;
-    await renameTo(node, name);
+    if (!canWrite) return;
+    holdLiveUpdates(renameHold, true);
+    try {
+      final name = await _promptText(
+        context,
+        title: appStrings.rename,
+        label: appStrings.newName,
+        confirmLabel: appStrings.rename,
+        initialValue: node.name,
+        selectStem: !node.isFolder,
+      );
+      if (name == null || name == node.name || !mounted) return;
+      await renameTo(node, name);
+    } finally {
+      holdLiveUpdates(renameHold, false);
+    }
   }
 
   Future<void> renameTo(FileNode node, String name) async {
@@ -273,6 +283,13 @@ mixin _FilesActions on _FilesBase {
     _announceUndo(appStrings.copied2, onUndo: () => trashQuietly(copied));
   });
 
+  /// A copy of a shared item in the account's own files (on its own quota).
+  Future<void> saveToMyFiles(FileNode node) => guard(() async {
+    final copied = await controller.client.copyNode(node.id, parentId: 'root');
+    controller.notifyFilesChanged();
+    _announceUndo(appStrings.sharedSavedToMyFiles(node.name), onUndo: () => trashQuietly(copied));
+  });
+
   Future<void> trashQuietly(FileNode node) => guard(() async {
     await controller.client.trashNode(node.id);
     controller.notifyFilesChanged();
@@ -282,6 +299,7 @@ mixin _FilesActions on _FilesBase {
 
   /// Stars or unstars [nodes] (all get the state the first one doesn't have).
   Future<void> toggleFavorite(List<FileNode> nodes) async {
+    if (inShare) return;
     if (nodes.isEmpty) return;
     final favorite = !nodes.first.favorite;
     final ids = nodes.map((node) => node.id).toSet();
@@ -304,26 +322,32 @@ mixin _FilesActions on _FilesBase {
     return <FileNode>[node];
   }
 
+  /// What can be done to [node]. In a shared folder: no links, stars or
+  /// versions (they stay the owner's), changes only with write access, and
+  /// a copy into the account's own files instead of "Move to".
   List<_FileAction> actionsFor(FileNode node) {
     final vault = node.inVault;
+    final own = !inShare;
     return <_FileAction>[
       _FileAction(node.isFolder ? Icons.folder_open_outlined : Icons.open_in_new_rounded, appStrings.open, () => open(node), shortcut: '↵'),
       if (searching) _FileAction(Icons.drive_folder_upload_outlined, appStrings.searchOpenFolder, () => openContainingFolder(node), quick: true),
       if (!vault || !node.isFolder)
         _FileAction(Icons.download_rounded, node.isFolder ? appStrings.downloadZip : appStrings.download, () => download(subjectFor(node)), quick: true),
-      if (!vault) _FileAction(Icons.link_rounded, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
-      _FileAction(
-        node.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
-        node.favorite ? appStrings.filesUnstar : appStrings.filesStar,
-        () => unawaited(toggleFavorite(subjectFor(node))),
-        quick: true,
-      ),
-      _FileAction(Icons.drive_file_rename_outline_rounded, appStrings.rename, () => unawaited(rename(node)), shortcut: 'F2'),
-      _FileAction(Icons.drive_file_move_outline, appStrings.moveTo, () => unawaited(move(subjectFor(node)))),
-      _FileAction(Icons.content_cut_rounded, appStrings.filesCutAction, () => cut(subjectFor(node)), shortcut: _shortcutLabel('X')),
-      _FileAction(Icons.copy_rounded, appStrings.makeCopy, () => unawaited(copy(node))),
-      if (!node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
-      _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),
+      if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
+      if (own)
+        _FileAction(
+          node.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
+          node.favorite ? appStrings.filesUnstar : appStrings.filesStar,
+          () => unawaited(toggleFavorite(subjectFor(node))),
+          quick: true,
+        ),
+      if (canWrite) _FileAction(Icons.drive_file_rename_outline_rounded, appStrings.rename, () => unawaited(rename(node)), shortcut: 'F2'),
+      if (own) _FileAction(Icons.drive_file_move_outline, appStrings.moveTo, () => unawaited(move(subjectFor(node)))),
+      if (canWrite) _FileAction(Icons.content_cut_rounded, appStrings.filesCutAction, () => cut(subjectFor(node)), shortcut: _shortcutLabel('X')),
+      if (canWrite) _FileAction(Icons.copy_rounded, appStrings.makeCopy, () => unawaited(copy(node))),
+      if (!own) _FileAction(Icons.drive_file_move_rtl_outlined, appStrings.sharedSaveToMyFiles, () => unawaited(saveToMyFiles(node))),
+      if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
+      if (canWrite) _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),
     ];
   }
 }

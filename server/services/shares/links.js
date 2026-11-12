@@ -192,4 +192,4 @@ function revokeShare(userId, id) {
   return { success: true };
 }
 
-module.exports = { createShare, listShares, revokeShare, updateShare };
+module.exports = { createShare, listShares, parseExpiry, revokeShare, updateShare };

@@ -25,13 +25,25 @@ class NeoCloudController extends ChangeNotifier {
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
     uploadJournal = UploadJournal(preferences, uploads);
     vaults = VaultSessions(client);
+    liveUpdates = LiveFileUpdates(
+      feed: fileChanges,
+      fetchChanges: client.syncChanges,
+      openSocket: usesDeviceLogin ? null : liveSocketOpener(),
+      socketUrl: () => socketIoUri(client.uri('/')),
+      onSharesChanged: _handleSharesChanged,
+      onPolled: _handlePolled,
+    );
+    fileChanges.addListener((_) => unawaited(refreshAccount()));
     _themeMode = _themeModeFromName(_preferences.getString(_themePreferenceKey));
     pendingDeviceCode = _deviceCodeFrom(launchUri);
     pendingPairCode = _pairCodeFrom(launchUri);
   }
 
   static const String _themePreferenceKey = 'app.themeMode';
-  static const String _sectionPreferenceKey = 'app.section';
+  /// The last page, as an [AppRoute] location (`files/<id>`,
+  /// `settings/security` …); older versions stored the bare section name,
+  /// which parses the same way.
+  static const String _routePreferenceKey = 'app.section';
   static const String _deviceSettingsKey = 'device.settings';
 
   final BackendClient client;
@@ -43,6 +55,11 @@ class NeoCloudController extends ChangeNotifier {
 
   /// The floating "moved to trash · Undo" bar.
   final UndoCenter undo = UndoCenter();
+
+  /// Changes made elsewhere (another tab, a device, WebDAV, the sync
+  /// client), batched; pages refresh what they show from it.
+  final FileChangeFeed fileChanges = FileChangeFeed();
+  late final LiveFileUpdates liveUpdates;
   late final VaultSessions vaults;
   final DeviceSessions deviceSessions;
   final CameraUploads cameraUploads;
@@ -79,6 +96,7 @@ class NeoCloudController extends ChangeNotifier {
   /// Leaves the pairing page for the app (or its sign-in).
   void finishPairLanding() {
     pendingPairCode = null;
+    _replaceRoute = true;
     replaceBrowserPath('/${Uri.base.pathSegments.where((s) => s.isNotEmpty && s != 'pair').map((s) => '$s/').join()}');
     notifyListeners();
   }
@@ -86,6 +104,7 @@ class NeoCloudController extends ChangeNotifier {
   /// Leaves the approval page for the app.
   void finishDeviceApproval() {
     pendingDeviceCode = null;
+    _replaceRoute = true;
     final base = Uri.base;
     final segments = base.pathSegments.where((segment) => segment.isNotEmpty).toList();
     if (segments.isNotEmpty && segments.last == 'device') {
@@ -98,7 +117,14 @@ class NeoCloudController extends ChangeNotifier {
   bool isAuthenticating = false;
   bool isAwaitingTwoFactor = false;
   bool hasUser = true;
-  bool signupKeyRequired = false;
+  /// False once the server has an account and sign-up is turned off.
+  bool registrationOpen = true;
+
+  /// The browser's security key API; replaced in tests.
+  WebAuthnClient webAuthn = createWebAuthnClient();
+
+  /// Only the web app can sign in with a security key or passkey.
+  bool get supportsSecurityKeys => webAuthn.isSupported;
   AccountUser? user;
   UserSettings settings = const UserSettings();
   String? errorMessage;
@@ -112,6 +138,42 @@ class NeoCloudController extends ChangeNotifier {
 
   /// The folder the Files page shows; the root when null.
   String? openFolderId;
+
+  /// The shared folder open under Shared with me; the list of shares when null.
+  String? openSharedFolderId;
+
+  /// What other accounts share with this one (`GET /api/shared-with-me`).
+  List<SharedWithMe> sharedWithMe = const <SharedWithMe>[];
+
+  /// The share a listing belongs to, by its first breadcrumb (the shared
+  /// folder itself); null for the account's own files.
+  SharedWithMe? shareFor(String? rootId) => sharedWithMe.where((share) => share.node.id == rootId).firstOrNull;
+
+  Future<void> refreshSharedWithMe() async {
+    if (user == null) return;
+    try {
+      sharedWithMe = await client.sharedWithMe();
+      notifyListeners();
+    } catch (_) {
+      // Kept as it was until the next load.
+    }
+  }
+
+  /// Someone added, changed or removed a share with this account, or a
+  /// member left one of its own: the list and the indicators change.
+  void _handleSharesChanged() {
+    unawaited(refreshSharedWithMe());
+    filesRevision.value += 1;
+  }
+
+  /// Without the socket, nobody says when a shared folder changes (it is in
+  /// the owner's journal, not this account's): refresh it on every poll.
+  void _handlePolled() {
+    if (selectedSection != AppSection.shared) return;
+    unawaited(refreshSharedWithMe());
+    final open = openSharedFolderId;
+    if (open != null) fileChanges.addFolders(<String>[open]);
+  }
 
   /// Whether the server converts Office documents for preview (LibreOffice).
   bool officePreview = false;
@@ -141,6 +203,9 @@ class NeoCloudController extends ChangeNotifier {
 
   bool get isAuthenticated => user != null;
   bool get isAdmin => user?.isAdmin ?? false;
+
+  /// Admin access on a device still requires a separate browser session.
+  bool deviceAccountIsAdmin = false;
   String get accountLabel => user?.label ?? '';
   StorageUsage? get storage => user?.storage;
 
@@ -157,9 +222,12 @@ class NeoCloudController extends ChangeNotifier {
 
   /// Readable text for any error a call can throw.
   String friendlyError(Object error) {
+    if (error is WebAuthnException) return error.message;
     if (error is ApiException) {
       if (error.code == 'NETWORK') return appStrings.connectionError;
       if (error.code == 'VAULT_BOUNDARY') return appStrings.vaultBoundaryError;
+      final sharing = _sharingError(error.code);
+      if (sharing != null) return sharing;
       if (error.code == 'DISK_FULL' || error.statusCode == 507) return appStrings.securityDiskFull;
       if (error.code == 'SERVER_STOPPING') return appStrings.securityServerStopping;
       if (error.code == 'IMPORT_HOST_BLOCKED') return appStrings.importHostBlocked;
@@ -168,9 +236,27 @@ class NeoCloudController extends ChangeNotifier {
     return appStrings.genericError;
   }
 
+  /// The sharing errors in the app's language (the server's text is English).
+  String? _sharingError(String? code) {
+    switch (code) {
+      case 'RECIPIENT_NOT_FOUND':
+        return appStrings.memberNotFound;
+      case 'ALREADY_MEMBER':
+        return appStrings.memberAlreadyAdded;
+      case 'SHARE_READ_ONLY':
+        return appStrings.sharedReadOnlyError;
+      case 'SHARE_BOUNDARY':
+        return appStrings.sharedBoundaryError;
+      case 'SHARE_ROOT_IMMUTABLE':
+        return appStrings.sharedRootError;
+      case 'ZIP_MIXED_OWNERS':
+        return appStrings.sharedZipMixedError;
+      default:
+        return null;
+    }
+  }
+
   Future<void> boot() async {
-    final storedSection = _preferences.getString(_sectionPreferenceKey);
-    selectedSection = AppSection.values.where((s) => s.name == storedSection).firstOrNull ?? AppSection.files;
     if (usesDeviceLogin) {
       await _bootDevice();
       return;
@@ -178,7 +264,7 @@ class NeoCloudController extends ChangeNotifier {
     try {
       final status = await client.authStatus();
       hasUser = status['hasUser'] == true;
-      signupKeyRequired = status['signupKeyRequired'] == true;
+      registrationOpen = status['registrationOpen'] != false;
       if (status['authenticated'] == true && status['user'] is Map) {
         await _enterSession(AccountUser.fromJson((status['user'] as Map).cast<String, dynamic>()));
       }
@@ -208,6 +294,7 @@ class NeoCloudController extends ChangeNotifier {
   /// Signs in with a stored or just-approved device token. Offline, the app
   /// still opens with what it knows.
   Future<void> _enterDeviceSession(DeviceConnection connection) async {
+    deviceAccountIsAdmin = false;
     client
       ..baseUrl = connection.server
       ..bearerToken = connection.token;
@@ -240,15 +327,16 @@ class NeoCloudController extends ChangeNotifier {
       );
       errorMessage = friendlyError(error);
     }
-    if (selectedSection == AppSection.admin) {
-      selectedSection = AppSection.files;
-    }
+    _enterRoute();
+    liveUpdates.start();
+    unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     unawaited(_startNativeServices(known));
   }
 
   AccountUser _deviceUser(Map<String, dynamic> me) {
     final account = (me['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+    deviceAccountIsAdmin = account['isAdmin'] == true;
     final quota = (me['quota'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     return AccountUser.fromJson(<String, dynamic>{
       ...account,
@@ -353,9 +441,9 @@ class NeoCloudController extends ChangeNotifier {
     isAwaitingTwoFactor = false;
     errorMessage = null;
     authErrorCode = null;
-    if (selectedSection == AppSection.admin && !account.isAdmin) {
-      selectedSection = AppSection.files;
-    }
+    _enterRoute();
+    liveUpdates.start();
+    unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     try {
       settings = await client.settings();
@@ -369,11 +457,19 @@ class NeoCloudController extends ChangeNotifier {
     }
   }
 
+  void _stopLiveUpdates() {
+    liveUpdates.stop();
+    fileChanges.clear();
+  }
+
   void _handleSessionExpired() {
     if (user == null) return;
     user = null;
     openFolderId = null;
+    openSharedFolderId = null;
+    sharedWithMe = const <SharedWithMe>[];
     vaults.lockAll();
+    _stopLiveUpdates();
     if (usesDeviceLogin) {
       // The token was revoked: forget it and ask to connect again.
       unawaited(deviceSessions.clear());
@@ -455,26 +551,24 @@ class NeoCloudController extends ChangeNotifier {
     required String username,
     required String email,
     required String password,
-    String? signupKey,
-  }) => _authenticate(() => client.register(username: username, email: email, password: password, signupKey: signupKey));
+  }) => _authenticate(() => client.register(username: username, email: email, password: password));
 
-  Future<bool> checkSignupKey(String key) async {
-    isAuthenticating = true;
-    errorMessage = null;
-    authErrorCode = null;
-    notifyListeners();
+  /// Signs in with a security key or passkey, like NeoAgent: the server may
+  /// still ask for the 2FA code when the key only confirmed presence.
+  /// Dismissing the browser's prompt is not an error.
+  Future<void> signInWithSecurityKey({String? username}) => _authenticate(() async {
+    final begin = await client.beginSecurityKeyLogin(username: username?.trim());
+    final options = begin['options'];
+    if (options is! Map) throw WebAuthnException(appStrings.passkeySignInFailed);
+    final Map<String, dynamic> assertion;
     try {
-      await client.checkSignupKey(key);
-      return true;
-    } catch (error) {
-      errorMessage = friendlyError(error);
-      authErrorCode = error is ApiException ? error.code : null;
-      return false;
-    } finally {
-      isAuthenticating = false;
-      notifyListeners();
+      assertion = await webAuthn.getAssertion(options.cast<String, dynamic>());
+    } on WebAuthnException catch (error) {
+      if (error.cancelled) return const <String, dynamic>{};
+      rethrow;
     }
-  }
+    return client.completeSecurityKeyLogin(assertion);
+  });
 
   Future<void> logout() async {
     if (usesDeviceLogin) {
@@ -492,31 +586,144 @@ class NeoCloudController extends ChangeNotifier {
     }
     user = null;
     openFolderId = null;
+    openSharedFolderId = null;
+    sharedWithMe = const <SharedWithMe>[];
     settingsPage = null;
     vaults.lockAll();
+    _stopLiveUpdates();
     notifyListeners();
   }
 
   // Navigation
 
-  void setSelectedSection(AppSection section) {
-    if (section == AppSection.admin && !isAdmin) return;
-    selectedSection = section;
-    unawaited(_preferences.setString(_sectionPreferenceKey, section.name));
+  /// The page the address bar and the preferences show; null while nobody
+  /// is signed in or another screen (device approval, pairing) is up, so a
+  /// deep link survives the sign-in.
+  AppRoute? get currentRoute {
+    if (isBooting || !isAuthenticated || pendingDeviceCode != null || pendingPairCode != null) return null;
+    return _routeOfPage();
+  }
+
+  AppRoute _routeOfPage() {
+    switch (selectedSection) {
+      case AppSection.files:
+        return AppRoute(AppSection.files.name, openFolderId);
+      case AppSection.shared:
+        return AppRoute(AppSection.shared.name, openSharedFolderId);
+      case AppSection.settings:
+        final page = settingsPage;
+        return AppRoute(AppSection.settings.name, page == null ? null : AppRoute.slug(page.name));
+      case AppSection.admin:
+        return AppRoute(AppSection.admin.name, _adminTab == _AdminTab.users ? null : _adminTab.name);
+      case AppSection.favorites:
+      case AppSection.recent:
+      case AppSection.trash:
+        return AppRoute(selectedSection.name);
+    }
+  }
+
+  /// A page asked for before signing in (a deep link), opened after it.
+  AppRoute? _requestedRoute;
+
+  /// Whether the next address replaces the current history entry instead
+  /// of adding one.
+  bool _replaceRoute = false;
+
+  bool _takeRouteReplacement() {
+    final replace = _replaceRoute;
+    _replaceRoute = false;
+    return replace;
+  }
+
+  /// Opens [route] from the address bar: at start ([initial]) or from the
+  /// browser's back and forward buttons ([fromBrowser]).
+  void openRoute(AppRoute route, {bool initial = false, bool fromBrowser = false}) {
+    if (!isAuthenticated) {
+      if (!route.isNone) _requestedRoute = route;
+      return;
+    }
+    if (initial && route.isNone) return;
+    if (fromBrowser) _replaceRoute = true;
+    _applyRoute(route.isNone ? AppRoute(AppSection.files.name) : route);
+    _storeRoute();
     notifyListeners();
   }
 
-  void openFolder(String? folderId) {
-    openFolderId = folderId;
-    if (selectedSection != AppSection.files) {
-      selectedSection = AppSection.files;
-      unawaited(_preferences.setString(_sectionPreferenceKey, AppSection.files.name));
+  /// After signing in: the deep link, else the page last open on this device.
+  void _enterRoute() {
+    final requested = _requestedRoute;
+    _requestedRoute = null;
+    _applyRoute(requested ?? AppRoute.parse(_preferences.getString(_routePreferenceKey) ?? ''));
+    _replaceRoute = true;
+  }
+
+  void _applyRoute(AppRoute route) {
+    var section = AppSection.values.where((candidate) => candidate.name == route.section).firstOrNull ?? AppSection.files;
+    if (section == AppSection.admin && !isAdmin) section = AppSection.files;
+    final detail = route.section == section.name ? route.detail : null;
+    switch (section) {
+      case AppSection.files:
+        openFolderId = detail;
+      case AppSection.shared:
+        openSharedFolderId = detail;
+      case AppSection.settings:
+        settingsPage = SettingsPage.values.where((page) => AppRoute.slug(page.name) == detail).firstOrNull;
+      case AppSection.admin:
+        _adminTab = _AdminTab.values.where((tab) => tab.name == detail).firstOrNull ?? _AdminTab.users;
+      case AppSection.favorites:
+      case AppSection.recent:
+      case AppSection.trash:
+        break;
     }
+    selectedSection = section;
+  }
+
+  /// Native apps have no address bar; they reopen the page kept here.
+  void _storeRoute() {
+    final route = _routeOfPage();
+    unawaited(_preferences.setString(_routePreferenceKey, route.location.substring(1)));
+  }
+
+  void setSelectedSection(AppSection section) {
+    if (section == AppSection.admin && !isAdmin) return;
+    selectedSection = section;
+    _storeRoute();
+    notifyListeners();
+  }
+
+  /// Opens [folderId] in Files (the root when null). [replace] swaps the
+  /// history entry, for a folder that turned out to be gone.
+  void openFolder(String? folderId, {bool replace = false}) {
+    openFolderId = folderId;
+    selectedSection = AppSection.files;
+    if (replace) _replaceRoute = true;
+    _storeRoute();
+    notifyListeners();
+  }
+
+  /// Opens [folderId] under Shared with me (the list of shares when null).
+  /// [replace] swaps the history entry, for a share that is gone.
+  void openSharedFolder(String? folderId, {bool replace = false}) {
+    openSharedFolderId = folderId;
+    selectedSection = AppSection.shared;
+    if (replace) _replaceRoute = true;
+    if (folderId == null) unawaited(refreshSharedWithMe());
+    _storeRoute();
     notifyListeners();
   }
 
   void setSettingsPage(SettingsPage? page) {
     settingsPage = page;
+    _storeRoute();
+    notifyListeners();
+  }
+
+  /// The open Admin tab; part of the address (/app/admin/backups).
+  _AdminTab _adminTab = _AdminTab.users;
+
+  void _openAdminTab(_AdminTab tab) {
+    _adminTab = tab;
+    _storeRoute();
     notifyListeners();
   }
 

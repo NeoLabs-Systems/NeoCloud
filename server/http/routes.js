@@ -12,6 +12,7 @@ const ROUTE_REGISTRY = [
   { basePath: '/api/admin', modulePath: '../routes/admin' },
   { basePath: '/api', modulePath: '../routes/files' },
   { basePath: '/api', modulePath: '../routes/transfers' },
+  { basePath: '/api', modulePath: '../routes/members' },
   { basePath: '/api/sync', modulePath: '../routes/sync' },
   { basePath: '/api/devices', modulePath: '../routes/devices' },
   { basePath: '/api/storage', modulePath: '../routes/storage' },

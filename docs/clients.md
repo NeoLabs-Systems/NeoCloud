@@ -120,7 +120,7 @@ NOT_FOUND` for an unknown, expired or already decided code.
   (`digest`: SHA-256 over the held deletions, side and path).
   Everything else in the pass (uploads, downloads, renames) still runs, and
   folders whose deletion waits are not recreated. The user approves with
-  `neocloud-lite pair confirm-deletes <id>` or on the lite settings page.
+  `neocloud-lite pair confirm-deletes <id>` or on the lite app window.
   The approval is bound to its reason and digest: the next pass deletes
   only when its plan holds exactly the same deletions (any other plan asks
   again), and the first pass that evaluates the approval spends it, whether
@@ -161,7 +161,7 @@ is not deleted remotely). Each comes with a reason code and a text:
 | `pathTooLong` | Windows only: the local path would exceed 259 characters |
 
 The lite client lists them in `status --json` (`pairs[].report.notSynced`)
-and on its settings page.
+and in its app window.
 
 ### Scheduling
 
@@ -169,16 +169,110 @@ The journal is polled every `poll_seconds` (15) and a pass runs only for
 pairs it touches; fsnotify events (1.5 s settle) and the `rescan_seconds`
 timer (5 min) cover local changes.
 
-### Settings page (lite)
+### App window (lite)
 
-`neocloud-lite run` serves its settings page on `127.0.0.1` at a random
-port, which every local user can reach, so every request needs a session.
-The tray opens a one-time launch URL (`/launch?code=…`, valid for 2
-minutes, `run --headless` prints one that stays valid until used); the code
-works once and is exchanged for an `HttpOnly`, `SameSite=Strict` session
-cookie, and no lasting secret ever appears on a command line. API calls
-also need an `X-Requested-With` header and are refused from another site
-(`Sec-Fetch-Site`) or another `Host`.
+`neocloud-lite run` serves its UI on `127.0.0.1` at a random port, which
+every local user can reach, so every request needs a session. "Open
+NeoCloud" in the tray mints a one-time launch URL (`/launch?code=…`, valid
+for 2 minutes; `run --headless` prints one that stays valid until used);
+the code works once and is exchanged for an `HttpOnly`, `SameSite=Strict`
+session cookie, and no lasting secret ever appears on a command line. API
+calls also need an `X-Requested-With` header and are refused from another
+site (`Sec-Fetch-Site`) or another `Host`. The page and its files
+(`internal/settingsui/ui`, embedded) run under a CSP that allows only this
+server's own scripts, styles and images (plus the QR code's `data:` URI);
+nothing is loaded from the network.
+
+The URL opens as a small app window: the first Chromium browser found
+(Chrome, Chromium, Edge, Brave; in `/Applications` and `~/Applications` on
+macOS, under `%LOCALAPPDATA%` / `%ProgramFiles%` on Windows, on `PATH` on
+Linux) is started with `--app=<launch URL> --window-size=440,680` and its own
+profile in `<config dir>/app-window`, never the user's browsing profile.
+Without one the default browser opens the URL. A click within 3 s of the
+last one is ignored; a newer window supersedes the older one, which closes
+itself. The window opens by itself when the client starts signed out.
+
+Screens: welcome (server address), approval (the code, a QR code and a
+button that opens the approval page in the user's own browser), home
+(account, storage, overall status as a dot plus a word, "needs attention"
+cards for held-back deletions, errors and not-synced items, the folder
+list with per-folder actions, the last 20 changes), the add-folder wizard
+(native folder dialog: `osascript` on macOS, a PowerShell
+`FolderBrowserDialog` on Windows, `zenity`/`kdialog`/`yad` on Linux, a text
+field otherwise; then a server folder browser that can create folders;
+then the direction and optional ignore patterns), folder editing and
+settings (start at login, pause, bandwidth, security key lock, account,
+version, logs). The page polls `/api/state` every 2 s. Recent activity is
+kept in memory only; the log file has the full history.
+
+Local API (all need the session and the header):
+
+| Method | Path | Does |
+| --- | --- | --- |
+| GET | `/api/state` | Config, engine status, login, key lock, activity, version |
+| POST · DELETE | `/api/login` | Start a device-code sign-in · stop waiting for it |
+| POST | `/api/logout` | Sign out |
+| GET | `/api/account` | `{ used, limit }` from `/api/devices/me`, cached 30 s |
+| POST | `/api/pairs` · PUT/DELETE `/api/pairs/:id` | Add · edit (direction, ignore, paused) · remove a folder |
+| POST | `/api/pairs/:id/sync` · `/open` · `/confirm-deletes` | Sync one folder · open it in the file manager · approve held-back deletions |
+| POST | `/api/sync` | Sync everything |
+| POST | `/api/pick-folder` | Native folder dialog → `{ path }`, `{ cancelled }` or `{ unsupported }` |
+| GET | `/api/remote/folders?id=` | Server folders inside `id` (root by default), vaults left out |
+| POST | `/api/remote/folders` | `{ parentId, name }`: create (or reuse) a server folder |
+| POST | `/api/open/approval` · `/web` · `/logs` | Open the pending approval page, the web app or the log file |
+| PUT | `/api/settings` | Pause, autostart, bandwidth, device name |
+| POST · DELETE | `/api/key-lock` | Turn the security key lock on · off |
+
+The tray shows the status, Open NeoCloud, Sync now, Pause/Resume, up to
+five synced folders and Quit; its icon (the logo's glyph, a template image
+in the macOS menu bar) carries a badge for syncing, paused, locked and
+needs attention.
+
+### Security key lock (lite)
+
+Optional: with it on, the lite client syncs only while one FIDO2 security
+key is plugged in and locks when it is removed. Turn it on in the app
+window or with `neocloud-lite key enroll` (`key status`, `key remove`); quit
+the tray app before using the CLI for it, because the running app would
+write back its older copy of the config.
+
+- **Enroll.** Exactly one key plugged in, one touch: a CTAP2
+  `makeCredential` for a non-resident ES256 credential with `hmac-secret`
+  (rpId `neocloud-lite.local`; nothing is stored on the key), then a
+  `getAssertion` with a random 32-byte salt. The device token is sealed
+  with AES-256-GCM under HKDF-SHA-256 of the hmac-secret output (the server
+  URL is the additional data). `config.toml` keeps `[key_lock]`
+  (`rp_id`, `credential_id`, `salt`, `sealed_token`) and no plaintext
+  `token`.
+- **PIN.** A key with a PIN usually needs it to create the credential: the
+  app window and the CLI ask for it (clientPIN `getPinToken`, PIN
+  protocol 1); it is used once and never stored. Unlocking never sends a
+  PIN, so the key uses its "without UV" secret and unlocks without one. A
+  key set to `alwaysUv` cannot unlock automatically and is refused.
+- **Unlock.** Every 2 s the client lists FIDO HID devices. A new one is
+  asked for the hmac-secret output without a touch (`up=false`); a key that
+  refuses gets the tray and app window showing "touch your security key
+  to unlock" and one `up=true` try (30 s). The token is unsealed into memory
+  only and sync resumes. A key without the credential counts as absent and
+  is not asked again until it is unplugged; so is one that was not touched
+  in time.
+- **Lock.** When the key that unlocked disappears, the token is dropped
+  from memory, a run in progress is cancelled and the engine reports
+  `locked` ("Locked" in the tray) until the key returns. Go strings cannot
+  be zeroed, so the dropped token stays in freed memory until it is
+  reused. One-shot commands (`sync --once`) unlock with the key themselves,
+  `status` does not touch it.
+- **Turn off** (`key remove`, or the app window) needs the key: the
+  token is unsealed once more and written back in the clear. Signing out
+  or signing in again also turns the lock off (it sealed the old token).
+
+Per OS:
+
+| OS | Transport | Status |
+| --- | --- | --- |
+| Linux | `/dev/hidraw*`, found by the FIDO usage page `0xF1D0` in the sysfs report descriptor (pure Go) | Supported. The user needs access to the hidraw node: systemd 244+ tags security keys `uaccess` itself (`60-fido-id.rules`); on older systems install libfido2's [`70-u2f.rules`](https://github.com/Yubico/libfido2/blob/main/udev/70-u2f.rules) into `/etc/udev/rules.d/` and replug the key. |
+| macOS | IOKit HID (cgo, as the tray) | Supported. |
+| Windows | — | Not available: since Windows 10 1903 only administrators may open FIDO HID devices, and webauthn.dll always shows a dialog and needs a touch. The app window and `key status` say so; the normal device token is used. |
 
 ## 3. Share links
 
@@ -264,7 +358,7 @@ Two directions, both ending in a normal device token (`nc_…`).
 **The lite client shows a QR** (a desktop with a screen but often no
 camera): the device-code flow from §1, with `verificationUrl` rendered as a
 QR code next to the user code, so a phone that is signed in to the web app
-scans it and approves. The Go lite client shows it on its settings page and
+scans it and approves. The Go lite client shows it in its app window and
 as a terminal QR on `neocloud-lite login`.
 
 ## 6. WebDAV

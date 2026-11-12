@@ -3,8 +3,11 @@
 package tray
 
 import (
-	_ "embed"
+	"embed"
+	"fmt"
+	"path/filepath"
 	"runtime"
+	gosync "sync"
 
 	"fyne.io/systray"
 
@@ -13,19 +16,24 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
 
-//go:embed tray_icon.png
-var iconPNG []byte
+// The icons are the logo's glyph with a status badge, made from
+// flutter_app/assets/branding/logo.svg: black templates for the macOS menu
+// bar (which tints them), the colored tile elsewhere.
+//
+//go:embed icons
+var icons embed.FS
 
-//go:embed tray_icon.ico
-var iconICO []byte
+// maxFolderItems is how many synced folders the menu lists.
+const maxFolderItems = 5
 
 // Options wires the tray to the rest of the app.
 type Options struct {
-	Engine      *sync.Engine
-	Config      *config.Store
-	SettingsURL func() string
-	OnReady     func()
-	OnQuit      func()
+	Engine *sync.Engine
+	Config *config.Store
+	// OpenWindow shows the NeoCloud app window.
+	OpenWindow func()
+	OnReady    func()
+	OnQuit     func()
 }
 
 // Run shows the icon and blocks until the user quits.
@@ -37,56 +45,79 @@ func Run(opts Options) {
 func Quit() { systray.Quit() }
 
 func onReady(opts Options) {
-	if runtime.GOOS == "windows" {
-		systray.SetIcon(iconICO)
-	} else {
-		systray.SetIcon(iconPNG)
-	}
-	systray.SetTooltip("NeoCloud Lite")
+	systray.SetTooltip("NeoCloud")
 
 	status := systray.AddMenuItem("Starting…", "")
 	status.Disable()
 	systray.AddSeparator()
-	openFolder := systray.AddMenuItem("Open folder", "Open the first synced folder")
-	openWeb := systray.AddMenuItem("Open NeoCloud in the browser", "")
-	systray.AddSeparator()
-	pause := systray.AddMenuItem("Pause syncing", "")
+	open := systray.AddMenuItem("Open NeoCloud", "")
 	syncNow := systray.AddMenuItem("Sync now", "")
-	settings := systray.AddMenuItem("Settings…", "")
+	pause := systray.AddMenuItem("Pause syncing", "")
 	systray.AddSeparator()
-	quit := systray.AddMenuItem("Quit", "")
+	folders := make([]*systray.MenuItem, maxFolderItems)
+	for i := range folders {
+		folders[i] = systray.AddMenuItem("", "Open this folder")
+		folders[i].Hide()
+	}
+	systray.AddSeparator()
+	quit := systray.AddMenuItem("Quit NeoCloud", "")
 
+	var mu gosync.Mutex
+	shownIcon := ""
+	var shownPairs []config.Pair
 	refresh := func(st sync.Status) {
+		cfg := opts.Config.Get()
 		status.SetTitle(statusLine(st))
-		if opts.Config.Get().Paused {
+		if cfg.Paused {
 			pause.SetTitle("Resume syncing")
 		} else {
 			pause.SetTitle("Pause syncing")
 		}
+		mu.Lock()
+		defer mu.Unlock()
+		if name := iconFor(st.State); name != shownIcon {
+			shownIcon = name
+			setIcon(name)
+		}
+		shownPairs = cfg.Pairs
+		for i, item := range folders {
+			if i < len(cfg.Pairs) {
+				item.SetTitle("Open " + filepath.Base(cfg.Pairs[i].Local))
+				item.Show()
+			} else {
+				item.Hide()
+			}
+		}
 	}
+	onReopen(opts.OpenWindow)
 	opts.Engine.OnStatus(refresh)
 	refresh(opts.Engine.Status())
 
+	for i, item := range folders {
+		go func() {
+			for range item.ClickedCh {
+				mu.Lock()
+				local := ""
+				if i < len(shownPairs) {
+					local = shownPairs[i].Local
+				}
+				mu.Unlock()
+				if local != "" {
+					browser.Open(local)
+				}
+			}
+		}()
+	}
 	go func() {
 		for {
 			select {
-			case <-openFolder.ClickedCh:
-				if pairs := opts.Config.Get().Pairs; len(pairs) > 0 {
-					browser.Open(pairs[0].Local)
-				} else {
-					browser.Open(opts.SettingsURL())
-				}
-			case <-openWeb.ClickedCh:
-				if server := opts.Config.Get().Server; server != "" {
-					browser.Open(server + "/app")
-				}
+			case <-open.ClickedCh:
+				opts.OpenWindow()
 			case <-pause.ClickedCh:
 				opts.Engine.SetPaused(!opts.Config.Get().Paused)
 				refresh(opts.Engine.Status())
 			case <-syncNow.ClickedCh:
 				opts.Engine.SyncNow()
-			case <-settings.ClickedCh:
-				browser.Open(opts.SettingsURL())
 			case <-quit.ClickedCh:
 				systray.Quit()
 				return
@@ -98,6 +129,36 @@ func onReady(opts Options) {
 	}
 }
 
+// iconFor maps an engine state to an icon name.
+func iconFor(state string) string {
+	switch state {
+	case sync.StateIdle, "":
+		return "synced"
+	case sync.StateSyncing:
+		return "syncing"
+	case sync.StatePaused:
+		return "paused"
+	case sync.StateLocked:
+		return "locked"
+	}
+	return "error" // error, offline, needs-confirmation, logged-out
+}
+
+func setIcon(name string) {
+	switch runtime.GOOS {
+	case "darwin":
+		template, _ := icons.ReadFile("icons/template_" + name + ".png")
+		color, _ := icons.ReadFile("icons/color_" + name + ".png")
+		systray.SetTemplateIcon(template, color)
+	case "windows":
+		ico, _ := icons.ReadFile("icons/color_" + name + ".ico")
+		systray.SetIcon(ico)
+	default:
+		png, _ := icons.ReadFile("icons/color_" + name + ".png")
+		systray.SetIcon(png)
+	}
+}
+
 func statusLine(st sync.Status) string {
 	switch st.State {
 	case sync.StateIdle:
@@ -105,8 +166,19 @@ func statusLine(st sync.Status) string {
 			return "Up to date"
 		}
 		return "Up to date · " + st.LastSync.Format("15:04")
+	case sync.StateSyncing:
+		if st.Changes > 0 {
+			return fmt.Sprintf("Syncing · %d changed", st.Changes)
+		}
+		return "Syncing…"
 	case sync.StateLoggedOut:
 		return "Not signed in"
+	case sync.StateLocked:
+		return "Locked"
+	case sync.StateOffline:
+		return "Offline"
+	case sync.StateConfirm:
+		return "Needs attention"
 	case "":
 		return "Starting…"
 	}

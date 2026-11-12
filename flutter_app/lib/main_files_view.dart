@@ -32,7 +32,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
   List<_PaletteCommand> _paletteCommands() {
     final targets = selectedNodes.isNotEmpty ? selectedNodes : <FileNode>[?focusedNode];
     return <_PaletteCommand>[
-      if (!vaultLocked) ...<_PaletteCommand>[
+      if (!vaultLocked && canWrite) ...<_PaletteCommand>[
         _PaletteCommand(Icons.upload_rounded, appStrings.uploadFiles, () => unawaited(pickAndUpload())),
         _PaletteCommand(Icons.create_new_folder_outlined, appStrings.newFolder, () => unawaited(newFolder())),
       ],
@@ -42,7 +42,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         gridView ? appStrings.fileViewList : appStrings.fileViewGrid,
         () => unawaited(_setView(gridView ? 'list' : 'grid')),
       ),
-      if (targets.isNotEmpty) ...<_PaletteCommand>[
+      if (targets.isNotEmpty && !inShare) ...<_PaletteCommand>[
         _PaletteCommand(
           targets.first.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
           targets.first.favorite ? appStrings.filesUnstar : appStrings.filesStar,
@@ -51,7 +51,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         _PaletteCommand(Icons.drive_file_move_outline, appStrings.moveTo, () => unawaited(move(targets))),
         _PaletteCommand(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(targets)), shortcut: 'Del'),
       ],
-      if (_cutNodes.isNotEmpty) _PaletteCommand(Icons.content_paste_rounded, appStrings.filesPasteHere(_cutNodes.length), () => unawaited(paste()), shortcut: _shortcutLabel('V')),
+      if (_cutNodes.isNotEmpty && canWrite) _PaletteCommand(Icons.content_paste_rounded, appStrings.filesPasteHere(_cutNodes.length), () => unawaited(paste()), shortcut: _shortcutLabel('V')),
     ];
   }
 
@@ -64,8 +64,9 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     selecting: !selection.isEmpty,
     onToggleSelected: toggleSelected,
     onLongPress: onItemLongPress,
-    dragSubject: subjectFor,
-    onDropInto: (nodes, folder) => unawaited(moveTo(nodes, folder.id, folder.name)),
+    dragSubject: canWrite ? subjectFor : null,
+    onDropInto: canWrite ? (nodes, folder) => unawaited(moveTo(nodes, folder.id, folder.name)) : null,
+    onDragActive: (active) => holdLiveUpdates(dragHold, active),
     isCut: (id) => _cutNodes.any((node) => node.id == id),
     showPath: searching,
     hitFor: searchHits.isEmpty ? null : (id) => searchHits[id],
@@ -77,7 +78,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       menuChildren: <Widget>[
         MenuItemButton(leadingIcon: const Icon(Icons.create_new_folder_outlined, size: 18), onPressed: () => unawaited(newFolder()), child: Text(appStrings.newFolder)),
         MenuItemButton(leadingIcon: const Icon(Icons.upload_file_outlined, size: 18), onPressed: () => unawaited(pickAndUpload()), child: Text(appStrings.uploadFiles)),
-        if (vaultId == null) ...<Widget>[
+        if (vaultId == null && !inShare) ...<Widget>[
           const Divider(),
           MenuItemButton(leadingIcon: const Icon(Icons.lock_outline_rounded, size: 18), onPressed: () => unawaited(newVault()), child: Text(appStrings.newVault)),
         ],
@@ -159,16 +160,31 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     final current = listing;
     final crumbs = current == null || searching
         ? Text(searching ? appStrings.searchResultsCount(visibleItems.length) : '', style: _sectionTitleStyle())
+        : inShare
+        // The list of shares stands where Home is; the shared folder follows.
+        ? _Breadcrumbs(
+            path: <PathSegment>[const PathSegment(id: '', name: ''), ...current.path],
+            onOpen: goToFolder,
+            homeLabel: appStrings.navSharedWithMe,
+            homeIcon: Icons.folder_shared_outlined,
+            onDropItems: canWrite ? (nodes, id, name) => unawaited(moveTo(nodes, id, name)) : null,
+          )
         : _Breadcrumbs(path: current.path, onOpen: controller.openFolder, onDropItems: (nodes, id, name) => unawaited(moveTo(nodes, id, name)));
+    // Search covers the account's own files only, so a shared folder has none.
     if (_compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[crumbs, const SizedBox(height: 10), search, const SizedBox(height: 10), Align(alignment: Alignment.centerRight, child: controls)],
+        children: <Widget>[
+          crumbs,
+          if (!inShare) ...<Widget>[const SizedBox(height: 10), search],
+          const SizedBox(height: 10),
+          Align(alignment: Alignment.centerRight, child: controls),
+        ],
       );
     }
     return SizedBox(
       height: 48,
-      child: Row(children: <Widget>[Expanded(child: crumbs), const SizedBox(width: 12), search, const SizedBox(width: 8), controls]),
+      child: Row(children: <Widget>[Expanded(child: crumbs), if (!inShare) ...<Widget>[const SizedBox(width: 12), search], const SizedBox(width: 8), controls]),
     );
   }
 
@@ -180,17 +196,17 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       iconsOnly: MediaQuery.sizeOf(context).width < 1180,
       onClear: clearSelection,
       onDownload: () => download(nodes),
-      onMove: () => unawaited(move(nodes)),
-      onTrash: () => unawaited(trash(nodes)),
-      onFavorite: () => unawaited(toggleFavorite(nodes)),
+      onMove: inShare ? null : () => unawaited(move(nodes)),
+      onTrash: canWrite ? () => unawaited(trash(nodes)) : null,
+      onFavorite: inShare ? null : () => unawaited(toggleFavorite(nodes)),
     );
   }
 
   Widget _title() {
     return _PageTitle(
       title: folderName,
-      subtitle: atRoot ? appStrings.filesSubtitle : (vaultId != null ? appStrings.vaultSubtitle : ''),
-      trailing: vaultLocked
+      subtitle: atRoot ? appStrings.filesSubtitle : (vaultId != null ? appStrings.vaultSubtitle : _shareSubtitle()),
+      trailing: vaultLocked || !canWrite
           ? null
           : Wrap(
               spacing: 8,
@@ -207,6 +223,13 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
               ],
             ),
     );
+  }
+
+  /// Who shares the open folder and what this account may do in it.
+  String _shareSubtitle() {
+    final current = share;
+    if (current == null) return '';
+    return current.permission.canWrite ? appStrings.sharedByCanEdit(current.ownerName) : appStrings.sharedByReadOnly(current.ownerName);
   }
 
   /// The items, or what stands in for them: placeholders, the vault's
@@ -239,13 +262,15 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
             icon: Icons.cloud_upload_outlined,
             title: appStrings.emptyFolderTitle,
             subtitle: appStrings.emptyFolderSubtitle,
-            action: Wrap(
-              spacing: 8,
-              children: <Widget>[
-                OutlinedButton.icon(onPressed: () => unawaited(newFolder()), icon: const Icon(Icons.create_new_folder_outlined, size: 18), label: Text(appStrings.newFolder)),
-                FilledButton.icon(onPressed: () => unawaited(pickAndUpload()), icon: const Icon(Icons.upload_rounded, size: 18), label: Text(appStrings.uploadFiles)),
-              ],
-            ),
+            action: canWrite
+                ? Wrap(
+                    spacing: 8,
+                    children: <Widget>[
+                      OutlinedButton.icon(onPressed: () => unawaited(newFolder()), icon: const Icon(Icons.create_new_folder_outlined, size: 18), label: Text(appStrings.newFolder)),
+                      FilledButton.icon(onPressed: () => unawaited(pickAndUpload()), icon: const Icon(Icons.upload_rounded, size: 18), label: Text(appStrings.uploadFiles)),
+                    ],
+                  )
+                : null,
           ),
         ),
       ];
@@ -295,7 +320,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     final compact = _compact;
     final selecting = !selection.isEmpty;
     final showChips = searching || searchFocus.hasFocus || filters.active;
-    final firstRun = atRoot && !loading && !searching && items.isEmpty && listing != null;
+    final firstRun = atRoot && !loading && !searching && items.isEmpty && listing != null && _WelcomeBanner.visibleFor(controller);
     Widget box(Widget child, {double gap = 16}) => SliverToBoxAdapter(child: Padding(padding: EdgeInsets.only(bottom: gap), child: child));
     return PopScope(
       canPop: !selecting,
@@ -307,9 +332,17 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         autofocus: true,
         onKeyEvent: onKey,
         child: DropTarget(
-          onDragEntered: (_) => setState(() => dragging = true),
-          onDragExited: (_) => setState(() => dragging = false),
+          enable: canWrite,
+          onDragEntered: (_) {
+            holdLiveUpdates(dragHold, true);
+            setState(() => dragging = true);
+          },
+          onDragExited: (_) {
+            holdLiveUpdates(dragHold, false);
+            setState(() => dragging = false);
+          },
           onDragDone: (details) {
+            holdLiveUpdates(dragHold, false);
             setState(() => dragging = false);
             if (!vaultLocked) unawaited(uploadDropped(details.files));
           },
@@ -339,7 +372,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
                                   onOpen: (node) => unawaited(showFileViewer(context, controller, recent, recent.indexOf(node))),
                                 )),
                               if (firstRun)
-                                box(_OnboardingCard(controller: controller, onUpload: () => unawaited(pickAndUpload()), onNewFolder: () => unawaited(newFolder()))),
+                                box(_WelcomeBanner(controller: controller, onClose: () => setState(() {}))),
                               box(selecting && !compact ? _selectionBar(compact: false) : _toolbar(), gap: showChips ? 10 : 16),
                               if (showChips)
                                 box(_SearchChips(

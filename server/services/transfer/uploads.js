@@ -122,8 +122,12 @@ function getSession(userId, uploadId) {
   return session;
 }
 
-/** Starts a resumable upload. The full size is reserved against the quota now. */
-function createUpload(userId, { parentId, name, size, conflict, sha256 }) {
+/**
+ * Starts a resumable upload. The full size is reserved against the quota now.
+ * `createdBy` is the member who started it when it goes into a folder shared
+ * with them (the upload is still the owner's, `userId`).
+ */
+function createUpload(userId, { parentId, name, size, conflict, sha256, createdBy = null }) {
   const mode = conflictMode(conflict);
   const totalSize = Number(size);
   if (!Number.isSafeInteger(totalSize) || totalSize < 0) throw httpError(400, 'size must be a byte count.', 'INVALID_SIZE');
@@ -133,9 +137,9 @@ function createUpload(userId, { parentId, name, size, conflict, sha256 }) {
   db.transaction(() => {
     assertUploadFits(userId, totalSize);
     db.prepare(`
-      INSERT INTO upload_sessions (id, user_id, parent_id, name, conflict, total_size, chunk_size, sha256, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))
-    `).run(id, userId, target.parentId, target.name, mode, totalSize, PART_SIZE, expectedHash, `+${UPLOAD_TTL_HOURS} hours`);
+      INSERT INTO upload_sessions (id, user_id, parent_id, name, conflict, total_size, chunk_size, sha256, expires_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?), ?)
+    `).run(id, userId, target.parentId, target.name, mode, totalSize, PART_SIZE, expectedHash, `+${UPLOAD_TTL_HOURS} hours`, createdBy);
   })();
   return serializeSession(getSession(userId, id));
 }

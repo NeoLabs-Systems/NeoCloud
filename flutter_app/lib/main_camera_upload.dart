@@ -3,7 +3,8 @@ part of 'main.dart';
 // Settings › Camera upload (Android and iOS). Every photo not yet backed up
 // goes to the chosen folder — on enable the user picks "new only" or
 // "everything" — while the app is open, on every resume and from a periodic
-// background task the OS schedules. Status pieces: main_camera_status.dart.
+// background task the OS schedules. Status pieces: main_camera_status.dart;
+// the background reliability checklist: main_background_permissions.dart.
 
 class _CameraUploadSettingsPage extends StatefulWidget {
   const _CameraUploadSettingsPage({required this.controller});
@@ -18,21 +19,39 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
   NeoCloudController get _controller => widget.controller;
   CameraUploads get _uploads => _controller.cameraUploads;
 
+  /// What lets camera upload run in the background; re-read on resume,
+  /// since it is changed in the system settings.
+  BackgroundReliability? _reliability;
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
     _uploads.addListener(_changed);
+    _lifecycle = AppLifecycleListener(onResume: () => unawaited(_loadReliability()));
     unawaited(_uploads.load());
+    unawaited(_loadReliability());
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _uploads.removeListener(_changed);
     super.dispose();
   }
 
   void _changed() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadReliability() async {
+    final next = await _uploads.backgroundReliability();
+    if (mounted) setState(() => _reliability = next);
+  }
+
+  Future<void> _showReliability({bool onlyIfOpen = false}) async {
+    await showBackgroundReliabilitySheet(context, _uploads, onlyIfOpen: onlyIfOpen);
+    await _loadReliability();
   }
 
   /// Explains why the library is needed before the system asks.
@@ -86,6 +105,8 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
       await _uploads.update(next.copyWith(enabled: true));
       unawaited(_uploads.runNow(_controller.client).catchError((Object _) {}));
     }, notice: appStrings.cameraUploadOn);
+    // What else it takes to keep running in the background.
+    if (mounted && _uploads.settings.enabled) await _showReliability(onlyIfOpen: true);
   }
 
   Future<(String, String)?> _pickFolder() => showFolderPicker(
@@ -100,6 +121,13 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
     final target = await _pickFolder();
     if (target == null) return;
     await runAction(_controller, () => _uploads.update(_uploads.settings.copyWith(folderId: target.$1, folderName: target.$2)));
+  }
+
+  String? _reliabilitySummary() {
+    final reliability = _reliability;
+    if (reliability == null) return null;
+    final open = reliability.openCount;
+    return open == 0 ? appStrings.backgroundReliabilityAllSet : appStrings.backgroundReliabilityOpen(open);
   }
 
   Future<void> _set(CameraUploadSettings next) => runAction(_controller, () => _uploads.update(next));
@@ -207,8 +235,18 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
-          if (_CameraDelayedBanner.due(_uploads)) ...<Widget>[
-            _CameraDelayedBanner(lastRun: _uploads.lastRun),
+          if (backgroundBannerDue(
+            enabled: settings.enabled,
+            reliability: _reliability,
+            lastSuccess: _uploads.lastSuccess,
+            enabledAt: settings.enabledAt,
+            now: DateTime.now(),
+          )) ...<Widget>[
+            _BackgroundReliabilityBanner(
+              missing: _reliability?.anyNeeded ?? false,
+              since: _uploads.lastSuccess ?? settings.enabledAt,
+              onFix: () => unawaited(_showReliability()),
+            ),
             const SizedBox(height: AppSpacing.md),
           ],
           _statusCard(),
@@ -226,6 +264,11 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
               label: appStrings.cameraUploadFolder,
               description: settings.folderId == null ? appStrings.syncNothingChosen : settings.folderName,
               control: OutlinedButton(onPressed: busy ? null : () => unawaited(_changeFolder()), child: Text(appStrings.syncChoose)),
+            ),
+            _SettingsRow(
+              label: appStrings.backgroundReliabilityTitle,
+              description: _reliabilitySummary(),
+              control: OutlinedButton(onPressed: () => unawaited(_showReliability()), child: Text(appStrings.backgroundReliabilityCheck)),
             ),
             if (settings.enabled)
               _SettingsRow(
@@ -251,7 +294,6 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
             ),
             _SettingsRow(
               label: appStrings.cameraChargingOnly,
-              description: appStrings.cameraChargingHint,
               control: Switch(value: settings.chargingOnly, onChanged: busy ? null : (value) => unawaited(_set(settings.copyWith(chargingOnly: value)))),
             ),
             _SettingsRow(

@@ -216,6 +216,40 @@ void main() {
     expect(cameraStatus(enabled: true, ledger: await store.load(), limitedAccess: true).kind, CameraStatusKind.limitedAccess);
   });
 
+  test('pause and the system time limit stop between files, save, and the next pass resumes', () async {
+    CameraBlock? stopWith;
+    final paused = await engine.run(
+      _options,
+      const CameraConditions(),
+      onProgress: (progress) {
+        if (progress.current == 3) stopWith = CameraBlock.paused;
+      },
+      interruption: () => stopWith,
+    );
+    expect(paused.block, CameraBlock.paused);
+    expect(paused.uploaded, 3);
+    final ledger = await store.load();
+    expect(ledger.counts.backedUp, 3);
+    expect(cameraStatus(enabled: true, ledger: ledger).kind, CameraStatusKind.paused);
+
+    // Android 15's data sync limit: the status falls back to pending.
+    stopWith = null;
+    final interrupted = await engine.run(
+      _options,
+      const CameraConditions(),
+      onProgress: (progress) {
+        if (progress.current == 2) stopWith = CameraBlock.interrupted;
+      },
+      interruption: () => stopWith,
+    );
+    expect(interrupted.block, CameraBlock.interrupted);
+    expect(cameraStatus(enabled: true, ledger: await store.load()).kind, CameraStatusKind.pending);
+
+    final resumed = await engine.run(_options, const CameraConditions());
+    expect(resumed.block, isNull);
+    expect(server.uploads, hasLength(6));
+  });
+
   test('the ledger survives encoding', () async {
     await engine.run(_options, const CameraConditions());
     final ledger = await store.load();

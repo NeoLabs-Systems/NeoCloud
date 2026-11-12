@@ -1,9 +1,9 @@
 part of 'main.dart';
 
 // How camera backup tells what it is doing: one specific status (dot +
-// word), numbers that add up and open the files behind them, the
-// limited-access and "delayed by the system" banners, and the small chip in
-// the phone's app bar.
+// word), numbers that add up and open the files behind them, and the small
+// chip in the phone's app bar. The background reliability banner and
+// checklist are in main_background_permissions.dart.
 
 (String, Color) _cameraStatusLabel(CameraStatus status) {
   switch (status.kind) {
@@ -33,6 +33,8 @@ part of 'main.dart';
       return (appStrings.cameraStatusServerFull, _danger);
     case CameraStatusKind.failed:
       return (appStrings.cameraStatusFailed(status.count), _danger);
+    case CameraStatusKind.paused:
+      return (appStrings.backgroundCameraPaused, _warning);
   }
 }
 
@@ -214,63 +216,6 @@ Future<void> _showCameraRecords(BuildContext context, CameraUploads uploads, Cam
       ),
     ),
   );
-}
-
-/// Shown when the last pass is more than a day old: the OS is probably
-/// keeping NeoCloud from running in the background.
-class _CameraDelayedBanner extends StatelessWidget {
-  const _CameraDelayedBanner({required this.lastRun});
-
-  final DateTime? lastRun;
-
-  static bool due(CameraUploads uploads) {
-    final last = uploads.lastRun;
-    return uploads.settings.enabled && last != null && DateTime.now().difference(last) > const Duration(hours: 24);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final android = defaultTargetPlatform == TargetPlatform.android;
-    final tips = android
-        ? <String>[
-            appStrings.cameraBatteryTipGeneric,
-            appStrings.cameraBatteryTipSamsung,
-            appStrings.cameraBatteryTipXiaomi,
-            appStrings.cameraBatteryTipHuawei,
-            appStrings.cameraBatteryTipOnePlus,
-          ]
-        : <String>[appStrings.cameraIosBackgroundTip];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: _warning.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Icon(Icons.battery_alert_outlined, size: 18, color: _warning),
-              const SizedBox(width: 8),
-              Expanded(child: Text(appStrings.cameraDelayedTitle, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 13.5))),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(appStrings.cameraDelayedMessage(formatDate(lastRun, currentAppLanguage.code)), style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.4)),
-          const SizedBox(height: 8),
-          for (final tip in tips)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text('• $tip', style: TextStyle(color: _textSecondary, fontSize: 12.5, height: 1.4)),
-            ),
-          if (android)
-            TextButton.icon(
-              onPressed: () => unawaited(launchUrl(Uri.parse('https://dontkillmyapp.com/'), mode: LaunchMode.externalApplication)),
-              icon: const Icon(Icons.open_in_new_rounded, size: 15),
-              label: Text(appStrings.cameraBatteryMore),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Asked when backup is turned on: new photos only, or the whole library.

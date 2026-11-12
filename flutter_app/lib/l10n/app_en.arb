@@ -25,7 +25,6 @@
   "createTheFirstAccount": "Create the first account",
   "firstAccountSubtitle": "This account will administer NeoCloud on this server.",
   "createAnotherAccount": "Create another NeoCloud account.",
-  "signupKeyStepSubtitle": "This server needs a sign-up key. Ask an admin for one.",
   "usernameOrEmail": "Username or email",
   "username": "Username",
   "email": "Email",
@@ -40,9 +39,6 @@
   "twoFactorOrRecoveryCode": "2FA or recovery code",
   "verify": "Verify",
   "backToSignIn": "Back to sign in",
-  "signupKey": "Sign-up key",
-  "signupKeyChange": "Change",
-  "signupKeyRequiredError": "Enter your sign-up key.",
   "enterAUsername": "Enter a username.",
   "usernameTooShort": "Use at least 3 characters.",
   "enterAValidEmail": "Enter a valid email address.",
@@ -52,7 +48,7 @@
   "enterYour2faCode": "Enter your 2FA or recovery code.",
   "showPassword": "Show password",
   "hidePassword": "Hide password",
-  "passwordStrength": "Strength: {label}",
+  "passwordStrength": "Password strength: {label}",
   "@passwordStrength": {
     "placeholders": {
       "label": {
@@ -61,16 +57,16 @@
     }
   },
   "strengthEmpty": "empty",
-  "strengthRejected": "will be rejected",
+  "strengthRejected": "too weak, will be rejected",
   "strengthGood": "good",
   "strengthStrong": "strong",
-  "passwordHintEmpty": "Use 8+ characters. Longer passphrases work best.",
+  "passwordHintEmpty": "Use 8+ characters. Longer passphrases work well.",
   "passwordHintLength": "Use at least 8 characters.",
-  "passwordHintUserInfo": "Don’t include your username or email.",
+  "passwordHintUserInfo": "Do not include your username or email.",
   "passwordHintPattern": "Avoid repeated characters and obvious sequences.",
   "passwordHintMore": "Add more length or another character type.",
   "passwordHintStrong": "Strong password.",
-  "passwordHintGood": "Good password. A little more length makes it strong.",
+  "passwordHintGood": "Good password. A little more length makes it stronger.",
   "navFiles": "Files",
   "navAllFiles": "All files",
   "navRecent": "Recent",
@@ -264,7 +260,7 @@
   "pageSecurity": "Sign-in & security",
   "pageSecurityDescription": "Password, two-factor authentication and active sessions.",
   "pageDevices": "Devices",
-  "pageDevicesDescription": "Desktop, mobile and lite clients connected to your account.",
+  "pageDevicesDescription": "Desktop and mobile apps connected to your account.",
   "pageStorage": "Storage",
   "pageStorageDescription": "How much space you use and what takes it.",
   "pageGeneral": "General",
@@ -294,7 +290,7 @@
   "twoFactorOff": "Off. Add a code from an authenticator app to every sign-in.",
   "twoFactorEnable": "Set up",
   "twoFactorDisable": "Turn off",
-  "twoFactorSetupStep": "Add this key to your authenticator app, then enter the code it shows.",
+  "twoFactorSetupStep": "Scan this QR code with your authenticator app, or enter the key manually. Then enter the code it shows.",
   "twoFactorCode": "6-digit code",
   "recoveryCodesTitle": "Save your recovery codes",
   "recoveryCodesMessage": "Each code signs you in once if you lose your phone. They won’t be shown again.",
@@ -399,21 +395,7 @@
   "adminRecalculate": "Recalculate usage",
   "adminAccessTitle": "Registration",
   "adminAllowSignup": "Open sign-up",
-  "adminAllowSignupDescription": "When off, new accounts need a sign-up key.",
-  "adminSignupKeys": "Sign-up keys",
-  "adminCreateKey": "Create key",
-  "adminKeyUnused": "Unused",
-  "adminKeyUsed": "Used by {name}",
-  "@adminKeyUsed": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "adminKeyRevoked": "Revoked",
-  "adminRevoke": "Revoke",
-  "adminNoKeys": "No sign-up keys yet.",
+  "adminAllowSignupDescription": "When off, nobody can register. The first account on a new server always can.",
   "adminServerTitle": "Server",
   "adminVersion": "Version",
   "adminUptime": "Uptime",
@@ -427,7 +409,7 @@
   "adminMasterKeyDescription": "Every file is encrypted under this key. Keep a copy offline: without it, files and backups can’t be decrypted.",
   "adminShowMasterKey": "Show master key",
   "adminConfirmPassword": "Confirm with your password",
-  "officePreviewUnavailable": "Office previews need LibreOffice on the server. Download the file to open it.",
+  "officePreviewUnavailable": "There’s no preview for this file. Download it to open it.",
   "play": "Play",
   "pause": "Pause",
   "mediaUnavailable": "This file can’t be played in the browser.",
@@ -618,7 +600,7 @@
   },
   "editorOverwrite": "Save anyway",
   "vaultNoMediaPreview": "Vault videos and audio can’t be played in the browser. Download the file to play it.",
-  "shareLink": "Share link",
+  "shareLink": "Share",
   "newVault": "New vault",
   "vaultLock": "Lock",
   "vaultSubtitle": "End-to-end encrypted. Names and contents are encrypted on this device; the server can’t read them.",
@@ -1143,13 +1125,9 @@
     }
   },
   "filesWelcomeTitle": "Welcome to your cloud",
-  "filesWelcomeSubtitle": "Everything here is encrypted on your own server. Three things to start with:",
-  "filesWelcomeUploadTitle": "Add your first files",
   "filesWelcomeUploadBody": "Upload files or drop them anywhere on this page.",
-  "filesWelcomeDesktopTitle": "Get the desktop app",
   "filesWelcomeDesktopBody": "Keep a folder on your computer in sync.",
   "filesWelcomeDesktopAction": "Get the app",
-  "filesWelcomeKeyTitle": "Back up the master key",
   "filesWelcomeKeyBody": "Without it, a restored server can't read any file. Store it somewhere safe.",
   "filesWelcomeKeyAction": "Open admin",
   "paletteActions": "Actions",
@@ -1204,7 +1182,7 @@
   "searchTypeVideos": "Videos",
   "storageAlmostFull": "Almost full",
   "storageByType": "By type",
-  "storageDetailsUnavailable": "This server doesn't report a detailed breakdown yet.",
+  "storageDetailsUnavailable": "A detailed breakdown isn’t available right now.",
   "storageDuplicateGroup": "{count} identical copies · {size} each",
   "@storageDuplicateGroup": {
     "placeholders": {
@@ -1434,22 +1412,97 @@
   "cameraVideosWifiOnlyHint": "Photos may use mobile data, videos wait for Wi-Fi.",
   "cameraLimitedMessage": "NeoCloud can only see the photos you selected. The others aren’t backed up.",
   "cameraAllowFullAccess": "Allow full access",
-  "cameraDelayedTitle": "Backup delayed by the system",
-  "cameraDelayedMessage": "Last run {date}. The system may be stopping NeoCloud in the background to save battery.",
-  "@cameraDelayedMessage": {
+  "cameraIosBackgroundTip": "iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.",
+  "backgroundNotificationChannel": "Backup progress",
+  "backgroundNotificationProgress": "Backing up {current} of {total}",
+  "@backgroundNotificationProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "backgroundNotificationPause": "Pause",
+  "backgroundCameraPaused": "Paused",
+  "backgroundTitle": "Keep backup running",
+  "backgroundIntroAndroid": "Camera upload keeps going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.",
+  "backgroundIntroIos": "iOS decides when NeoCloud may run in the background: a few times a day, most often overnight on the charger. These settings give it every chance.",
+  "backgroundStatusGranted": "Granted",
+  "backgroundStatusNeeded": "Needed",
+  "backgroundStatusRecommended": "Recommended",
+  "backgroundStatusOff": "Off",
+  "backgroundPhotosTitle": "Photos and videos",
+  "backgroundPhotosDetail": "Access to the whole library, not only selected photos, so every new photo is backed up.",
+  "backgroundBatteryTitle": "Unrestricted battery",
+  "backgroundBatteryDetail": "Lets Android run NeoCloud in the background and start a backup soon after you take a photo.",
+  "backgroundManufacturerTitle": "{maker} settings",
+  "@backgroundManufacturerTitle": {
+    "placeholders": {
+      "maker": {
+        "type": "String"
+      }
+    }
+  },
+  "backgroundManufacturerDetail": "{maker} stops apps in the background on top of Android. Change these so it leaves NeoCloud running:",
+  "@backgroundManufacturerDetail": {
+    "placeholders": {
+      "maker": {
+        "type": "String"
+      }
+    }
+  },
+  "backgroundManufacturerGuide": "Guide for your phone on dontkillmyapp.com",
+  "backgroundNotificationsTitle": "Notifications",
+  "backgroundNotificationsDetailAndroid": "Shows the backup’s progress, with a Pause button.",
+  "backgroundNotificationsDetailIos": "Lets NeoCloud tell you when backup needs you.",
+  "backgroundDataTitle": "Background data",
+  "backgroundDataDetail": "Data Saver blocks uploads while NeoCloud is closed unless it may use data without restriction.",
+  "backgroundRefreshTitle": "Background App Refresh",
+  "backgroundRefreshDetail": "Without it, iOS never runs NeoCloud in the background.",
+  "backgroundRefreshRestricted": "Turned off by Screen Time or a device profile; it can only be turned on there.",
+  "backgroundLowPowerTitle": "Low Power Mode",
+  "backgroundLowPowerDetail": "While it is on, iOS pauses background tasks. Turn it off in Settings › Battery to let a backup run.",
+  "backgroundSwipeHint": "Don’t swipe NeoCloud away in the app switcher: iOS then stops its background tasks until you open it again.",
+  "backgroundAllow": "Allow",
+  "backgroundAllowAll": "Allow all",
+  "backgroundOpenSettings": "Open settings",
+  "backgroundNotNow": "Not now",
+  "backgroundBannerTitle": "Backup may not run in the background",
+  "backgroundBannerMissing": "Something NeoCloud needs to run in the background is turned off.",
+  "backgroundBannerStale": "No complete backup since {date}. The system may be stopping NeoCloud in the background.",
+  "@backgroundBannerStale": {
     "placeholders": {
       "date": {
         "type": "String"
       }
     }
   },
-  "cameraBatteryTipGeneric": "Let NeoCloud run in the background: Settings › Apps › NeoCloud › Battery › Unrestricted.",
-  "cameraBatteryTipSamsung": "Samsung: Settings › Battery › Background usage limits – take NeoCloud off “Sleeping apps”.",
-  "cameraBatteryTipXiaomi": "Xiaomi: Settings › Apps › NeoCloud › Battery saver › No restrictions, and turn on Autostart.",
-  "cameraBatteryTipHuawei": "Huawei: Settings › Battery › App launch – set NeoCloud to “Manage manually” and allow everything.",
-  "cameraBatteryTipOnePlus": "OnePlus: Settings › Battery › Battery optimisation – set NeoCloud to “Don’t optimise”.",
-  "cameraBatteryMore": "More tips for your phone on dontkillmyapp.com",
-  "cameraIosBackgroundTip": "iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.",
+  "backgroundBannerFix": "Check settings",
+  "backgroundReliabilityTitle": "Background reliability",
+  "backgroundReliabilityAllSet": "Everything NeoCloud needs is set.",
+  "backgroundReliabilityOpen": "{count, plural, =1{1 setting to check} other{{count} settings to check}}",
+  "@backgroundReliabilityOpen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backgroundReliabilityCheck": "Check",
+  "backgroundStepSamsungUnrestricted": "Settings › Apps › NeoCloud › Battery › Unrestricted",
+  "backgroundStepSamsungNeverSleeping": "Settings › Battery › Background usage limits › Never sleeping apps › add NeoCloud",
+  "backgroundStepXiaomiAutostart": "Settings › Apps › Manage apps › NeoCloud › turn on Autostart",
+  "backgroundStepXiaomiNoRestrictions": "Settings › Apps › Manage apps › NeoCloud › Battery saver › No restrictions",
+  "backgroundStepHuaweiAppLaunch": "Settings › Battery › App launch › NeoCloud › Manage manually, with Auto-launch, Secondary launch and Run in background on",
+  "backgroundStepOppoBatteryUsage": "Settings › Apps › NeoCloud › Battery usage › allow background activity and auto launch",
+  "backgroundStepOppoDontOptimise": "Settings › Battery › Battery optimisation › NeoCloud › Don’t optimise",
+  "backgroundStepVivoBackgroundPower": "Settings › Battery › Background power consumption management › NeoCloud › Allow",
+  "backgroundStepVivoAutostart": "i Manager › App manager › Autostart manager › turn on NeoCloud",
+  "backgroundStepAsusAutostart": "Mobile Manager › PowerMaster › Auto-start manager › NeoCloud › Allow",
+  "backgroundStepLockInRecents": "Open the recent apps and lock NeoCloud there, so clearing them leaves it running",
   "cameraBackUpNow": "Back up now",
   "cameraRetryFailed": "Retry failed",
   "cameraExportLog": "Export upload log",
@@ -1486,6 +1539,9 @@
     }
   },
   "deviceRevokeMessage": "The app on that device is signed out and has to be connected again.",
+  "qrPairing": "QR Pairing",
+  "pairPhoneDescription": "Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.",
+  "showQrCode": "Show QR code",
   "pairPhone": "Pair a phone",
   "pairTitle": "Pair a phone",
   "pairInstructions": "Open the NeoCloud app on your phone, tap “Scan QR code” and point the camera at this code.",
@@ -1516,16 +1572,16 @@
   "pairLandingOpenApp": "Open in NeoCloud app",
   "pairLandingAppStore": "Get it on the App Store",
   "pairLandingPlayStore": "Get it on Google Play",
-  "pairLandingComputerBody": "This link is meant for your phone. Open it there, or scan the QR code in Settings › Devices with the NeoCloud app.",
-  "pairLandingInvalid": "This pairing link is incomplete. Show a new code in Settings › Devices.",
+  "pairLandingComputerBody": "This link is meant for your phone. Open it there, or scan the QR code in Settings › Sign-in & security with the NeoCloud app.",
+  "pairLandingInvalid": "This pairing link is incomplete. Show a new code in Settings › Sign-in & security.",
   "connectOr": "or",
   "connectScanQr": "Scan QR code",
-  "connectScanQrHint": "In the web app, open Settings › Devices › Pair a phone.",
+  "connectScanQrHint": "In the web app, open Settings › Sign-in & security › Pair a phone.",
   "scanTitle": "Scan QR code",
   "scanPrimeTitle": "Use the camera to pair",
   "scanPrimeBody": "NeoCloud needs the camera only to read the pairing code shown in the web app. Nothing is recorded or uploaded.",
   "scanPrimeAllow": "Allow camera",
-  "scanHint": "Point the camera at the QR code in Settings › Devices",
+  "scanHint": "Point the camera at the QR code in Settings › Sign-in & security",
   "scanWrongCode": "That's not a NeoCloud pairing code",
   "scanTorchOn": "Turn on the light",
   "scanTorchOff": "Turn off the light",
@@ -1674,7 +1730,6 @@
   "importStatusDone": "Done",
   "importStatusFailed": "Failed",
   "importStatusCancelled": "Cancelled",
-  "filesWelcomeImportTitle": "Coming from Nextcloud?",
   "filesWelcomeImportBody": "Import your files with their folders and dates.",
   "filesWelcomeImportAction": "Import your files",
   "searchFileContents": "File contents",
@@ -1709,5 +1764,137 @@
   "adminSearchRebuildHint": "Reads every file again, in the background.",
   "adminSearchRebuildStarted": "The index is being rebuilt in the background.",
   "importTargetHint": "Without a folder, files go into a new “Nextcloud” folder in Home.",
-  "importHostBlocked": "Only an admin can import from a server on your local network."
+  "importHostBlocked": "Only an admin can import from a server on your local network.",
+  "filesWelcomeDontShowAgain": "Don’t show again",
+  "filesQuickAccessShow": "Show quick access",
+  "filesQuickAccessHide": "Hide quick access",
+  "adminSafetyAllDone": "All done",
+  "adminSafetyProgress": "{done} of {total} done",
+  "@adminSafetyProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSafetyExpand": "Show checklist",
+  "adminSafetyCollapse": "Hide checklist",
+  "authSignInWithSecurityKey": "Sign in with security key",
+  "authOrContinueWith": "or continue with",
+  "passkeyWebOnly": "Security keys are only available in the NeoCloud web app.",
+  "passkeyNoneProvided": "No security key was provided.",
+  "passkeyPromptDismissed": "Security key prompt was dismissed.",
+  "passkeyAlreadyRegistered": "That security key is already registered on this account.",
+  "passkeyCouldNotBeUsed": "The security key could not be used.",
+  "passkeySignInFailed": "Security key sign-in could not be started.",
+  "passkeyRegistrationFailed": "The security key registration could not be started.",
+  "passkeysTitle": "Security keys",
+  "passkeysDescription": "Sign in with a hardware key or passkey instead of your password. A key that asks for a PIN or fingerprint also replaces your two-factor code.",
+  "passkeysNone": "None",
+  "passkeysRegistered": "{count} registered",
+  "@passkeysRegistered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "passkeyAdd": "Add security key",
+  "passkeyNameOptional": "Name (optional)",
+  "passkeyNameHint": "YubiKey, MacBook Touch ID, …",
+  "passkeyDefaultName": "Security key {number}",
+  "@passkeyDefaultName": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "passkeyRenameTitle": "Rename security key",
+  "passkeyName": "Name",
+  "passkeyRemove": "Remove",
+  "passkeyAddedLastUsed": "Added {added} · Last used {lastUsed}",
+  "@passkeyAddedLastUsed": {
+    "placeholders": {
+      "added": {
+        "type": "String"
+      },
+      "lastUsed": {
+        "type": "String"
+      }
+    }
+  },
+  "passkeyNotRecorded": "Not recorded",
+  "passkeyNeverUsed": "Never used",
+  "passkeyUnsupported": "This device cannot register security keys. Open NeoCloud in a browser over HTTPS to add one.",
+  "navSharedWithMe": "Shared with me",
+  "sharedWithMeSubtitle": "Files and folders other people on this server shared with you.",
+  "sharedWithMeEmpty": "Nothing shared with you yet",
+  "sharedWithMeEmptySubtitle": "When someone shares a file or folder with you, it shows up here.",
+  "sharedBy": "Shared by {owner}",
+  "@sharedBy": {
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedByCanEdit": "Shared by {owner} · you can edit",
+  "@sharedByCanEdit": {
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedByReadOnly": "Shared by {owner} · view only",
+  "@sharedByReadOnly": {
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedWithPeople": "Shared with people",
+  "sharedLeave": "Leave share",
+  "sharedLeaveConfirm": "You will no longer see “{name}”. Only {owner} can share it with you again.",
+  "@sharedLeaveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "owner": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSaveToMyFiles": "Save to my files",
+  "sharedSavedToMyFiles": "“{name}” copied to your files.",
+  "@sharedSavedToMyFiles": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedReadOnlyError": "This folder is shared with you to view only.",
+  "sharedBoundaryError": "Items can’t be moved into or out of a shared folder. Copy them instead.",
+  "sharedRootError": "The shared folder itself belongs to its owner.",
+  "sharedZipMixedError": "Download your own files and shared files separately.",
+  "sharePeopleTitle": "Share with people",
+  "sharePeopleHelp": "Enter the exact email address or username of someone with an account on this server.",
+  "sharePublicLinkTitle": "Public link",
+  "memberRecipientHint": "Email address or username",
+  "memberAdd": "Add",
+  "memberCanView": "Can view",
+  "memberCanEdit": "Can edit",
+  "memberChange": "Change access",
+  "memberRemove": "Remove access",
+  "memberExpired": "Expired",
+  "membersEmpty": "Not shared with anyone yet.",
+  "memberNotFound": "No account found that this can be shared with. Check the exact email address or username.",
+  "memberAlreadyAdded": "Already shared with this person."
 }

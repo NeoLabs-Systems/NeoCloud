@@ -48,39 +48,37 @@ Widget _skeletonSliver({required bool grid, required int columns, required doubl
   );
 }
 
-/// First run: an empty Home explains the three things to do first.
-class _OnboardingCard extends StatelessWidget {
-  const _OnboardingCard({required this.controller, required this.onUpload, required this.onNewFolder});
+/// Per-account flags of the Files page kept on this device ("don't show
+/// the welcome again", Quick Access folded). The server has no setting for
+/// them, so they are keyed by the account id.
+String _filesFlagKey(NeoCloudController controller, String name) => 'files.$name.${controller.user?.id ?? 0}';
+
+bool _filesFlag(NeoCloudController controller, String name) => controller._preferences.getBool(_filesFlagKey(controller, name)) ?? false;
+
+Future<void> _setFilesFlag(NeoCloudController controller, String name, bool value) =>
+    controller._preferences.setBool(_filesFlagKey(controller, name), value);
+
+/// Closed with ✕: gone until the next start. "Don't show again" keeps it
+/// gone for the account on this device.
+bool _welcomeClosed = false;
+
+/// First run: an empty Home gets one slim line with the next steps, which
+/// the user can close or turn off for good.
+class _WelcomeBanner extends StatelessWidget {
+  const _WelcomeBanner({required this.controller, required this.onClose});
 
   final NeoCloudController controller;
-  final VoidCallback onUpload;
-  final VoidCallback onNewFolder;
+  final VoidCallback onClose;
 
-  Widget _step(IconData icon, String title, String body, Widget action) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: _bgTertiary, shape: BoxShape.circle),
-            child: Icon(icon, size: 18, color: _textSecondary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(title, style: _sectionTitleStyle()),
-                const SizedBox(height: 2),
-                Text(body, style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.4)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          action,
-        ],
+  static bool visibleFor(NeoCloudController controller) => !_welcomeClosed && !_filesFlag(controller, 'welcomeHidden');
+
+  Widget _action(String label, String hint, VoidCallback onPressed) {
+    return Tooltip(
+      message: hint,
+      child: TextButton(
+        style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 10)),
+        onPressed: onPressed,
+        child: Text(label),
       ),
     );
   }
@@ -89,56 +87,60 @@ class _OnboardingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _EntranceMotion(
       child: _AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        child: Row(
           children: <Widget>[
-            Text(appStrings.filesWelcomeTitle, style: _displayTitleStyle(18)),
-            const SizedBox(height: 4),
-            Text(appStrings.filesWelcomeSubtitle, style: TextStyle(color: _textSecondary, fontSize: 14, height: 1.45)),
-            const SizedBox(height: 10),
-            _step(
-              Icons.upload_rounded,
-              appStrings.filesWelcomeUploadTitle,
-              appStrings.filesWelcomeUploadBody,
-              Wrap(spacing: 8, children: <Widget>[
-                OutlinedButton(onPressed: onNewFolder, child: Text(appStrings.newFolder)),
-                FilledButton(onPressed: onUpload, child: Text(appStrings.upload)),
-              ]),
-            ),
-            Divider(height: 1, color: _border),
-            _step(
-              Icons.computer_rounded,
-              appStrings.filesWelcomeDesktopTitle,
-              appStrings.filesWelcomeDesktopBody,
-              OutlinedButton(
-                onPressed: () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
-                child: Text(appStrings.filesWelcomeDesktopAction),
+            Icon(Icons.waving_hand_outlined, size: 18, color: _textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text.rich(
+                      TextSpan(
+                        children: <InlineSpan>[
+                          TextSpan(text: '${appStrings.filesWelcomeTitle} · ', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600)),
+                          TextSpan(text: appStrings.filesWelcomeUploadBody),
+                        ],
+                      ),
+                      style: TextStyle(color: _textSecondary, fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                  _action(
+                    appStrings.filesWelcomeDesktopAction,
+                    appStrings.filesWelcomeDesktopBody,
+                    () => unawaited(launchUrl(controller.client.uri('/'), webOnlyWindowName: '_blank')),
+                  ),
+                  if (!controller.usesDeviceLogin)
+                    _action(appStrings.filesWelcomeImportAction, appStrings.filesWelcomeImportBody, () {
+                      controller.setSettingsPage(SettingsPage.imports);
+                      controller.setSelectedSection(AppSection.settings);
+                    }),
+                  if (controller.isAdmin)
+                    _action(appStrings.filesWelcomeKeyAction, appStrings.filesWelcomeKeyBody, () => controller.setSelectedSection(AppSection.admin)),
+                ],
               ),
             ),
-            if (!controller.usesDeviceLogin) ...<Widget>[
-              Divider(height: 1, color: _border),
-              _step(
-                Icons.move_to_inbox_outlined,
-                appStrings.filesWelcomeImportTitle,
-                appStrings.filesWelcomeImportBody,
-                OutlinedButton(
-                  onPressed: () {
-                    controller.setSettingsPage(SettingsPage.imports);
-                    controller.setSelectedSection(AppSection.settings);
-                  },
-                  child: Text(appStrings.filesWelcomeImportAction),
-                ),
-              ),
-            ],
-            if (controller.isAdmin) ...<Widget>[
-              Divider(height: 1, color: _border),
-              _step(
-                Icons.key_rounded,
-                appStrings.filesWelcomeKeyTitle,
-                appStrings.filesWelcomeKeyBody,
-                OutlinedButton(onPressed: () => controller.setSelectedSection(AppSection.admin), child: Text(appStrings.filesWelcomeKeyAction)),
-              ),
-            ],
+            TextButton(
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: _textMuted),
+              onPressed: () {
+                unawaited(_setFilesFlag(controller, 'welcomeHidden', true));
+                onClose();
+              },
+              child: Text(appStrings.filesWelcomeDontShowAgain),
+            ),
+            IconButton(
+              tooltip: appStrings.close,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close_rounded, size: 18, color: _textMuted),
+              onPressed: () {
+                _welcomeClosed = true;
+                onClose();
+              },
+            ),
           ],
         ),
       ),

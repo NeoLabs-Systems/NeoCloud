@@ -28,6 +28,7 @@ const (
 	StateError      = "error"
 	StateOffline    = "offline"
 	StateLoggedOut  = "logged-out"
+	StateLocked     = "locked"
 	StateConfirm    = "needs-confirmation"
 	defaultPoll     = 15 * time.Second
 	defaultRescan   = 5 * time.Minute
@@ -35,11 +36,19 @@ const (
 	maxPassesPerRun = 5
 )
 
+// LockedMessage is the status while the security key lock holds the token.
+const LockedMessage = "Locked — insert your security key"
+
+// ErrLocked is returned while the security key lock holds the token.
+var ErrLocked = errors.New("locked: insert your security key")
+
 // Status is a snapshot for the UI.
 type Status struct {
-	State     string               `json:"state"`
-	Message   string               `json:"message"`
-	LastSync  time.Time            `json:"lastSync"`
+	State    string    `json:"state"`
+	Message  string    `json:"message"`
+	LastSync time.Time `json:"lastSync"`
+	// Changes counts the files changed by the run in progress (or the last one).
+	Changes   int                  `json:"changes"`
 	PairState map[string]PairState `json:"pairs"`
 }
 
@@ -68,9 +77,12 @@ type Engine struct {
 	status   Status
 	dirty    map[string]bool
 	onStatus []func(Status)
+	activity []Activity // oldest first, at most maxActivity
 	wake     chan struct{}
 	watcher  *fsnotify.Watcher
 	watched  map[string]bool
+	// stopRun cancels the sync run in progress, if any.
+	stopRun context.CancelFunc
 }
 
 // New creates an engine. logger may be nil.
@@ -102,8 +114,11 @@ func (e *Engine) Status() Status {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	copied := e.status
-	if !e.cfg.Get().LoggedIn() {
+	cfg := e.cfg.Get()
+	if !cfg.LoggedIn() {
 		copied.State, copied.Message = StateLoggedOut, "Not signed in"
+	} else if cfg.Locked() && copied.State != StateLocked {
+		copied.State, copied.Message = StateLocked, LockedMessage
 	}
 	copied.PairState = map[string]PairState{}
 	for id, ps := range e.status.PairState {
@@ -169,6 +184,9 @@ func (e *Engine) Client() (*api.Client, error) {
 	if !cfg.LoggedIn() {
 		return nil, errors.New("not signed in; run `neocloud-lite login --server URL` first")
 	}
+	if cfg.Locked() {
+		return nil, ErrLocked
+	}
 	e.up.SetRate(cfg.UploadKiBps * 1024)
 	e.down.SetRate(cfg.DownloadKiBps * 1024)
 	client := api.New(cfg.Server, cfg.Token)
@@ -176,9 +194,29 @@ func (e *Engine) Client() (*api.Client, error) {
 	return client, nil
 }
 
+// Locked is called by the security key lock when the key goes away (or
+// to update the message while locked): the run in progress stops and
+// nothing syncs until Unlocked.
+func (e *Engine) Locked(message string) {
+	e.mu.Lock()
+	if e.stopRun != nil {
+		e.stopRun()
+	}
+	e.mu.Unlock()
+	e.setStatus(func(s *Status) { s.State, s.Message = StateLocked, message })
+}
+
+// Unlocked is called by the security key lock once the token is back in
+// memory: syncing resumes.
+func (e *Engine) Unlocked() {
+	e.setStatus(func(s *Status) { s.State, s.Message = StateIdle, "Unlocked" })
+	e.SyncNow()
+}
+
 // SignIn stores a freshly issued token. Signing in to a different account
 // forgets all sync state first, so the old account's files are never
-// compared with the new one's (that would read as mass deletions).
+// compared with the new one's (that would read as mass deletions). A
+// security key lock is turned off: it sealed the old token.
 func (e *Engine) SignIn(server string, token *api.DeviceToken) error {
 	cfg := e.cfg.Get()
 	if cfg.UserID != 0 && cfg.UserID != token.User.ID || cfg.Server != "" && cfg.Server != server {
@@ -189,6 +227,7 @@ func (e *Engine) SignIn(server string, token *api.DeviceToken) error {
 	err := e.cfg.Update(func(c *config.Config) error {
 		c.Server = strings.TrimRight(server, "/")
 		c.Token = token.Token
+		c.KeyLock = nil
 		c.UserID = token.User.ID
 		c.Username = token.User.Username
 		if c.DeviceName == "" {
@@ -206,6 +245,7 @@ func (e *Engine) SignIn(server string, token *api.DeviceToken) error {
 func (e *Engine) SignOut() error {
 	if err := e.cfg.Update(func(c *config.Config) error {
 		c.Token, c.Username, c.UserID = "", "", 0
+		c.KeyLock = nil
 		return nil
 	}); err != nil {
 		return err
@@ -243,6 +283,16 @@ func (e *Engine) SetPaused(paused bool) error {
 	} else {
 		e.SyncNow()
 	}
+	return nil
+}
+
+// SyncPair marks one pair for a run and wakes the loop.
+func (e *Engine) SyncPair(pairID string) error {
+	if _, ok := e.cfg.Get().Pair(pairID); !ok {
+		return fmt.Errorf("no pair %q", pairID)
+	}
+	e.markDirty(pairID)
+	e.poke()
 	return nil
 }
 
@@ -293,12 +343,30 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 		e.setStatus(func(s *Status) { s.State, s.Message = StatePaused, "Paused" })
 		return nil
 	}
+	if cfg.Locked() {
+		e.setStatus(func(s *Status) {
+			if s.State != StateLocked {
+				s.State, s.Message = StateLocked, LockedMessage
+			}
+		})
+		return nil
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	e.mu.Lock()
+	e.stopRun = cancel
+	e.mu.Unlock()
+	defer func() {
+		e.mu.Lock()
+		e.stopRun = nil
+		e.mu.Unlock()
+		cancel()
+	}()
 	client, err := e.Client()
 	if err != nil {
 		e.setStatus(func(s *Status) { s.State, s.Message = StateLoggedOut, "Not signed in" })
 		return err
 	}
-	e.setStatus(func(s *Status) { s.State, s.Message = StateSyncing, "Syncing…" })
+	e.setStatus(func(s *Status) { s.State, s.Message, s.Changes = StateSyncing, "Syncing…", 0 })
 
 	var errs []error
 	for _, pair := range cfg.Pairs {
@@ -306,6 +374,9 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 			continue
 		}
 		ps, pairErr := e.syncPair(ctx, client, cfg.DeviceName, pair)
+		if ctx.Err() != nil {
+			break // stopped (locked or quitting): keep the last real report
+		}
 		ps.LastSync = time.Now()
 		var confirm *NeedsConfirmationError
 		if pairErr != nil && !errors.As(pairErr, &confirm) {
@@ -320,6 +391,9 @@ func (e *Engine) syncPairs(ctx context.Context, only map[string]bool) error {
 		}
 	}
 	joined := errors.Join(errs...)
+	if e.cfg.Get().Locked() {
+		return joined // Locked set the status
+	}
 	e.setStatus(func(s *Status) {
 		s.LastSync = time.Now()
 		switch {
@@ -356,6 +430,7 @@ func (e *Engine) syncPair(ctx context.Context, client *api.Client, device string
 		p := &pass{
 			ctx: ctx, client: client, db: e.db, pair: pair, device: device,
 			logf: func(format string, args ...any) { e.log.Printf("[%s] "+format, append([]any{pair.Remote}, args...)...) },
+			note: func(kind, rel string) { e.recordActivity(pair.ID, kind, rel) },
 		}
 		lastErr = p.run(tree)
 		e.watchDirs(pair.ID, p.dirs)

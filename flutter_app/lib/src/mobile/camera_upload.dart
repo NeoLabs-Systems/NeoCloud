@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../api/backend_client.dart';
+import 'background_reliability.dart';
 import 'camera_backup.dart';
 import 'camera_upload_stub.dart' if (dart.library.io) 'camera_upload_io.dart' as platform;
 
@@ -151,6 +152,9 @@ abstract class CameraUploads extends ChangeNotifier {
 
   DateTime? get lastRun;
 
+  /// The last pass that ended without a failure or a block.
+  DateTime? get lastSuccess;
+
   /// Only some photos are visible to the app (iOS "Selected photos",
   /// Android 14 partial access).
   bool get limitedAccess;
@@ -177,6 +181,12 @@ abstract class CameraUploads extends ChangeNotifier {
   Future<CameraAccess> requestAccess();
 
   Future<void> openSystemSettings();
+
+  /// Photo access as it is now, without asking.
+  Future<CameraAccess> photoAccess();
+
+  /// What lets camera upload run in the background, and what is missing.
+  Future<BackgroundReliability> backgroundReliability();
 
   Future<CameraLibrarySize> librarySize({required bool includeVideos});
 

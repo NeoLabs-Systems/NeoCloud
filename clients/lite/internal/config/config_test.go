@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -55,5 +56,49 @@ func TestStoreRoundTripAndPairs(t *testing.T) {
 	}
 	if _, err := NewPair(filepath.Join(local, "missing"), "", "", nil); err == nil {
 		t.Error("missing local folder accepted")
+	}
+}
+
+func TestKeyLockKeepsTokenOffDisk(t *testing.T) {
+	dir := t.TempDir()
+	store, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetUnlockedToken("nc_x"); err == nil {
+		t.Error("an unlocked token was accepted without a key lock")
+	}
+	err = store.Update(func(c *Config) error {
+		c.Server, c.Token = "https://cloud.test", "nc_secret"
+		c.KeyLock = &KeyLock{RPID: "neocloud-lite.local", CredentialID: "Y3JlZA==", Salt: "c2FsdA==", SealedToken: "c2VhbGVk"}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(store.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "nc_secret") || !strings.Contains(string(raw), "sealed_token") {
+		t.Errorf("config file with a key lock:\n%s", raw)
+	}
+	if cfg := store.Get(); cfg.Token != "nc_secret" || cfg.Locked() {
+		t.Error("the unlocked token was not kept in memory")
+	}
+
+	reopened, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := reopened.Get()
+	if !cfg.LoggedIn() || !cfg.Locked() || cfg.KeyLock.SealedToken != "c2VhbGVk" {
+		t.Errorf("reopened: logged in %v, locked %v", cfg.LoggedIn(), cfg.Locked())
+	}
+	if err := reopened.SetUnlockedToken("nc_secret"); err != nil || reopened.Get().Locked() {
+		t.Errorf("unlock: %v", err)
+	}
+	if err := reopened.SetUnlockedToken(""); err != nil || !reopened.Get().Locked() {
+		t.Errorf("lock: %v", err)
 	}
 }

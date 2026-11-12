@@ -247,12 +247,6 @@ abstract class AppL10n {
   /// **'Create another NeoCloud account.'**
   String get createAnotherAccount;
 
-  /// No description provided for @signupKeyStepSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'This server needs a sign-up key. Ask an admin for one.'**
-  String get signupKeyStepSubtitle;
-
   /// No description provided for @usernameOrEmail.
   ///
   /// In en, this message translates to:
@@ -337,24 +331,6 @@ abstract class AppL10n {
   /// **'Back to sign in'**
   String get backToSignIn;
 
-  /// No description provided for @signupKey.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign-up key'**
-  String get signupKey;
-
-  /// No description provided for @signupKeyChange.
-  ///
-  /// In en, this message translates to:
-  /// **'Change'**
-  String get signupKeyChange;
-
-  /// No description provided for @signupKeyRequiredError.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your sign-up key.'**
-  String get signupKeyRequiredError;
-
   /// No description provided for @enterAUsername.
   ///
   /// In en, this message translates to:
@@ -412,7 +388,7 @@ abstract class AppL10n {
   /// No description provided for @passwordStrength.
   ///
   /// In en, this message translates to:
-  /// **'Strength: {label}'**
+  /// **'Password strength: {label}'**
   String passwordStrength(String label);
 
   /// No description provided for @strengthEmpty.
@@ -424,7 +400,7 @@ abstract class AppL10n {
   /// No description provided for @strengthRejected.
   ///
   /// In en, this message translates to:
-  /// **'will be rejected'**
+  /// **'too weak, will be rejected'**
   String get strengthRejected;
 
   /// No description provided for @strengthGood.
@@ -442,7 +418,7 @@ abstract class AppL10n {
   /// No description provided for @passwordHintEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Use 8+ characters. Longer passphrases work best.'**
+  /// **'Use 8+ characters. Longer passphrases work well.'**
   String get passwordHintEmpty;
 
   /// No description provided for @passwordHintLength.
@@ -454,7 +430,7 @@ abstract class AppL10n {
   /// No description provided for @passwordHintUserInfo.
   ///
   /// In en, this message translates to:
-  /// **'Don’t include your username or email.'**
+  /// **'Do not include your username or email.'**
   String get passwordHintUserInfo;
 
   /// No description provided for @passwordHintPattern.
@@ -478,7 +454,7 @@ abstract class AppL10n {
   /// No description provided for @passwordHintGood.
   ///
   /// In en, this message translates to:
-  /// **'Good password. A little more length makes it strong.'**
+  /// **'Good password. A little more length makes it stronger.'**
   String get passwordHintGood;
 
   /// No description provided for @navFiles.
@@ -1000,7 +976,7 @@ abstract class AppL10n {
   /// No description provided for @pageDevicesDescription.
   ///
   /// In en, this message translates to:
-  /// **'Desktop, mobile and lite clients connected to your account.'**
+  /// **'Desktop and mobile apps connected to your account.'**
   String get pageDevicesDescription;
 
   /// No description provided for @pageStorage.
@@ -1138,7 +1114,7 @@ abstract class AppL10n {
   /// No description provided for @twoFactorSetupStep.
   ///
   /// In en, this message translates to:
-  /// **'Add this key to your authenticator app, then enter the code it shows.'**
+  /// **'Scan this QR code with your authenticator app, or enter the key manually. Then enter the code it shows.'**
   String get twoFactorSetupStep;
 
   /// No description provided for @twoFactorCode.
@@ -1516,50 +1492,8 @@ abstract class AppL10n {
   /// No description provided for @adminAllowSignupDescription.
   ///
   /// In en, this message translates to:
-  /// **'When off, new accounts need a sign-up key.'**
+  /// **'When off, nobody can register. The first account on a new server always can.'**
   String get adminAllowSignupDescription;
-
-  /// No description provided for @adminSignupKeys.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign-up keys'**
-  String get adminSignupKeys;
-
-  /// No description provided for @adminCreateKey.
-  ///
-  /// In en, this message translates to:
-  /// **'Create key'**
-  String get adminCreateKey;
-
-  /// No description provided for @adminKeyUnused.
-  ///
-  /// In en, this message translates to:
-  /// **'Unused'**
-  String get adminKeyUnused;
-
-  /// No description provided for @adminKeyUsed.
-  ///
-  /// In en, this message translates to:
-  /// **'Used by {name}'**
-  String adminKeyUsed(String name);
-
-  /// No description provided for @adminKeyRevoked.
-  ///
-  /// In en, this message translates to:
-  /// **'Revoked'**
-  String get adminKeyRevoked;
-
-  /// No description provided for @adminRevoke.
-  ///
-  /// In en, this message translates to:
-  /// **'Revoke'**
-  String get adminRevoke;
-
-  /// No description provided for @adminNoKeys.
-  ///
-  /// In en, this message translates to:
-  /// **'No sign-up keys yet.'**
-  String get adminNoKeys;
 
   /// No description provided for @adminServerTitle.
   ///
@@ -1642,7 +1576,7 @@ abstract class AppL10n {
   /// No description provided for @officePreviewUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Office previews need LibreOffice on the server. Download the file to open it.'**
+  /// **'There’s no preview for this file. Download it to open it.'**
   String get officePreviewUnavailable;
 
   /// No description provided for @play.
@@ -2308,7 +2242,7 @@ abstract class AppL10n {
   /// No description provided for @shareLink.
   ///
   /// In en, this message translates to:
-  /// **'Share link'**
+  /// **'Share'**
   String get shareLink;
 
   /// No description provided for @newVault.
@@ -3655,29 +3589,11 @@ abstract class AppL10n {
   /// **'Welcome to your cloud'**
   String get filesWelcomeTitle;
 
-  /// No description provided for @filesWelcomeSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Everything here is encrypted on your own server. Three things to start with:'**
-  String get filesWelcomeSubtitle;
-
-  /// No description provided for @filesWelcomeUploadTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Add your first files'**
-  String get filesWelcomeUploadTitle;
-
   /// No description provided for @filesWelcomeUploadBody.
   ///
   /// In en, this message translates to:
   /// **'Upload files or drop them anywhere on this page.'**
   String get filesWelcomeUploadBody;
-
-  /// No description provided for @filesWelcomeDesktopTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Get the desktop app'**
-  String get filesWelcomeDesktopTitle;
 
   /// No description provided for @filesWelcomeDesktopBody.
   ///
@@ -3690,12 +3606,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Get the app'**
   String get filesWelcomeDesktopAction;
-
-  /// No description provided for @filesWelcomeKeyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Back up the master key'**
-  String get filesWelcomeKeyTitle;
 
   /// No description provided for @filesWelcomeKeyBody.
   ///
@@ -3982,7 +3892,7 @@ abstract class AppL10n {
   /// No description provided for @storageDetailsUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'This server doesn\'t report a detailed breakdown yet.'**
+  /// **'A detailed breakdown isn’t available right now.'**
   String get storageDetailsUnavailable;
 
   /// No description provided for @storageDuplicateGroup.
@@ -4411,59 +4321,323 @@ abstract class AppL10n {
   /// **'Allow full access'**
   String get cameraAllowFullAccess;
 
-  /// No description provided for @cameraDelayedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Backup delayed by the system'**
-  String get cameraDelayedTitle;
-
-  /// No description provided for @cameraDelayedMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Last run {date}. The system may be stopping NeoCloud in the background to save battery.'**
-  String cameraDelayedMessage(String date);
-
-  /// No description provided for @cameraBatteryTipGeneric.
-  ///
-  /// In en, this message translates to:
-  /// **'Let NeoCloud run in the background: Settings › Apps › NeoCloud › Battery › Unrestricted.'**
-  String get cameraBatteryTipGeneric;
-
-  /// No description provided for @cameraBatteryTipSamsung.
-  ///
-  /// In en, this message translates to:
-  /// **'Samsung: Settings › Battery › Background usage limits – take NeoCloud off “Sleeping apps”.'**
-  String get cameraBatteryTipSamsung;
-
-  /// No description provided for @cameraBatteryTipXiaomi.
-  ///
-  /// In en, this message translates to:
-  /// **'Xiaomi: Settings › Apps › NeoCloud › Battery saver › No restrictions, and turn on Autostart.'**
-  String get cameraBatteryTipXiaomi;
-
-  /// No description provided for @cameraBatteryTipHuawei.
-  ///
-  /// In en, this message translates to:
-  /// **'Huawei: Settings › Battery › App launch – set NeoCloud to “Manage manually” and allow everything.'**
-  String get cameraBatteryTipHuawei;
-
-  /// No description provided for @cameraBatteryTipOnePlus.
-  ///
-  /// In en, this message translates to:
-  /// **'OnePlus: Settings › Battery › Battery optimisation – set NeoCloud to “Don’t optimise”.'**
-  String get cameraBatteryTipOnePlus;
-
-  /// No description provided for @cameraBatteryMore.
-  ///
-  /// In en, this message translates to:
-  /// **'More tips for your phone on dontkillmyapp.com'**
-  String get cameraBatteryMore;
-
   /// No description provided for @cameraIosBackgroundTip.
   ///
   /// In en, this message translates to:
   /// **'iOS runs background tasks rarely. Open NeoCloud now and then, best on Wi-Fi and while charging.'**
   String get cameraIosBackgroundTip;
+
+  /// No description provided for @backgroundNotificationChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup progress'**
+  String get backgroundNotificationChannel;
+
+  /// No description provided for @backgroundNotificationProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Backing up {current} of {total}'**
+  String backgroundNotificationProgress(int current, int total);
+
+  /// No description provided for @backgroundNotificationPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get backgroundNotificationPause;
+
+  /// No description provided for @backgroundCameraPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get backgroundCameraPaused;
+
+  /// No description provided for @backgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep backup running'**
+  String get backgroundTitle;
+
+  /// No description provided for @backgroundIntroAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera upload keeps going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.'**
+  String get backgroundIntroAndroid;
+
+  /// No description provided for @backgroundIntroIos.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS decides when NeoCloud may run in the background: a few times a day, most often overnight on the charger. These settings give it every chance.'**
+  String get backgroundIntroIos;
+
+  /// No description provided for @backgroundStatusGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted'**
+  String get backgroundStatusGranted;
+
+  /// No description provided for @backgroundStatusNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed'**
+  String get backgroundStatusNeeded;
+
+  /// No description provided for @backgroundStatusRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get backgroundStatusRecommended;
+
+  /// No description provided for @backgroundStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get backgroundStatusOff;
+
+  /// No description provided for @backgroundPhotosTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and videos'**
+  String get backgroundPhotosTitle;
+
+  /// No description provided for @backgroundPhotosDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Access to the whole library, not only selected photos, so every new photo is backed up.'**
+  String get backgroundPhotosDetail;
+
+  /// No description provided for @backgroundBatteryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unrestricted battery'**
+  String get backgroundBatteryTitle;
+
+  /// No description provided for @backgroundBatteryDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets Android run NeoCloud in the background and start a backup soon after you take a photo.'**
+  String get backgroundBatteryDetail;
+
+  /// No description provided for @backgroundManufacturerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{maker} settings'**
+  String backgroundManufacturerTitle(String maker);
+
+  /// No description provided for @backgroundManufacturerDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{maker} stops apps in the background on top of Android. Change these so it leaves NeoCloud running:'**
+  String backgroundManufacturerDetail(String maker);
+
+  /// No description provided for @backgroundManufacturerGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide for your phone on dontkillmyapp.com'**
+  String get backgroundManufacturerGuide;
+
+  /// No description provided for @backgroundNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get backgroundNotificationsTitle;
+
+  /// No description provided for @backgroundNotificationsDetailAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows the backup’s progress, with a Pause button.'**
+  String get backgroundNotificationsDetailAndroid;
+
+  /// No description provided for @backgroundNotificationsDetailIos.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets NeoCloud tell you when backup needs you.'**
+  String get backgroundNotificationsDetailIos;
+
+  /// No description provided for @backgroundDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background data'**
+  String get backgroundDataTitle;
+
+  /// No description provided for @backgroundDataDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Data Saver blocks uploads while NeoCloud is closed unless it may use data without restriction.'**
+  String get backgroundDataDetail;
+
+  /// No description provided for @backgroundRefreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background App Refresh'**
+  String get backgroundRefreshTitle;
+
+  /// No description provided for @backgroundRefreshDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Without it, iOS never runs NeoCloud in the background.'**
+  String get backgroundRefreshDetail;
+
+  /// No description provided for @backgroundRefreshRestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'Turned off by Screen Time or a device profile; it can only be turned on there.'**
+  String get backgroundRefreshRestricted;
+
+  /// No description provided for @backgroundLowPowerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Power Mode'**
+  String get backgroundLowPowerTitle;
+
+  /// No description provided for @backgroundLowPowerDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'While it is on, iOS pauses background tasks. Turn it off in Settings › Battery to let a backup run.'**
+  String get backgroundLowPowerDetail;
+
+  /// No description provided for @backgroundSwipeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Don’t swipe NeoCloud away in the app switcher: iOS then stops its background tasks until you open it again.'**
+  String get backgroundSwipeHint;
+
+  /// No description provided for @backgroundAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get backgroundAllow;
+
+  /// No description provided for @backgroundAllowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow all'**
+  String get backgroundAllowAll;
+
+  /// No description provided for @backgroundOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get backgroundOpenSettings;
+
+  /// No description provided for @backgroundNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get backgroundNotNow;
+
+  /// No description provided for @backgroundBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup may not run in the background'**
+  String get backgroundBannerTitle;
+
+  /// No description provided for @backgroundBannerMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Something NeoCloud needs to run in the background is turned off.'**
+  String get backgroundBannerMissing;
+
+  /// No description provided for @backgroundBannerStale.
+  ///
+  /// In en, this message translates to:
+  /// **'No complete backup since {date}. The system may be stopping NeoCloud in the background.'**
+  String backgroundBannerStale(String date);
+
+  /// No description provided for @backgroundBannerFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Check settings'**
+  String get backgroundBannerFix;
+
+  /// No description provided for @backgroundReliabilityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background reliability'**
+  String get backgroundReliabilityTitle;
+
+  /// No description provided for @backgroundReliabilityAllSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything NeoCloud needs is set.'**
+  String get backgroundReliabilityAllSet;
+
+  /// No description provided for @backgroundReliabilityOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 setting to check} other{{count} settings to check}}'**
+  String backgroundReliabilityOpen(int count);
+
+  /// No description provided for @backgroundReliabilityCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get backgroundReliabilityCheck;
+
+  /// No description provided for @backgroundStepSamsungUnrestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Apps › NeoCloud › Battery › Unrestricted'**
+  String get backgroundStepSamsungUnrestricted;
+
+  /// No description provided for @backgroundStepSamsungNeverSleeping.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Battery › Background usage limits › Never sleeping apps › add NeoCloud'**
+  String get backgroundStepSamsungNeverSleeping;
+
+  /// No description provided for @backgroundStepXiaomiAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Apps › Manage apps › NeoCloud › turn on Autostart'**
+  String get backgroundStepXiaomiAutostart;
+
+  /// No description provided for @backgroundStepXiaomiNoRestrictions.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Apps › Manage apps › NeoCloud › Battery saver › No restrictions'**
+  String get backgroundStepXiaomiNoRestrictions;
+
+  /// No description provided for @backgroundStepHuaweiAppLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Battery › App launch › NeoCloud › Manage manually, with Auto-launch, Secondary launch and Run in background on'**
+  String get backgroundStepHuaweiAppLaunch;
+
+  /// No description provided for @backgroundStepOppoBatteryUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Apps › NeoCloud › Battery usage › allow background activity and auto launch'**
+  String get backgroundStepOppoBatteryUsage;
+
+  /// No description provided for @backgroundStepOppoDontOptimise.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Battery › Battery optimisation › NeoCloud › Don’t optimise'**
+  String get backgroundStepOppoDontOptimise;
+
+  /// No description provided for @backgroundStepVivoBackgroundPower.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings › Battery › Background power consumption management › NeoCloud › Allow'**
+  String get backgroundStepVivoBackgroundPower;
+
+  /// No description provided for @backgroundStepVivoAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'i Manager › App manager › Autostart manager › turn on NeoCloud'**
+  String get backgroundStepVivoAutostart;
+
+  /// No description provided for @backgroundStepAsusAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile Manager › PowerMaster › Auto-start manager › NeoCloud › Allow'**
+  String get backgroundStepAsusAutostart;
+
+  /// No description provided for @backgroundStepLockInRecents.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the recent apps and lock NeoCloud there, so clearing them leaves it running'**
+  String get backgroundStepLockInRecents;
 
   /// No description provided for @cameraBackUpNow.
   ///
@@ -4597,6 +4771,24 @@ abstract class AppL10n {
   /// **'The app on that device is signed out and has to be connected again.'**
   String get deviceRevokeMessage;
 
+  /// No description provided for @qrPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'QR Pairing'**
+  String get qrPairing;
+
+  /// No description provided for @pairPhoneDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.'**
+  String get pairPhoneDescription;
+
+  /// No description provided for @showQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR code'**
+  String get showQrCode;
+
   /// No description provided for @pairPhone.
   ///
   /// In en, this message translates to:
@@ -4696,13 +4888,13 @@ abstract class AppL10n {
   /// No description provided for @pairLandingComputerBody.
   ///
   /// In en, this message translates to:
-  /// **'This link is meant for your phone. Open it there, or scan the QR code in Settings › Devices with the NeoCloud app.'**
+  /// **'This link is meant for your phone. Open it there, or scan the QR code in Settings › Sign-in & security with the NeoCloud app.'**
   String get pairLandingComputerBody;
 
   /// No description provided for @pairLandingInvalid.
   ///
   /// In en, this message translates to:
-  /// **'This pairing link is incomplete. Show a new code in Settings › Devices.'**
+  /// **'This pairing link is incomplete. Show a new code in Settings › Sign-in & security.'**
   String get pairLandingInvalid;
 
   /// No description provided for @connectOr.
@@ -4720,7 +4912,7 @@ abstract class AppL10n {
   /// No description provided for @connectScanQrHint.
   ///
   /// In en, this message translates to:
-  /// **'In the web app, open Settings › Devices › Pair a phone.'**
+  /// **'In the web app, open Settings › Sign-in & security › Pair a phone.'**
   String get connectScanQrHint;
 
   /// No description provided for @scanTitle.
@@ -4750,7 +4942,7 @@ abstract class AppL10n {
   /// No description provided for @scanHint.
   ///
   /// In en, this message translates to:
-  /// **'Point the camera at the QR code in Settings › Devices'**
+  /// **'Point the camera at the QR code in Settings › Sign-in & security'**
   String get scanHint;
 
   /// No description provided for @scanWrongCode.
@@ -5209,12 +5401,6 @@ abstract class AppL10n {
   /// **'Cancelled'**
   String get importStatusCancelled;
 
-  /// No description provided for @filesWelcomeImportTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Coming from Nextcloud?'**
-  String get filesWelcomeImportTitle;
-
   /// No description provided for @filesWelcomeImportBody.
   ///
   /// In en, this message translates to:
@@ -5424,6 +5610,366 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Only an admin can import from a server on your local network.'**
   String get importHostBlocked;
+
+  /// No description provided for @filesWelcomeDontShowAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don’t show again'**
+  String get filesWelcomeDontShowAgain;
+
+  /// No description provided for @filesQuickAccessShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show quick access'**
+  String get filesQuickAccessShow;
+
+  /// No description provided for @filesQuickAccessHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide quick access'**
+  String get filesQuickAccessHide;
+
+  /// No description provided for @adminSafetyAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All done'**
+  String get adminSafetyAllDone;
+
+  /// No description provided for @adminSafetyProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} done'**
+  String adminSafetyProgress(int done, int total);
+
+  /// No description provided for @adminSafetyExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show checklist'**
+  String get adminSafetyExpand;
+
+  /// No description provided for @adminSafetyCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide checklist'**
+  String get adminSafetyCollapse;
+
+  /// No description provided for @authSignInWithSecurityKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with security key'**
+  String get authSignInWithSecurityKey;
+
+  /// No description provided for @authOrContinueWith.
+  ///
+  /// In en, this message translates to:
+  /// **'or continue with'**
+  String get authOrContinueWith;
+
+  /// No description provided for @passkeyWebOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Security keys are only available in the NeoCloud web app.'**
+  String get passkeyWebOnly;
+
+  /// No description provided for @passkeyNoneProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'No security key was provided.'**
+  String get passkeyNoneProvided;
+
+  /// No description provided for @passkeyPromptDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Security key prompt was dismissed.'**
+  String get passkeyPromptDismissed;
+
+  /// No description provided for @passkeyAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'That security key is already registered on this account.'**
+  String get passkeyAlreadyRegistered;
+
+  /// No description provided for @passkeyCouldNotBeUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'The security key could not be used.'**
+  String get passkeyCouldNotBeUsed;
+
+  /// No description provided for @passkeySignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Security key sign-in could not be started.'**
+  String get passkeySignInFailed;
+
+  /// No description provided for @passkeyRegistrationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The security key registration could not be started.'**
+  String get passkeyRegistrationFailed;
+
+  /// No description provided for @passkeysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security keys'**
+  String get passkeysTitle;
+
+  /// No description provided for @passkeysDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with a hardware key or passkey instead of your password. A key that asks for a PIN or fingerprint also replaces your two-factor code.'**
+  String get passkeysDescription;
+
+  /// No description provided for @passkeysNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get passkeysNone;
+
+  /// No description provided for @passkeysRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} registered'**
+  String passkeysRegistered(int count);
+
+  /// No description provided for @passkeyAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add security key'**
+  String get passkeyAdd;
+
+  /// No description provided for @passkeyNameOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get passkeyNameOptional;
+
+  /// No description provided for @passkeyNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'YubiKey, MacBook Touch ID, …'**
+  String get passkeyNameHint;
+
+  /// No description provided for @passkeyDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Security key {number}'**
+  String passkeyDefaultName(int number);
+
+  /// No description provided for @passkeyRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename security key'**
+  String get passkeyRenameTitle;
+
+  /// No description provided for @passkeyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get passkeyName;
+
+  /// No description provided for @passkeyRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get passkeyRemove;
+
+  /// No description provided for @passkeyAddedLastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {added} · Last used {lastUsed}'**
+  String passkeyAddedLastUsed(String added, String lastUsed);
+
+  /// No description provided for @passkeyNotRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recorded'**
+  String get passkeyNotRecorded;
+
+  /// No description provided for @passkeyNeverUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Never used'**
+  String get passkeyNeverUsed;
+
+  /// No description provided for @passkeyUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This device cannot register security keys. Open NeoCloud in a browser over HTTPS to add one.'**
+  String get passkeyUnsupported;
+
+  /// No description provided for @navSharedWithMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with me'**
+  String get navSharedWithMe;
+
+  /// No description provided for @sharedWithMeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Files and folders other people on this server shared with you.'**
+  String get sharedWithMeSubtitle;
+
+  /// No description provided for @sharedWithMeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing shared with you yet'**
+  String get sharedWithMeEmpty;
+
+  /// No description provided for @sharedWithMeEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone shares a file or folder with you, it shows up here.'**
+  String get sharedWithMeEmptySubtitle;
+
+  /// No description provided for @sharedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared by {owner}'**
+  String sharedBy(String owner);
+
+  /// No description provided for @sharedByCanEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared by {owner} · you can edit'**
+  String sharedByCanEdit(String owner);
+
+  /// No description provided for @sharedByReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared by {owner} · view only'**
+  String sharedByReadOnly(String owner);
+
+  /// No description provided for @sharedWithPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with people'**
+  String get sharedWithPeople;
+
+  /// No description provided for @sharedLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave share'**
+  String get sharedLeave;
+
+  /// No description provided for @sharedLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'You will no longer see “{name}”. Only {owner} can share it with you again.'**
+  String sharedLeaveConfirm(String name, String owner);
+
+  /// No description provided for @sharedSaveToMyFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my files'**
+  String get sharedSaveToMyFiles;
+
+  /// No description provided for @sharedSavedToMyFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” copied to your files.'**
+  String sharedSavedToMyFiles(String name);
+
+  /// No description provided for @sharedReadOnlyError.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is shared with you to view only.'**
+  String get sharedReadOnlyError;
+
+  /// No description provided for @sharedBoundaryError.
+  ///
+  /// In en, this message translates to:
+  /// **'Items can’t be moved into or out of a shared folder. Copy them instead.'**
+  String get sharedBoundaryError;
+
+  /// No description provided for @sharedRootError.
+  ///
+  /// In en, this message translates to:
+  /// **'The shared folder itself belongs to its owner.'**
+  String get sharedRootError;
+
+  /// No description provided for @sharedZipMixedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Download your own files and shared files separately.'**
+  String get sharedZipMixedError;
+
+  /// No description provided for @sharePeopleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with people'**
+  String get sharePeopleTitle;
+
+  /// No description provided for @sharePeopleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the exact email address or username of someone with an account on this server.'**
+  String get sharePeopleHelp;
+
+  /// No description provided for @sharePublicLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Public link'**
+  String get sharePublicLinkTitle;
+
+  /// No description provided for @memberRecipientHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address or username'**
+  String get memberRecipientHint;
+
+  /// No description provided for @memberAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get memberAdd;
+
+  /// No description provided for @memberCanView.
+  ///
+  /// In en, this message translates to:
+  /// **'Can view'**
+  String get memberCanView;
+
+  /// No description provided for @memberCanEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Can edit'**
+  String get memberCanEdit;
+
+  /// No description provided for @memberChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change access'**
+  String get memberChange;
+
+  /// No description provided for @memberRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove access'**
+  String get memberRemove;
+
+  /// No description provided for @memberExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get memberExpired;
+
+  /// No description provided for @membersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Not shared with anyone yet.'**
+  String get membersEmpty;
+
+  /// No description provided for @memberNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No account found that this can be shared with. Check the exact email address or username.'**
+  String get memberNotFound;
+
+  /// No description provided for @memberAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already shared with this person.'**
+  String get memberAlreadyAdded;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -37,21 +37,24 @@ _ViewerKind _viewerKindOf(FileNode node) {
 /// the other files of the folder. Text, Markdown and code files can be
 /// edited in place. Vault files are decrypted in the app; their media can't
 /// stream and the server makes no previews of them.
-Future<void> showFileViewer(BuildContext context, NeoCloudController controller, List<FileNode> files, int index) {
+/// [readOnly] turns editing off: files another account shares with this one
+/// to view only, or as a single file.
+Future<void> showFileViewer(BuildContext context, NeoCloudController controller, List<FileNode> files, int index, {bool readOnly = false}) {
   if (index < 0 || files.isEmpty) return Future<void>.value();
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.72),
-    builder: (_) => _FileViewer(controller: controller, files: files, initialIndex: index),
+    builder: (_) => _FileViewer(controller: controller, files: files, initialIndex: index, readOnly: readOnly),
   );
 }
 
 class _FileViewer extends StatefulWidget {
-  const _FileViewer({required this.controller, required this.files, required this.initialIndex});
+  const _FileViewer({required this.controller, required this.files, required this.initialIndex, this.readOnly = false});
 
   final NeoCloudController controller;
   final List<FileNode> files;
   final int initialIndex;
+  final bool readOnly;
 
   @override
   State<_FileViewer> createState() => _FileViewerState();
@@ -103,7 +106,7 @@ class _FileViewerState extends State<_FileViewer> {
 
   // Editing
 
-  bool get _canEdit => isEditableText(_file) && _file.trashedAt == null;
+  bool get _canEdit => !widget.readOnly && isEditableText(_file) && _file.trashedAt == null;
 
   Future<void> _startEditing() async {
     try {
@@ -185,7 +188,7 @@ class _FileViewerState extends State<_FileViewer> {
         if (snapshot.hasError) {
           final error = snapshot.error;
           if (error is ApiException && error.code == 'PREVIEW_UNAVAILABLE') {
-            return _NoPreview(file: _file, message: error.message, onDownload: _download);
+            return _NoPreview(file: _file, message: appStrings.officePreviewUnavailable, onDownload: _download);
           }
           return Center(child: Padding(padding: const EdgeInsets.all(24), child: _InlineError(message: _controller.friendlyError(error!))));
         }

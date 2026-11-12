@@ -1,0 +1,27 @@
+name: neocloud_background
+description: Keeps NeoCloud's camera upload and pending uploads running in the background on Android and iOS (foreground service, media trigger, battery and permission status).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+# A plugin, not plain Dart, so that the headless engine workmanager starts
+# for background passes gets the channel too: Flutter registers plugins in
+# every engine, but code in the app's MainActivity only in the UI's.
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: systems.neolabs.neocloud.background
+        pluginClass: NeoCloudBackgroundPlugin
+      ios:
+        pluginClass: NeoCloudBackgroundPlugin

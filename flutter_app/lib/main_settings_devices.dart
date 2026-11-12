@@ -1,7 +1,6 @@
 part of 'main.dart';
 
-// Settings › Devices: connected apps and their tokens, pairing a phone by
-// QR code, and WebDAV app passwords (docs/clients.md §1, §5, §6).
+// Settings › Devices: connected apps, their tokens and WebDAV app passwords.
 
 /// Device tokens with this platform are WebDAV app passwords.
 const String _webDavPlatform = 'webdav';
@@ -33,11 +32,6 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     } catch (error) {
       if (mounted) setState(() => pageError = _controller.friendlyError(error));
     }
-  }
-
-  Future<void> _pairPhone() async {
-    await showPairPhoneDialog(context, _controller);
-    await _load();
   }
 
   /// A token typed into a client by hand, for clients without a browser.
@@ -82,6 +76,12 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     }),
   );
 
+  /// The system a client reported, written as people know it.
+  static String _platformName(String platform) {
+    const names = <String, String>{'android': 'Android', 'ios': 'iOS', 'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux', 'web': 'Web'};
+    return names[platform.toLowerCase()] ?? platform;
+  }
+
   Widget _deviceRow(DeviceInfo device) {
     final webDav = device.platform == _webDavPlatform;
     final locale = currentAppLanguage.code;
@@ -89,7 +89,7 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     if (webDav) {
       tag = appStrings.webDavTag;
     } else {
-      tag = device.platform.isEmpty ? null : device.platform;
+      tag = device.platform.isEmpty ? null : _platformName(device.platform);
     }
     return _SettingsRow(
       label: device.name,
@@ -116,11 +116,6 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
                 onPressed: busy ? null : () => unawaited(_connect()),
                 icon: const Icon(Icons.key_rounded, size: 18),
                 label: Text(appStrings.deviceConnect),
-              ),
-              FilledButton.icon(
-                onPressed: busy ? null : () => unawaited(_pairPhone()),
-                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                label: Text(appStrings.pairPhone),
               ),
             ],
           ),

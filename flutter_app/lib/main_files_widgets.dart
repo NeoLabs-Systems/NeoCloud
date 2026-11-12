@@ -153,16 +153,22 @@ class _DragDrop extends StatelessWidget {
       feedback: _dragFeedback(subject),
       childWhenDragging: dimmed,
       dragAnchorStrategy: pointerDragAnchorStrategy,
+      onDragStarted: () => callbacks.onDragActive?.call(true),
+      onDragEnd: (_) => callbacks.onDragActive?.call(false),
       child: target,
     );
   }
 }
 
 class _Breadcrumbs extends StatelessWidget {
-  const _Breadcrumbs({required this.path, required this.onOpen, this.onDropItems});
+  const _Breadcrumbs({required this.path, required this.onOpen, this.onDropItems, this.homeLabel, this.homeIcon});
 
   final List<PathSegment> path;
   final ValueChanged<String?> onOpen;
+
+  /// The first crumb (Home by default; Shared with me in a shared folder).
+  final String? homeLabel;
+  final IconData? homeIcon;
 
   /// Items dropped onto a crumb move into that folder.
   final void Function(List<FileNode> nodes, String folderId, String folderName)? onDropItems;
@@ -176,7 +182,8 @@ class _Breadcrumbs extends StatelessWidget {
         for (var i = 0; i < crumbs.length; i++) ...<Widget>[
           if (i > 0) Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted),
           DragTarget<List<FileNode>>(
-            onWillAcceptWithDetails: (details) => onDropItems != null && i < crumbs.length - 1,
+            // Under Shared with me the first crumb is a list, not a folder.
+            onWillAcceptWithDetails: (details) => onDropItems != null && i < crumbs.length - 1 && (i > 0 || homeLabel == null),
             onAcceptWithDetails: (details) => onDropItems!(details.data, crumbs[i].id, i == 0 ? appStrings.home : crumbs[i].name),
             builder: (context, candidates, _) => Container(
               decoration: BoxDecoration(
@@ -192,8 +199,8 @@ class _Breadcrumbs extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   minimumSize: const Size(0, 34),
                 ),
-                icon: i == 0 ? const Icon(Icons.home_outlined, size: 17) : const SizedBox.shrink(),
-                label: Text(i == 0 ? appStrings.home : crumbs[i].name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                icon: i == 0 ? Icon(homeIcon ?? Icons.home_outlined, size: 17) : const SizedBox.shrink(),
+                label: Text(i == 0 ? homeLabel ?? appStrings.home : crumbs[i].name, style: const TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ),
@@ -210,9 +217,9 @@ class _SelectionBar extends StatelessWidget {
     required this.count,
     required this.onClear,
     required this.onDownload,
-    required this.onMove,
-    required this.onTrash,
-    required this.onFavorite,
+    this.onMove,
+    this.onTrash,
+    this.onFavorite,
     this.compact = false,
     this.iconsOnly = false,
   });
@@ -220,9 +227,10 @@ class _SelectionBar extends StatelessWidget {
   final int count;
   final VoidCallback onClear;
   final VoidCallback onDownload;
-  final VoidCallback onMove;
-  final VoidCallback onTrash;
-  final VoidCallback onFavorite;
+  /// Null where the items can't be moved, deleted or starred (a shared folder).
+  final VoidCallback? onMove;
+  final VoidCallback? onTrash;
+  final VoidCallback? onFavorite;
   final bool compact;
 
   /// Narrow content: actions as icons with tooltips, so the bar never overflows.
@@ -255,10 +263,10 @@ class _SelectionBar extends StatelessWidget {
             IconButton(tooltip: appStrings.clear, onPressed: onClear, icon: const Icon(Icons.close_rounded, size: 18)),
             Text(appStrings.selectedCount(count), style: TextStyle(fontWeight: FontWeight.w600, color: _textPrimary, fontSize: 13.5)),
             const Spacer(),
-            action(Icons.star_outline_rounded, appStrings.filesStar, onFavorite),
+            if (onFavorite != null) action(Icons.star_outline_rounded, appStrings.filesStar, onFavorite!),
             action(Icons.download_rounded, appStrings.download, onDownload),
-            action(Icons.drive_file_move_outline, appStrings.moveTo, onMove),
-            action(Icons.delete_outline_rounded, appStrings.moveToTrash, onTrash, color: _danger),
+            if (onMove != null) action(Icons.drive_file_move_outline, appStrings.moveTo, onMove!),
+            if (onTrash != null) action(Icons.delete_outline_rounded, appStrings.moveToTrash, onTrash!, color: _danger),
           ],
         ),
       ),
@@ -266,8 +274,9 @@ class _SelectionBar extends StatelessWidget {
   }
 }
 
-/// The files opened most recently, one click away, at the top of Home.
-class _QuickAccess extends StatelessWidget {
+/// The files opened most recently, one click away, at the top of Home: one
+/// slim row of chips that folds away to its heading (kept per account).
+class _QuickAccess extends StatefulWidget {
   const _QuickAccess({required this.files, required this.controller, required this.onOpen});
 
   final List<FileNode> files;
@@ -275,38 +284,90 @@ class _QuickAccess extends StatelessWidget {
   final ValueChanged<FileNode> onOpen;
 
   @override
+  State<_QuickAccess> createState() => _QuickAccessState();
+}
+
+class _QuickAccessState extends State<_QuickAccess> {
+  static const String _foldedFlag = 'quickAccessFolded';
+
+  late bool _folded = _filesFlag(widget.controller, _foldedFlag);
+
+  void _toggle() {
+    setState(() => _folded = !_folded);
+    unawaited(_setFilesFlag(widget.controller, _foldedFlag, _folded));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final files = widget.files;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Padding(padding: const EdgeInsets.fromLTRB(2, 0, 0, 10), child: Text(appStrings.filesQuickAccess, style: _sectionTitleStyle())),
-        SizedBox(
-          height: 132,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: files.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final file = files[index];
-              return SizedBox(
-                width: 176,
-                child: _AppCard(
-                  padding: const EdgeInsets.all(10),
-                  onTap: () => onOpen(file),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(child: _FilePreviewTile(node: file, controller: controller)),
-                      const SizedBox(height: 8),
-                      Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w500, fontSize: 13)),
-                      Text(_displayPath(file) ?? formatDate(file.modifiedAt, currentAppLanguage.code), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textMuted, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              );
-            },
+        Align(
+          alignment: Alignment.centerLeft,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            onTap: _toggle,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(2, 2, 6, 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(appStrings.filesQuickAccess, style: _sectionTitleStyle().copyWith(fontSize: 13.5)),
+                  const SizedBox(width: 4),
+                  Icon(_folded ? Icons.expand_more_rounded : Icons.expand_less_rounded, size: 18, color: _textMuted, semanticLabel: _folded ? appStrings.filesQuickAccessShow : appStrings.filesQuickAccessHide),
+                ],
+              ),
+            ),
           ),
         ),
+        if (!_folded) ...<Widget>[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 52,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: files.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final file = files[index];
+                return SizedBox(
+                  width: 220,
+                  child: _AppCard(
+                    padding: const EdgeInsets.fromLTRB(8, 7, 10, 7),
+                    onTap: () => widget.onOpen(file),
+                    child: Row(
+                      children: <Widget>[
+                        SizedBox.square(
+                          dimension: 36,
+                          child: fileKindOf(file) == FileKind.image
+                              ? _FilePreviewTile(node: file, controller: widget.controller)
+                              : _FileIcon(node: file, size: 34),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w500, fontSize: 13)),
+                              Text(
+                                _displayPath(file) ?? formatDate(file.modifiedAt, currentAppLanguage.code),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: _textMuted, fontSize: 11.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ],
     );
   }

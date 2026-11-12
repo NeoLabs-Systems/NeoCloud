@@ -1,7 +1,8 @@
 // Package config holds the lite client's settings: the server, the device
 // token and the sync pairs. They live in one TOML file in the OS config
 // directory (or $NEOCLOUD_LITE_HOME), written with 0600 because it carries
-// the bearer token.
+// the bearer token. With the security key lock on, the file holds only
+// the sealed token and Token is the unlocked copy in memory.
 package config
 
 import (
@@ -34,14 +35,29 @@ type Pair struct {
 	Paused    bool     `toml:"paused,omitempty" json:"paused"`
 }
 
+// KeyLock is an enrolled security key lock (internal/keylock): a
+// non-resident FIDO2 credential with hmac-secret and the device token
+// sealed with a key derived from its output. Binary values are base64.
+type KeyLock struct {
+	RPID         string `toml:"rp_id"`
+	CredentialID string `toml:"credential_id"`
+	Salt         string `toml:"salt"`
+	SealedToken  string `toml:"sealed_token"`
+}
+
 // Config is the whole file.
 type Config struct {
-	Server     string `toml:"server"`
-	Token      string `toml:"token,omitempty"`
-	Username   string `toml:"username,omitempty"`
-	UserID     int64  `toml:"user_id,omitempty"`
-	DeviceName string `toml:"device_name,omitempty"`
-	Paused     bool   `toml:"paused,omitempty"`
+	Server string `toml:"server"`
+	// Token is the device token. It is never written while KeyLock is set.
+	Token      string   `toml:"token,omitempty"`
+	KeyLock    *KeyLock `toml:"key_lock,omitempty"`
+	Username   string   `toml:"username,omitempty"`
+	UserID     int64    `toml:"user_id,omitempty"`
+	DeviceName string   `toml:"device_name,omitempty"`
+	Paused     bool     `toml:"paused,omitempty"`
+	// AutostartDefaulted is set once the tray app has turned on start at
+	// login by default; from then on only the user's choice counts.
+	AutostartDefaulted bool `toml:"autostart_defaulted,omitempty"`
 	// Seconds between journal polls (docs/clients.md suggests 15).
 	PollSeconds int `toml:"poll_seconds,omitempty"`
 	// Seconds between full local rescans, the safety net behind the watcher.
@@ -52,8 +68,12 @@ type Config struct {
 	Pairs         []Pair `toml:"pairs"`
 }
 
-// LoggedIn reports whether a device token is stored.
-func (c Config) LoggedIn() bool { return c.Server != "" && c.Token != "" }
+// LoggedIn reports whether a device token is stored, in the clear or
+// sealed by the key lock.
+func (c Config) LoggedIn() bool { return c.Server != "" && (c.Token != "" || c.KeyLock != nil) }
+
+// Locked reports whether the token is sealed and not unlocked.
+func (c Config) Locked() bool { return c.KeyLock != nil && c.Token == "" }
 
 // Pair returns the pair with the given id.
 func (c Config) Pair(id string) (Pair, bool) {
@@ -94,6 +114,9 @@ func Open(dir string) (*Store, error) {
 	if _, err := toml.DecodeFile(store.path, &store.cfg); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("reading %s: %w", store.path, err)
 	}
+	if store.cfg.KeyLock != nil {
+		store.cfg.Token = "" // a stray plaintext token next to a lock is not used, and dropped on the next write
+	}
 	return store, nil
 }
 
@@ -122,7 +145,23 @@ func (s *Store) Update(fn func(*Config) error) error {
 	return nil
 }
 
+// SetUnlockedToken keeps the token the key lock unsealed in memory only;
+// "" locks again. It never touches the file.
+func (s *Store) SetUnlockedToken(token string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cfg.KeyLock == nil {
+		return errors.New("the security key lock is off")
+	}
+	s.cfg.Token = token
+	return nil
+}
+
 func clone(c Config) Config {
+	if c.KeyLock != nil {
+		lock := *c.KeyLock
+		c.KeyLock = &lock
+	}
 	c.Pairs = append([]Pair(nil), c.Pairs...)
 	for i := range c.Pairs {
 		c.Pairs[i].Ignore = append([]string(nil), c.Pairs[i].Ignore...)
@@ -131,7 +170,11 @@ func clone(c Config) Config {
 }
 
 // write replaces the file atomically so a crash never leaves half a config.
+// With a key lock the plaintext token stays in memory.
 func write(path string, cfg Config) error {
+	if cfg.KeyLock != nil {
+		cfg.Token = ""
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".config-*.toml")
 	if err != nil {
 		return err

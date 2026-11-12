@@ -29,6 +29,8 @@ type pass struct {
 	pair   config.Pair
 	device string
 	logf   func(format string, args ...any)
+	// note, when set, hears about every file the pass changed.
+	note func(kind, rel string)
 
 	local  map[string]*localItem // keyed by NFC path
 	dirs   []string              // local folders, for the watcher
@@ -62,6 +64,12 @@ var (
 	errLocalChanged = errors.New("the local file changed during the transfer")
 	errOutsideRoot  = errors.New("the path leads outside the pair's folder; not touched")
 )
+
+func (p *pass) noteActivity(kind, rel string) {
+	if p.note != nil {
+		p.note(kind, rel)
+	}
+}
 
 func (p *pass) canUp() bool   { return p.pair.Direction != config.Down }
 func (p *pass) canDown() bool { return p.pair.Direction != config.Up }
@@ -566,6 +574,7 @@ func (p *pass) upload(rel string) {
 	_ = p.db.ClearPendingUpload(p.pair.ID, rel)
 	p.actions++
 	p.logf("uploaded %s", rel)
+	p.noteActivity(ActivityUpload, rel)
 	p.remote.put(rel, *node)
 	item.hash = node.Etag
 	p.record(rel, *node)
@@ -618,6 +627,7 @@ func (p *pass) download(rel string) {
 	}
 	p.actions++
 	p.logf("downloaded %s", rel)
+	p.noteActivity(ActivityDownload, rel)
 	p.refreshLocal(rel)
 	if item := p.local[rel]; item != nil {
 		item.hash = node.Etag
@@ -658,6 +668,7 @@ func (p *pass) conflict(rel string) {
 		return
 	}
 	p.logf("conflict: kept the local %s as %s", rel, copyName)
+	p.noteActivity(ActivityConflict, rel)
 	p.actions++
 	p.again = true // upload the copy (two-way mode) on the next pass
 	p.dropLocal(rel)
@@ -717,6 +728,7 @@ func (p *pass) applyRemoteDeletes() {
 		}
 		p.actions++
 		p.logf("deleted %s on the server", rel)
+		p.noteActivity(ActivityDeleteRemote, rel)
 		p.remote.remove(rel)
 		p.forgetTree(rel)
 		done = append(done, rel)
@@ -855,6 +867,7 @@ func (p *pass) trashLocal(rel string) {
 	}
 	p.actions++
 	p.logf("deleted %s locally (kept in %s/%s)", rel, metaDir, trashDir)
+	p.noteActivity(ActivityDeleteLocal, rel)
 	p.dropLocal(rel)
 	p.forgetTree(rel)
 }

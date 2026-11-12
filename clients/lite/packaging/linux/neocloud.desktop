@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NeoCloud
+Comment=Sync folders with your NeoCloud server
+Exec=neocloud
+Icon=neocloud
+Categories=Network;FileTransfer;
+Terminal=false

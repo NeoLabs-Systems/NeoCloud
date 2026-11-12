@@ -15,15 +15,17 @@ extension SettingsScopeInfo on SettingsScope {
 extension SettingsPageInfo on SettingsPage {
   SettingsScope get scope => this == SettingsPage.general || this == SettingsPage.cameraUpload ? SettingsScope.preferences : SettingsScope.account;
 
-  /// Pages a device token can't use (the account routes need a session)
-  /// and pages only some platforms have.
+  bool get requiresBrowserSession => this == SettingsPage.profile || this == SettingsPage.security ||
+      this == SettingsPage.devices || this == SettingsPage.imports;
+
+  /// Camera upload is available only on supported devices.
   bool visibleFor(NeoCloudController controller) {
     switch (this) {
       case SettingsPage.profile:
       case SettingsPage.security:
       case SettingsPage.devices:
       case SettingsPage.imports:
-        return !controller.usesDeviceLogin;
+        return true;
       case SettingsPage.cameraUpload:
         return controller.cameraUploads.supported;
       case SettingsPage.sharedLinks:
@@ -107,9 +109,10 @@ class SettingsPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final visible = SettingsPage.values.where((page) => page.visibleFor(controller)).toList();
-        final page = visible.contains(controller.settingsPage) ? controller.settingsPage : null;
+        final selected = controller.settingsPage;
+        final page = visible.contains(selected) && !(controller.usesDeviceLogin && selected!.requiresBrowserSession) ? selected : null;
         if (constraints.maxWidth >= 760) {
-          final shown = page ?? visible.first;
+          final shown = page ?? visible.firstWhere((item) => !controller.usesDeviceLogin || !item.requiresBrowserSession);
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -202,6 +205,15 @@ class _SettingsNav extends StatelessWidget {
     );
   }
 
+  void _openPage(SettingsPage page) {
+    if (controller.usesDeviceLogin && page.requiresBrowserSession) {
+      final route = AppRoute('settings', AppRoute.slug(page.name));
+      unawaited(launchUrl(controller.client.uri('/app${route.location}'), mode: LaunchMode.externalApplication));
+      return;
+    }
+    controller.setSettingsPage(page);
+  }
+
   List<Widget> _scopeSection(SettingsScope scope, List<SettingsPage> pages) {
     final header = Padding(
       padding: EdgeInsets.fromLTRB(compact ? 4 : 10, 22, 4, 8),
@@ -216,7 +228,7 @@ class _SettingsNav extends StatelessWidget {
       return <Widget>[
         header,
         for (final page in pages)
-          _SettingsNavItem(page: page, selected: page == selected, onTap: () => controller.setSettingsPage(page)),
+          _SettingsNavItem(page: page, selected: page == selected, onTap: () => _openPage(page)),
       ];
     }
     return <Widget>[
@@ -224,7 +236,7 @@ class _SettingsNav extends StatelessWidget {
       _SettingsCardList(
         children: <Widget>[
           for (final page in pages)
-            _SettingsListTile(icon: page.icon, title: page.label, onTap: () => controller.setSettingsPage(page)),
+            _SettingsListTile(icon: page.icon, title: page.label, onTap: () => _openPage(page)),
         ],
       ),
     ];

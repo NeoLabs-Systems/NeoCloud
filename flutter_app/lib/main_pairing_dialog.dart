@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-// Settings › Devices › Pair a phone: a QR code the NeoCloud app scans
+// Settings › Sign-in & security › Pair a phone: a QR code the NeoCloud app scans
 // (docs/clients.md §5). The code lives five minutes; the dialog counts down
 // and polls until a phone redeemed it.
 
