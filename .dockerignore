@@ -2,6 +2,13 @@ node_modules
 .git
 test
 flutter_app
+flutter_app/build
 docs
 *.log
 .env
+**/.env
+dev-data/
+data/
+*.db
+**/*.db
+clients/lite/dist

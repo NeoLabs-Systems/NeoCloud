@@ -429,6 +429,8 @@ class _SectionBody extends StatelessWidget {
     switch (controller.selectedSection) {
       case AppSection.files:
         return FilesPanel(controller: controller);
+      case AppSection.photos:
+        return PhotosPage(controller: controller);
       case AppSection.review:
         return AiReviewPage(controller: controller);
       case AppSection.shared:

@@ -4,6 +4,8 @@
 // encrypted; secrets (passwords, keys) never leave the server again -- reads
 // return them blanked, and saving a blank keeps the stored one.
 
+const fs = require('fs');
+const path = require('path');
 const db = require('../../db/database');
 const { decryptValue, encryptValue } = require('../crypto/keys');
 const { httpError } = require('../../utils/http_error');
@@ -50,6 +52,8 @@ function serializeRun(row) {
     finishedAt: row.finished_at,
     bytesUploaded: row.bytes_uploaded,
     blobsUploaded: row.blobs_uploaded,
+    bytesTotal: row.bytes_total ?? null,
+    blobsTotal: row.blobs_total ?? null,
     error: row.error,
   };
 }
@@ -151,10 +155,8 @@ function deleteTarget(id) {
   return { success: true };
 }
 
-/** A connected adapter for the target; the caller closes it. */
-async function openTarget(id) {
-  const row = getTargetRow(id);
-  const adapter = createAdapter(row.type, readConfig(row));
+async function connect(type, config) {
+  const adapter = createAdapter(type, config);
   try {
     await adapter.open();
   } catch (err) {
@@ -163,7 +165,38 @@ async function openTarget(id) {
     await adapter.close().catch(() => {});
     throw err;
   }
-  return { row, adapter };
+  return adapter;
+}
+
+/** A connected adapter for the target; the caller closes it. */
+async function openTarget(id) {
+  const row = getTargetRow(id);
+  return { row, adapter: await connect(row.type, readConfig(row)) };
+}
+
+/**
+ * A target described outside the database, for a restore onto a new or
+ * wiped install (whose database has no targets yet): a backup folder's
+ * absolute path, or a JSON file `{ "type": "sftp", "config": { ... } }` with
+ * the same fields as Admin › Backups. Connected; the caller closes it.
+ */
+async function openTargetSpec(spec) {
+  const location = path.resolve(String(spec || ''));
+  let stats;
+  try {
+    stats = fs.statSync(location);
+  } catch {
+    throw new Error(`${location} does not exist: give the backup folder or a target JSON file.`);
+  }
+  if (stats.isDirectory()) return { adapter: await connect('local', { path: location }) };
+  let described;
+  try {
+    described = JSON.parse(fs.readFileSync(location, 'utf8'));
+  } catch {
+    throw new Error(`${location} is not a JSON file like { "type": "sftp", "config": { ... } }.`);
+  }
+  if (!BACKUP_TYPES.includes(described?.type)) throw new Error(`"type" in ${location} must be one of ${BACKUP_TYPES.join(', ')}.`);
+  return { adapter: await connect(described.type, cleanConfig(described.type, described.config)) };
 }
 
 module.exports = {
@@ -173,6 +206,7 @@ module.exports = {
   listRuns,
   listTargets,
   openTarget,
+  openTargetSpec,
   serializeRun,
   updateTarget,
 };

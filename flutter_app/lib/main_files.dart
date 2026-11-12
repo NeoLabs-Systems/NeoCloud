@@ -99,7 +99,45 @@ abstract class _FilesBase extends State<FilesPanel> {
 
   bool get searching => searchResults != null;
   String get query => searchText.text.trim();
-  List<FileNode> get visibleItems => searchResults ?? items;
+
+  /// The open folder's entry in [FolderViews]: its id, `root`, or `shared`
+  /// for the list of shares.
+  String get folderViewKey => inShare && folderId.isEmpty ? FolderViewKeys.shared : controller.folderViews.keyFor(folderId);
+
+  /// How the open folder is sorted and shown: its own choice, else the
+  /// account's defaults.
+  FolderView get listingView => controller.folderViews.viewFor(folderViewKey, FolderView.defaultsOf(controller.settings));
+
+  /// Search results keep their own choice; by default they stay in the
+  /// order of relevance.
+  FolderView get searchView => controller.folderViews.viewFor(
+    FolderViewKeys.search,
+    FolderView.defaultsOf(controller.settings).copyWith(sort: 'relevance', dir: 'desc'),
+  );
+
+  /// What the page shows now: the search's view while searching.
+  FolderView get folderView => searching ? searchView : listingView;
+
+  /// The view the items on screen were (or are being) loaded with.
+  FolderView? _loadedView;
+
+  List<FileNode>? _sortedFrom;
+  FolderView? _sortedBy;
+  List<FileNode> _sortedResults = const <FileNode>[];
+
+  /// The folder's items as the server sorted them, or the search results
+  /// sorted here.
+  List<FileNode> get visibleItems {
+    final results = searchResults;
+    if (results == null) return items;
+    final view = searchView;
+    if (!identical(results, _sortedFrom) || view != _sortedBy) {
+      _sortedFrom = results;
+      _sortedBy = view;
+      _sortedResults = sortedForView(results, view, (node) => node);
+    }
+    return _sortedResults;
+  }
   List<FileNode> get selectedNodes => visibleItems.where((node) => selection.isSelected(node.id)).toList();
 
   String get folderName {
@@ -120,6 +158,7 @@ abstract class _FilesBase extends State<FilesPanel> {
     controller.aiReview.addListener(_onAiChanged);
     controller.vaults.addListener(reload);
     controller.fileChanges.addListener(_onFilesChangedElsewhere);
+    controller.folderViews.addListener(_onFolderViewsChanged);
     scroll.addListener(_onScroll);
     unawaited(load());
   }
@@ -130,6 +169,7 @@ abstract class _FilesBase extends State<FilesPanel> {
     controller.removeListener(_onControllerChanged);
     controller.aiReview.removeListener(_onAiChanged);
     controller.vaults.removeListener(reload);
+    controller.folderViews.removeListener(_onFolderViewsChanged);
     controller.fileChanges
       ..removeListener(_onFilesChangedElsewhere)
       ..release(renameHold)
@@ -144,7 +184,11 @@ abstract class _FilesBase extends State<FilesPanel> {
   }
 
   void _onControllerChanged() {
-    if (folderId == _loadedFolderId) return;
+    if (folderId == _loadedFolderId) {
+      // The account's defaults arrived and this folder has no choice of its own.
+      if (_sortChanged) reload();
+      return;
+    }
     selection
       ..clear()
       ..setItems(const <String>[]);
@@ -153,6 +197,24 @@ abstract class _FilesBase extends State<FilesPanel> {
   }
 
   void reload() => unawaited(load(quiet: true));
+
+  /// A choice made here, or another device's arriving with the settings:
+  /// the folder is loaded again only when its sort changed.
+  void _onFolderViewsChanged() {
+    if (!mounted) return;
+    if (_sortChanged) {
+      reload();
+    } else {
+      setState(() {});
+    }
+  }
+
+  /// Whether the open folder now sorts differently from how it was loaded.
+  bool get _sortChanged {
+    final loaded = _loadedView;
+    final view = listingView;
+    return loaded != null && (loaded.sort != view.sort || loaded.dir != view.dir);
+  }
 
   /// Suggestions came or went: the chips on the rows follow.
   void _onAiChanged() {
@@ -225,15 +287,25 @@ abstract class _FilesBase extends State<FilesPanel> {
       });
     }
     final limit = quiet ? items.length.clamp(_folderPageSize, 2000) : _folderPageSize;
+    final view = listingView;
+    _loadedView = view;
     try {
       final page = await _revealed(await controller.client.listFolder(
         target,
-        sort: controller.settings.sortField,
-        order: controller.settings.sortOrder,
+        sort: view.sort,
+        order: view.dir,
         limit: limit,
       ));
       final latest = !inShare && page.folder.parentId == null ? await _recentFiles() : const <FileNode>[];
       if (!mounted || generation != _loadGeneration) return;
+      if (!inShare && page.folder.parentId == null && controller.folderViews.rootId != page.folder.id) {
+        // The root opened by its id shares the `root` entry; sorted otherwise, load again.
+        controller.folderViews.rootId = page.folder.id;
+        if (listingView != view) {
+          unawaited(load(quiet: quiet));
+          return;
+        }
+      }
       if (!inShare) controller.aiReview.noteFolders(<FileNode>[page.folder, ...page.items]);
       _skeletonTimer?.cancel();
       setState(() {
@@ -283,10 +355,11 @@ abstract class _FilesBase extends State<FilesPanel> {
     final generation = _loadGeneration;
     setState(() => loadingMore = true);
     try {
+      final view = _loadedView ?? listingView;
       final page = await _revealed(await controller.client.listFolder(
         target,
-        sort: controller.settings.sortField,
-        order: controller.settings.sortOrder,
+        sort: view.sort,
+        order: view.dir,
         limit: _folderPageSize,
         cursor: cursor,
       ));

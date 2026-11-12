@@ -41,7 +41,17 @@ public address is never trusted, so it can't pick its own address by sending
 `X-Forwarded-For`. A client on your private network still could if it can
 reach the port directly; list the proxy's address instead
 (`TRUST_PROXY=127.0.0.1` or `172.18.0.5`) when that matters. Older releases
-defaulted to one hop, which trusted whichever peer connected.
+defaulted to one hop, which trusted whichever peer connected. While
+`TRUST_PROXY` is unset and this default applies, the server logs a warning
+at startup.
+
+**Recommended:** set `TRUST_PROXY` to the address the proxy connects from:
+`127.0.0.1` for nginx or Caddy on the same host, the proxy container's
+address on a Docker network (`docker inspect -f
+'{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' <proxy>`; give
+the container a fixed address in compose so it doesn't change), or the
+proxy's LAN address. Then nothing else on the network can set
+`X-Forwarded-For`.
 
 A hop count (`1`, `2`, `true`) trusts whatever sits that many hops away,
 including a client that connects straight to port 3344. Use one only when
@@ -58,7 +68,23 @@ the port to the whole network.
 Sign-in is also throttled per account, independent of addresses (see
 `/api/auth` in [api.md](api.md)): after 5 failed passwords or codes in 15
 minutes each try waits longer, and 10 lock the account's sign-in for at most
-15 minutes. A pending two-factor sign-in takes at most 5 codes.
+15 minutes. A pending two-factor sign-in takes at most 5 codes. Asking a
+signed-in account for its password or code again (changing the password,
+2FA, adding a security key, exporting the master key) is throttled the same
+way, counted separately from sign-in.
+
+### HSTS
+
+With secure cookies on (an https `PUBLIC_URL`), NeoCloud sends
+`Strict-Transport-Security` with `max-age` from `NEOCLOUD_HSTS_MAX_AGE`
+(seconds, default `86400`, one day). Once https works, raise it to a year:
+
+```ini
+NEOCLOUD_HSTS_MAX_AGE=31536000
+```
+
+Browsers then refuse plain http for the host for that long, so set it only
+when the certificate setup is stable. `0` tells browsers to forget it.
 
 NeoCloud keeps idle connections open for 65 s (`keepAliveTimeout`), longer
 than the 60 s most proxies use, so the proxy closes idle connections first
@@ -192,9 +218,15 @@ space on the storage and data disks; `neocloud doctor` warns below the floor.
 
 All of this runs on its own; nothing to configure.
 
-- SQLite runs in WAL mode with `busy_timeout` 5 s, a 64 MB page cache and
-  `journal_size_limit` 64 MB. `PRAGMA optimize` runs on every start and once a
-  day.
+- SQLite runs in WAL mode with `synchronous = FULL`, `busy_timeout` 5 s, a
+  64 MB page cache and `journal_size_limit` 64 MB: a commit is on disk before
+  a client is told its upload or change is done. `PRAGMA optimize` runs on
+  every start and once a day.
+- Before a new version changes the database schema, the database is copied
+  to `data/backups/pre-migration-v<N>-<time>.db` (`N` is the schema it holds;
+  the last 3 are kept). If the copy can't be made (a full disk), the server
+  doesn't start and nothing is changed. Each migration then runs in its own
+  transaction.
 - Every hour the WAL is checkpointed (`TRUNCATE`) when it has grown past
   32 MB, so long-lived readers can't let it grow without bound.
 - Once a day a `quick_check` runs on a worker thread with its own read-only
@@ -208,6 +240,28 @@ All of this runs on its own; nothing to configure.
   them.
 - Blob files are fsynced before they are renamed into place and their folder
   after, so a power cut can't leave a database row pointing at missing bytes.
+- Downloading a file whose blob is missing or fails authentication answers
+  `500 FILE_UNREADABLE` (and the server log names the blob). The scrub reads
+  only each blob's first and last segment; damage in the middle of a large
+  file shows when it is downloaded: the transfer stops, it never hands out
+  altered bytes. On ZFS, `zpool scrub` checks every block underneath anyway.
+- There is no sweep that deletes blob files without a database row: a file
+  left behind by a crash between a commit and its cleanup only takes space.
+
+## Master key
+
+`NEOCLOUD_MASTER_KEY` (64 hex characters, in `.env` or the environment)
+wraps every account's data key, the backup key and stored secrets. It is
+generated once, on an install without data, and never replaced:
+
+- missing on an install that already has accounts or stored files: the
+  server (and the CLI) refuse to start instead of creating a new key;
+- malformed: refused at start;
+- well-formed but not the key the data was encrypted with (a typo, another
+  server's `.env`): refused at start, nothing written.
+
+Restore the original key from `neocloud keys export` or your copy of `.env`.
+There is no way to recover files without it.
 - A database written by a newer NeoCloud (higher schema version) is refused
   at start with a message naming `neocloud rollback`, instead of running on
   tables this version doesn't know.
@@ -234,8 +288,18 @@ and folder before the manifest is written; SFTP does when the server supports
 OpenSSH's fsync extension.
 
 A failed scheduled run is retried in the same slot after 10, 30 and 90
-minutes. Runs that a crash or kill left in `running` are marked failed
-(`interrupted`) when the server starts.
+minutes. Only one run per target at a time, also between the server and
+`neocloud backup run`: the process running it refreshes a heartbeat every
+30 s, so a first backup that takes days keeps the target, and a run whose
+process died (no heartbeat for 5 minutes) is marked failed (`interrupted`).
+
+What a snapshot holds: every blob the database references (copied as they
+are, still encrypted) and the database, encrypted with a key derived from
+`NEOCLOUD_MASTER_KEY`. It does **not** hold the master key, the `.env`
+(`SESSION_SECRET`, `PUBLIC_URL`, AI keys, ...), thumbnails and previews (made
+again on first view) or the log files. Retention counts finished snapshots,
+newest first; blobs are deleted from the target only once no kept snapshot
+lists them.
 
 **Without a scheduled target**, the server keeps a daily encrypted snapshot of
 the database (not the files) in `data/backups/daily-*.db.enc`, the last 14.
@@ -253,8 +317,9 @@ neocloud backup verify <target-id>
 ```
 
 Downloads the newest snapshot's database, decrypts it, runs `quick_check` on
-it, and checks that every blob its manifest lists is on the target. Nothing
-local changes. The result (`lastVerification`) is listed with the target in
+it, and checks that every blob its manifest lists is on the target (present,
+not read: blobs are only ever written whole, through a temporary name or, on
+S3, an atomic upload). Nothing local changes. The result (`lastVerification`) is listed with the target in
 Admin › Backups and `neocloud backup list`. Verify after setting up a target
 and every now and then.
 
@@ -263,6 +328,8 @@ and every now and then.
 A restore replaces the database, so the server must be stopped; the command
 refuses while it runs (it checks the server's PID file and `/api/health`).
 
+On the same install (the database still knows the target):
+
 ```sh
 neocloud stop
 neocloud backup snapshots <target-id>
@@ -270,20 +337,45 @@ neocloud backup restore <target-id> <snapshot>
 neocloud start
 ```
 
+After losing the disk, or on a new machine, the database doesn't know the
+target. Name the backup instead with `--from`: the backup folder itself (a
+local or mounted target), or a JSON file describing a remote one with the
+same fields as Admin › Backups, e.g.
+`{ "type": "sftp", "config": { "host": "nas", "username": "backup", "password": "…", "path": "/backups/neocloud" } }`.
+
+```sh
+# 1. Put the original key in place first (NEOCLOUD_HOME/.env, default ~/.neocloud/.env):
+#      NEOCLOUD_MASTER_KEY=<the 64 hex characters from `neocloud keys export`>
+#    Don't start the server before restoring.
+neocloud backup snapshots --from /mnt/backup/neocloud
+neocloud backup restore --from /mnt/backup/neocloud <snapshot>
+neocloud start
+```
+
 The snapshot is downloaded, decrypted and checked first (`quick_check`, and a
 snapshot from a newer schema than this version knows is refused); only then
-are missing blobs fetched and the database swapped. The previous database is
-kept as `data/neocloud.db.before-restore-<time>`. It needs the same
-`NEOCLOUD_MASTER_KEY` the backup was made with; on a new machine, put it in
-`.env` before restoring.
+are blobs fetched and the database swapped. A wrong master key stops it at
+the decryption ("could not be decrypted"), with nothing changed. Blobs
+already on this disk are kept when their length is right; missing or
+damaged-length ones are fetched from the backup. The previous database is
+kept as `data/neocloud.db.before-restore-<time>`. Accounts, passwords, 2FA,
+shares, links, vaults, versions and trash come back as they were in the
+snapshot; sign-ins made after it are gone.
 
-With Docker:
+With Docker, the backup folder must be mounted into the container (at the
+path the target uses), and the `.env` with the master key lives in the
+volume at `/data/.env`:
 
 ```sh
 docker compose stop neocloud
-docker compose run --rm neocloud neocloud backup restore <target-id> <snapshot>
+docker compose run --rm neocloud neocloud backup snapshots --from /backup
+docker compose run --rm neocloud neocloud backup restore --from /backup <snapshot>
 docker compose start neocloud
 ```
+
+`test/integration/restore_drill.test.js` runs this whole procedure (backup,
+verify, wipe, restore, compare every file's SHA-256, versions, trash, shares,
+vault and accounts) on every `npm test`.
 
 ## Upgrades and rollback
 
@@ -318,7 +410,9 @@ to a release.
 `compose.yaml` pins the image to a major version
 (`ghcr.io/neolabs-systems/neocloud:${NEOCLOUD_VERSION:-0}`), so
 `docker compose pull && docker compose up -d` brings fixes and features but no
-breaking release. Before a major upgrade, copy the database while stopped:
+breaking release. A version that changes the schema copies the database to
+`/data/data/backups/pre-migration-v<N>-<time>.db` before it migrates (see
+Database care); a copy of your own before a major upgrade does no harm:
 
 ```sh
 docker compose stop neocloud
@@ -328,10 +422,40 @@ NEOCLOUD_VERSION=1 docker compose up -d
 
 To roll back, set the previous `NEOCLOUD_VERSION` and `docker compose up -d`.
 If the newer version had already migrated the database, the older one refuses
-to start with a clear message; put the copy back first:
+to start with a clear message; put the copy back first (or the newest
+`backups/pre-migration-*.db`):
 
 ```sh
 docker compose stop neocloud
 docker compose run --rm --entrypoint sh neocloud -c 'cd /data/data && mv neocloud.db neocloud.db.newer && rm -f neocloud.db-wal neocloud.db-shm && cp neocloud.db.before-upgrade neocloud.db'
 NEOCLOUD_VERSION=0 docker compose up -d
 ```
+
+## TrueNAS (ZFS) checklist
+
+- **Master key off the NAS.** Run `docker compose exec neocloud neocloud keys
+  export` once and keep the line in a password manager and on paper. The key
+  sits in `/data/.env` inside the volume: a backup of the volume alone
+  doesn't help if the pool is lost, and NeoCloud's own backups never contain
+  it.
+- **Back up `/data/.env`** (master key, `SESSION_SECRET`, `PUBLIC_URL`,
+  provider keys) whenever you change settings, e.g. into the password
+  manager. Without `SESSION_SECRET` everyone just signs in again; without
+  the master key nothing can be read.
+- **Put `/data` on its own dataset** (a host path, not a Docker named volume
+  hidden in the ix-applications dataset), so it can be snapshotted and
+  replicated on its own.
+- **ZFS snapshots of that dataset**, e.g. hourly kept 2 days and daily kept
+  30 days. The database runs in WAL mode with `synchronous = FULL`; a ZFS
+  snapshot is atomic, so it holds a crash-consistent database plus the blobs
+  it references. Roll back a snapshot only with the container stopped.
+- **One real backup target off the pool**: a local target on another pool or
+  a USB disk mounted into the container, or SFTP/S3/WebDAV elsewhere, on a
+  daily schedule, plus `neocloud backup verify <id>` now and then. ZFS
+  snapshots don't survive the pool.
+- If file storage (`/data/data/storage`) is on a dataset of its own, take
+  the snapshots recursively from a parent of both (`zfs snapshot -r`, or one
+  periodic task with "recursive"): only then are the database and the blobs
+  it points at from the same instant.
+- Schedule `zpool scrub` (TrueNAS does monthly by default); it catches bit rot
+  in the middle of large files that NeoCloud's own blob scrub doesn't read.

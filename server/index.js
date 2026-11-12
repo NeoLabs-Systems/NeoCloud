@@ -12,14 +12,16 @@ const dotenv = require('dotenv');
 
 applySecureUmask();
 ensureRuntimeDirs();
-ensureSecureRuntimeEnv({ logger: console });
-dotenv.config({ path: ENV_FILE, override: true, quiet: true });
 
-// Opened first so a database this version can't run on (newer schema) stops
-// the start with its own message instead of a stack trace.
+// Opened first so a missing or wrong master key, or a database this version
+// can't run on (newer schema), stops the start with its own message instead
+// of a stack trace -- and before anything is written.
 let db;
 try {
+  ensureSecureRuntimeEnv({ logger: console });
+  dotenv.config({ path: ENV_FILE, override: true, quiet: true });
   db = require('./db/database');
+  require('./services/crypto/keys').assertMasterKeyMatches();
 } catch (err) {
   console.error(`[Startup] ${err.message}`);
   process.exit(1);
@@ -27,7 +29,7 @@ try {
 
 const { createServer } = require('http');
 const { createApp } = require('./app');
-const { readHttpRuntimeConfig } = require('./config/http');
+const { readHttpRuntimeConfig, trustProxyWarning } = require('./config/http');
 const { createSocketServer, bindSocketSessions } = require('./http/socket');
 const { isUploadRequest } = require('./http/middleware');
 const { isDavPath } = require('./services/webdav/paths');
@@ -39,6 +41,7 @@ const { startBackupScheduler } = require('./services/backup/scheduler');
 const { startImports, stopImports } = require('./services/import/runner');
 const { startSearchIndexer } = require('./services/search_index/indexer');
 const { startAiWorker } = require('./services/ai/organize/worker');
+const { startPhotoIndexer } = require('./services/photos/indexer');
 const { setupConsoleInterceptor } = require('./utils/logger');
 const { DEFAULT_PORT } = require('../lib/setup/contract');
 
@@ -51,6 +54,8 @@ const httpConfig = readHttpRuntimeConfig();
 const logHistory = setupConsoleInterceptor();
 console.log(`[Startup] Using env file: ${ENV_FILE}`);
 console.log('[Startup] HTTP runtime:', httpConfig);
+const proxyWarning = trustProxyWarning(httpConfig);
+if (proxyWarning) console.warn(`[Startup] ${proxyWarning}`);
 
 const { granted, missing } = applyEnvAdminGrants();
 if (granted.length > 0) console.log(`[Startup] Granted admin from NEOCLOUD_ADMIN_USERS: ${granted.join(', ')}`);
@@ -90,6 +95,7 @@ const stopBackupScheduler = startBackupScheduler();
 startImports();
 const stopSearchIndexer = startSearchIndexer();
 const stopAiWorker = startAiWorker();
+const stopPhotoIndexer = startPhotoIndexer();
 
 function removePidFile() {
   try {
@@ -113,6 +119,8 @@ function shutdown(signal) {
   stopSearchIndexer();
   // The AI worker finishes the files it is on; unfinished jobs wait for the next start.
   stopAiWorker();
+  // Photos finishes the file it is reading; the next start continues from the tables.
+  stopPhotoIndexer();
 
   // Connections that finish their last request go right away.
   const idleSweep = setInterval(() => httpServer.closeIdleConnections(), 1000);

@@ -159,6 +159,38 @@ function acceptAllHigh(userId, { kind } = {}) {
   return { accepted, failed };
 }
 
+/**
+ * Accepts or rejects many suggestions at once (the Review tab's "Accept
+ * all" / "Reject all"), one by one through the same steps as a single
+ * decision. Failures are reported, not thrown.
+ */
+function bulkDecide(userId, { ids, action } = {}) {
+  if (action !== 'accept' && action !== 'reject') throw httpError(400, 'action must be accept or reject.', 'INVALID_ACTION');
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000 || !ids.every((id) => typeof id === 'string' && id)) {
+    throw httpError(400, 'ids must be a list of 1–1000 suggestion ids.', 'INVALID_REQUEST');
+  }
+  let done = 0;
+  const failed = [];
+  for (const id of [...new Set(ids)]) {
+    try {
+      const row = suggestionRow(userId, id);
+      if (action === 'accept') {
+        applySuggestion(userId, row);
+      } else {
+        if (row.status !== 'pending' && row.status !== 'stale') {
+          throw httpError(409, `This suggestion is ${row.status}.`, 'AI_SUGGESTION_DECIDED');
+        }
+        db.prepare("UPDATE ai_suggestions SET status = 'rejected', decided_at = datetime('now') WHERE id = ?").run(row.id);
+      }
+      done += 1;
+    } catch (error) {
+      failed.push({ id, code: error.code || 'FAILED' });
+    }
+  }
+  announceSuggestions(userId);
+  return { done, failed };
+}
+
 /** Applies a job's new high-tier suggestions when the person turned auto-apply on. */
 function autoApply(userId, rows) {
   for (const row of rows) {
@@ -217,4 +249,4 @@ function undoSuggestion(userId, id) {
   return { suggestion: withNode(userId, updated) };
 }
 
-module.exports = { acceptAllHigh, acceptSuggestion, autoApply, rejectSuggestion, undoSuggestion };
+module.exports = { acceptAllHigh, acceptSuggestion, autoApply, bulkDecide, rejectSuggestion, undoSuggestion };

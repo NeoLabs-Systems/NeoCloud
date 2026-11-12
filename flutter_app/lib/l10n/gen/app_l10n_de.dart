@@ -962,9 +962,6 @@ class AppL10nDe extends AppL10n {
   String get adminShowMasterKey => 'Master-Key anzeigen';
 
   @override
-  String get adminConfirmPassword => 'Mit deinem Passwort bestätigen';
-
-  @override
   String get officePreviewUnavailable =>
       'Für diese Datei gibt es keine Vorschau. Lade sie herunter, um sie zu öffnen.';
 
@@ -1113,6 +1110,11 @@ class AppL10nDe extends AppL10n {
   String get backupRunning => 'Sichert…';
 
   @override
+  String backupRunningProgress(int percent, String done, String total) {
+    return 'Sichert… $percent % · $done von $total';
+  }
+
+  @override
   String get backupDeleteMessage =>
       'Das Ziel wird aus NeoCloud entfernt. Vorhandene Backups bleiben dort erhalten.';
 
@@ -1169,6 +1171,9 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get sortType => 'Typ';
+
+  @override
+  String get sortRelevance => 'Relevanz';
 
   @override
   String get sortAscending => 'Aufsteigend';
@@ -2986,9 +2991,6 @@ class AppL10nDe extends AppL10n {
   String get cameraOptions => 'Optionen';
 
   @override
-  String get mobileNavCamera => 'Kamera';
-
-  @override
   String mobilePermissionsSet(int granted, int total) {
     return '$granted von $total erledigt';
   }
@@ -3909,6 +3911,20 @@ class AppL10nDe extends AppL10n {
   @override
   String get signInRateLimited =>
       'Zu viele Versuche. Warte ein paar Minuten und versuche es dann erneut.';
+
+  @override
+  String confirmLockedMinutes(int minutes) {
+    return 'Zu viele falsche Passwörter oder Codes für dieses Konto. Versuche es in $minutes Min. erneut.';
+  }
+
+  @override
+  String confirmLockedSeconds(int seconds) {
+    return 'Zu viele falsche Passwörter oder Codes für dieses Konto. Versuche es in $seconds s erneut.';
+  }
+
+  @override
+  String get passkeyConfirmMessage =>
+      'Ein Sicherheitsschlüssel meldet dich allein an und bleibt auch nach einer Passwortänderung bestehen. Bestätige deshalb zuerst, dass du es bist.';
 
   @override
   String get approvalNeedsServerUpdate =>
@@ -5251,4 +5267,236 @@ class AppL10nDe extends AppL10n {
   @override
   String get aiErrorNotUndoable =>
       'Diese Änderung lässt sich nicht rückgängig machen.';
+
+  @override
+  String get photosNav => 'Fotos';
+
+  @override
+  String get photosEmptyTitle => 'Noch keine Fotos';
+
+  @override
+  String get photosEmptyBody =>
+      'Fotos und Videos, die du in NeoCloud aufbewahrst, erscheinen hier, die neuesten zuerst.';
+
+  @override
+  String get photosEmptyBackup => 'Dieses Handy sichern';
+
+  @override
+  String get photosEmptyOpenFiles => 'Zu den Dateien';
+
+  @override
+  String get photosLoadFailed => 'Deine Fotos konnten nicht geladen werden.';
+
+  @override
+  String photosSorting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count neue Fotos werden nach Datum einsortiert…',
+      one: '1 neues Foto wird nach Datum einsortiert…',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photosBackupOff => 'Sicherung ist aus';
+
+  @override
+  String get photosBackupTurnOn => 'Einschalten';
+
+  @override
+  String get photosToday => 'Heute';
+
+  @override
+  String get photosYesterday => 'Gestern';
+
+  @override
+  String get photosZoomIn => 'Größere Fotos';
+
+  @override
+  String get photosZoomOut => 'Mehr Fotos auf einmal';
+
+  @override
+  String get photosSelectGroup => 'Alle hier auswählen';
+
+  @override
+  String get photosShareOne =>
+      'Wähle ein Foto aus, um einen Link dazu zu teilen.';
+
+  @override
+  String get photosPhotoUnavailable =>
+      'Dieses Foto kann nicht angezeigt werden.';
+
+  @override
+  String get photosLocalOnPhone => 'Auf diesem Handy';
+
+  @override
+  String get photosLocalBackUp => 'In NeoCloud sichern';
+
+  @override
+  String get photosLocalBackedUp => 'Gesichert';
+
+  @override
+  String get photosLocalChecking => 'Wird geprüft…';
+
+  @override
+  String get photosLocalBackingUp => 'Wird gesichert…';
+
+  @override
+  String get photosLocalSignIn =>
+      'Verbinde dich mit NeoCloud, um das zu sichern.';
+
+  @override
+  String get photosLocalBackupFailed =>
+      'Das konnte nicht gesichert werden. Versuch es noch einmal.';
+
+  @override
+  String get aiMoreActions => 'Weitere Aktionen';
+
+  @override
+  String get aiAcceptAllTab => 'Alle in diesem Reiter annehmen';
+
+  @override
+  String get aiRejectAllTab => 'Alle in diesem Reiter ablehnen';
+
+  @override
+  String aiAcceptAllTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge annehmen?',
+      one: '1 Vorschlag annehmen?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiAcceptAllBody =>
+      'Alle Vorschläge in diesem Reiter werden auf einmal übernommen. Du kannst sie gleich danach rückgängig machen.';
+
+  @override
+  String aiRejectAllTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge ablehnen?',
+      one: '1 Vorschlag ablehnen?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiRejectAllBody =>
+      'Alle Vorschläge in diesem Reiter werden verworfen. Deine Dateien bleiben, wie sie sind.';
+
+  @override
+  String aiRejectedMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Vorschläge abgelehnt',
+      one: '1 Vorschlag abgelehnt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesTab => 'Duplikate';
+
+  @override
+  String get duplicatesSubtitle =>
+      'Kopien derselben Datei und Fotos, die sich gleichen. Entferne die überzähligen, um Platz zu schaffen.';
+
+  @override
+  String get duplicatesExactTitle => 'Identische Kopien';
+
+  @override
+  String duplicatesSimilarTitle(int percent) {
+    return 'Ähnliche Fotos · $percent % gleich';
+  }
+
+  @override
+  String duplicatesGroupSummary(int count, String size) {
+    return '$count Dateien · $size können frei werden';
+  }
+
+  @override
+  String get duplicatesKeep => 'Behalten';
+
+  @override
+  String get duplicatesRemove => 'Entfernen';
+
+  @override
+  String get duplicatesToggleHint =>
+      'Tippe, um zwischen Behalten und Entfernen zu wechseln';
+
+  @override
+  String duplicatesTrashGroup(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count in den Papierkorb',
+      one: '1 in den Papierkorb',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesNotDuplicates => 'Keine Duplikate';
+
+  @override
+  String duplicatesCleanUpAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Alle aufräumen ($count Dateien)',
+      one: 'Alle aufräumen (1 Datei)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicatesCleanUpTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Dateien in den Papierkorb verschieben?',
+      one: '1 Datei in den Papierkorb verschieben?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesCleanUpBody =>
+      'In jeder Gruppe bleibt die mit „Behalten“ markierte Datei, die anderen kommen in den Papierkorb. Du kannst das gleich danach rückgängig machen oder sie später aus dem Papierkorb wiederherstellen.';
+
+  @override
+  String get duplicatesEmptyTitle => 'Keine Duplikate gefunden';
+
+  @override
+  String get duplicatesEmptyBody =>
+      'Kopien derselben Datei und Fotos, die sich gleichen, erscheinen hier.';
+
+  @override
+  String duplicatesChecking(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Deine Fotos werden geprüft … noch $count',
+      one: 'Deine Fotos werden geprüft … noch 1',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicatesTrashFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Dateien konnten nicht in den Papierkorb verschoben werden.',
+      one: '1 Datei konnte nicht in den Papierkorb verschoben werden.',
+    );
+    return '$_temp0';
+  }
 }

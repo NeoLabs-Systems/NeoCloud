@@ -8,8 +8,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite" // pure-Go driver, so the binary needs no C SQLite
 )
@@ -35,6 +37,8 @@ const Synced = "synced"
 type DB struct {
 	db  *sql.DB
 	dir string
+	// recovered is where a damaged state.db was moved aside ("" normally).
+	recovered string
 }
 
 const schema = `
@@ -71,9 +75,36 @@ CREATE TABLE IF NOT EXISTS uploads (
 );
 `
 
-// Open opens (and creates) state.db in dir.
+// errDamaged is what open reports for a database that fails its check.
+var errDamaged = errors.New("state database is damaged")
+
+// Open opens (and creates) state.db in dir. A damaged database (a power
+// loss, a disk error, garbage written over it) is moved aside as
+// state.db.damaged-<time> and a fresh one is created: without rows, every
+// pair merges both sides like a first sync, which never deletes anything.
 func Open(dir string) (*DB, error) {
 	path := filepath.Join(dir, "state.db")
+	db, err := open(path)
+	if err == nil || !damaged(err) {
+		if err == nil {
+			db.dir = dir
+		}
+		return db, err
+	}
+	aside := path + ".damaged-" + time.Now().Format("20060102-150405")
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if err := os.Rename(path+suffix, aside+suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("moving the damaged state database aside: %w", err)
+		}
+	}
+	if db, err = open(path); err != nil {
+		return nil, err
+	}
+	db.dir, db.recovered = dir, aside
+	return db, nil
+}
+
+func open(path string) (*DB, error) {
 	// WAL lets the settings page read status while the engine writes;
 	// busy_timeout covers the rare overlap instead of failing.
 	db, err := sql.Open("sqlite", "file:"+path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
@@ -84,8 +115,30 @@ func Open(dir string) (*DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("state schema: %w", err)
 	}
-	return &DB{db: db, dir: dir}, nil
+	var check string
+	if err := db.QueryRow(`PRAGMA quick_check`).Scan(&check); err != nil || check != "ok" {
+		db.Close()
+		if err == nil {
+			err = fmt.Errorf("%w: %s", errDamaged, check)
+		}
+		return nil, fmt.Errorf("state check: %w", err)
+	}
+	return &DB{db: db}, nil
 }
+
+// damaged tells a broken database file from other failures to open it
+// (permissions, a full disk, a lock), which must not cost the state.
+func damaged(err error) bool {
+	if errors.Is(err, errDamaged) {
+		return true
+	}
+	text := err.Error()
+	return strings.Contains(text, "malformed") || strings.Contains(text, "not a database")
+}
+
+// Recovered is where a damaged state database was moved aside when this
+// one was opened, or "".
+func (s *DB) Recovered() string { return s.recovered }
 
 // Close closes the database.
 func (s *DB) Close() error { return s.db.Close() }

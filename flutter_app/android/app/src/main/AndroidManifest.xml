@@ -47,6 +47,24 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="neocloud" android:host="pair"/>
             </intent-filter>
+            <!-- NeoCloud as the phone's gallery app (Settings › Apps › Default apps,
+                 or "Open with"), like Google Photos and Fossify Gallery declare it:
+                 opened as the gallery it shows Photos; asked to show one photo or
+                 video (VIEW, or the camera app's REVIEW of the shot just taken) it
+                 shows that local file. GalleryIntents.kt takes content:// only. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.APP_GALLERY"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <action android:name="com.android.camera.action.REVIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="image/*"/>
+                <data android:mimeType="video/*"/>
+            </intent-filter>
             <!-- Share target: files from other apps' share sheets. ShareIntake.kt takes
                  content:// streams only and copies them into cacheDir/share-intake. -->
             <intent-filter>

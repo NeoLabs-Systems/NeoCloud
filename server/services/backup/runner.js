@@ -123,10 +123,19 @@ async function listSnapshots(adapter) {
  */
 async function uploadSnapshotBlobs(adapter, blobs, run) {
   const remote = new Set(await adapter.list('blobs/'));
+  const todo = blobs.filter((blob) => !remote.has(`blobs/${blob.user_id}/${blob.id}`));
+  let totalBytes = 0;
+  for (const blob of todo) {
+    try {
+      totalBytes += fs.statSync(blobPath(blob.user_id, blob.id)).size;
+    } catch {
+      // Missing on disk: counted below, adds nothing to upload.
+    }
+  }
+  db.prepare('UPDATE backup_runs SET blobs_total = ?, bytes_total = ? WHERE id = ?').run(todo.length, totalBytes, run.id);
   let missing = 0;
-  for (const blob of blobs) {
+  for (const blob of todo) {
     const key = `blobs/${blob.user_id}/${blob.id}`;
-    if (remote.has(key)) continue;
     const local = blobPath(blob.user_id, blob.id);
     if (!fs.existsSync(local)) {
       logger.warn(`Blob file missing on disk, not in this backup: ${blob.id}`);
@@ -146,7 +155,8 @@ async function uploadSnapshotBlobs(adapter, blobs, run) {
 async function prune(adapter, retention) {
   const snapshots = await listSnapshots(adapter);
   for (const stale of snapshots.slice(retention)) {
-    await adapter.deletePrefix(`snapshots/${stale}`);
+    // The slash keeps an S3 prefix delete from matching a longer name.
+    await adapter.deletePrefix(`snapshots/${stale}/`);
   }
   const needed = new Set();
   for (const name of snapshots.slice(0, retention)) {
@@ -160,18 +170,41 @@ async function prune(adapter, retention) {
 
 // The CLI (`neocloud backup run`) and the server are separate processes, so
 // the run row is the lock between them: two runs to one target would each
-// prune the blobs the other has uploaded but not yet listed. A run row older
-// than a day is a CLI that died; the server marks its own at startup.
+// prune the blobs the other has uploaded but not yet listed. The running
+// process refreshes heartbeat_at every HEARTBEAT_MS; a run whose heartbeat
+// (or, before the first one, start) is older than STALE_AFTER is dead. A
+// first backup of a few terabytes may take days and still holds the target.
+const HEARTBEAT_MS = 30 * 1000;
+const STALE_AFTER = '-5 minutes';
+const LIVE_RUN = `status = 'running' AND datetime(COALESCE(heartbeat_at, started_at)) > datetime('now', '${STALE_AFTER}')`;
+
+function assertTargetIdle(targetId) {
+  if (db.prepare(`SELECT 1 FROM backup_runs WHERE target_id = ? AND ${LIVE_RUN}`).get(targetId)) {
+    throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
+  }
+}
+
 function claimRun(targetId, name) {
   return db.transaction(() => {
-    const busy = db.prepare(`
-      SELECT 1 FROM backup_runs
-      WHERE target_id = ? AND status = 'running' AND datetime(started_at) > datetime('now', '-1 day')
-    `).get(targetId);
-    if (busy) throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
-    const inserted = db.prepare("INSERT INTO backup_runs (target_id, status, snapshot) VALUES (?, 'running', ?)").run(targetId, name);
+    assertTargetIdle(targetId);
+    const inserted = db.prepare(`
+      INSERT INTO backup_runs (target_id, status, snapshot, heartbeat_at) VALUES (?, 'running', ?, datetime('now'))
+    `).run(targetId, name);
     return Number(inserted.lastInsertRowid);
   }).immediate();
+}
+
+function startHeartbeat(runId) {
+  const beat = db.prepare("UPDATE backup_runs SET heartbeat_at = datetime('now') WHERE id = ? AND status = 'running'");
+  const timer = setInterval(() => {
+    try {
+      beat.run(runId);
+    } catch (err) {
+      logger.warn(`Backup heartbeat failed: ${err.message}`);
+    }
+  }, HEARTBEAT_MS);
+  timer.unref();
+  return () => clearInterval(timer);
 }
 
 /**
@@ -184,6 +217,7 @@ async function runBackup(targetId) {
   const name = snapshotName();
   const run = { id: claimRun(targetId, name), blobs: 0, bytes: 0 };
   running.add(targetId);
+  const stopHeartbeat = startHeartbeat(run.id);
   const copy = path.join(UPLOAD_TMP_DIR, `backup-${targetId}-${name}.db`);
   let adapter;
   try {
@@ -216,6 +250,7 @@ async function runBackup(targetId) {
     db.prepare("UPDATE backup_runs SET status = 'failed', finished_at = datetime('now'), error = ? WHERE id = ?").run(message, run.id);
     logger.error(`Backup to target ${targetId} failed: ${message}`);
   } finally {
+    stopHeartbeat();
     running.delete(targetId);
     await removeQuietly(copy);
     await adapter?.close();
@@ -227,17 +262,23 @@ async function runBackup(targetId) {
 function startBackup(targetId) {
   if (running.has(targetId)) throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
   getTargetRow(targetId);
-  if (db.prepare("SELECT 1 FROM backup_runs WHERE target_id = ? AND status = 'running' AND datetime(started_at) > datetime('now', '-1 day')").get(targetId)) {
-    throw httpError(409, 'A backup to this target is already running.', 'BACKUP_RUNNING');
-  }
+  assertTargetIdle(targetId);
   runBackup(targetId).catch((err) => logger.error('Backup run crashed:', err.message));
   return { started: true };
 }
 
 // Database copies a killed backup or verify left in the temp folder: the
 // backup's copy is plaintext. Anything touched in the last hour may belong to
-// a CLI run that is still going.
+// a CLI run that is still going, and so does the copy of a run that still
+// beats (it is read again when its blobs are done, hours later).
 const DATABASE_COPY_PATTERN = /^(?:backup-\d+-.+\.db|verify-\d+-\d+\.enc(?:\.db)?)(?:-wal|-shm)?$/;
+const BACKUP_COPY_PATTERN = /^backup-(\d+)-(.+)\.db(?:-wal|-shm)?$/;
+
+function belongsToLiveRun(entry) {
+  const match = BACKUP_COPY_PATTERN.exec(entry);
+  if (!match) return false;
+  return Boolean(db.prepare(`SELECT 1 FROM backup_runs WHERE target_id = ? AND snapshot = ? AND ${LIVE_RUN}`).get(Number(match[1]), match[2]));
+}
 
 function removeStaleDatabaseCopies() {
   let entries;
@@ -248,7 +289,7 @@ function removeStaleDatabaseCopies() {
   }
   const staleBefore = Date.now() - 60 * 60 * 1000;
   for (const entry of entries) {
-    if (!DATABASE_COPY_PATTERN.test(entry)) continue;
+    if (!DATABASE_COPY_PATTERN.test(entry) || belongsToLiveRun(entry)) continue;
     const file = path.join(UPLOAD_TMP_DIR, entry);
     try {
       if (fs.statSync(file).mtimeMs < staleBefore) fs.rmSync(file, { force: true });
@@ -259,13 +300,15 @@ function removeStaleDatabaseCopies() {
 }
 
 /**
- * Runs left in 'running' by a crash or a kill can never finish; called once
- * at startup, before the scheduler looks at them.
+ * Runs left in 'running' by a crash or a kill can never finish: their
+ * heartbeat has stopped. Called at startup and on every scheduler check. A
+ * run another process (`neocloud backup run`) is still doing keeps beating
+ * and is left alone.
  */
 function markInterruptedRuns() {
   const result = db.prepare(`
     UPDATE backup_runs SET status = 'failed', finished_at = datetime('now'), error = 'interrupted'
-    WHERE status = 'running'
+    WHERE status = 'running' AND NOT (${LIVE_RUN})
   `).run();
   if (result.changes > 0) logger.warn(`Marked ${result.changes} unfinished backup run(s) as interrupted.`);
   removeStaleDatabaseCopies();

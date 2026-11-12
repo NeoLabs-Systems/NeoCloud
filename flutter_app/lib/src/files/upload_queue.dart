@@ -10,7 +10,7 @@ import 'transfer_estimate.dart';
 /// One file to send: its name, size and a way to read its bytes. Picked,
 /// dropped and shared files all become one of these.
 class UploadSource {
-  const UploadSource({required this.name, required this.size, required this.openRead, this.folder = '', this.modifiedAt});
+  const UploadSource({required this.name, required this.size, required this.openRead, this.folder = '', this.modifiedAt, this.sha256});
 
   final String name;
   final int size;
@@ -23,6 +23,11 @@ class UploadSource {
   /// The local file's modification time, when the platform tells it; shown
   /// in the conflict dialog.
   final DateTime? modifiedAt;
+
+  /// The content's SHA-256 (hex) when already known; the server then refuses
+  /// content that arrives different, e.g. a file that changed while it was
+  /// being sent. Not used for vault uploads, which send ciphertext.
+  final String? sha256;
 }
 
 enum UploadStatus { waiting, uploading, finalizing, done, skipped, failed, cancelled }
@@ -417,7 +422,7 @@ class UploadQueue extends ChangeNotifier {
   Future<void> _sendSmall(UploadTask task, String mode) async {
     final bytes = task._bytes ??= await _readAll(task.source);
     if (task._cancelRequested) throw const _Cancelled();
-    await _retrying(task, () => client.uploadSmall(task.targetId!, task.source.name, bytes, conflict: mode));
+    await _retrying(task, () => client.uploadSmall(task.targetId!, task.source.name, bytes, conflict: mode, sha256: task.source.sha256));
   }
 
   /// Vault upload: the whole file is encrypted in memory, then sent in one
@@ -438,7 +443,7 @@ class UploadQueue extends ChangeNotifier {
 
   /// A resumable upload: the one an earlier session left (its arrived parts
   /// are skipped) or a new one.
-  Future<(Map<String, dynamic>, Set<int>)> _session(UploadTask task, String mode, String name, int size) async {
+  Future<(Map<String, dynamic>, Set<int>)> _session(UploadTask task, String mode, String name, int size, String? sha256) async {
     final resumeId = task.resumeUploadId;
     task.resumeUploadId = null;
     if (resumeId != null) {
@@ -453,14 +458,16 @@ class UploadQueue extends ChangeNotifier {
         // Expired or gone: start over.
       }
     }
-    return (await _retrying(task, () => client.createUpload(task.targetId!, name, size, conflict: mode)), <int>{});
+    return (await _retrying(task, () => client.createUpload(task.targetId!, name, size, conflict: mode, sha256: sha256)), <int>{});
   }
 
   /// Reads the file once, cutting it into the server's part size, and sends
   /// each part as soon as it is complete. Pausing holds the read between
   /// parts; a dropped connection retries the part.
   Future<void> _sendInParts(UploadTask task, String mode, {String? name, int? size, Stream<List<int>> Function()? read}) async {
-    final (session, received) = await _session(task, mode, name ?? task.source.name, size ?? task.source.size);
+    // Ciphertext (a vault upload names its own size) has another hash.
+    final sha256 = size == null ? task.source.sha256 : null;
+    final (session, received) = await _session(task, mode, name ?? task.source.name, size ?? task.source.size, sha256);
     final uploadId = session['id'].toString();
     task.uploadId = uploadId;
     final partSize = (session['partSize'] as num).toInt();

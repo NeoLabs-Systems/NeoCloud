@@ -59,8 +59,12 @@ function sessionCookie(res) {
   return cookie.split(';')[0];
 }
 
-function totp(secret) {
-  return generateSync({ secret, strategy: 'totp', digits: 6, period: 30 });
+// A code works once per time step (the server keeps the last one used), so
+// a second code in the same test is taken `ahead` steps later.
+function totp(secret, ahead = 0) {
+  return generateSync({
+    secret, strategy: 'totp', digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 * ahead,
+  });
 }
 
 // A six-digit code that is not valid for `secret` in the accepted window.
@@ -150,7 +154,7 @@ test('a pending second-factor sign-in takes at most 5 codes', async () => {
   ageFailures(key, 60e3);
   assert.equal((await login(visitor, owner.username).expect(200)).body.requiresTwoFactor, true);
   assert.equal(failureRows(key), 5);
-  await fromNewAddress(visitor.post('/api/auth/login/2fa')).send({ code: totp(secret) }).expect(200);
+  await fromNewAddress(visitor.post('/api/auth/login/2fa')).send({ code: totp(secret, 1) }).expect(200);
   assert.equal(failureRows(key), 0, 'a full sign-in clears the account');
   await visitor.get('/api/account').expect(200);
 });
@@ -166,16 +170,19 @@ test('an enrolled second factor is replaced only with a current code', async () 
   assert.equal(wrong.body.code, 'INVALID_CODE');
 
   const setup = await owner.agent.post('/api/account/2fa/setup')
-    .send({ currentPassword: STRONG_PASSWORD, code: totp(oldSecret) }).expect(200);
+    .send({ currentPassword: STRONG_PASSWORD, code: totp(oldSecret, 1) }).expect(200);
   const newSecret = setup.body.manualKey;
+  // Each step's code works once; forget the one setup took instead of waiting
+  // for the step after.
+  db.prepare("DELETE FROM user_settings WHERE user_id = ? AND key = 'two_factor_last_step'").run(owner.user.id);
   // enable needs the current factor as well, not only a code of the new one.
   assert.equal((await owner.agent.post('/api/account/2fa/enable').send({ code: totp(newSecret) }).expect(401)).body.code, 'TWO_FACTOR_REQUIRED');
   assert.equal(db.prepare('SELECT enabled FROM user_two_factor WHERE user_id = ?').get(owner.user.id).enabled, 1);
-  await owner.agent.post('/api/account/2fa/enable').send({ code: totp(newSecret), currentCode: totp(oldSecret) }).expect(200);
+  await owner.agent.post('/api/account/2fa/enable').send({ code: totp(newSecret), currentCode: totp(oldSecret, 1) }).expect(200);
 
   const visitor = request.agent(app);
   await login(visitor, owner.username).expect(200);
-  await fromNewAddress(visitor.post('/api/auth/login/2fa')).send({ code: totp(newSecret) }).expect(200);
+  await fromNewAddress(visitor.post('/api/auth/login/2fa')).send({ code: totp(newSecret, 1) }).expect(200);
 });
 
 async function deviceCredentials(agent) {

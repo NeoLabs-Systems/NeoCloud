@@ -15,19 +15,22 @@ bool _masterKeyAcknowledged(NeoCloudController controller) => controller._prefer
 
 String _safetyFoldedKey(NeoCloudController controller) => 'admin.safetyFolded.${controller.user?.id ?? 0}';
 
-/// Asks for the admin's password, shows NEOCLOUD_MASTER_KEY with copy and
-/// download, and records "I stored it" when ticked.
+/// Asks for the admin's password (and a code when 2FA is on), shows
+/// NEOCLOUD_MASTER_KEY with copy and download, and records "I stored it"
+/// when ticked.
 Future<void> _exportMasterKey(BuildContext context, NeoCloudController controller) async {
-  final password = await _promptText(
-    context,
-    title: appStrings.adminMasterKey,
-    label: appStrings.adminConfirmPassword,
-    confirmLabel: appStrings.adminShowMasterKey,
-    obscure: true,
-  );
-  if (password == null || !context.mounted) return;
-  final key = await controller.client.adminMasterKey(password);
+  final twoFactor = await _twoFactorEnabled(controller);
   if (!context.mounted) return;
+  final key = await showAdaptiveSheet<String>(
+    context: context,
+    builder: (_) => _ConfirmIdentityDialog<String>(
+      title: appStrings.adminMasterKey,
+      confirmLabel: appStrings.adminShowMasterKey,
+      twoFactor: twoFactor,
+      action: (password, code, _) => controller.client.adminMasterKey(password, code),
+    ),
+  );
+  if (key == null || !context.mounted) return;
   final stored = await showDialog<bool>(
     context: context,
     barrierDismissible: false,

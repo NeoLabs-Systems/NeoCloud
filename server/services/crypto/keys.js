@@ -103,12 +103,32 @@ function decryptValue(value) {
   return open(deriveKey('neocloud:secrets'), text.slice(SECRET_PREFIX.length)).toString('utf8');
 }
 
+/**
+ * Stops a start with a master key that is well-formed but not the one this
+ * install's data keys were wrapped with (a typo, another server's .env, a
+ * key replaced by hand). Running on would fail every download and give new
+ * accounts keys the original master key can't open.
+ */
+function assertMasterKeyMatches() {
+  const row = db.prepare('SELECT id, wrapped_dek FROM users WHERE wrapped_dek IS NOT NULL ORDER BY id LIMIT 1').get();
+  if (!row) return;
+  try {
+    unwrapDek(row.id, row.wrapped_dek);
+  } catch {
+    throw new Error(
+      'NEOCLOUD_MASTER_KEY does not match the key this data was encrypted with. Put the original key back '
+      + '(from `neocloud keys export` or your copy of .env); nothing was changed.',
+    );
+  }
+}
+
 /** The key database snapshots are encrypted with before leaving the server. */
 function getBackupKey() {
   return deriveKey('neocloud:backup');
 }
 
 module.exports = {
+  assertMasterKeyMatches,
   decryptValue,
   encryptValue,
   getBackupKey,

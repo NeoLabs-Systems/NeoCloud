@@ -189,10 +189,10 @@ test('approving needs a signed-in session or device token', async () => {
 test('only the phone app token may approve, not WebDAV or desktop tokens', async () => {
   const code = await showCode();
   const body = { challengeId: code.challengeId, secret: code.secret };
-  for (const platform of ['webdav', 'lite']) {
+  for (const [platform, refused] of [['webdav', 401], ['lite', 403]]) {
     const { body: token } = await owner.agent.post('/api/account/devices').send({ name: platform, platform }).expect(201);
     const bearer = `Bearer ${token.token}`;
-    await request(app).post('/api/account/qr-login/approve').set('Authorization', bearer).send(body).expect(403);
+    await request(app).post('/api/account/qr-login/approve').set('Authorization', bearer).send(body).expect(refused);
   }
   assert.equal((await status(code)).body.status, 'pending');
 });

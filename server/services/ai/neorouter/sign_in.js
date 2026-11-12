@@ -30,7 +30,7 @@ function pruneExpired(now = Date.now()) {
   }
 }
 
-async function postForm(url, fields) {
+async function postForm(url, fields, { trustedNetwork }) {
   const { response, text } = await fetchResponseText(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -38,6 +38,7 @@ async function postForm(url, fields) {
     maxResponseBytes: 64 * 1024,
     serviceName: 'NeoRouter sign-in',
     timeoutMs: 15000,
+    trustedNetwork,
   });
   let data = null;
   try {
@@ -76,7 +77,7 @@ async function poll(id) {
     grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
     device_code: flow.deviceCode,
     client_id: CLIENT_ID,
-  }).catch((error) => ({ ok: false, data: { error: 'network', error_description: error.message } }));
+  }, { trustedNetwork: flow.scope === 'server' }).catch((error) => ({ ok: false, data: { error: 'network', error_description: error.message } }));
   if (ok && data?.access_token) {
     try {
       store(flow, String(data.access_token));
@@ -112,7 +113,7 @@ async function begin({ scope, userId, address }) {
       client_id: CLIENT_ID,
       client_name: `NeoCloud (${os.hostname()})`,
       scope: SCOPES,
-    });
+    }, { trustedNetwork: scope === 'server' });
   } catch {
     throw httpError(400, `Could not reach NeoRouter at ${origin}.`, 'NEOROUTER_UNREACHABLE');
   }

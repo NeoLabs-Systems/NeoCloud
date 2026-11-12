@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"errors"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"sort"
@@ -34,6 +36,12 @@ func (p *pass) cloudIgnoreRules(dir string) ([]byte, error) {
 	rel := path.Join(dir, CloudIgnoreName)
 	full := filepath.Join(p.pair.Local, filepath.FromSlash(rel))
 	data, item, err := readCloudIgnore(full)
+	if err != nil && dir != "" && errors.Is(err, fs.ErrPermission) {
+		// The folder's rules can't be known, so the folder is left alone
+		// this pass (reported as unreadable); the rest of the pair syncs.
+		p.unreadableDirs = append(p.unreadableDirs, dir)
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

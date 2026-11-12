@@ -3,6 +3,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { BaseProvider, contentParts, parseDataUrl, textOf } = require('./base');
 const { wrapProviderError } = require('./provider_error');
+const { aiFetch } = require('../http');
 
 // Anthropic's input_tokens leaves out what the prompt cache served. Every other
 // provider counts it, so this makes the numbers mean the same thing.
@@ -25,7 +26,7 @@ class AnthropicProvider extends BaseProvider {
   constructor(config = {}) {
     super(config);
     this.name = 'anthropic';
-    this.client = new Anthropic({ apiKey: config.apiKey, baseURL: config.baseUrl || undefined, maxRetries: 0 });
+    this.client = new Anthropic({ apiKey: config.apiKey, baseURL: config.baseUrl || undefined, maxRetries: 0, fetch: aiFetch });
   }
 
   // Every current Claude model reads images.

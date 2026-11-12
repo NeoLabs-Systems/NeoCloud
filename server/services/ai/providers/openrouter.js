@@ -2,7 +2,7 @@
 
 const OpenAI = require('openai');
 const { OpenAICompatibleProvider } = require('./openai_compatible');
-const { fetchResponseText } = require('../http');
+const { aiFetch, fetchResponseText } = require('../http');
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const ATTRIBUTION_HEADERS = Object.freeze({
@@ -21,6 +21,7 @@ class OpenRouterProvider extends OpenAICompatibleProvider {
       timeout: 90_000, // free models can queue
       maxRetries: 0, // withProviderRetry handles retries
       defaultHeaders: ATTRIBUTION_HEADERS,
+      fetch: aiFetch,
     });
   }
 

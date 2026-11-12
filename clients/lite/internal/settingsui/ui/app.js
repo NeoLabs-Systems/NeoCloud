@@ -584,7 +584,11 @@ function attentionCards() {
     const name = baseName(pair.local);
     const pending = r.needsConfirmation;
     if (pending) {
-      const why = pending.reason === "remoteEmpty" ? "The NeoCloud folder is suddenly empty." : "This sync would delete many files at once.";
+      const reasons = {
+        remoteEmpty: "The NeoCloud folder is suddenly empty.",
+        localEmpty: "The folder on this computer is suddenly empty. If it is on a drive that was unplugged, plug it in again.",
+      };
+      const why = reasons[pending.reason] || "This sync would delete many files at once.";
       const parts = [];
       if (pending.remoteDeletes) parts.push(pending.remoteDeletes + " in NeoCloud");
       if (pending.localDeletes) parts.push(pending.localDeletes + " on this computer");

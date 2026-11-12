@@ -1,5 +1,9 @@
 part of 'main.dart';
 
+/// Whether the account has 2FA on, so a confirmation asks for a code too.
+Future<bool> _twoFactorEnabled(NeoCloudController controller) async =>
+    ((await controller.client.account())['twoFactor'] as Map?)?['enabled'] == true;
+
 /// Settings › Profile › Your data, ported from NeoRouter's
 /// AccountDataSection: export the account's data, delete the account. Each
 /// asks for the password again, and for a code when 2FA is on; deleting also
@@ -8,9 +12,6 @@ class _AccountDataSection extends StatelessWidget {
   const _AccountDataSection({required this.controller});
 
   final NeoCloudController controller;
-
-  Future<bool> _twoFactorOn() async =>
-      ((await controller.client.account())['twoFactor'] as Map?)?['enabled'] == true;
 
   String _fileName() {
     final date = DateTime.now().toIso8601String().substring(0, 10);
@@ -30,7 +31,7 @@ class _AccountDataSection extends StatelessWidget {
   }
 
   Future<void> _export(BuildContext context) async {
-    final twoFactor = await _guard(context, _twoFactorOn);
+    final twoFactor = await _guard(context, () => _twoFactorEnabled(controller));
     if (twoFactor == null || !context.mounted) return;
     final data = await showAdaptiveSheet<Map<String, dynamic>>(
       context: context,
@@ -51,7 +52,7 @@ class _AccountDataSection extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context) async {
-    final twoFactor = await _guard(context, _twoFactorOn);
+    final twoFactor = await _guard(context, () => _twoFactorEnabled(controller));
     if (twoFactor == null || !context.mounted) return;
     final username = controller.user?.username ?? '';
     final done = await showAdaptiveSheet<bool>(
@@ -100,6 +101,7 @@ class _AccountDataSection extends StatelessWidget {
 
 /// Password (and code, and for deleting the username) again, then runs the
 /// action; wrong entries are shown in the dialog so they can be corrected.
+/// Used by Your data, adding a security key and the master key export.
 class _ConfirmIdentityDialog<T> extends StatefulWidget {
   const _ConfirmIdentityDialog({
     required this.title,
@@ -159,6 +161,14 @@ class _ConfirmIdentityDialogState<T> extends State<_ConfirmIdentityDialog<T>> {
           return appStrings.accountLastAdmin;
         case 'CONFIRMATION_MISMATCH':
           return appStrings.accountConfirmMismatch;
+        case 'LOGIN_LOCKED':
+          final wait = error.retryAfter;
+          if (wait == null) return appStrings.signInRateLimited;
+          return wait.inSeconds >= 90
+              ? appStrings.confirmLockedMinutes((wait.inSeconds / 60).ceil())
+              : appStrings.confirmLockedSeconds(math.max(1, wait.inSeconds));
+        case 'RATE_LIMITED':
+          return appStrings.signInRateLimited;
       }
     }
     return error is ApiException && error.message.isNotEmpty ? error.message : '$error';

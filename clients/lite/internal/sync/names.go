@@ -20,6 +20,14 @@ const (
 	ReasonPathTooLong = "pathTooLong"
 	ReasonNameClash   = "nameClash"
 	ReasonIgnored     = "ignored"
+	ReasonUnreadable  = "unreadable"
+	// ReasonMovedIgnored is a synced file whose local copy was moved into
+	// an ignored or excluded folder: it stops syncing and the cloud copy
+	// stays where it was.
+	ReasonMovedIgnored = "movedIgnored"
+	// ReasonKeptInCloud is a folder deleted on this computer that stays in
+	// the cloud because it holds files this computer does not sync.
+	ReasonKeptInCloud = "keptInCloud"
 )
 
 // NotSynced is a path the engine deliberately leaves alone, with why.

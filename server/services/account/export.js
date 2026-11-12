@@ -78,14 +78,16 @@ function exportLinks(userId) {
 
 function exportMemberShares(userId) {
   const byMe = rows(`
-    SELECT s.id, s.node_id, n.name AS node_name, s.permission, s.recipient, s.expires_at, s.created_at, u.username
+    SELECT s.id, s.node_id, n.name AS node_name, s.permission, s.recipient, s.expires_at, s.created_at, u.display_name
     FROM user_shares s JOIN nodes n ON n.id = s.node_id JOIN users u ON u.id = s.grantee_id
     WHERE s.owner_id = ? ORDER BY s.id
   `, userId).map((row) => ({
     id: row.id,
     nodeId: row.node_id,
     nodeName: row.node_name,
-    with: row.username,
+    // As in the share dialog: the member's display name and what the owner
+    // typed, never the member's other identifier (SECURITY.md).
+    displayName: row.display_name || null,
     recipient: row.recipient,
     permission: row.permission,
     expiresAt: row.expires_at,

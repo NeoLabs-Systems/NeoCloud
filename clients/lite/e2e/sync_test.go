@@ -35,6 +35,7 @@ const remoteFolder = "Shared"
 // state database and local folder.
 type device struct {
 	name   string
+	home   string // config and state folder
 	dir    string // the synced folder
 	cfg    *config.Store
 	db     *state.DB
@@ -65,7 +66,7 @@ func newDevice(t *testing.T, s *server, name, direction string, ignore []string)
 		t.Fatal(err)
 	}
 	logger := log.New(testWriter{t, name}, "", 0)
-	d := &device{name: name, dir: dir, cfg: cfg, db: db, engine: sync.New(cfg, db, logger), pair: pair}
+	d := &device{name: name, home: home, dir: dir, cfg: cfg, db: db, engine: sync.New(cfg, db, logger), pair: pair}
 	if err := d.engine.SignIn(s.url, s.deviceLogin(t, name)); err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +479,7 @@ func TestLiteClientAgainstRealServer(t *testing.T) {
 			t.Error("download-only pair missed remote changes")
 		}
 		status := runCLI(t, bin, home, "status")
-		if !strings.Contains(status, "Account: neo") || !strings.Contains(status, "down") {
+		if !strings.Contains(status, "Account: "+testUser) || !strings.Contains(status, "down") {
 			t.Errorf("status output:\n%s", status)
 		}
 		a.sync(t)
@@ -579,7 +580,7 @@ func cliLogin(t *testing.T, s *server, bin, home string) {
 		}
 	}
 	io.Copy(io.Discard, stdout)
-	if err := cmd.Wait(); err != nil || !approved || !strings.Contains(output.String(), "Signed in as neo") {
+	if err := cmd.Wait(); err != nil || !approved || !strings.Contains(output.String(), "Signed in as "+testUser) {
 		t.Fatalf("CLI login: %v\n%s%s", err, output.String(), stderr.String())
 	}
 }

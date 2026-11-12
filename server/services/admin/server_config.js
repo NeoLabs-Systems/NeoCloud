@@ -1,12 +1,12 @@
 'use strict';
 
-const bcrypt = require('bcrypt');
 const fs = require('fs');
 const db = require('../../db/database');
 const { STORAGE_DIR, DATA_DIR } = require('../../../runtime/paths');
 const { getStorageConfig } = require('../../config/storage');
 const { getAllowSignup } = require('../../config/access');
 const { recordAccessEvent } = require('../access/audit');
+const { confirmIdentity } = require('../account/two_factor');
 const { recalculateUsage } = require('../storage/quota');
 const { persistEnv } = require('./env_config');
 const { httpError } = require('../../utils/http_error');
@@ -111,14 +111,12 @@ function recalculateAllUsage() {
 }
 
 /**
- * The master key, for an admin who confirmed their password. Without it a
- * backup of the storage directory can never be decrypted.
+ * The master key, for an admin who confirmed their password and, with 2FA
+ * on, a code. Without it a backup of the storage directory can never be
+ * decrypted.
  */
-async function exportMasterKey(userId, password) {
-  const user = db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
-  if (!user || !(await bcrypt.compare(String(password || ''), user.password))) {
-    throw httpError(401, 'Password is incorrect', 'WRONG_PASSWORD');
-  }
+async function exportMasterKey(userId, { currentPassword, code }) {
+  await confirmIdentity(userId, { currentPassword, code });
   recordAccessEvent('keys.master_export', { actorUserId: userId });
   return { masterKey: process.env.NEOCLOUD_MASTER_KEY };
 }

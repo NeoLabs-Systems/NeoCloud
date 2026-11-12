@@ -12,7 +12,7 @@ A body that isn't valid JSON answers `400 INVALID_JSON`, one over 1 MB
 | --- | --- |
 | Web app | Session cookie `neocloud.sid` from `/api/auth/login` or `/api/auth/register`. |
 | Phone app (platform `android`/`ios`) | `Authorization: Bearer nc_…` from QR pairing, the device login or a password sign-in swapped for a token. A full client: everything a session reaches, account, settings, imports and admin (for an admin account) included. A handful of session-bound routes refuse it (see [Account](#account--apiaccount-session-or-phone)). |
-| Lite (desktop) client, other tokens | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only; account, settings, imports, AI and NeoRouter answer `403 PHONE_REQUIRED`, admin `403 ADMIN_REQUIRED`. WebDAV app passwords reach WebDAV only (below). |
+| Lite (desktop) client, other tokens | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only; account, settings, imports, AI and NeoRouter answer `403 PHONE_REQUIRED`, admin `403 ADMIN_REQUIRED`. WebDAV app passwords reach WebDAV only (below); sent as a bearer token they answer `401`. |
 | Share link visitors | No account: the link token in the path, plus an unlock cookie for password links. |
 
 Browsers on another origin must be listed in `ALLOWED_ORIGINS`; state-changing
@@ -76,6 +76,16 @@ right or wrong, answers `429 LOGIN_LOCKED` with `Retry-After` and
 failures; wrong second-factor codes count until a full sign-in succeeds.
 A security key sign-in counts like a password try for the key's account.
 
+A TOTP code is accepted once: a code of a time step the account already
+used (at sign-in or any confirmation) is `INVALID_CODE`, so two prompts in
+a row need two codes. A recovery code is used up by the first request that
+gets it, even when two arrive at once.
+
+Every place a signed-in account confirms its password or code again (the
+`/api/account` routes taking `currentPassword` or `code`, and
+`POST /api/admin/keys/master`) is throttled per account the same way, under
+a key of its own: `429 LOGIN_LOCKED` with `Retry-After` and `retryAfter`.
+
 Security keys: the relying party is the host of `PUBLIC_URL` when set, else
 the origin the browser is on (this server or one in `ALLOWED_ORIGINS`); a key
 only works on the host it was registered on. Each ceremony's challenge lives
@@ -113,8 +123,8 @@ password and 2FA code are asked for exactly as with a session.
 | POST | `/2fa/disable` · `/2fa/recovery-codes` | `{ currentPassword, code }` |
 | GET / DELETE | `/sessions` · `/sessions/:id` | Revoking a session also closes its socket.io connections |
 | GET | `/security-keys` | → `{ securityKeys: [{ id, label, createdAt, lastUsedAt, transports, backedUp, rpId }] }`; `GET /` carries the same list |
-| POST | `/security-keys/register/options` | → `{ options }` for `navigator.credentials.create`. At most 20 keys (`400 SECURITY_KEY_LIMIT`). Browser only: `403 BROWSER_REQUIRED` for a phone token (also `/register/verify`) |
-| POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N" |
+| POST | `/security-keys/register/options` | `{ currentPassword, code? }` → `{ options }` for `navigator.credentials.create`. A key signs in on its own and is kept through password changes and sign-out-everywhere, so this asks for the password again, and a code when 2FA is on (`401 WRONG_PASSWORD`, `TWO_FACTOR_REQUIRED`, `INVALID_CODE`). At most 20 keys (`400 SECURITY_KEY_LIMIT`). Browser only: `403 BROWSER_REQUIRED` for a phone token (also `/register/verify`) |
+| POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N". Recorded in the admin audit log (`account.security_key_added`; removing one, `account.security_key_removed`) |
 | PUT / DELETE | `/security-keys/:id` | `{ label }` to rename → `{ success, credentials }`; another account's key is `404` |
 | GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once. `GET` → `{ devices: [{ id, name, platform, createdAt, lastSeenAt, current }] }`; `DELETE` of the phone asking → `400 CURRENT_DEVICE` |
 | GET | `/devices/authorize/:userCode` | → `{ name, platform, createdAt, expiresAt }` of a pending device login |
@@ -190,6 +200,18 @@ missing key takes its default: `names`, `folders`, `tags`, `summaries` and
 `{issuer}` `{subject}` `{type}` `{amount}` `{currency}` `{original}`). Unknown keys
 answer `400 UNKNOWN_SETTING`, bad values `400 INVALID_SETTING_VALUE`.
 
+`fileView`, `sortField` and `sortOrder` are the defaults. `folder_views`
+(default `{}`) holds what was chosen per folder or page:
+`{ <key>: { sort, dir, view, at } }`, the key a folder id, `root`, or one of
+the pages `recent`, `favorites`, `shared`, `trash`, `search` (1–64 characters
+of `A–Z a–z 0–9 _ : -`). `sort` is `name`/`size`/`modified`/`type`/`relevance`
+(`relevance` for search results), `dir` `asc`/`desc`, `view` `list`/`grid`;
+`at` (milliseconds) is set by the server. A PUT sends only the entries that
+changed, without `at` (up to 500; `null` removes one), and they are merged
+into what is stored, so devices don't overwrite each other's folders. At most
+500 entries are kept; the least recently changed go first. Entries for
+deleted folders are not removed until they age out.
+
 | Method | Path | Body | Answer |
 | --- | --- | --- | --- |
 | GET | `/meta/models` | | `{ models: [model] }`, every kind this account can see (below) |
@@ -243,6 +265,7 @@ already has), `newFolders` (moves into a folder that doesn't exist yet).
 | POST | `/suggestions/:id/accept` | `{ value? }`: replaces the proposal: a name (rename), a folder id (move), a tag list (tags) | `{ suggestion }` with `status: "accepted"`. `409 AI_SUGGESTION_STALE` (the file changed; it is now `stale`), `409 AI_SUGGESTION_DECIDED`, `409 AI_TARGET_NOT_ALLOWED` (vault or excluded folder), `409 SHARE_BOUNDARY`, `400 NAME_*`, `400 INVALID_VALUE` |
 | POST | `/suggestions/:id/reject` | | `{ suggestion }` with `status: "rejected"` (pending or stale ones) |
 | POST | `/suggestions/accept-high` | `{ kind? }` (comma-separated) | `{ accepted, failed: [{ id, code }] }`: every pending high-tier one |
+| POST | `/suggestions/bulk` | `{ ids: [suggestionId], action: "accept"\|"reject" }` (1–1000 ids) | `{ done, failed: [{ id, code }] }`: each one decided as by its own accept or reject route; a failure (`NOT_FOUND`, `AI_SUGGESTION_STALE`, `AI_SUGGESTION_DECIDED`, …) doesn't stop the rest. `400 INVALID_ACTION`, `400 INVALID_REQUEST` |
 | POST | `/suggestions/:id/undo` | | `{ suggestion }` with `status: "undone"`: an `accepted` or `applied` one is put back (name, folder or tags) if the file is still as it left it, else `409 AI_UNDO_CONFLICT` (or `409 NAME_EXISTS` when the old name is taken); `409 AI_NOT_UNDOABLE` for other states |
 | POST | `/jobs` | `{ nodeIds: [fileId] }` or `{ folderId }`, `kinds?: ["names","folders","tags"]` (default: every switched-on kind) | `202 { batchId, queued }`. `nodeIds` (1–1000 files): their names are suggested even when they already read well. `folderId`: a backfill of every file below it (at most 5000, else `413 TOO_MANY_FILES`) skipping vaults and excluded folders, renaming only meaningless names. `403 AI_VAULT` / `AI_EXCLUDED` for a listed file, `400 NOT_A_FILE`, `400 INVALID_KINDS`, `400 INVALID_REQUEST`, `403 AI_FEATURE_OFF`, `403 AI_DISABLED` / `AI_NOT_OPTED_IN` |
 | GET | `/jobs` | `batchId?` | `{ pending, running, done, skipped, failed, paused, batches: [{ id, createdAt, total, pending, done, skipped, failed }] }` (the last 10 requests, or the one asked for; unknown `404`). `paused`: why pending jobs wait (`AI_DISABLED`, `AI_NOT_OPTED_IN`, `AI_BUDGET_EXCEEDED`) or null. Finished jobs are kept 7 days |
@@ -278,6 +301,23 @@ Applying goes through the normal file operations: the change journal and
 clashes. Whenever counts change the account's sockets get **`ai:suggestions`**
 with `counts` as payload.
 
+### Duplicates
+
+Plain duplicate finding, no AI: it works whether AI is on or off, for the
+signed-in account's own live files (no vault, no trash).
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| GET | `/duplicates` | | `{ groups: [group], pending }`, the most space to free first (at most 500 groups). `pending`: photos not compared yet; their hashes are made in the background after this request, so ask again while it is above 0 |
+| POST | `/duplicates/dismiss` | `{ nodeIds: [fileId] }` (2–1000) | `{ success: true }`: "Not duplicates", a group whose files are all among these isn't listed again. Another account's file `404`, `400 INVALID_REQUEST` |
+
+`group`: `{ kind: "exact"|"similar", similarity (percent), items: [{ node,
+size, takenAt?, width?, height?, keep }] }`. `exact`: the same content (the
+SHA-256 etag), any file type. `similar`: photos whose 64-bit perceptual hash
+(dHash of a 9×8 grayscale thumbnail) differs in at most 6 bits (about 90 %);
+exact copies appear there once. `node` carries `path`. `keep` marks the one
+to keep: the oldest copy (exact) or the largest picture (similar). Removing
+the others uses `DELETE /api/nodes/:id` (the trash), so it can be undone.
 
 ## NeoRouter — `/api/neorouter` (session or phone)
 
@@ -405,6 +445,37 @@ working (`GET` returns them as stored); clients re-wrap with `PUT …/key` and
 at least 600 000 after the next unlock. Vaults don't nest (`409 VAULT_BOUNDARY`). Nodes created
 in a vault folder (folders, single and resumable uploads, copies) inherit its
 `vaultId`. Vault files have no thumbnail or preview (`404`).
+
+## Photos — `/api/photos` (session or phone)
+
+The account's own photos and videos (`image/*` except SVG and icons,
+`video/*`), newest first by when they were taken: EXIF `DateTimeOriginal`,
+else the date a phone or camera wrote into the movie or the file name
+(`IMG_20260312_101010.jpg`), else the modification time. `takenAt` is that
+wall-clock time, `"YYYY-MM-DDTHH:MM:SS"` with no time zone; the first 10
+characters are the day the photo belongs to. Vault files, trashed files and
+files shared with the account are never listed.
+
+| Method | Path | Query | Answer |
+| --- | --- | --- | --- |
+| GET | `/` | `cursor?`, `day?` (`YYYY-MM-DD`), `limit?` (1–500, default 200) | `{ items: [photo], nextCursor }` |
+| GET | `/summary` | | `{ total, pending, days: [{ date, count }], months: [{ month, count }] }`, newest first |
+
+- A photo: `{ id, takenAt, kind: "photo"|"video", width, height,
+  durationSeconds, name, parentId, mime, size, etag, favorite }`. `width`,
+  `height` (as displayed, EXIF rotation applied) and `durationSeconds` are
+  `null` until the file was read, and for formats NeoCloud can't read.
+- Pages continue from `nextCursor` (opaque; `null` on the last page) and are
+  as fast at the end of a long timeline as at the start. `day` starts the
+  page at the newest item of that day instead, for jumping there; it is
+  ignored when `cursor` is set. `400 INVALID_CURSOR`, `INVALID_DAY`,
+  `INVALID_LIMIT`.
+- New uploads show at once with a date from the file name or modification
+  time; a background task then reads each file once (EXIF, the movie header)
+  for its real date and size and makes its `square` thumbnail. `pending`
+  counts items not read yet: their place in the timeline may still move.
+- Thumbnails: `GET /api/files/:id/thumbnail?size=square&v=<etag>`. Videos
+  have no thumbnail.
 
 ## Share links — `/api/shares` (session or bearer)
 
@@ -608,9 +679,16 @@ ETAG_MISMATCH` if the file changed meanwhile).
 4. `POST /api/uploads/:id/complete` `{ baseEtag? }` → the file node.
    While one complete runs, another complete or a cancel of the same upload
    answers `409 UPLOAD_COMPLETING`; once it is done, `404 UPLOAD_NOT_FOUND`.
-5. `DELETE /api/uploads/:id` cancels. Unfinished uploads expire after 24 h.
+5. `DELETE /api/uploads/:id` cancels. An upload expires 24 h after its last part arrived (or after it was created, before any part).
    A part still arriving when its upload is cancelled answers
    `404 UPLOAD_NOT_FOUND` and is discarded.
+
+**Already there?** — `POST /api/uploads/check` `{ parentId, sha256, size }`
+→ `{ exists }`: whether a live file with that content (SHA-256, any case,
+and size in bytes) is in the folder or any folder below it. Camera upload
+asks before each photo, so photos it sent before are not sent again, even
+after they were sorted into subfolders or its records were lost. `400
+INVALID_HASH` / `INVALID_SIZE`; a folder of a share uses the owner's tree.
 
 `413 QUOTA_EXCEEDED` or `413 FILE_TOO_LARGE` when it does not fit.
 `507 DISK_FULL` when the server's storage disk would drop below
@@ -620,11 +698,18 @@ a resumable upload and uploads into share links.
 **Download** — `GET /api/files/:id/content?download=1&version=N`. Supports
 `Range` (206/416), `If-None-Match` (304) and `HEAD`. HTML, SVG and other
 active types are always sent as attachments; every response carries a
-sandbox CSP.
+sandbox CSP. A file whose stored data is missing or fails authentication
+answers `500 FILE_UNREADABLE` before any byte is sent; damage further into a
+file can only cut the transfer short, never deliver altered bytes.
 
-**Thumbnail** — `GET /api/files/:id/thumbnail?size=256|1024`: WebP of an
-image, cached after the first request. `415 PREVIEW_UNAVAILABLE` for other
-types, `404` for vault files (also for the document preview).
+**Thumbnail** — `GET /api/files/:id/thumbnail?size=256|1024|square&v=<etag>`:
+WebP of an image, cached after the first request. `256` and `1024` fit the
+image into that many pixels; `square` is a 320 × 320 centre crop for photo
+grids, made ahead of time for the Photos timeline. Answers carry the ETag
+and `Cache-Control: private, max-age=86400`; when `v` is the file's current
+`etag` the URL names one content, so it is `private, max-age=31536000,
+immutable`. `415 PREVIEW_UNAVAILABLE` for other types, `404` for vault files
+(also for the document preview).
 
 **Document preview** — `GET /api/files/:id/preview`: a PDF of an Office file
 (needs LibreOffice on the server; see SECURITY.md for how the converter is
@@ -759,8 +844,8 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 | GET / PUT | `/config/storage` | `defaultQuotaBytes`, `maxUploadBytes`, `trashRetentionDays`, `versionRetention` |
 | POST | `/storage/recalculate` | |
 | GET | `/access` · PUT `/access/signup` | `{ allowSignup }` — off refuses every registration but the first account's |
-| POST | `/keys/master` | `{ password }` → `{ masterKey }` |
-| GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun` and `lastVerification` (below, or null) |
+| POST | `/keys/master` (5 / 15 min) | `{ password, code? }` → `{ masterKey }`; `code` (TOTP or recovery code) is required when the admin has 2FA on: `401 WRONG_PASSWORD`, `TWO_FACTOR_REQUIRED`, `INVALID_CODE` |
+| GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun` and `lastVerification` (below, or null). A run has `bytesUploaded`/`blobsUploaded` so far and, once it has compared with the target, `bytesTotal`/`blobsTotal` it has to upload |
 | POST | `/backups/targets` | `{ name, type: local\|sftp\|s3\|webdav, config, schedule: manual\|daily\|weekly, hour, weekday, retention }` |
 | PUT / DELETE | `/backups/targets/:id` | an empty secret keeps the stored one |
 | POST | `/backups/targets/:id/test` · `/backups/targets/:id/run` | run answers 202 and works in the background; `404 NOT_FOUND` for an unknown target, `409 BACKUP_RUNNING` while a run to it is going (in the server or `neocloud backup run`) |

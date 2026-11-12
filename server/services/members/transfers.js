@@ -28,6 +28,12 @@ function createUpload(userId, options) {
   return uploads.createUpload(access.ownerId, { ...options, parentId: access.node.id, createdBy: userId });
 }
 
+function contentExists(userId, options) {
+  const access = resolveAccess(userId, options.parentId, { type: 'folder' });
+  if (!access.shared) return uploads.contentExists(userId, options);
+  return uploads.contentExists(access.ownerId, { ...options, parentId: access.node.id });
+}
+
 /**
  * The account a resumable upload belongs to, for the caller. A member's
  * upload into a shared folder belongs to the owner and goes on only while
@@ -93,6 +99,7 @@ function sendZip(res, userId, rawIds) {
 module.exports = {
   cancelUpload,
   completeUpload,
+  contentExists,
   createUpload,
   getUpload,
   putPart,

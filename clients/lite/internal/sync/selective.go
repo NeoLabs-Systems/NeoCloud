@@ -89,12 +89,13 @@ func (p *pass) releaseExcluded(ex string) {
 	if info, err := os.Lstat(full); err != nil || !info.IsDir() {
 		return
 	}
-	if !p.onlySyncedContent(ex, full) {
+	clean, ignored := p.onlySyncedContent(ex, full)
+	if !clean {
 		p.notSynced = append(p.notSynced, NotSynced{Path: ex, Reason: ReasonExcluded,
 			Detail: "not synced: excluded, and kept here because it holds files that are not in NeoCloud"})
 		return
 	}
-	if _, err := moveToTrash(p.pair.Local, ex, time.Now()); err != nil {
+	if _, err := moveToTrash(p.pair.Local, ex, time.Now(), ignored); err != nil {
 		p.fail(ex, err)
 		return
 	}
@@ -103,9 +104,10 @@ func (p *pass) releaseExcluded(ex string) {
 }
 
 // onlySyncedContent reports whether everything under the local folder ex
-// is a synced, unchanged file, an ignored file or OS junk.
-func (p *pass) onlySyncedContent(ex, full string) bool {
-	clean := true
+// is a synced, unchanged file, an ignored file or OS junk, and whether
+// there are ignored files (which the cloud has no copy of).
+func (p *pass) onlySyncedContent(ex, full string) (clean, ignored bool) {
+	clean = true
 	filepath.WalkDir(full, func(entryPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			clean = false
@@ -119,7 +121,9 @@ func (p *pass) onlySyncedContent(ex, full string) bool {
 		entry, tracked := p.base[key]
 		info, infoErr := d.Info()
 		switch {
-		case isOSJunk(d.Name()) || p.ignore.Match(key, false):
+		case isOSJunk(d.Name()):
+		case p.ignore.Match(key, false):
+			ignored = true
 		case tracked && infoErr == nil && d.Type().IsRegular() && entry.Type == "file" &&
 			info.Size() == entry.LocalSize && info.ModTime().UnixNano() == entry.LocalMtime:
 		default:
@@ -128,7 +132,7 @@ func (p *pass) onlySyncedContent(ex, full string) bool {
 		}
 		return nil
 	})
-	return clean
+	return clean, ignored
 }
 
 // holdNewFolders applies new_folders and the big-folder limit to folders

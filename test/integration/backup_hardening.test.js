@@ -68,6 +68,16 @@ async function encryptForSnapshot(plaintext, name) {
   return fs.readFileSync(file);
 }
 
+test('a run records what it has to upload, so progress can show a total', async () => {
+  const { id } = await localTarget('totals');
+  const run = await runner.runBackup(id);
+  assert.equal(run.status, 'ok', run.error);
+  assert.equal(typeof run.bytesTotal, 'number');
+  assert.equal(typeof run.blobsTotal, 'number');
+  assert.ok(run.bytesUploaded <= run.bytesTotal, `${run.bytesUploaded} <= ${run.bytesTotal}`);
+  assert.equal(run.blobsUploaded, run.blobsTotal);
+});
+
 test('restore, verify and prune refuse manifest entries that are not <user id>/<blob id>', async () => {
   const { id, folder } = await localTarget('traversal');
   const run = await runner.runBackup(id);

@@ -44,6 +44,7 @@ async function registerSecurityKey(agent, authenticator, label, { origin = ORIGI
   const optionsRes = await agent
     .post('/api/account/security-keys/register/options')
     .set('Origin', ORIGIN)
+    .send({ currentPassword: STRONG_PASSWORD })
     .expect(200);
   const attestation = authenticator.register({ options: optionsRes.body.options, origin });
   return agent
@@ -222,8 +223,12 @@ test('a throttled account cannot sign in with its key either', async () => {
   throttle.clearFailures(key);
 });
 
-function totp(secret) {
-  return generateSync({ secret, strategy: 'totp', digits: 6, period: 30 });
+// A code works once per time step (the server keeps the last one used), so
+// a second code in the same test is taken `ahead` steps later.
+function totp(secret, ahead = 0) {
+  return generateSync({
+    secret, strategy: 'totp', digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 * ahead,
+  });
 }
 
 async function enableTwoFactor(agent) {
@@ -256,7 +261,7 @@ test('a presence-only key still has to pass 2FA', async () => {
   assert.equal(login.body.success, false);
   assert.equal(login.body.requiresTwoFactor, true);
   await visitor.get('/api/auth/me').expect(401);
-  await visitor.post('/api/auth/login/2fa').send({ code: totp(secret) }).expect(200);
+  await visitor.post('/api/auth/login/2fa').send({ code: totp(secret, 1) }).expect(200);
   await visitor.get('/api/auth/me').expect(200);
 });
 

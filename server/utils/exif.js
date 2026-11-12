@@ -42,9 +42,20 @@ function exifDate(value) {
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
-/** { make, model, takenAt: "YYYY-MM-DD" } from an EXIF block; null fields when absent. */
+// "2026:03:14 09:26:53" -> "2026-03-14T09:26:53" (the camera's wall clock)
+function exifDateTime(value) {
+  const date = exifDate(value);
+  if (!date) return null;
+  const time = /^\d{4}:\d{2}:\d{2}[ T](\d{2}):(\d{2}):(\d{2})/.exec(String(value));
+  return time ? `${date}T${time[1]}:${time[2]}:${time[3]}` : `${date}T00:00:00`;
+}
+
+/**
+ * { make, model, takenAt: "YYYY-MM-DD", takenDateTime: "YYYY-MM-DDTHH:MM:SS" }
+ * from an EXIF block; null fields when absent.
+ */
 function readExif(buffer) {
-  const empty = { make: null, model: null, takenAt: null };
+  const empty = { make: null, model: null, takenAt: null, takenDateTime: null };
   if (!Buffer.isBuffer(buffer) || buffer.length < 14) return empty;
   const tiff = buffer.subarray(0, 6).toString('latin1') === 'Exif\0\0' ? buffer.subarray(6) : buffer;
   const view = new DataView(tiff.buffer, tiff.byteOffset, tiff.byteLength);
@@ -60,6 +71,7 @@ function readExif(buffer) {
     make: text(ifd0.get(TAG_MAKE)),
     model: text(ifd0.get(TAG_MODEL)),
     takenAt: exifDate(exif.get(TAG_DATE_TIME_ORIGINAL)) || exifDate(ifd0.get(TAG_DATE_TIME)),
+    takenDateTime: exifDateTime(exif.get(TAG_DATE_TIME_ORIGINAL)) || exifDateTime(ifd0.get(TAG_DATE_TIME)),
   };
 }
 

@@ -14,6 +14,7 @@ const review = require('../services/ai/organize/review');
 const jobs = require('../services/ai/organize/jobs');
 const rules = require('../services/ai/organize/rules');
 const { summarizeFile } = require('../services/ai/organize/summaries');
+const duplicates = require('../services/ai/duplicates');
 const { jsonHandler, rateLimiter } = require('./_helpers/http');
 
 const router = express.Router();
@@ -39,6 +40,7 @@ router.get('/suggestions', jsonHandler((req) => suggestions.listSuggestions(req.
 })));
 router.get('/suggestions/counts', jsonHandler((req) => suggestions.suggestionCounts(req.userId)));
 router.post('/suggestions/accept-high', jsonHandler((req) => review.acceptAllHigh(req.userId, { kind: req.body?.kind })));
+router.post('/suggestions/bulk', jsonHandler((req) => review.bulkDecide(req.userId, { ids: req.body?.ids, action: req.body?.action })));
 router.post('/suggestions/:id/accept', jsonHandler((req) => review.acceptSuggestion(req.userId, req.params.id, { value: req.body?.value })));
 router.post('/suggestions/:id/reject', jsonHandler((req) => review.rejectSuggestion(req.userId, req.params.id)));
 router.post('/suggestions/:id/undo', jsonHandler((req) => review.undoSuggestion(req.userId, req.params.id)));
@@ -57,6 +59,10 @@ router.post('/rules/proposals/:id', jsonHandler((req) => rules.acceptProposal(re
 router.delete('/rules/proposals/:id', jsonHandler((req) => rules.dismissProposal(req.userId, req.params.id)));
 router.patch('/rules/:id', jsonHandler((req) => rules.updateRule(req.userId, req.params.id, req.body)));
 router.delete('/rules/:id', jsonHandler((req) => rules.deleteRule(req.userId, req.params.id)));
+
+// Duplicates need no AI: they work with AI off too.
+router.get('/duplicates', jsonHandler((req) => duplicates.listDuplicates(req.userId)));
+router.post('/duplicates/dismiss', jsonHandler((req) => duplicates.dismissDuplicates(req.userId, req.body?.nodeIds)));
 
 router.post('/files/:id/summary', workLimiter, jsonHandler((req) => summarizeFile(req.userId, req.params.id, {
   refresh: req.body?.refresh === true,

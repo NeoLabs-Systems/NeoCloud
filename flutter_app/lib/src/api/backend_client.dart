@@ -3,11 +3,13 @@ import 'dart:typed_data';
 
 import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
+import '../photos/photo_models.dart';
 import 'models.dart';
 
 part 'backend_client_ai.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
+part 'backend_client_photos.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
 /// the API (e.g. NAME_EXISTS); [message] is readable text for the user.
@@ -366,17 +368,31 @@ class BackendClient {
 
   /// One-request upload. [ifMatch] (with `replace`) makes the server refuse
   /// with `412 ETAG_MISMATCH` when the file changed since it was read.
-  Future<FileNode> uploadSmall(String parentId, String name, Uint8List bytes, {required String conflict, String? ifMatch}) async =>
+  /// [sha256] (hex) makes the server refuse content that arrives different
+  /// (`422 CHECKSUM_MISMATCH`).
+  Future<FileNode> uploadSmall(String parentId, String name, Uint8List bytes, {required String conflict, String? ifMatch, String? sha256}) async =>
       FileNode.fromJson(_map(await _request(
         'PUT',
         '/api/upload',
         query: {'parentId': parentId, 'name': name, 'conflict': conflict},
         bytes: bytes,
-        headers: ifMatch == null ? null : {'If-Match': '"$ifMatch"'},
+        headers: {
+          if (ifMatch != null) 'If-Match': '"$ifMatch"',
+          'X-Content-SHA256': ?sha256,
+        },
       )));
 
-  Future<Map<String, dynamic>> createUpload(String parentId, String name, int size, {required String conflict}) async =>
-      _map(await _request('POST', '/api/uploads', json: {'parentId': parentId, 'name': name, 'size': size, 'conflict': conflict}));
+  Future<Map<String, dynamic>> createUpload(String parentId, String name, int size, {required String conflict, String? sha256}) async =>
+      _map(await _request(
+        'POST',
+        '/api/uploads',
+        json: {'parentId': parentId, 'name': name, 'size': size, 'conflict': conflict, 'sha256': ?sha256},
+      ));
+
+  /// Whether a file with this content (SHA-256 and size) is in [parentId]
+  /// or any folder below it.
+  Future<bool> uploadContentExists(String parentId, String sha256, int size) async =>
+      _map(await _request('POST', '/api/uploads/check', json: {'parentId': parentId, 'sha256': sha256, 'size': size}))['exists'] == true;
 
   Future<void> uploadPart(String uploadId, int index, Uint8List bytes) =>
       _request('PUT', '/api/uploads/$uploadId/parts/$index', bytes: bytes);
@@ -405,8 +421,13 @@ class BackendClient {
 
   Future<List<SecurityKeyItem>> securityKeys() async => _securityKeys(_map(await _request('GET', '/api/account/security-keys'))['securityKeys']);
 
-  Future<Map<String, dynamic>> beginSecurityKeyRegistration() async =>
-      _map(await _request('POST', '/api/account/security-keys/register/options'));
+  /// Asks for the password again, and the 2FA [code] when it is on.
+  Future<Map<String, dynamic>> beginSecurityKeyRegistration(String password, String? code) async => _map(await _request(
+    'POST',
+    '/api/account/security-keys/register/options',
+    json: {'currentPassword': password, 'code': ?code},
+    expireOn401: false,
+  ));
 
   Future<List<SecurityKeyItem>> completeSecurityKeyRegistration(Map<String, dynamic> response, String label) async => _securityKeys(
     _map(await _request('POST', '/api/account/security-keys/register/verify', json: {'response': response, 'label': label}))['credentials'],
@@ -604,6 +625,11 @@ class BackendClient {
   Future<Map<String, dynamic>> adminVerifyBackup(int id) async =>
       _map(await _request('POST', '/api/admin/backups/targets/$id/verify', json: const {}));
 
-  Future<String> adminMasterKey(String password) async =>
-      _map(await _request('POST', '/api/admin/keys/master', json: {'password': password}))['masterKey'].toString();
+  /// The admin's password, and the 2FA [code] when it is on.
+  Future<String> adminMasterKey(String password, String? code) async => _map(await _request(
+    'POST',
+    '/api/admin/keys/master',
+    json: {'password': password, 'code': ?code},
+    expireOn401: false,
+  ))['masterKey'].toString();
 }

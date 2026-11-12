@@ -34,7 +34,7 @@ mixin _FilesKeyboard on _FilesBase, _FilesActions {
   int gridColumns = 1;
   double gridRowExtent = 220;
 
-  bool get gridView => controller.settings.fileView == 'grid';
+  bool get gridView => folderView.grid;
 
   /// The focus ring shows while the page has keyboard focus.
   bool get showFocusRing => panelFocus.hasFocus && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;

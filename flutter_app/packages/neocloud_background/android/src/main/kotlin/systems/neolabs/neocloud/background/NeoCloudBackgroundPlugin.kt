@@ -71,6 +71,7 @@ class NeoCloudBackgroundPlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "status" -> result.success(status())
+            "isUnmetered" -> result.success(isUnmetered())
             "startTransfer" -> {
                 val owner = call.argument<String>("owner") ?: "transfer"
                 val held = channel
@@ -208,5 +209,18 @@ class NeoCloudBackgroundPlugin :
                 // Not on this phone: try the next.
             }
         }
+    }
+
+    /**
+     * Whether the active network is connected and not metered: what
+     * "Wi-Fi only" means, and the same test WorkManager's UNMETERED
+     * constraint uses. Null when it can't tell.
+     */
+    private fun isUnmetered(): Boolean? {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        if (!capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false
+        return !manager.isActiveNetworkMetered
     }
 }

@@ -2,16 +2,18 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, review, shared, favorites, recent, trash, settings, admin }
+enum AppSection { files, photos, review, shared, favorites, recent, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
-enum SidebarGroup { files, admin, settings }
+enum SidebarGroup { files, photos, admin, settings }
 
 extension AppSectionInfo on AppSection {
   String get label {
     switch (this) {
       case AppSection.files:
         return appStrings.navAllFiles;
+      case AppSection.photos:
+        return appStrings.photosNav;
       case AppSection.review:
         return appStrings.aiReviewNav;
       case AppSection.shared:
@@ -33,6 +35,8 @@ extension AppSectionInfo on AppSection {
     switch (this) {
       case AppSection.files:
         return Icons.folder_outlined;
+      case AppSection.photos:
+        return Icons.photo_library_outlined;
       case AppSection.review:
         return Icons.auto_awesome_outlined;
       case AppSection.shared:
@@ -59,6 +63,8 @@ extension AppSectionInfo on AppSection {
       case AppSection.recent:
       case AppSection.trash:
         return SidebarGroup.files;
+      case AppSection.photos:
+        return SidebarGroup.photos;
       case AppSection.settings:
         return SidebarGroup.settings;
       case AppSection.admin:
@@ -72,6 +78,8 @@ extension SidebarGroupInfo on SidebarGroup {
     switch (this) {
       case SidebarGroup.files:
         return appStrings.navFiles;
+      case SidebarGroup.photos:
+        return appStrings.photosNav;
       case SidebarGroup.admin:
         return appStrings.navAdmin;
       case SidebarGroup.settings:
@@ -83,6 +91,8 @@ extension SidebarGroupInfo on SidebarGroup {
     switch (this) {
       case SidebarGroup.files:
         return Icons.cloud_outlined;
+      case SidebarGroup.photos:
+        return Icons.photo_library_outlined;
       case SidebarGroup.admin:
         return Icons.admin_panel_settings_outlined;
       case SidebarGroup.settings:
@@ -95,12 +105,15 @@ extension SidebarGroupInfo on SidebarGroup {
 List<AppSection> _mainSections(NeoCloudController controller) {
   return <AppSection>[
     AppSection.files,
-    // AI suggestions wait here; only while AI runs for the account.
-    if (controller.aiReview.enabled) AppSection.review,
+    // AI suggestions wait here while AI runs for the account; its
+    // Duplicates tab needs no AI, so the page is always there.
+    AppSection.review,
     AppSection.shared,
     AppSection.favorites,
     AppSection.recent,
     AppSection.trash,
+    // Its own sidebar entry and phone tab: the timeline of photos and videos.
+    AppSection.photos,
     AppSection.settings,
     // Shown for admin accounts only; the server enforces it on every request.
     if (controller.isAdmin) AppSection.admin,

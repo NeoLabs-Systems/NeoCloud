@@ -95,12 +95,21 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
     return DateTime.tryParse('${text.replaceFirst(' ', 'T')}Z')?.toLocal();
   }
 
+  /// "Backing up… 62 % · 13 GB of 21 GB" once the run knows its total.
+  String _runningLabel(Map<String, dynamic> run) {
+    final total = (run['bytesTotal'] as num?)?.toInt();
+    final done = (run['bytesUploaded'] as num?)?.toInt() ?? 0;
+    if (total == null || total <= 0) return appStrings.backupRunning;
+    final percent = (done * 100 / total).clamp(0, 100).floor();
+    return appStrings.backupRunningProgress(percent, formatBytes(done), formatBytes(total));
+  }
+
   Widget _runStatus(Map<String, dynamic>? run) {
     final locale = currentAppLanguage.code;
     if (run == null) return Text(appStrings.backupNeverRun, style: TextStyle(color: _textMuted, fontSize: 12.5));
     switch (run['status']) {
       case 'running':
-        return _StatusPill(label: appStrings.backupRunning, color: _info);
+        return _StatusPill(label: _runningLabel(run), color: _info);
       // Status is a dot plus words, never colored text.
       case 'ok':
         return _StatusPill(
@@ -244,7 +253,7 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
                   control: _StatusPill(
                     label: switch (run['status']) {
                       'ok' => appStrings.adminBackupRunOk,
-                      'running' => appStrings.backupRunning,
+                      'running' => _runningLabel(run),
                       _ => appStrings.adminBackupRunFailed,
                     },
                     color: switch (run['status']) {

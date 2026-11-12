@@ -77,6 +77,11 @@ router.post('/qr-login/approve', accountLimiter, requireSessionOrPhone, jsonHand
 
 router.use(requireSessionOrPhone);
 
+// The password, and a code when 2FA is on, for twoFactor.confirmIdentity.
+function identity(req) {
+  return { currentPassword: req.body?.currentPassword, code: req.body?.code };
+}
+
 function currentUser(req) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
 }
@@ -132,7 +137,9 @@ router.post('/2fa/recovery-codes', accountLimiter, jsonHandler((req) => twoFacto
 // Security keys and passkeys. Registration is a two-step ceremony whose
 // challenge waits in the session between options and verify, and it is bound
 // to the web origin: the phone app lists, renames and removes keys but adds
-// them only in a browser (BROWSER_REQUIRED).
+// them only in a browser (BROWSER_REQUIRED). A key signs in on its own and
+// survives a password change, so starting one asks for the password again,
+// and a code when 2FA is on.
 router.get('/security-keys', jsonHandler((req) => ({ securityKeys: webauthn.listCredentials(req.userId) })));
 
 function requireBrowser(req, res, next) {
@@ -141,6 +148,7 @@ function requireBrowser(req, res, next) {
 }
 
 router.post('/security-keys/register/options', accountLimiter, requireBrowser, jsonHandler(async (req) => {
+  await twoFactor.confirmIdentity(req.userId, identity(req));
   const { options, challenge } = await webauthn.beginRegistration({ req, userId: req.userId });
   req.session.pendingWebAuthnRegistration = challenge;
   return { options };
@@ -214,10 +222,6 @@ const accountDataLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-function identity(req) {
-  return { currentPassword: req.body?.currentPassword, code: req.body?.code };
-}
 
 router.post('/export', accountDataLimiter, jsonHandler(async (req, res) => {
   await twoFactor.confirmIdentity(req.userId, identity(req));

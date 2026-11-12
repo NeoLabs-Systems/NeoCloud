@@ -20,9 +20,34 @@ function optionalText(value, field, max) {
   return value.trim();
 }
 
-function globRegex(pattern) {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
-  return new RegExp(`^${escaped}$`, 'i');
+// `*` any run of characters, `?` one, case-insensitive. Matched in linear
+// steps per star (no regular expression): a pattern like "*a*a*a…b" must not
+// backtrack exponentially and stall the whole server.
+function globMatches(pattern, name) {
+  const p = String(pattern).toLowerCase();
+  const n = String(name).toLowerCase();
+  let pi = 0;
+  let ni = 0;
+  let starAt = -1;
+  let resumeAt = 0;
+  while (ni < n.length) {
+    if (pi < p.length && (p[pi] === '?' || (p[pi] !== '*' && p[pi] === n[ni]))) {
+      pi += 1;
+      ni += 1;
+    } else if (pi < p.length && p[pi] === '*') {
+      starAt = pi;
+      resumeAt = ni;
+      pi += 1;
+    } else if (starAt >= 0) {
+      pi = starAt + 1;
+      resumeAt += 1;
+      ni = resumeAt;
+    } else {
+      return false;
+    }
+  }
+  while (pi < p.length && p[pi] === '*') pi += 1;
+  return pi === p.length;
 }
 
 function extensionOf(name) {
@@ -126,7 +151,7 @@ function ruleMatches(row, node, fields) {
   if (row.match_type && !equal(row.match_type, fields.type)) return false;
   if (row.match_issuer && !equal(row.match_issuer, fields.issuer)) return false;
   if (row.match_extension && row.match_extension !== extensionOf(node.name)) return false;
-  if (row.match_name_pattern && !globRegex(row.match_name_pattern).test(node.name)) return false;
+  if (row.match_name_pattern && !globMatches(row.match_name_pattern, node.name)) return false;
   return true;
 }
 

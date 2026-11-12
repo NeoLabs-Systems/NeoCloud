@@ -16,10 +16,14 @@ function sessionUserId(req) {
   return userId && isAccountActive(userId) ? userId : null;
 }
 
+// A device token sent as a bearer token. WebDAV app passwords are refused
+// here: they live in third-party WebDAV apps and reach WebDAV only, never
+// the API (links, shares with other accounts, vaults, sync).
 function deviceFromHeader(req) {
   const header = String(req.get('authorization') || '');
   const match = header.match(/^Bearer\s+(\S+)$/i);
-  return match ? resolveDeviceToken(match[1]) : null;
+  const device = match ? resolveDeviceToken(match[1]) : null;
+  return device && device.platform !== 'webdav' ? device : null;
 }
 
 // A browser session or a device bearer token (desktop, mobile, lite clients).

@@ -71,6 +71,20 @@ class AiApi {
   Future<AiAcceptHighResult> acceptHigh({String? kind}) async =>
       AiAcceptHighResult.fromJson(await _send('POST', '/api/ai/suggestions/accept-high', <String, Object?>{'kind': ?kind}));
 
+  /// Accepts or rejects many suggestions at once (`action`: `accept` or
+  /// `reject`); failures come back by id.
+  Future<AiBulkResult> bulkDecide(List<String> ids, String action) async =>
+      AiBulkResult.fromJson(await _send('POST', '/api/ai/suggestions/bulk', <String, Object?>{'ids': ids, 'action': action}));
+
+  // Duplicates (no AI needed)
+
+  /// Groups of identical files and look-alike photos.
+  Future<ReviewDuplicates> duplicates() async => ReviewDuplicates.fromJson(await _get('/api/ai/duplicates'));
+
+  /// "Not duplicates": the group of these files isn't listed again.
+  Future<void> dismissDuplicates(List<String> nodeIds) =>
+      _send('POST', '/api/ai/duplicates/dismiss', <String, Object?>{'nodeIds': nodeIds});
+
   Map<String, dynamic> _suggestion(Map<String, dynamic> body) =>
       body['suggestion'] is Map ? (body['suggestion'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
 

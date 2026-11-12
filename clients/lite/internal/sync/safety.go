@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -28,6 +29,9 @@ const (
 	markerName     = "pair-id"
 	trashDir       = "trash"
 	trashDayFormat = "2006-01-02"
+	// keepSuffix marks a trash day that holds the only copy of something
+	// (<day>.keep next to the day folder): retention never prunes it.
+	keepSuffix = ".keep"
 
 	// Per-pair state (state.DB meta keys).
 	metaMarker  = "marker"  // "1" once the root marker was written
@@ -40,6 +44,7 @@ const (
 const (
 	GuardMassDelete  = "massDelete"
 	GuardRemoteEmpty = "remoteEmpty"
+	GuardLocalEmpty  = "localEmpty"
 )
 
 // DeleteConfirmation describes deletions held back until the user agrees.
@@ -61,8 +66,11 @@ type NeedsConfirmationError struct {
 
 func (e *NeedsConfirmationError) Error() string {
 	what := "would delete"
-	if e.Pending.Reason == GuardRemoteEmpty {
+	switch e.Pending.Reason {
+	case GuardRemoteEmpty:
 		what = "the server folder is suddenly empty; syncing would delete"
+	case GuardLocalEmpty:
+		what = "the local folder is suddenly empty; syncing would delete"
 	}
 	return fmt.Sprintf("%s %d file(s) on the server and %d on this computer; nothing was deleted. Confirm with `neocloud-lite pair confirm-deletes %s` or in the settings page",
 		what, e.Pending.RemoteDeletes, e.Pending.LocalDeletes, e.Pair)
@@ -82,13 +90,16 @@ func (g guardLimits) trips(n, tracked int) bool {
 }
 
 // evaluateGuard returns the confirmation a plan needs, or nil.
-// remoteEmpty is true when the server folder has nothing left although
-// files were tracked.
-func (g guardLimits) evaluate(remoteDeletes, localDeletes, tracked int, remoteEmpty bool) *DeleteConfirmation {
+// remoteEmpty (localEmpty) is true when the server (local) folder has
+// nothing left although files were tracked: whatever the count, that
+// looks more like an outage than like the user's intent.
+func (g guardLimits) evaluate(remoteDeletes, localDeletes, tracked int, remoteEmpty, localEmpty bool) *DeleteConfirmation {
 	pending := DeleteConfirmation{RemoteDeletes: remoteDeletes, LocalDeletes: localDeletes}
 	switch {
 	case remoteEmpty && localDeletes > 0:
 		pending.Reason = GuardRemoteEmpty
+	case localEmpty && remoteDeletes > 0:
+		pending.Reason = GuardLocalEmpty
 	case g.trips(remoteDeletes, tracked) || g.trips(localDeletes, tracked):
 		pending.Reason = GuardMassDelete
 	default:
@@ -167,8 +178,11 @@ func writeFileSync(name string, data []byte) error {
 
 // moveToTrash moves a local file or folder (diskRel below root) into
 // <root>/.neocloud/trash/<YYYY-MM-DD>/<diskRel>, adding " 2", " 3", … when
-// that name is taken. User data is never unlinked directly.
-func moveToTrash(root, diskRel string, now time.Time) (string, error) {
+// that name is taken. User data is never unlinked directly. onlyCopy says
+// the cloud has no copy of what moves (a local version that lost a
+// conflict, files a .cloudignore keeps out): its day is then marked so
+// the retention never prunes it.
+func moveToTrash(root, diskRel string, now time.Time, onlyCopy bool) (string, error) {
 	source := filepath.Join(root, filepath.FromSlash(diskRel))
 	if !insideRoot(root, source) {
 		return "", errOutsideRoot
@@ -177,6 +191,11 @@ func moveToTrash(root, diskRel string, now time.Time) (string, error) {
 	target := filepath.Join(day, filepath.FromSlash(diskRel))
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return "", err
+	}
+	if onlyCopy {
+		if err := writeFileSync(day+keepSuffix, []byte("This day holds the only copy of some files; NeoCloud never deletes it.\n")); err != nil {
+			return "", err
+		}
 	}
 	dir, name := filepath.Dir(target), filepath.Base(target)
 	free := uniqueName(name, func(candidate string) bool {
@@ -190,7 +209,8 @@ func moveToTrash(root, diskRel string, now time.Time) (string, error) {
 	return target, nil
 }
 
-// pruneTrash removes trash days older than days; 0 keeps them all.
+// pruneTrash removes trash days older than days; 0 keeps them all. A
+// day marked as holding an only copy stays until the user removes it.
 func pruneTrash(root string, now time.Time, days int) {
 	if days <= 0 {
 		return
@@ -204,6 +224,9 @@ func pruneTrash(root string, now time.Time, days int) {
 	for _, entry := range entries {
 		day, err := time.ParseInLocation(trashDayFormat, entry.Name(), now.Location())
 		if err != nil || !entry.IsDir() || !day.Before(cutoff) {
+			continue
+		}
+		if _, err := os.Lstat(filepath.Join(dir, entry.Name()+keepSuffix)); !errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		os.RemoveAll(filepath.Join(dir, entry.Name()))

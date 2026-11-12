@@ -25,9 +25,10 @@ const { replaceContent } = require('./versions');
 async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null }, blob) {
   const cleanName = validateName(name);
   let finalPath = null;
+  let result;
   try {
     finalPath = await moveIntoPlace(userId, blob);
-    const result = db.transaction(() => {
+    result = db.transaction(() => {
       const parent = getLiveNode(userId, parentId, { type: 'folder' });
       if (blob.size > remainingBytes(userId, { excludeUploadId: uploadId })) {
         throw httpError(413, 'Not enough storage left for this file.', 'QUOTA_EXCEEDED');
@@ -62,13 +63,15 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
       touchFolder(parent.id);
       return { orphaned: [], node };
     })();
-    await deleteBlobFiles(userId, result.orphaned);
-    announceChanges(userId, [result.node.parent_id]);
-    return serializeNode(result.node);
   } catch (err) {
     await removeQuietly(finalPath || blob.tmpPath);
     throw err;
   }
+  // Committed: from here on the blob file belongs to the new row, so nothing
+  // that fails below may remove it.
+  await deleteBlobFiles(userId, result.orphaned);
+  announceChanges(userId, [result.node.parent_id]);
+  return serializeNode(result.node);
 }
 
 module.exports = { commitUploadedBlob };

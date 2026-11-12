@@ -24,13 +24,19 @@ class _SharedWithMePanelState extends State<SharedWithMePanel> {
   void initState() {
     super.initState();
     _controller.fileChanges.addListener(_onFilesChangedElsewhere);
+    _controller.folderViews.addListener(_onViewChanged);
     unawaited(_load());
   }
 
   @override
   void dispose() {
     _controller.fileChanges.removeListener(_onFilesChangedElsewhere);
+    _controller.folderViews.removeListener(_onViewChanged);
     super.dispose();
+  }
+
+  void _onViewChanged() {
+    if (mounted) setState(() {});
   }
 
   /// A share renamed or trashed by its owner changes the list.
@@ -90,11 +96,16 @@ class _SharedWithMePanelState extends State<SharedWithMePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final shares = _controller.sharedWithMe;
+    final view = _pageView(_controller, FolderViewKeys.shared);
+    final shares = sortedForView(_controller.sharedWithMe, view, (share) => share.node);
     return _PageScaffold(
       onRefresh: _load,
       children: <Widget>[
-        _PageTitle(title: appStrings.navSharedWithMe, subtitle: appStrings.sharedWithMeSubtitle),
+        _PageTitle(
+          title: appStrings.navSharedWithMe,
+          subtitle: appStrings.sharedWithMeSubtitle,
+          trailing: _pageSortMenu(_controller, FolderViewKeys.shared, view),
+        ),
         if (_error != null) _LoadError(message: _error!, onRetry: () => unawaited(_load())),
         if (_loading && shares.isEmpty && _error == null) const _LoadingPlaceholder(),
         if (!_loading && shares.isEmpty && _error == null)

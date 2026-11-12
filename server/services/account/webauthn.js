@@ -14,6 +14,7 @@ const {
 const db = require('../../db/database');
 const { isAllowedOrigin } = require('../../config/origins');
 const { httpError } = require('../../utils/http_error');
+const { recordAccessEvent } = require('../access/audit');
 const { findUserForSignIn } = require('./credentials');
 const throttle = require('./login_throttle');
 
@@ -181,7 +182,7 @@ async function completeRegistration({ req, userId, response, label, pending }) {
   if (existingCount >= MAX_CREDENTIALS_PER_USER) {
     throw httpError(400, `You can register at most ${MAX_CREDENTIALS_PER_USER} security keys.`, 'SECURITY_KEY_LIMIT');
   }
-  db.prepare(`
+  const inserted = db.prepare(`
     INSERT INTO user_webauthn_credentials
       (user_id, credential_id, public_key, counter, rp_id, transports_json, device_type, backed_up, user_verified, label)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -197,6 +198,13 @@ async function completeRegistration({ req, userId, response, label, pending }) {
     userVerified ? 1 : 0,
     normalizeLabel(label, `Security key ${existingCount + 1}`),
   );
+  // A key signs in on its own and outlives password changes and "sign out
+  // everywhere", so adding one is on the record.
+  recordAccessEvent('account.security_key_added', {
+    actorUserId: userId,
+    subjectUserId: userId,
+    detail: { securityKeyId: Number(inserted.lastInsertRowid) },
+  });
   return { success: true, credentials: listCredentials(userId) };
 }
 
@@ -329,6 +337,11 @@ function deleteCredential(userId, credentialRowId) {
   const result = db.prepare('DELETE FROM user_webauthn_credentials WHERE id = ? AND user_id = ?')
     .run(credentialRowId, userId);
   if (result.changes === 0) throw httpError(404, 'Security key not found.', 'NOT_FOUND');
+  recordAccessEvent('account.security_key_removed', {
+    actorUserId: userId,
+    subjectUserId: userId,
+    detail: { securityKeyId: credentialRowId },
+  });
   return { success: true, credentials: listCredentials(userId) };
 }
 

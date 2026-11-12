@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -52,6 +53,14 @@ type pass struct {
 
 	deleteRemote []string
 	deleteLocal  []string
+	// ignoredRoots are local paths the scan did not enter (ignored or
+	// excluded), where a vanished file may have been moved to.
+	ignoredRoots []string
+	// unreadableDirs are folders whose .cloudignore could not be read.
+	unreadableDirs []string
+	// detached are synced files moved into an ignored folder: their rows
+	// are parked (meta "detached") and the cloud copies stay.
+	detached map[string]detachedEntry
 	// pending is set when the guard held this pass's deletions back.
 	pending *DeleteConfirmation
 
@@ -192,15 +201,28 @@ func (p *pass) run(tree *api.Tree) error {
 	if err := p.ignore.Err(); err != nil {
 		return err
 	}
+	// The scan only shows what is missing locally if the folder is still
+	// the pair's: a drive unplugged during the scan must not read as
+	// "everything was deleted".
+	if err := p.stillThere(); err != nil {
+		return err
+	}
 	p.local, p.dirs, p.disk = scan.items, scan.dirs, scan.disk
+	p.ignoredRoots = scan.ignoredRoots
 	p.ignored = mergeIgnored(scan.ignored, remoteIgnored)
 	p.findNotSynced(scan)
+	if err := p.applyDetached(); err != nil {
+		return err
+	}
 
 	if p.canDown() {
 		p.followRemoteMoves()
 	}
 	if p.canUp() {
 		p.followLocalMoves()
+		if err := p.detachMovedIntoIgnored(); err != nil {
+			return err
+		}
 	}
 	var plan []step
 	for _, rel := range p.allPaths() {
@@ -224,9 +246,29 @@ func (p *pass) run(tree *api.Tree) error {
 		}
 		p.execute(s)
 	}
+	if len(p.deleteRemote)+len(p.deleteLocal) > 0 {
+		// Checked again right before deleting: the folder may have gone
+		// (unplugged, unmounted) while the transfers ran.
+		if err := p.stillThere(); err != nil {
+			return errors.Join(append(p.errs, err)...)
+		}
+	}
 	p.applyRemoteDeletes()
 	p.applyLocalDeletes()
 	return errors.Join(p.errs...)
+}
+
+// stillThere checks that the pair's folder is still in place and still
+// holds its marker (written by checkMarker at the start of the pass).
+func (p *pass) stillThere() error {
+	if info, err := os.Stat(p.pair.Local); err != nil || !info.IsDir() {
+		return fmt.Errorf("local folder %s is not available", p.pair.Local)
+	}
+	data, err := os.ReadFile(filepath.Join(p.pair.Local, metaDir, markerName))
+	if err != nil || strings.TrimSpace(string(data)) != p.pair.ID {
+		return errMarkerMissing
+	}
+	return nil
 }
 
 // dropUnsafeBase forgets rows whose path could not name a file inside the
@@ -279,6 +321,12 @@ func (p *pass) checkRoot() error {
 func (p *pass) findNotSynced(scan *localScan) {
 	list := append(append(append([]NotSynced(nil), p.notSynced...), scan.skipped...), p.remote.skipped...)
 	list = append(list, p.tooLarge()...)
+	for _, dir := range p.unreadableDirs {
+		if slices.ContainsFunc(list, func(item NotSynced) bool { return item.Path == dir }) {
+			continue // the scan reported it too
+		}
+		list = append(list, NotSynced{Path: dir, Reason: ReasonUnreadable, Detail: "not synced: could not be read on this computer (permission denied)"})
+	}
 	local, remote, base := keySet(p.local), keySet(p.remote.nodes), keySet(p.base)
 	list = append(list, clashes(local, remote, base, scan.spellings)...)
 	if windowsNames {
@@ -343,7 +391,8 @@ func (p *pass) guard(plan []step) (bool, error) {
 			return false, err
 		}
 	}
-	pending := p.guardLimits.evaluate(remoteDeletes, localDeletes, tracked, tracked > 0 && len(p.remote.nodes) == 0)
+	pending := p.guardLimits.evaluate(remoteDeletes, localDeletes, tracked,
+		tracked > 0 && len(p.remote.nodes) == 0, tracked > 0 && len(p.local) == 0 && len(p.ignoredRoots) == 0)
 	if pending == nil {
 		return false, nil
 	}
@@ -657,8 +706,9 @@ func (p *pass) download(rel string) {
 		case before != nil && (statErr != nil || now.size != before.size || now.mtime != before.mtime):
 			return errLocalChanged
 		case before != nil:
-			// The version being replaced goes to the local trash.
-			_, err := moveToTrash(p.pair.Local, p.diskRel(rel), time.Now())
+			// The version being replaced goes to the local trash; unless
+			// it is the synced one, the cloud has no copy of it.
+			_, err := moveToTrash(p.pair.Local, p.diskRel(rel), time.Now(), !p.isSyncedVersion(rel, before))
 			return err
 		}
 		return nil
@@ -748,8 +798,18 @@ func (p *pass) dropLocal(rel string) {
 
 // applyRemoteDeletes trashes nodes deleted locally. Shallowest first: a
 // trashed folder takes its subtree with it, so its content needs no calls.
+// A folder that still holds something this pass does not delete (a file
+// left out of syncing here: excluded, ignored, not valid on this system,
+// moved into an ignored folder) is not trashed as a whole: its deleted
+// content goes one by one and the folder stays.
 func (p *pass) applyRemoteDeletes() {
 	sort.Strings(p.deleteRemote)
+	deleting := map[string]bool{}
+	for _, rel := range p.deleteRemote {
+		if node, ok := p.remote.nodes[rel]; ok {
+			deleting[node.ID] = true
+		}
+	}
 	var done []string
 	for _, rel := range p.deleteRemote {
 		if underAny(rel, done) {
@@ -757,19 +817,30 @@ func (p *pass) applyRemoteDeletes() {
 			continue
 		}
 		// Something reappeared locally (a download into this folder, or
-		// the user restored it): keep the remote side.
+		// the user restored it): keep the remote side. Only a path that
+		// is really gone counts; an error reading it is not an absence.
 		full, err := p.full(rel)
 		if err != nil {
 			p.fail(rel, err)
 			continue
 		}
-		if _, err := os.Lstat(full); err == nil {
+		if _, err := os.Lstat(full); !errors.Is(err, fs.ErrNotExist) {
+			if err != nil {
+				p.fail(rel, err)
+			}
 			continue
 		}
 		node, ok := p.remote.nodes[rel]
 		if !ok {
 			p.forget(rel)
 			continue
+		}
+		if node.IsFolder() {
+			if kept := p.remote.keeps(rel, deleting); kept != "" {
+				p.notSynced = append(p.notSynced, NotSynced{Path: rel, Reason: ReasonKeptInCloud,
+					Detail: "not deleted in the cloud: it still holds " + kept + ", which is not synced to this computer"})
+				continue
+			}
 		}
 		if err := p.client.Delete(p.ctx, node.ID); err != nil && !api.HasStatus(err, 404) {
 			p.fail(rel, err)
@@ -808,8 +879,12 @@ func (p *pass) applyLocalDeletes() {
 			continue
 		}
 		now, err := lstatItem(full)
-		if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
 			p.forget(rel)
+			continue
+		}
+		if err != nil {
+			p.fail(rel, err)
 			continue
 		}
 		if now.dir {
@@ -822,7 +897,7 @@ func (p *pass) applyLocalDeletes() {
 			p.again = true
 			continue
 		}
-		p.trashLocal(rel)
+		p.trashLocal(rel, false)
 	}
 }
 
@@ -834,7 +909,7 @@ func (p *pass) applyLocalDeletes() {
 // it is uploaded as new, or looked at again, on the next pass.
 func (p *pass) deleteLocalFolder(rel, full string, queued map[string]bool) {
 	var junk, dirs []string
-	keep, worth := false, false
+	keep, worth, onlyCopy := false, false, false
 	walkErr := filepath.WalkDir(full, func(entryPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -849,7 +924,7 @@ func (p *pass) deleteLocalFolder(rel, full string, queued map[string]bool) {
 		key := rel + "/" + nfc(filepath.ToSlash(inner))
 		switch {
 		case d.IsDir() && p.ignore.Match(key, true):
-			worth = true
+			worth, onlyCopy = true, true
 			return filepath.SkipDir
 		case d.IsDir() && queued[key]:
 			dirs = append(dirs, entryPath)
@@ -858,7 +933,7 @@ func (p *pass) deleteLocalFolder(rel, full string, queued map[string]bool) {
 		case isOSJunk(d.Name()):
 			junk = append(junk, entryPath)
 		case p.ignore.Match(key, false):
-			worth = true
+			worth, onlyCopy = true, true
 		case queued[key] && p.unchangedFile(key, d):
 			worth = true
 		default:
@@ -877,7 +952,7 @@ func (p *pass) deleteLocalFolder(rel, full string, queued map[string]bool) {
 		return
 	}
 	if worth {
-		p.trashLocal(rel)
+		p.trashLocal(rel, onlyCopy)
 		return
 	}
 	for _, file := range junk {
@@ -907,10 +982,18 @@ func (p *pass) unchangedFile(key string, d fs.DirEntry) bool {
 	return err == nil && info.Size() == seen.size && info.ModTime().UnixNano() == seen.mtime
 }
 
+// isSyncedVersion reports whether the local file seen as item is the
+// version recorded as synced, i.e. one the cloud keeps (as the current
+// file or in its version history).
+func (p *pass) isSyncedVersion(rel string, item *localItem) bool {
+	entry, ok := p.base[rel]
+	return ok && entry.Type == "file" && !item.dir && item.size == entry.LocalSize && item.mtime == entry.LocalMtime
+}
+
 // trashLocal moves rel (a file, or a folder with everything in it) into
-// the local trash and forgets it.
-func (p *pass) trashLocal(rel string) {
-	if _, err := moveToTrash(p.pair.Local, p.diskRel(rel), time.Now()); err != nil {
+// the local trash and forgets it. onlyCopy: see moveToTrash.
+func (p *pass) trashLocal(rel string, onlyCopy bool) {
+	if _, err := moveToTrash(p.pair.Local, p.diskRel(rel), time.Now(), onlyCopy); err != nil {
 		p.fail(rel, err)
 		return
 	}

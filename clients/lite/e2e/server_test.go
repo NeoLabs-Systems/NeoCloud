@@ -28,12 +28,17 @@ import (
 
 const strongPassword = "Plum-Orbit-73!quartz" // same as test/helpers/app.js
 
+// testUser is the throwaway account each test server is created with.
+const testUser = "litetester"
+
 // server is a running NeoCloud plus a signed-in browser-style session.
 type server struct {
 	url     string
 	session *http.Client
 	cmd     *exec.Cmd
 	logs    *bytes.Buffer
+	dir     string   // the repository root
+	env     []string // the server's environment, kept for a restart
 }
 
 func repoRoot(t *testing.T) string {
@@ -68,52 +73,68 @@ func startServer(t *testing.T) *server {
 	}
 	home := t.TempDir()
 	port := freePort(t)
+	s := &server{
+		url:  fmt.Sprintf("http://127.0.0.1:%d", port),
+		logs: &bytes.Buffer{},
+		dir:  repoRoot(t),
+		env: append(os.Environ(),
+			"NEOCLOUD_HOME="+home,
+			fmt.Sprintf("PORT=%d", port),
+			"NODE_ENV=development",
+			"NEOCLOUD_MASTER_KEY="+randomHex(32),
+			"SESSION_SECRET="+randomHex(32),
+			"PUBLIC_URL=",
+			"ALLOWED_ORIGINS=",
+		),
+	}
+	t.Cleanup(func() {
+		s.stop()
+		if t.Failed() {
+			t.Logf("server output:\n%s", s.logs.String())
+		}
+	})
+	s.spawn(t)
+
+	jar, _ := cookiejar.New(nil)
+	s.session = &http.Client{Jar: jar, Timeout: 30 * time.Second}
+	s.mustJSON(t, "POST", "/api/auth/register", map[string]string{
+		"username": testUser, "email": testUser + "@example.com", "password": strongPassword,
+	}, nil)
+	return s
+}
+
+// spawn starts the server process and waits until it answers.
+func (s *server) spawn(t *testing.T) {
+	t.Helper()
 	cmd := exec.Command("node", "server/index.js")
-	cmd.Dir = repoRoot(t)
-	cmd.Env = append(os.Environ(),
-		"NEOCLOUD_HOME="+home,
-		fmt.Sprintf("PORT=%d", port),
-		"NODE_ENV=development",
-		"NEOCLOUD_MASTER_KEY="+randomHex(32),
-		"SESSION_SECRET="+randomHex(32),
-		"PUBLIC_URL=",
-		"ALLOWED_ORIGINS=",
-	)
-	logs := &bytes.Buffer{}
-	cmd.Stdout, cmd.Stderr = logs, logs
+	cmd.Dir, cmd.Env = s.dir, s.env
+	cmd.Stdout, cmd.Stderr = s.logs, s.logs
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	s := &server{url: fmt.Sprintf("http://127.0.0.1:%d", port), cmd: cmd, logs: logs}
-	t.Cleanup(func() {
-		cmd.Process.Kill()
-		cmd.Wait()
-		if t.Failed() {
-			t.Logf("server output:\n%s", logs.String())
-		}
-	})
-
+	s.cmd = cmd
 	deadline := time.Now().Add(30 * time.Second)
 	for {
 		res, err := http.Get(s.url + "/api/auth/status")
 		if err == nil {
 			res.Body.Close()
 			if res.StatusCode == 200 {
-				break
+				return
 			}
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("server did not start: %v\n%s", err, logs.String())
+			t.Fatalf("server did not start: %v\n%s", err, s.logs.String())
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
+}
 
-	jar, _ := cookiejar.New(nil)
-	s.session = &http.Client{Jar: jar, Timeout: 30 * time.Second}
-	s.mustJSON(t, "POST", "/api/auth/register", map[string]string{
-		"username": "neo", "email": "neo@example.com", "password": strongPassword,
-	}, nil)
-	return s
+// stop kills the server process (a crash: no shutdown handlers run).
+func (s *server) stop() {
+	if s.cmd != nil && s.cmd.Process != nil {
+		s.cmd.Process.Kill()
+		s.cmd.Wait()
+	}
 }
 
 // sessionJSON calls the API with the browser session.
@@ -179,7 +200,7 @@ func (s *server) deviceLogin(t *testing.T, name string) *api.DeviceToken {
 	if err != nil {
 		t.Fatalf("token: %v", err)
 	}
-	if !strings.HasPrefix(token.Token, "nc_") || token.User.Username != "neo" {
+	if !strings.HasPrefix(token.Token, "nc_") || token.User.Username != testUser {
 		t.Fatalf("unexpected token answer: %+v", token)
 	}
 	// The code is spent once used.
@@ -187,7 +208,7 @@ func (s *server) deviceLogin(t *testing.T, name string) *api.DeviceToken {
 		t.Error("device code could be exchanged twice")
 	}
 	me, err := api.New(s.url, token.Token).Me(ctx)
-	if err != nil || me.User.Username != "neo" || me.Device.Name != name {
+	if err != nil || me.User.Username != testUser || me.Device.Name != name {
 		t.Fatalf("devices/me: %+v %v", me, err)
 	}
 	return token

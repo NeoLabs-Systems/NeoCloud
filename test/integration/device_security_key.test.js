@@ -39,7 +39,8 @@ async function registerUser(prefix) {
 }
 
 async function registerSecurityKey(agent, authenticator) {
-  const optionsRes = await agent.post('/api/account/security-keys/register/options').set('Origin', ORIGIN).expect(200);
+  const optionsRes = await agent.post('/api/account/security-keys/register/options').set('Origin', ORIGIN)
+    .send({ currentPassword: STRONG_PASSWORD }).expect(200);
   const attestation = authenticator.register({ options: optionsRes.body.options, origin: ORIGIN });
   await agent.post('/api/account/security-keys/register/verify').set('Origin', ORIGIN)
     .send({ response: attestation, label: 'Key' }).expect(200);
@@ -60,8 +61,12 @@ async function signIn(authenticator, { userHandle, origin = ORIGIN, username } =
   return { started, assertion, res: await verify({ challengeId: started.body.challengeId, response: assertion }) };
 }
 
-function totp(secret) {
-  return generateSync({ secret, strategy: 'totp', digits: 6, period: 30 });
+// A code works once per time step (the server keeps the last one used), so
+// a second code in the same test is taken `ahead` steps later.
+function totp(secret, ahead = 0) {
+  return generateSync({
+    secret, strategy: 'totp', digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 * ahead,
+  });
 }
 
 async function enableTwoFactor(agent) {
@@ -204,10 +209,10 @@ test('a presence-only key still has to pass 2FA', async () => {
   const otherId = await twoFactor(totp(secret), 'another-id');
   assert.equal(otherId.body.code, 'TWO_FACTOR_EXPIRED');
 
-  const done = await twoFactor(totp(secret)).expect(200);
+  const done = await twoFactor(totp(secret, 1)).expect(200);
   assert.match(done.body.token, /^nc_/);
   assert.equal(done.body.user.id, user.id);
-  const again = await twoFactor(totp(secret));
+  const again = await twoFactor(totp(secret, 1));
   assert.equal(again.body.code, 'TWO_FACTOR_EXPIRED');
 });
 

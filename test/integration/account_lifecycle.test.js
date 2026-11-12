@@ -49,8 +49,12 @@ function upload(agent, name, content, parentId = 'root') {
     .set('Content-Type', 'application/octet-stream').send(Buffer.from(content));
 }
 
-function totp(secret) {
-  return generateSync({ secret, strategy: 'totp', digits: 6, period: 30 });
+// A code works once per time step (the server keeps the last one used), so
+// a second code in the same test is taken `ahead` steps later.
+function totp(secret, ahead = 0) {
+  return generateSync({
+    secret, strategy: 'totp', digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 * ahead,
+  });
 }
 
 function wrongCode(secret) {
@@ -81,7 +85,8 @@ function dav(username, password) {
 }
 
 async function registerSecurityKey(agent, authenticator) {
-  const started = await agent.post('/api/account/security-keys/register/options').set('Origin', ORIGIN).expect(200);
+  const started = await agent.post('/api/account/security-keys/register/options').set('Origin', ORIGIN)
+    .send({ currentPassword: STRONG_PASSWORD }).expect(200);
   const attestation = authenticator.register({ options: started.body.options, origin: ORIGIN });
   await agent.post('/api/account/security-keys/register/verify').set('Origin', ORIGIN)
     .send({ response: attestation, label: 'Key' }).expect(200);
@@ -134,7 +139,8 @@ test('export: the account as JSON, without file contents or credentials', async 
   assert.equal(exported.versions.length, 1);
   assert.ok(data.files.some((node) => node.id === folder.id && node.type === 'folder'));
   assert.equal(data.links[0].hasPassword, true);
-  assert.equal(data.sharing.byMe[0].with, bob.username);
+  assert.equal(data.sharing.byMe[0].recipient, bob.username);
+  assert.ok(!('with' in data.sharing.byMe[0]), 'the member’s own identifier stays out of the owner’s export');
   assert.equal(data.devices[0].platform, 'lite');
   assert.ok(data.sessions.length >= 1);
 
@@ -167,7 +173,7 @@ test('delete: wrong password, wrong code, wrong confirmation, then gone with eve
   const blobDir = path.join(BLOB_DIR, String(carol.id));
   assert.ok(fs.existsSync(blobDir));
 
-  const body = { currentPassword: STRONG_PASSWORD, code: totp(secret), confirmUsername: carol.username };
+  const body = { currentPassword: STRONG_PASSWORD, code: totp(secret, 1), confirmUsername: carol.username };
   const wrongPassword = await carol.agent.post('/api/account/delete').send({ ...body, currentPassword: 'nope' }).expect(401);
   assert.equal(wrongPassword.body.code, 'WRONG_PASSWORD');
   const noCode = await carol.agent.post('/api/account/delete').send({ ...body, code: undefined }).expect(401);
@@ -183,6 +189,9 @@ test('delete: wrong password, wrong code, wrong confirmation, then gone with eve
     to: (room) => ({ emit: (event, payload) => emitted.push({ room, event, payload }) }),
     in: () => sockets,
   });
+  // The mismatch above used the next step's code; forget it rather than wait
+  // for the step after.
+  db.prepare("DELETE FROM user_settings WHERE user_id = ? AND key = 'two_factor_last_step'").run(carol.id);
   try {
     await carol.agent.post('/api/account/delete').send({ ...body, code: totp(secret) }).expect(200);
   } finally {

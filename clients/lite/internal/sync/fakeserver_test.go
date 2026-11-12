@@ -36,6 +36,14 @@ type fakeServer struct {
 	// hooks let tests interfere with requests.
 	beforeUpload func(parentID, name string)
 	failContent  string // content requests for files of this name fail
+	// treeFail answers the tree with this status; treeDrop leaves the
+	// paths it matches out of the tree (an outage, a partial answer).
+	treeFail int
+	treeDrop func(path string) bool
+	// removeFail answers DELETE with this status.
+	removeFail int
+	// onContent may answer a content request itself (returns true).
+	onContent func(w http.ResponseWriter, r *http.Request, data []byte) bool
 }
 
 type fakeNode struct {
@@ -138,6 +146,10 @@ func (f *fakeServer) newNode(parentID, kind, name string, content []byte) *fakeN
 func (f *fakeServer) tree(w http.ResponseWriter, _ *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.treeFail != 0 {
+		f.fail(w, f.treeFail, "INTERNAL")
+		return
+	}
 	out := []fakeNode{}
 	for _, node := range f.nodes {
 		if node.ID == fakeRoot {
@@ -145,6 +157,9 @@ func (f *fakeServer) tree(w http.ResponseWriter, _ *http.Request) {
 		}
 		copied := *node
 		copied.Path = f.pathOf(node)
+		if f.treeDrop != nil && f.treeDrop(copied.Path) {
+			continue
+		}
 		out = append(out, copied)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
@@ -241,6 +256,9 @@ func (f *fakeServer) content(w http.ResponseWriter, r *http.Request) {
 		f.fail(w, 500, "INTERNAL")
 		return
 	}
+	if f.onContent != nil && f.onContent(w, r, data) {
+		return
+	}
 	w.Header().Set("ETag", `"`+node.Etag+`"`)
 	if spec, ok := strings.CutPrefix(r.Header.Get("Range"), "bytes="); ok {
 		start, _ := strconv.Atoi(strings.TrimSuffix(spec, "-"))
@@ -289,6 +307,10 @@ func (f *fakeServer) remove(w http.ResponseWriter, r *http.Request) {
 	node, ok := f.nodes[r.PathValue("id")]
 	if !ok {
 		f.fail(w, 404, "NOT_FOUND")
+		return
+	}
+	if f.removeFail != 0 {
+		f.fail(w, f.removeFail, "INTERNAL")
 		return
 	}
 	f.trashTree(node)
@@ -350,6 +372,20 @@ func (f *fakeServer) mkdirRaw(parentRel, name string) {
 	defer f.mu.Unlock()
 	parent := f.lookup(parentRel)
 	f.newNode(parent.ID, "folder", name, nil)
+}
+
+// setModified sets a node's modification time as the server reports it.
+func (f *fakeServer) setModified(rel, value string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.lookup(rel).ModifiedAt = value
+}
+
+// journalSeq is the journal position: unchanged means nothing changed.
+func (f *fakeServer) journalSeq() int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.seq
 }
 
 func (f *fakeServer) mkdir(rel string) {

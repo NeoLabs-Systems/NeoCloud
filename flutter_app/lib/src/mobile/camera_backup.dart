@@ -13,8 +13,12 @@ export 'camera_ledger.dart';
 // status). A pass uploads everything not marked done, newest first,
 // whatever its date; a failing file is recorded with its reason and attempt
 // count and the pass goes on. Before uploading, the file's SHA-256 is
-// compared with the server's etags (= SHA-256 of the content), so a re-run,
-// a reinstall or a second device never uploads the same photo twice.
+// compared with the server's etags (= SHA-256 of the content) in the target
+// folder and every folder below it, so a re-run, a reinstall or a second
+// device never uploads the same photo twice, even after it was sorted into a
+// subfolder. The hash goes with the upload, and the server refuses content
+// that arrives different. Only one pass runs at a time (camera_lease.dart);
+// the pass is told before each file whether it still holds that lease.
 
 abstract class CameraLedgerStore {
   Future<CameraLedger> load();
@@ -94,9 +98,14 @@ abstract class CameraTarget {
   /// The files in the target folder. Throws [CameraUploadFailure].
   Future<List<RemoteCameraFile>> list(String folderId);
 
-  /// Uploads [file]; a taken name gets a suffix, nothing is replaced.
-  /// Throws [CameraUploadFailure].
-  Future<void> upload(String folderId, CameraFile file);
+  /// Whether a file with this content is in the target folder or any folder
+  /// below it; false when the server can't tell. Throws
+  /// [CameraUploadFailure] for what stops a pass (unreachable, signed out).
+  Future<bool> contains(String folderId, String sha256, int size);
+
+  /// Uploads [file], whose content hashes to [sha256]; a taken name gets a
+  /// suffix, nothing is replaced. Throws [CameraUploadFailure].
+  Future<void> upload(String folderId, CameraFile file, {required String sha256});
 }
 
 /// Scope chosen when backup was turned on.
@@ -120,7 +129,9 @@ class CameraPassOptions {
   final bool videosWifiOnly;
   final CameraScope scope;
 
-  /// With [CameraScope.newOnly]: assets created before this are out of scope.
+  /// With [CameraScope.newOnly]: when backup was turned on. What was in the
+  /// library then stays out ([CameraLedger.baseline]); what arrives later is
+  /// backed up, whatever date it carries.
   final DateTime? since;
 }
 
@@ -182,13 +193,15 @@ class CameraBackupEngine {
   /// One pass. [manual] means the user asked for it, so "charging only"
   /// can't hold it back on a platform that can't tell. [interruption] is
   /// asked before each file; a block it returns ends the pass there, with
-  /// the ledger saved.
+  /// the ledger saved. [conditionsNow] is asked before each file too: when
+  /// Wi-Fi is gone under "Wi-Fi only", the pass stops and waits for it.
   Future<CameraPassResult> run(
     CameraPassOptions options,
     CameraConditions conditions, {
     bool manual = false,
     void Function(CameraProgress progress)? onProgress,
-    CameraBlock? Function()? interruption,
+    Future<CameraBlock?> Function()? interruption,
+    Future<CameraConditions> Function()? conditionsNow,
   }) async {
     final ledger = await store.load();
     final now = _clock();
@@ -213,15 +226,13 @@ class CameraBackupEngine {
     final access = await library.access();
     if (access == CameraAccessLevel.denied) return stop(CameraBlock.noAccess);
     final limited = access == CameraAccessLevel.limited;
-    if (options.wifiOnly && !conditions.onWifi) return stop(CameraBlock.waitingWifi);
-    if (options.chargingOnly && conditions.charging != true && !manual) return stop(CameraBlock.waitingCharger);
 
     // Bring the records in line with the library.
     final assets = await library.assets(includeVideos: options.includeVideos);
-    final since = options.scope == CameraScope.newOnly ? options.since : null;
+    final baseline = _baseline(ledger, options, assets);
     final inScope = <String>{};
     for (final asset in assets) {
-      if (since != null && asset.created.isBefore(since)) continue;
+      if (baseline != null && baseline.contains(asset.id)) continue;
       inScope.add(asset.id);
       final record = ledger.records.putIfAbsent(asset.id, () => CameraRecord(assetId: asset.id));
       record
@@ -239,6 +250,8 @@ class CameraBackupEngine {
     for (final record in ledger.records.values) {
       record.present = inScope.contains(record.assetId);
     }
+    if (options.wifiOnly && !conditions.onWifi) return stop(CameraBlock.waitingWifi);
+    if (options.chargingOnly && conditions.charging != true && !manual) return stop(CameraBlock.waitingCharger);
 
     // What the server already has, by name and by content.
     final List<RemoteCameraFile> remote;
@@ -260,15 +273,19 @@ class CameraBackupEngine {
     var failed = 0;
     var streak = 0;
     var sinceSave = 0;
+    var current = conditions;
     for (var index = 0; index < queue.length; index++) {
-      final interrupted = interruption?.call();
-      if (interrupted != null) {
-        return stop(interrupted, partial: CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited));
+      CameraPassResult partial() => CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited);
+      final interrupted = await interruption?.call();
+      if (interrupted != null) return stop(interrupted, partial: partial());
+      if (conditionsNow != null) {
+        current = await conditionsNow();
+        if (options.wifiOnly && !current.onWifi) return stop(CameraBlock.waitingWifi, partial: partial());
       }
       final asset = queue[index];
       final record = ledger.records[asset.id]!;
       onProgress?.call(CameraProgress(current: index + 1, total: queue.length, name: record.name));
-      if (asset.isVideo && options.videosWifiOnly && !conditions.onWifi) {
+      if (asset.isVideo && options.videosWifiOnly && !current.onWifi) {
         record.reason = CameraReason.wifi;
         continue;
       }
@@ -288,13 +305,13 @@ class CameraBackupEngine {
         final hash = await sha256OfStream(file.openRead());
         record.sha256 = hash;
         final sameName = byName[file.name];
-        if (etags.contains(hash)) {
+        if (etags.contains(hash) || await target.contains(folderId, hash, file.size)) {
           skipped += 1;
           ledger.addLog('already on server: ${file.name}', _clock());
         } else {
           // A different file under the same name is uploaded too; the
           // server picks a free name.
-          await target.upload(folderId, file);
+          await target.upload(folderId, file, sha256: hash);
           uploaded += 1;
           etags.add(hash);
           if (sameName == null) byName[file.name] = RemoteCameraFile(name: file.name, size: file.size, etag: hash);
@@ -310,7 +327,7 @@ class CameraBackupEngine {
           record.reason = null;
           return stop(
             _blockFor(failure.kind),
-            partial: CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited),
+            partial: partial(),
             detail: failure.message,
           );
         }
@@ -325,7 +342,7 @@ class CameraBackupEngine {
       if (streak >= cameraFailureStreakLimit) {
         return stop(
           CameraBlock.tooManyFailures,
-          partial: CameraPassResult(uploaded: uploaded, skipped: skipped, failed: failed, limitedAccess: limited),
+          partial: partial(),
         );
       }
       sinceSave += 1;
@@ -352,6 +369,25 @@ class CameraBackupEngine {
       }
     }
     await store.save(ledger);
+  }
+
+  /// The assets that count as already there with "new photos only", or
+  /// null for everything. Set on the first pass after backup was turned on
+  /// (normally right away): what was in the library and dated before then.
+  /// From that pass on, being new means not being in that set, so a photo
+  /// that arrives later with an older date is still backed up.
+  static Set<String>? _baseline(CameraLedger ledger, CameraPassOptions options, List<CameraAsset> assets) {
+    final since = options.scope == CameraScope.newOnly ? options.since : null;
+    if (since == null) return null;
+    if (ledger.baseline == null || ledger.baselineSince != since) {
+      ledger
+        ..baseline = <String>{
+          for (final asset in assets)
+            if (asset.created.isBefore(since)) asset.id,
+        }
+        ..baselineSince = since;
+    }
+    return ledger.baseline;
   }
 
   static bool _due(CameraRecord record) => switch (record.status) {

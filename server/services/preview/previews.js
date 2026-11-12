@@ -2,6 +2,7 @@
 
 // Generated renditions of files, made on first request and cached encrypted:
 //   thumb-256 / thumb-1024  WebP thumbnails of images (sharp, all in memory)
+//   thumb-square            a small square crop for photo grids
 //   pdf                     a PDF of an Office document (LibreOffice)
 // A rendition belongs to a blob, not a node, so a new file version gets new
 // previews and the old ones are deleted with the old blob.
@@ -28,6 +29,9 @@ const { convertToPdf, findOfficeBinary } = require('./office_convert');
 const logger = createServiceLogger('Previews');
 
 const THUMBNAIL_SIZES = new Set([256, 1024]);
+// Grid tiles are about 100–140 points wide; 320 pixels is sharp on a phone.
+const SQUARE_THUMBNAIL_PIXELS = 320;
+const SQUARE_VARIANT = 'thumb-square';
 const MAX_THUMBNAIL_SOURCE_BYTES = 200 * 1024 * 1024;
 const MAX_OFFICE_SOURCE_BYTES = 100 * 1024 * 1024;
 const OFFICE_TIMEOUT_MS = 120 * 1000;
@@ -98,7 +102,11 @@ function cachedPreview(blobId, variant) {
   return db.prepare('SELECT * FROM previews WHERE blob_id = ? AND variant = ?').get(blobId, variant) || null;
 }
 
-async function renderThumbnail(userId, node, size) {
+function canRenderThumbnail(node) {
+  return IMAGE_MIMES.has(node.mime) && node.size <= MAX_THUMBNAIL_SOURCE_BYTES;
+}
+
+async function renderThumbnail(userId, node, variant) {
   if (!IMAGE_MIMES.has(node.mime)) throw httpError(415, 'No thumbnail for this file type.', 'PREVIEW_UNAVAILABLE');
   if (node.size > MAX_THUMBNAIL_SOURCE_BYTES) throw httpError(415, 'File is too large for a thumbnail.', 'PREVIEW_UNAVAILABLE');
   try {
@@ -106,8 +114,15 @@ async function renderThumbnail(userId, node, size) {
     // piping would leave a failing blob read (missing or damaged file) as an
     // unhandled stream error, which ends the process.
     const source = await streamToBuffer(openBlob(userId, node.blob_id, node.size));
-    return await sharp(source, { failOn: 'none', limitInputPixels: 100_000_000 })
-      .rotate()
+    const image = sharp(source, { failOn: 'none', limitInputPixels: 100_000_000 }).rotate();
+    if (variant === SQUARE_VARIANT) {
+      return await image
+        .resize(SQUARE_THUMBNAIL_PIXELS, SQUARE_THUMBNAIL_PIXELS, { fit: 'cover', position: 'centre' })
+        .webp({ quality: 70 })
+        .toBuffer();
+    }
+    const size = Number(variant.slice('thumb-'.length));
+    return await image
       .resize(size, size, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 78 })
       .toBuffer();
@@ -150,32 +165,49 @@ async function streamToBuffer(stream) {
   return Buffer.concat(chunks);
 }
 
+// Renders and caches the rendition unless it is cached already.
+async function ensurePreview(userId, node, variant) {
+  if (cachedPreview(node.blob_id, variant)) return;
+  const key = `${node.blob_id}:${variant}`;
+  if (!inFlight.has(key)) {
+    const job = withRenderSlot(async () => {
+      let buffer;
+      let mime;
+      if (variant === 'pdf') {
+        buffer = await renderOfficePdf(userId, node);
+        mime = 'application/pdf';
+      } else {
+        buffer = await renderThumbnail(userId, node, variant);
+        mime = 'image/webp';
+      }
+      await storePreview(userId, node.blob_id, variant, buffer, mime);
+    }).finally(() => inFlight.delete(key));
+    inFlight.set(key, job);
+  }
+  await inFlight.get(key);
+}
+
+/**
+ * Makes the grid thumbnail of an image ahead of time (the Photos indexer),
+ * so the first scroll through a timeline doesn't wait for renders. A file
+ * with no thumbnail is skipped; a failed render is only logged.
+ */
+async function prepareGridThumbnail(userId, node) {
+  if (!canRenderThumbnail(node)) return;
+  try {
+    await ensurePreview(userId, node, SQUARE_VARIANT);
+  } catch (err) {
+    if (err.code !== 'PREVIEW_UNAVAILABLE' && err.code !== 'NOT_FOUND') throw err;
+  }
+}
+
 /**
  * The rendition `variant` of a file: { stream, size, mime }. Renders and
  * caches it on first use.
  */
 async function getPreview(userId, fileId, variant) {
   const node = getLiveNode(userId, fileId, { type: 'file' });
-  const cached = cachedPreview(node.blob_id, variant);
-  if (!cached) {
-    const key = `${node.blob_id}:${variant}`;
-    if (!inFlight.has(key)) {
-      const job = withRenderSlot(async () => {
-        let buffer;
-        let mime;
-        if (variant === 'pdf') {
-          buffer = await renderOfficePdf(userId, node);
-          mime = 'application/pdf';
-        } else {
-          buffer = await renderThumbnail(userId, node, Number(variant.slice('thumb-'.length)));
-          mime = 'image/webp';
-        }
-        await storePreview(userId, node.blob_id, variant, buffer, mime);
-      }).finally(() => inFlight.delete(key));
-      inFlight.set(key, job);
-    }
-    await inFlight.get(key);
-  }
+  await ensurePreview(userId, node, variant);
   const row = cachedPreview(node.blob_id, variant);
   const file = previewPath(userId, node.blob_id, variant);
   if (!row || !fs.existsSync(file)) {
@@ -192,8 +224,9 @@ async function getPreview(userId, fileId, variant) {
 }
 
 function thumbnailVariant(size) {
+  if (size === 'square') return SQUARE_VARIANT;
   const value = Number(size || 256);
-  if (!THUMBNAIL_SIZES.has(value)) throw httpError(400, 'size must be 256 or 1024.', 'INVALID_SIZE');
+  if (!THUMBNAIL_SIZES.has(value)) throw httpError(400, 'size must be 256, 1024 or square.', 'INVALID_SIZE');
   return `thumb-${value}`;
 }
 
@@ -203,4 +236,4 @@ function pdfVariantFor(node) {
   return 'pdf';
 }
 
-module.exports = { getCapabilities, getPreview, isOfficeFile, pdfVariantFor, thumbnailVariant };
+module.exports = { getCapabilities, getPreview, isOfficeFile, pdfVariantFor, prepareGridThumbnail, thumbnailVariant };

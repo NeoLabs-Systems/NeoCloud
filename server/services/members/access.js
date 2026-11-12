@@ -10,6 +10,7 @@
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
 const { ROOT_ALIAS, ancestry, nodeById, serializeNode } = require('../files/tree');
+const { isAccountActive } = require('../account/status');
 
 const PERMISSION_RANK = { read: 1, write: 2 };
 
@@ -55,6 +56,8 @@ function assertType(node, type) {
  *   writeRootId  the outermost one granting write (moves stay inside it), or null
  */
 function sharedAccess(userId, ownerId, nodeId) {
+  // A disabled owner's shares grant nothing, like their links.
+  if (!isAccountActive(ownerId)) return null;
   const chain = ancestry(ownerId, nodeId);
   if (chain.length === 0 || chain.some((node) => node.trashed_at)) return null;
   const grants = grantsOn(userId, ownerId, chain.map((node) => node.id));

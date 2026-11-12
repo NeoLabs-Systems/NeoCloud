@@ -1,7 +1,8 @@
 part of 'main.dart';
 
 // What the mobile apps add around the app: pairing links the system opens
-// the app with, files shared from other apps,
+// the app with, files shared from other apps, NeoCloud opened as the
+// phone's gallery (Photos, or one local photo or video),
 // asking again about camera upload after a sign-out or a change of server
 // or account, and keeping the upload queue going when the app leaves the
 // screen. On the web this is a no-op.
@@ -26,9 +27,15 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
 
   NeoCloudController get _controller => widget.controller;
 
+  /// NeoCloud as the phone's gallery app (Android).
+  final GalleryLaunch _gallery = createGalleryLaunch();
+
   @override
   void initState() {
     super.initState();
+    _gallery.galleryOpens.addListener(_openedAsGallery);
+    _gallery.viewing.addListener(_viewLocal);
+    unawaited(_gallery.start());
     _controller.shareIntake.pending.addListener(_sharedChanged);
     _controller.addListener(_sharedChanged);
     _controller.cameraUploads.addListener(_cameraChanged);
@@ -40,6 +47,8 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
 
   @override
   void dispose() {
+    _gallery.galleryOpens.removeListener(_openedAsGallery);
+    _gallery.viewing.removeListener(_viewLocal);
     _controller.shareIntake.pending.removeListener(_sharedChanged);
     _controller.removeListener(_sharedChanged);
     _controller.cameraUploads.removeListener(_cameraChanged);
@@ -69,6 +78,23 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
     _pendingLink = null;
     if (_controller.isAuthenticated || !_controller.usesDeviceLogin || _controller.isConnecting) return;
     unawaited(_controller.pair(link));
+  }
+
+  /// Opened as the gallery: show Photos (after signing in, if needed).
+  void _openedAsGallery() {
+    if (_controller.isAuthenticated && !_controller.isBooting) {
+      _controller.setSelectedSection(AppSection.photos);
+    } else {
+      _controller.openRoute(AppRoute(AppSection.photos.name));
+    }
+  }
+
+  /// Asked to show one of the phone's photos or videos.
+  void _viewLocal() {
+    final media = _gallery.viewing.value;
+    final navigatorContext = _navigatorKey.currentContext;
+    if (media == null || navigatorContext == null) return;
+    unawaited(showLocalMediaViewer(navigatorContext, _controller, _gallery, media));
   }
 
   static const String _uploadsOwner = 'uploads';

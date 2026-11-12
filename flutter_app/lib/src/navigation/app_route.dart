@@ -1,6 +1,7 @@
 /// A place in the app as the web address shows it below /app/:
 ///
 /// * `files` and `files/<folderId>`
+/// * `photos` (the timeline of photos and videos)
 /// * `shared` and `shared/<folderId>` (a folder another account shares)
 /// * `recent`, `favorites`, `trash`, `review` (AI suggestions)
 /// * `settings` and `settings/<page>`, e.g. `settings/shared-links`
@@ -16,7 +17,7 @@ class AppRoute {
   /// (`/device?code=…`, `/pair?code=…`).
   static const AppRoute none = AppRoute('');
 
-  static const Set<String> sections = <String>{'files', 'review', 'shared', 'recent', 'favorites', 'trash', 'settings', 'admin'};
+  static const Set<String> sections = <String>{'files', 'photos', 'review', 'shared', 'recent', 'favorites', 'trash', 'settings', 'admin'};
 
   final String section;
 

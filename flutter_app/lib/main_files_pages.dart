@@ -28,6 +28,66 @@ class _FileListCard extends StatelessWidget {
   }
 }
 
+/// Sort by name, date, size or type, either way; [relevance] adds the
+/// order of relevance (search results).
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({required this.view, required this.onChanged, this.relevance = false});
+
+  final FolderView view;
+  final void Function(String field, String order) onChanged;
+  final bool relevance;
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = <(String, String)>[
+      if (relevance) ('relevance', appStrings.sortRelevance),
+      ('name', appStrings.sortName),
+      ('modified', appStrings.sortModified),
+      ('size', appStrings.sortSize),
+      ('type', appStrings.sortType),
+    ];
+    final byRelevance = view.sort == 'relevance';
+    return MenuAnchor(
+      alignmentOffset: const Offset(0, 6),
+      menuChildren: <Widget>[
+        for (final (field, label) in fields)
+          MenuItemButton(
+            leadingIcon: Icon(view.sort == field ? Icons.check_rounded : null, size: 18),
+            onPressed: () => onChanged(field, view.dir),
+            child: Text(label),
+          ),
+        const Divider(),
+        for (final (order, label) in <(String, String)>[('asc', appStrings.sortAscending), ('desc', appStrings.sortDescending)])
+          MenuItemButton(
+            leadingIcon: Icon(!byRelevance && view.dir == order ? Icons.check_rounded : null, size: 18),
+            onPressed: byRelevance ? null : () => onChanged(view.sort, order),
+            child: Text(label),
+          ),
+      ],
+      builder: (context, menu, _) => IconButton(
+        tooltip: appStrings.sortBy,
+        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+        icon: const Icon(Icons.sort_rounded, size: 20),
+      ),
+    );
+  }
+}
+
+/// The sort a page without folders keeps under [key]: its own choice, else
+/// [fallback], else the account's defaults.
+FolderView _pageView(NeoCloudController controller, String key, {FolderView? fallback}) =>
+    controller.folderViews.viewFor(key, fallback ?? FolderView.defaultsOf(controller.settings));
+
+/// The newest first: how Recent and Trash start.
+FolderView _newestFirst(NeoCloudController controller) =>
+    FolderView.defaultsOf(controller.settings).copyWith(sort: 'modified', dir: 'desc');
+
+/// The sort menu of a page without folders, remembered under [key].
+Widget _pageSortMenu(NeoCloudController controller, String key, FolderView view) => _SortMenu(
+  view: view,
+  onChanged: (field, order) => controller.folderViews.set(key, view.copyWith(sort: field, dir: order)),
+);
+
 /// Opens a file in the viewer, or a folder on the Files page.
 void _openNode(BuildContext context, NeoCloudController controller, List<FileNode> items, FileNode node) {
   if (node.isFolder) {
@@ -57,6 +117,7 @@ class _RecentPanelState extends State<RecentPanel> {
     super.initState();
     widget.controller.filesRevision.addListener(_load);
     widget.controller.fileChanges.addListener(_onFilesChangedElsewhere);
+    widget.controller.folderViews.addListener(_onViewChanged);
     _load();
   }
 
@@ -64,7 +125,12 @@ class _RecentPanelState extends State<RecentPanel> {
   void dispose() {
     widget.controller.filesRevision.removeListener(_load);
     widget.controller.fileChanges.removeListener(_onFilesChangedElsewhere);
+    widget.controller.folderViews.removeListener(_onViewChanged);
     super.dispose();
+  }
+
+  void _onViewChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Spans every folder, so any change elsewhere may show here.
@@ -85,12 +151,14 @@ class _RecentPanelState extends State<RecentPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _items;
     final controller = widget.controller;
+    final view = _pageView(controller, FolderViewKeys.recent, fallback: _newestFirst(controller));
+    final loaded = _items;
+    final items = loaded == null ? null : sortedForView(loaded, view, (node) => node);
     return _PageScaffold(
       onRefresh: _load,
       children: <Widget>[
-        _PageTitle(title: appStrings.recentTitle, subtitle: appStrings.recentSubtitle),
+        _PageTitle(title: appStrings.recentTitle, subtitle: appStrings.recentSubtitle, trailing: _pageSortMenu(controller, FolderViewKeys.recent, view)),
         if (_error != null) _LoadError(message: _error!, onRetry: _load),
         if (items == null && _error == null) const _LoadingPlaceholder(),
         if (items != null && items.isEmpty)
@@ -135,6 +203,7 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
     super.initState();
     _controller.filesRevision.addListener(_load);
     _controller.fileChanges.addListener(_onFilesChangedElsewhere);
+    _controller.folderViews.addListener(_onViewChanged);
     _load();
   }
 
@@ -142,7 +211,12 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
   void dispose() {
     _controller.filesRevision.removeListener(_load);
     _controller.fileChanges.removeListener(_onFilesChangedElsewhere);
+    _controller.folderViews.removeListener(_onViewChanged);
     super.dispose();
+  }
+
+  void _onViewChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Spans every folder, so any change elsewhere may show here.
@@ -178,11 +252,17 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _items;
+    final view = _pageView(_controller, FolderViewKeys.favorites);
+    final loaded = _items;
+    final items = loaded == null ? null : sortedForView(loaded, view, (node) => node);
     return _PageScaffold(
       onRefresh: _load,
       children: <Widget>[
-        _PageTitle(title: appStrings.filesNavFavorites, subtitle: appStrings.filesFavoritesSubtitle),
+        _PageTitle(
+          title: appStrings.filesNavFavorites,
+          subtitle: appStrings.filesFavoritesSubtitle,
+          trailing: _pageSortMenu(_controller, FolderViewKeys.favorites, view),
+        ),
         if (_error != null) _LoadError(message: _error!, onRetry: () {
           setState(() => _error = null);
           unawaited(_load());
@@ -231,6 +311,7 @@ class _TrashPanelState extends State<TrashPanel> {
     super.initState();
     _controller.filesRevision.addListener(_load);
     _controller.fileChanges.addListener(_onFilesChangedElsewhere);
+    _controller.folderViews.addListener(_onViewChanged);
     _load();
   }
 
@@ -238,7 +319,12 @@ class _TrashPanelState extends State<TrashPanel> {
   void dispose() {
     _controller.filesRevision.removeListener(_load);
     _controller.fileChanges.removeListener(_onFilesChangedElsewhere);
+    _controller.folderViews.removeListener(_onViewChanged);
     super.dispose();
+  }
+
+  void _onViewChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Spans every folder, so any change elsewhere may show here.
@@ -290,9 +376,13 @@ class _TrashPanelState extends State<TrashPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _items;
+    // "Modified" sorts the trash by when each item was deleted.
+    final view = _pageView(_controller, FolderViewKeys.trash, fallback: _newestFirst(_controller));
+    final loaded = _items;
+    final items = loaded == null ? null : sortedForView(loaded, view, (node) => node);
     final locale = currentAppLanguage.code;
     final phone = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    final sortMenu = _pageSortMenu(_controller, FolderViewKeys.trash, view);
     return _PageScaffold(
       onRefresh: _load,
       children: <Widget>[
@@ -300,17 +390,24 @@ class _TrashPanelState extends State<TrashPanel> {
           title: appStrings.trashTitle,
           subtitle: appStrings.trashSubtitle,
           trailing: items == null || items.isEmpty
-              ? null
-              : OutlinedButton.icon(
-                  onPressed: () => unawaited(_confirmDelete(
-                    context,
-                    title: appStrings.emptyTrash,
-                    message: appStrings.emptyTrashConfirm,
-                    confirmLabel: appStrings.emptyTrash,
-                    onConfirm: () => _run(_controller.client.emptyTrash),
-                  )),
-                  icon: const Icon(Icons.delete_forever_outlined, size: 18),
-                  label: Text(appStrings.emptyTrash),
+              ? sortMenu
+              : Wrap(
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    sortMenu,
+                    OutlinedButton.icon(
+                      onPressed: () => unawaited(_confirmDelete(
+                        context,
+                        title: appStrings.emptyTrash,
+                        message: appStrings.emptyTrashConfirm,
+                        confirmLabel: appStrings.emptyTrash,
+                        onConfirm: () => _run(_controller.client.emptyTrash),
+                      )),
+                      icon: const Icon(Icons.delete_forever_outlined, size: 18),
+                      label: Text(appStrings.emptyTrash),
+                    ),
+                  ],
                 ),
         ),
         if (_error != null) _InlineError(message: _error!, onDismiss: () => setState(() => _error = null)),

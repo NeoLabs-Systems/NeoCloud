@@ -140,6 +140,9 @@ router.get('/ai', jsonHandler(() => aiAdmin.getAiConfig()));
 router.put('/ai', settingsLimiter, jsonHandler((req) => aiAdmin.updateAiConfig(req.body)));
 router.get('/ai/usage', jsonHandler(() => usageSummary()));
 
-router.post('/keys/master', keyExportLimiter, jsonHandler((req) => serverConfig.exportMasterKey(req.userId, req.body?.password)));
+router.post('/keys/master', keyExportLimiter, jsonHandler((req) => serverConfig.exportMasterKey(req.userId, {
+  currentPassword: req.body?.password,
+  code: req.body?.code,
+})));
 
 module.exports = router;

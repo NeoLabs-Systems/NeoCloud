@@ -131,11 +131,38 @@ function isValidMasterKey(value) {
 }
 
 /**
- * Fills in the secrets a fresh install needs. The master key is generated
- * exactly once: every stored file is encrypted under it, so it is never
- * replaced once it exists -- a malformed value stops the server instead.
+ * Whether this install already holds data encrypted under a master key: an
+ * account in the database, or any stored blob. Then a missing key must never
+ * be replaced by a new one -- that would leave every existing file
+ * unreadable and encrypt new ones under a key the old data doesn't know.
  */
-function ensureSecureRuntimeEnv({ envFile = ENV_FILE, env = process.env, logger = console } = {}) {
+function hasEncryptedData({ databaseFile = DATABASE_FILE, blobDir = BLOB_DIR } = {}) {
+  try {
+    if (fs.readdirSync(blobDir).length > 0) return true;
+  } catch {
+    // No blob folder yet.
+  }
+  if (!fs.existsSync(databaseFile)) return false;
+  let database;
+  try {
+    const Database = require('better-sqlite3');
+    database = new Database(databaseFile, { readonly: true, fileMustExist: true });
+    return Boolean(database.prepare('SELECT 1 FROM users LIMIT 1').get());
+  } catch (err) {
+    // No users table yet: a database from a start that never got further.
+    return !/no such table/i.test(err.message);
+  } finally {
+    database?.close();
+  }
+}
+
+/**
+ * Fills in the secrets a fresh install needs. The master key is generated
+ * exactly once, on an install without data: every stored file is encrypted
+ * under it, so it is never replaced once it exists -- a malformed or missing
+ * value on an install with data stops the server instead.
+ */
+function ensureSecureRuntimeEnv({ envFile = ENV_FILE, env = process.env, logger = console, dataPaths = {} } = {}) {
   const parsed = parseEnv(readEnvFileRaw(envFile));
   const changes = [];
 
@@ -149,6 +176,13 @@ function ensureSecureRuntimeEnv({ envFile = ENV_FILE, env = process.env, logger 
 
   let masterKey = String(env.NEOCLOUD_MASTER_KEY || parsed.get('NEOCLOUD_MASTER_KEY') || '').trim();
   if (!masterKey) {
+    if (hasEncryptedData(dataPaths)) {
+      throw new Error(
+        `NEOCLOUD_MASTER_KEY is missing (not in the environment, not in ${envFile}), but this install already `
+        + 'holds encrypted data. Put the original key back (from `neocloud keys export` or your copy of .env). '
+        + 'A new key would make every stored file unreadable, so none is created.',
+      );
+    }
     masterKey = generateSecret(32);
     upsertEnvValue(envFile, 'NEOCLOUD_MASTER_KEY', masterKey);
     changes.push('NEOCLOUD_MASTER_KEY');
@@ -187,6 +221,7 @@ module.exports = {
   ensurePrivateFile,
   ensureRuntimeDirs,
   ensureSecureRuntimeEnv,
+  hasEncryptedData,
   isValidMasterKey,
   readEnvFileRaw,
   upsertEnvValue,

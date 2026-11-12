@@ -61,6 +61,9 @@ async function takeDailySnapshotIfDue(now) {
 }
 
 async function checkSchedules(now = new Date()) {
+  // A run whose process died stops beating; until it is marked failed it
+  // would settle its slot and block the target.
+  markInterruptedRuns();
   const targets = db.prepare('SELECT * FROM backup_targets').all();
   for (const target of targets) {
     if (!isDue(target, now)) continue;

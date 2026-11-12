@@ -21,6 +21,9 @@ class _FakeLibrary implements CameraLibrary {
   final Set<String> unreadable = <String>{};
   int cloudDownloads = 0;
 
+  /// Called on every read of a file's content.
+  void Function(String id)? mutateOnRead;
+
   @override
   Future<CameraAccessLevel> access() async => level;
 
@@ -41,16 +44,31 @@ class _FakeLibrary implements CameraLibrary {
       cloudDownloads += 1;
       onCloudProgress?.call(1);
     }
-    final bytes = utf8.encode(photo.content);
-    return CameraFile(name: photo.name, size: bytes.length, openRead: () => Stream<List<int>>.value(bytes));
+    final size = utf8.encode(photo.content).length;
+    return CameraFile(
+      name: photo.name,
+      size: size,
+      openRead: () {
+        mutateOnRead?.call(photo.id);
+        return Stream<List<int>>.value(utf8.encode(photo.content));
+      },
+    );
   }
 }
 
 class _FakeServer implements CameraTarget {
+  /// Files directly in the target folder.
   final List<RemoteCameraFile> files = <RemoteCameraFile>[];
+
+  /// Files the user sorted into subfolders of the target folder.
+  final List<RemoteCameraFile> below = <RemoteCameraFile>[];
   final List<String> uploads = <String>[];
+  final List<String> sentHashes = <String>[];
   final Set<String> rejectNames = <String>{};
   CameraFailureKind? outage;
+
+  /// False: a server from before the content check.
+  bool canCheck = true;
 
   @override
   Future<List<RemoteCameraFile>> list(String folderId) async {
@@ -59,11 +77,21 @@ class _FakeServer implements CameraTarget {
   }
 
   @override
-  Future<void> upload(String folderId, CameraFile file) async {
+  Future<bool> contains(String folderId, String sha256, int size) async {
+    if (outage != null) throw CameraUploadFailure(outage!);
+    if (!canCheck) return false;
+    return <RemoteCameraFile>[...files, ...below].any((file) => file.etag == sha256 && file.size == size);
+  }
+
+  @override
+  Future<void> upload(String folderId, CameraFile file, {required String sha256}) async {
     if (outage != null) throw CameraUploadFailure(outage!);
     if (rejectNames.contains(file.name)) throw const CameraUploadFailure(CameraFailureKind.file, 'HTTP 500');
     final content = await file.openRead().expand((chunk) => chunk).toList();
     final hash = await sha256OfStream(Stream<List<int>>.value(content));
+    // The server's checksum check.
+    if (hash != sha256) throw const CameraUploadFailure(CameraFailureKind.file, 'CHECKSUM_MISMATCH');
+    sentHashes.add(sha256);
     var name = file.name;
     var n = 1;
     while (files.any((f) => f.name == name)) {
@@ -153,6 +181,41 @@ void main() {
     expect(server.uploads, hasLength(6));
   });
 
+  test('lost upload records: photos sorted into subfolders are found by content, not sent again', () async {
+    await engine.run(_options, const CameraConditions());
+    // The user sorts the backed-up photos into dated folders.
+    server.below.addAll(server.files);
+    server.files.clear();
+    final fresh = CameraBackupEngine(store: MemoryCameraLedgerStore(), library: library, target: server);
+    final result = await fresh.run(_options, const CameraConditions());
+    expect(result.uploaded, 0);
+    expect(result.skipped, 6);
+    expect(server.uploads, hasLength(6));
+
+    // An older server can't tell: those are sent again (the old behaviour).
+    server.canCheck = false;
+    final old = await CameraBackupEngine(store: MemoryCameraLedgerStore(), library: library, target: server).run(_options, const CameraConditions());
+    expect(old.uploaded, 6);
+  });
+
+  test('each upload carries the SHA-256 of what was read', () async {
+    await engine.run(_options, const CameraConditions());
+    final ledger = await store.load();
+    expect(server.sentHashes, unorderedEquals(<String>[for (final record in ledger.records.values) record.sha256!]));
+  });
+
+  test('a photo that changes between hashing and sending is refused, not stored damaged', () async {
+    final photo = library.photos.first;
+    var reads = 0;
+    library.mutateOnRead = (id) {
+      if (id == photo.id && ++reads == 2) photo.content = 'edited meanwhile';
+    };
+    final result = await engine.run(_options, const CameraConditions());
+    expect(result.failed, 1);
+    expect((await store.load()).records[photo.id]!.reason, 'CHECKSUM_MISMATCH');
+    expect(server.uploads, hasLength(5));
+  });
+
   test('a different file under a taken name is uploaded beside it', () async {
     server.files.add(const RemoteCameraFile(name: 'IMG_1.jpg', size: 3, etag: 'other'));
     await engine.run(_options, const CameraConditions());
@@ -199,6 +262,53 @@ void main() {
     expect((await store.load()).counts.onPhone, 2);
   });
 
+  test('new-only: a photo added later with an old date (chat, AirDrop, import) is still backed up', () async {
+    final options = CameraPassOptions(folderId: 'camera', scope: CameraScope.newOnly, since: DateTime(2024, 6));
+    // Turned on, first pass: the library as it was stays out.
+    await engine.run(options, const CameraConditions(onWifi: false));
+    expect((await store.load()).baseline, hasLength(4));
+    library.photos
+      ..add(_Photo('w1', 'IMG-20190301-WA0001.jpg', 'from a chat', DateTime(2019, 3)))
+      ..add(_Photo('n1', 'IMG_new.jpg', 'just taken', DateTime(2027)));
+    final result = await engine.run(options, const CameraConditions());
+    expect(result.uploaded, 4);
+    expect(server.uploads, containsAll(<String>['IMG-20190301-WA0001.jpg', 'IMG_new.jpg']));
+    expect(server.uploads, isNot(contains('IMG_1.jpg')));
+    final ledger = CameraLedger.decode((await store.load()).encode());
+    expect(ledger.baseline, <String>{'a1', 'a2', 'a3', 'a4'});
+    expect(ledger.counts.onPhone, 4);
+
+    // Turned off and on again later: a new starting point.
+    final again = CameraPassOptions(folderId: 'camera', scope: CameraScope.newOnly, since: DateTime(2028));
+    await engine.run(again, const CameraConditions());
+    expect((await store.load()).baseline, hasLength(8));
+  });
+
+  test('Wi-Fi is checked before every file: dropping it mid-pass stops before the next one', () async {
+    var asked = 0;
+    final result = await engine.run(
+      _options,
+      const CameraConditions(),
+      conditionsNow: () async => CameraConditions(onWifi: ++asked <= 2),
+    );
+    expect(result.block, CameraBlock.waitingWifi);
+    expect(result.uploaded, 2);
+    expect(server.uploads, hasLength(2));
+    final ledger = await store.load();
+    expect(ledger.lastBlock, CameraBlock.waitingWifi);
+    expect(ledger.counts.backedUp, 2);
+
+    // With Wi-Fi back the next pass finishes.
+    final next = await engine.run(_options, const CameraConditions(), conditionsNow: () async => const CameraConditions());
+    expect(next.uploaded, 4);
+
+    // Without "Wi-Fi only" mobile data is fine.
+    library.photos.add(_Photo('a7', 'IMG_7.jpg', 'photo 7', DateTime(2030)));
+    const anyNetwork = CameraPassOptions(folderId: 'camera', wifiOnly: false, includeVideos: true);
+    final mobile = await engine.run(anyNetwork, const CameraConditions(), conditionsNow: () async => const CameraConditions(onWifi: false));
+    expect(mobile.uploaded, 1);
+  });
+
   test('many failures in a row stop the pass', () async {
     for (var i = 1; i <= 6; i++) {
       server.rejectNames.add('IMG_$i.jpg');
@@ -224,7 +334,7 @@ void main() {
       onProgress: (progress) {
         if (progress.current == 3) stopWith = CameraBlock.paused;
       },
-      interruption: () => stopWith,
+      interruption: () async => stopWith,
     );
     expect(paused.block, CameraBlock.paused);
     expect(paused.uploaded, 3);
@@ -240,7 +350,7 @@ void main() {
       onProgress: (progress) {
         if (progress.current == 2) stopWith = CameraBlock.interrupted;
       },
-      interruption: () => stopWith,
+      interruption: () async => stopWith,
     );
     expect(interrupted.block, CameraBlock.interrupted);
     expect(cameraStatus(enabled: true, ledger: await store.load()).kind, CameraStatusKind.pending);

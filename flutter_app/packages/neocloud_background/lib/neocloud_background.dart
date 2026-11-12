@@ -61,6 +61,10 @@ class NeoCloudBackground {
     }
   }
 
+  /// Whether the active network is connected and unmetered (Android), the
+  /// test "Wi-Fi only" needs. Null where the platform can't tell.
+  static Future<bool?> isUnmetered() => _invoke<bool>('isUnmetered');
+
   /// What the platform reports right now; see the native `status` handlers
   /// for the keys. Empty off Android and iOS.
   static Future<Map<String, Object?>> status() async {

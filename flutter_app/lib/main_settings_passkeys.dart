@@ -41,17 +41,45 @@ class _SecurityKeysSectionState extends State<_SecurityKeysSection> with _PageLo
     }
   }
 
+  /// A key signs in on its own, so adding one asks for the password again
+  /// (and a code when 2FA is on), like the other confirmations; the dialog
+  /// starts the registration and shows a wrong entry in place.
+  Future<Map<String, dynamic>?> _confirmIdentity() async {
+    final bool twoFactor;
+    try {
+      twoFactor = await _twoFactorEnabled(_controller);
+    } catch (error) {
+      if (mounted) setState(() => pageError = _controller.friendlyError(error));
+      return null;
+    }
+    if (!mounted) return null;
+    return showAdaptiveSheet<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _ConfirmIdentityDialog<Map<String, dynamic>>(
+        title: appStrings.passkeyAdd,
+        message: appStrings.passkeyConfirmMessage,
+        confirmLabel: appStrings.passkeyAdd,
+        twoFactor: twoFactor,
+        action: (password, code, _) async {
+          final options = (await _controller.client.beginSecurityKeyRegistration(password, code))['options'];
+          if (options is! Map) throw WebAuthnException(appStrings.passkeyRegistrationFailed);
+          return options.cast<String, dynamic>();
+        },
+      ),
+    );
+  }
+
   Future<void> _addSecurityKey() async {
     final typed = _label.text.trim();
     final label = typed.isEmpty ? appStrings.passkeyDefaultName((_keys?.length ?? 0) + 1) : typed;
+    setState(() => pageError = null);
+    final options = await _confirmIdentity();
+    if (options == null || !mounted) return;
     var cancelled = false;
     await runAction(_controller, () async {
-      final begin = await _controller.client.beginSecurityKeyRegistration();
-      final options = begin['options'];
-      if (options is! Map) throw WebAuthnException(appStrings.passkeyRegistrationFailed);
       final Map<String, dynamic> attestation;
       try {
-        attestation = await _controller.webAuthn.createCredential(options.cast<String, dynamic>());
+        attestation = await _controller.webAuthn.createCredential(options);
       } on WebAuthnException catch (error) {
         if (!error.cancelled) rethrow;
         cancelled = true;

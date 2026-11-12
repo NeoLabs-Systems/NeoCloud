@@ -954,9 +954,6 @@ class AppL10nEn extends AppL10n {
   String get adminShowMasterKey => 'Show master key';
 
   @override
-  String get adminConfirmPassword => 'Confirm with your password';
-
-  @override
   String get officePreviewUnavailable =>
       'There’s no preview for this file. Download it to open it.';
 
@@ -1104,6 +1101,11 @@ class AppL10nEn extends AppL10n {
   String get backupRunning => 'Backing up…';
 
   @override
+  String backupRunningProgress(int percent, String done, String total) {
+    return 'Backing up… $percent % · $done of $total';
+  }
+
+  @override
   String get backupDeleteMessage =>
       'The target is removed from NeoCloud. Backups already on it stay there.';
 
@@ -1160,6 +1162,9 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get sortType => 'Type';
+
+  @override
+  String get sortRelevance => 'Relevance';
 
   @override
   String get sortAscending => 'Ascending';
@@ -2961,9 +2966,6 @@ class AppL10nEn extends AppL10n {
   String get cameraOptions => 'Options';
 
   @override
-  String get mobileNavCamera => 'Camera';
-
-  @override
   String mobilePermissionsSet(int granted, int total) {
     return '$granted of $total set';
   }
@@ -3875,6 +3877,20 @@ class AppL10nEn extends AppL10n {
   @override
   String get signInRateLimited =>
       'Too many attempts. Wait a few minutes, then try again.';
+
+  @override
+  String confirmLockedMinutes(int minutes) {
+    return 'Too many wrong passwords or codes for this account. Try again in $minutes min.';
+  }
+
+  @override
+  String confirmLockedSeconds(int seconds) {
+    return 'Too many wrong passwords or codes for this account. Try again in $seconds s.';
+  }
+
+  @override
+  String get passkeyConfirmMessage =>
+      'A security key signs in on its own and stays when you change your password, so confirm it\'s you first.';
 
   @override
   String get approvalNeedsServerUpdate =>
@@ -5203,4 +5219,230 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get aiErrorNotUndoable => 'This change can’t be undone.';
+
+  @override
+  String get photosNav => 'Photos';
+
+  @override
+  String get photosEmptyTitle => 'No photos yet';
+
+  @override
+  String get photosEmptyBody =>
+      'Photos and videos you keep in NeoCloud show up here, newest first.';
+
+  @override
+  String get photosEmptyBackup => 'Back up this phone';
+
+  @override
+  String get photosEmptyOpenFiles => 'Go to Files';
+
+  @override
+  String get photosLoadFailed => 'Couldn’t load your photos.';
+
+  @override
+  String photosSorting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sorting $count new photos by date…',
+      one: 'Sorting 1 new photo by date…',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photosBackupOff => 'Backup is off';
+
+  @override
+  String get photosBackupTurnOn => 'Turn on';
+
+  @override
+  String get photosToday => 'Today';
+
+  @override
+  String get photosYesterday => 'Yesterday';
+
+  @override
+  String get photosZoomIn => 'Bigger photos';
+
+  @override
+  String get photosZoomOut => 'More photos at once';
+
+  @override
+  String get photosSelectGroup => 'Select all here';
+
+  @override
+  String get photosShareOne => 'Pick one photo to share a link to it.';
+
+  @override
+  String get photosPhotoUnavailable => 'This photo can’t be shown.';
+
+  @override
+  String get photosLocalOnPhone => 'On this phone';
+
+  @override
+  String get photosLocalBackUp => 'Back up to NeoCloud';
+
+  @override
+  String get photosLocalBackedUp => 'Backed up';
+
+  @override
+  String get photosLocalChecking => 'Checking…';
+
+  @override
+  String get photosLocalBackingUp => 'Backing up…';
+
+  @override
+  String get photosLocalSignIn => 'Connect to NeoCloud to back this up.';
+
+  @override
+  String get photosLocalBackupFailed => 'Couldn’t back this up. Try again.';
+
+  @override
+  String get aiMoreActions => 'More actions';
+
+  @override
+  String get aiAcceptAllTab => 'Accept all on this tab';
+
+  @override
+  String get aiRejectAllTab => 'Reject all on this tab';
+
+  @override
+  String aiAcceptAllTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Accept $count suggestions?',
+      one: 'Accept 1 suggestion?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiAcceptAllBody =>
+      'Every suggestion on this tab is applied at once. You can undo them right after.';
+
+  @override
+  String aiRejectAllTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Reject $count suggestions?',
+      one: 'Reject 1 suggestion?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiRejectAllBody =>
+      'Every suggestion on this tab is dismissed. Your files stay as they are.';
+
+  @override
+  String aiRejectedMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count suggestions rejected',
+      one: '1 suggestion rejected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesTab => 'Duplicates';
+
+  @override
+  String get duplicatesSubtitle =>
+      'Copies of the same file and photos that look alike. Remove the extras to free up space.';
+
+  @override
+  String get duplicatesExactTitle => 'Identical copies';
+
+  @override
+  String duplicatesSimilarTitle(int percent) {
+    return 'Similar photos · $percent % alike';
+  }
+
+  @override
+  String duplicatesGroupSummary(int count, String size) {
+    return '$count files · $size can be freed';
+  }
+
+  @override
+  String get duplicatesKeep => 'Keep';
+
+  @override
+  String get duplicatesRemove => 'Remove';
+
+  @override
+  String get duplicatesToggleHint => 'Tap to switch between Keep and Remove';
+
+  @override
+  String duplicatesTrashGroup(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count to trash',
+      one: 'Move 1 to trash',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesNotDuplicates => 'Not duplicates';
+
+  @override
+  String duplicatesCleanUpAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Clean up all ($count files)',
+      one: 'Clean up all (1 file)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicatesCleanUpTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count files to the trash?',
+      one: 'Move 1 file to the trash?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicatesCleanUpBody =>
+      'In every group the file marked Keep stays and the others go to the trash. You can undo this right after, or restore them from the trash later.';
+
+  @override
+  String get duplicatesEmptyTitle => 'No duplicates found';
+
+  @override
+  String get duplicatesEmptyBody =>
+      'Copies of the same file and photos that look alike show up here.';
+
+  @override
+  String duplicatesChecking(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Checking your photos… $count left',
+      one: 'Checking your photos… 1 left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicatesTrashFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files couldn’t be moved to the trash.',
+      one: '1 file couldn’t be moved to the trash.',
+    );
+    return '$_temp0';
+  }
 }

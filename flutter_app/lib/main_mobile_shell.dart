@@ -3,23 +3,23 @@ part of 'main.dart';
 // The shell on phones (below 640px), NeoAgent's phone frame
 // (main_app_shell.dart): a slim top bar, the sections of the open group as a
 // chip row under it, and one bottom tab per sidebar group, in place of the
-// drawer. Camera upload, the phone's own feature, gets a tab of its own
-// between the groups. 640–980px keeps the drawer.
+// drawer. Photos sits right after Files, like the main tab of a gallery app;
+// it also carries camera backup's status (the old Camera tab), whose
+// settings stay under Settings › Camera upload. 640–980px keeps the drawer.
 
-enum _PhoneTab { files, camera, settings, admin }
+enum _PhoneTab { files, photos, settings, admin }
 
 List<_PhoneTab> _phoneTabs(NeoCloudController controller) => <_PhoneTab>[
   _PhoneTab.files,
-  if (controller.cameraUploads.supported) _PhoneTab.camera,
+  _PhoneTab.photos,
   _PhoneTab.settings,
   if (controller.isAdmin) _PhoneTab.admin,
 ];
 
 _PhoneTab _currentPhoneTab(NeoCloudController controller) {
   final section = controller.selectedSection;
-  if (section == AppSection.settings) {
-    return controller.settingsPage == SettingsPage.cameraUpload && controller.cameraUploads.supported ? _PhoneTab.camera : _PhoneTab.settings;
-  }
+  if (section == AppSection.photos) return _PhoneTab.photos;
+  if (section == AppSection.settings) return _PhoneTab.settings;
   if (section == AppSection.admin) return _PhoneTab.admin;
   return _PhoneTab.files;
 }
@@ -28,11 +28,9 @@ void _openPhoneTab(NeoCloudController controller, _PhoneTab tab) {
   switch (tab) {
     case _PhoneTab.files:
       controller.setSelectedSection(AppSection.files);
-    case _PhoneTab.camera:
-      controller.setSettingsPage(SettingsPage.cameraUpload);
-      controller.setSelectedSection(AppSection.settings);
+    case _PhoneTab.photos:
+      controller.setSelectedSection(AppSection.photos);
     case _PhoneTab.settings:
-      if (controller.settingsPage == SettingsPage.cameraUpload) controller.setSettingsPage(null);
       controller.setSelectedSection(AppSection.settings);
     case _PhoneTab.admin:
       controller.setSelectedSection(AppSection.admin);
@@ -42,7 +40,7 @@ void _openPhoneTab(NeoCloudController controller, _PhoneTab tab) {
 extension _PhoneTabInfo on _PhoneTab {
   String get label => switch (this) {
     _PhoneTab.files => SidebarGroup.files.label,
-    _PhoneTab.camera => appStrings.mobileNavCamera,
+    _PhoneTab.photos => SidebarGroup.photos.label,
     _PhoneTab.settings => SidebarGroup.settings.label,
     _PhoneTab.admin => SidebarGroup.admin.label,
   };
@@ -52,7 +50,7 @@ extension _PhoneTabInfo on _PhoneTab {
   // sliders.
   IconData get icon => switch (this) {
     _PhoneTab.files => SidebarGroup.files.icon,
-    _PhoneTab.camera => Icons.photo_camera_outlined,
+    _PhoneTab.photos => SidebarGroup.photos.icon,
     _PhoneTab.settings => Icons.tune,
     _PhoneTab.admin => SidebarGroup.admin.icon,
   };
@@ -87,7 +85,11 @@ class _MobileTopBar extends StatelessWidget {
                   style: GoogleFonts.geist(fontSize: 16, fontWeight: FontWeight.w700, color: _textPrimary, letterSpacing: -0.4),
                 ),
               ),
-              _CameraStatusChip(controller: controller),
+              // On Photos, backup's status includes "off · Turn on".
+              if (controller.selectedSection == AppSection.photos)
+                Padding(padding: const EdgeInsets.only(right: 8), child: _PhotosBackupStatus(controller: controller))
+              else
+                _CameraStatusChip(controller: controller),
               if (qrScannerSupported && controller.usesDeviceLogin)
                 IconButton(
                   tooltip: appStrings.scanTitle,

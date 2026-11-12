@@ -163,6 +163,33 @@ function createUpload(userId, { parentId, name, size, conflict, sha256, createdB
   return serializeSession(getSession(userId, id));
 }
 
+/**
+ * Whether a live file with this content (SHA-256 and size) sits in the folder
+ * `parentId` or anywhere below it, so a client can skip sending it again: a
+ * phone whose upload records are gone finds the photos it sent earlier even
+ * after they were sorted into subfolders. File etags are the content's
+ * SHA-256.
+ */
+function contentExists(userId, { parentId, sha256, size }) {
+  const folder = getLiveNode(userId, parentId, { type: 'folder' });
+  const hash = normalizeSha256(sha256);
+  if (!hash) throw httpError(400, 'sha256 is required.', 'INVALID_HASH');
+  const bytes = Number(size);
+  if (!Number.isSafeInteger(bytes) || bytes < 0) throw httpError(400, 'size must be a byte count.', 'INVALID_SIZE');
+  const row = db.prepare(`
+    WITH RECURSIVE below(id) AS (
+      SELECT ?
+      UNION ALL
+      SELECT n.id FROM nodes n JOIN below ON n.parent_id = below.id
+      WHERE n.user_id = ? AND n.type = 'folder' AND n.trashed_at IS NULL
+    )
+    SELECT 1 FROM nodes n JOIN below ON n.parent_id = below.id
+    WHERE n.user_id = ? AND n.type = 'file' AND n.trashed_at IS NULL AND n.etag = ? AND n.size = ?
+    LIMIT 1
+  `).get(folder.id, userId, userId, hash, bytes);
+  return { exists: Boolean(row) };
+}
+
 function getUpload(userId, uploadId) {
   return serializeSession(getSession(userId, uploadId));
 }
@@ -206,6 +233,9 @@ async function putPart(userId, uploadId, rawIndex, body, { contentLength } = {})
     SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM upload_sessions WHERE id = ?)
     ON CONFLICT(upload_id, part_index) DO UPDATE SET size = excluded.size
   `).run(session.id, index, blob.size, session.id);
+  // An upload that is still moving doesn't expire: a large file over a slow
+  // link can take longer than a day, and expiry deletes its parts.
+  db.prepare("UPDATE upload_sessions SET expires_at = datetime('now', ?) WHERE id = ?").run(`+${UPLOAD_TTL_HOURS} hours`, session.id);
   return { index, size: blob.size, sha256: blob.sha256 };
 }
 
@@ -271,9 +301,10 @@ async function cancelUpload(userId, uploadId) {
   return { success: true };
 }
 
-/** Drops expired upload sessions and their parts. */
+/** Drops expired upload sessions and their parts. One being completed stays. */
 async function purgeExpiredUploads() {
-  const expired = db.prepare("SELECT id FROM upload_sessions WHERE datetime(expires_at) <= datetime('now')").all();
+  const expired = db.prepare("SELECT id FROM upload_sessions WHERE datetime(expires_at) <= datetime('now')").all()
+    .filter(({ id }) => !completing.has(id));
   for (const { id } of expired) {
     db.prepare('DELETE FROM upload_sessions WHERE id = ?').run(id);
     await removePartFiles(id);
@@ -303,6 +334,7 @@ module.exports = {
   PART_SIZE,
   cancelUpload,
   completeUpload,
+  contentExists,
   createUpload,
   getUpload,
   purgeExpiredUploads,

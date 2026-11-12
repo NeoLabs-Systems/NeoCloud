@@ -693,3 +693,75 @@ class AdminUserAi {
   final Set<String> modelIds;
   final int? monthlyTokens;
 }
+
+/// What `POST /api/ai/suggestions/bulk` did: how many were decided, and
+/// suggestion id → error code for the rest.
+class AiBulkResult {
+  const AiBulkResult({required this.done, required this.failed});
+
+  factory AiBulkResult.fromJson(Map<String, dynamic> json) => AiBulkResult(
+    done: _int(json['done']),
+    failed: <String, String>{
+      for (final row in _maps(json['failed'])) _string(row['id']): _string(row['code']),
+    },
+  );
+
+  final int done;
+  final Map<String, String> failed;
+}
+
+/// One file of a duplicate group; [keep] marks the copy to keep.
+class ReviewDuplicateItem {
+  const ReviewDuplicateItem({required this.node, required this.size, this.takenAt, this.width, this.height, this.keep = false});
+
+  factory ReviewDuplicateItem.fromJson(Map<String, dynamic> json) => ReviewDuplicateItem(
+    node: FileNode.fromJson(json['node'] is Map ? (json['node'] as Map).cast<String, dynamic>() : const <String, dynamic>{}),
+    size: _int(json['size']),
+    takenAt: _date(json['takenAt']),
+    width: _optionalInt(json['width']),
+    height: _optionalInt(json['height']),
+    keep: json['keep'] == true,
+  );
+
+  final FileNode node;
+  final int size;
+  final DateTime? takenAt;
+  final int? width;
+  final int? height;
+  final bool keep;
+}
+
+/// Files with the same content (`exact`) or photos that look alike
+/// (`similar`, [similarity] in percent).
+class ReviewDuplicateGroup {
+  const ReviewDuplicateGroup({required this.kind, required this.similarity, required this.items});
+
+  factory ReviewDuplicateGroup.fromJson(Map<String, dynamic> json) => ReviewDuplicateGroup(
+    kind: _string(json['kind']),
+    similarity: _int(json['similarity']),
+    items: _maps(json['items']).map(ReviewDuplicateItem.fromJson).where((item) => item.node.id.isNotEmpty).toList(),
+  );
+
+  final String kind;
+  final int similarity;
+  final List<ReviewDuplicateItem> items;
+
+  bool get exact => kind == 'exact';
+
+  /// A stable key for the group: its file ids.
+  String get key => (items.map((item) => item.node.id).toList()..sort()).join(',');
+}
+
+/// `GET /api/ai/duplicates`: the groups, and how many photos are still
+/// being compared.
+class ReviewDuplicates {
+  const ReviewDuplicates({this.groups = const <ReviewDuplicateGroup>[], this.pending = 0});
+
+  factory ReviewDuplicates.fromJson(Map<String, dynamic> json) => ReviewDuplicates(
+    groups: _maps(json['groups']).map(ReviewDuplicateGroup.fromJson).where((group) => group.items.length > 1).toList(),
+    pending: _int(json['pending']),
+  );
+
+  final List<ReviewDuplicateGroup> groups;
+  final int pending;
+}

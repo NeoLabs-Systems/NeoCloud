@@ -51,8 +51,21 @@ function formatLogArgs(args) {
   return Array.from(args).map((value) => serializeValue(value)).join(' ');
 }
 
+// WebDAV URLs name files by path; only the mount is kept.
+const DAV_PATH_RE = /^((?:\/remote\.php)?\/dav\/files\/[^/]+|\/remote\.php\/webdav)\/.+$/;
+
+/**
+ * The request path as the log shows it: no query string (search terms and
+ * file names travel there), no fragment, and WebDAV paths cut at the
+ * mount. API paths carry ids only, which may stay.
+ */
+function loggedRequestPath(url) {
+  const path = String(url || '').split(/[?#]/)[0];
+  return redactSecrets(path.replace(DAV_PATH_RE, '$1/[path]'));
+}
+
 function logRequestSummary(level, req, message, extra = null) {
-  const prefix = `[HTTP] ${req.method} ${redactSecrets(req.originalUrl || req.url)}`;
+  const prefix = `[HTTP] ${req.method} ${loggedRequestPath(req.originalUrl || req.url)}`;
   console[level](redactSecrets(`${prefix} ${message}`), {
     ip: req.ip,
     userId: req.userId || req.session?.userId || null,
@@ -123,6 +136,7 @@ module.exports = {
   createServiceLogger,
   formatLogArgs,
   logRequestSummary,
+  loggedRequestPath,
   redactSecrets,
   setupConsoleInterceptor,
 };

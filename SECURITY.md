@@ -82,7 +82,8 @@ takes effect on the next request, including resumable uploads in progress.
   sees a member's display name and what they typed, never the member's other
   identifier.
 - Deleting the owner, the member or the shared node removes the share
-  (foreign-key cascades).
+  (foreign-key cascades). While an admin has the owner's account disabled,
+  its shares grant nothing, like its links.
 
 ## Imports and private networks
 
@@ -100,6 +101,26 @@ between the check and the connection (DNS rebinding) gets nowhere.
 Credentials only follow redirects to the same origin. Folder listings are
 capped at 16 MB and parsed in linear time, and a scan stops the job past
 250,000 entries, 64 folder levels or 4,096-character paths.
+
+## AI providers and private networks
+
+A personal base URL (bring your own key, a custom endpoint, one's own
+Ollama) or one's own NeoRouter is an address someone typed that the server
+will call. It is checked when it is saved, and again on every connection:
+AI requests to it go through a dispatcher that resolves the name once,
+refuses loopback, private, link-local, CGNAT and multicast addresses (IP
+literals too) and connects to exactly the address it checked. A redirect
+hop is checked the same way, and a name that later starts answering a
+private address (DNS rebinding) gets nowhere. Only the addresses the admin
+configured (Admin › AI, `.env`) and the admin's own NeoRouter sign-in may
+reach the LAN.
+
+## App passwords and device tokens
+
+WebDAV app passwords reach WebDAV only: sent as a bearer token to the API
+they answer `401`. Desktop tokens reach files, transfers, storage, sync,
+links and vaults; only the phone app's token reaches account, settings,
+imports, AI and (for an admin) the admin API.
 
 ## Office previews
 
@@ -149,5 +170,23 @@ change signs out every other session and revokes all device tokens and WebDAV
 app passwords; an admin password reset does the same for every session.
 Ending a session also closes its live socket.io connections. With an https
 `PUBLIC_URL` and no `TRUST_PROXY`, only proxies on loopback or private
-addresses may set `X-Forwarded-For`; keep port 3344 reachable from the proxy
-only (see docs/operations.md).
+addresses may set `X-Forwarded-For` (the server warns at startup); set
+`TRUST_PROXY` to the proxy's address and keep port 3344 reachable from the
+proxy only (see docs/operations.md).
+
+Security keys and passkeys sign in on their own (a key that verified the
+user counts as two factors) and, as in NeoAgent and NeoRouter, are kept
+through a password change, an admin password reset and sign-out-everywhere.
+So adding one asks for the password again, and a code when 2FA is on; each
+key added or removed lands in the admin audit log, and Settings › Sign-in &
+security lists every key with the date it was added and last used. Exporting
+the master key asks for the password and, with 2FA on, a code.
+
+Asking a signed-in account for its password or code again is throttled per
+account like sign-in, under its own counter. A TOTP code works once per
+account (the last accepted time step is stored), and a recovery code is
+spent by exactly one request even when two race.
+
+Request lines in the server log (and the admin log viewer) carry the path
+only: no query string, and WebDAV paths cut at the mount, so they hold ids
+but no file names or search terms.

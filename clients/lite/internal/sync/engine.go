@@ -235,7 +235,7 @@ func (e *Engine) Unlocked() {
 func (e *Engine) SignIn(server string, token *api.DeviceToken) error {
 	cfg := e.cfg.Get()
 	if cfg.UserID != 0 && cfg.UserID != token.User.ID || cfg.Server != "" && cfg.Server != server {
-		if err := e.db.Reset(); err != nil {
+		if err := e.whileStopped(e.db.Reset); err != nil {
 			return err
 		}
 	}
@@ -266,7 +266,21 @@ func (e *Engine) SignOut() error {
 		return err
 	}
 	e.setStatus(func(s *Status) { s.State, s.Message = StateLoggedOut, "Not signed in" })
-	return e.db.Reset()
+	return e.whileStopped(e.db.Reset)
+}
+
+// whileStopped stops the sync run in progress, waits for it to end and
+// runs fn before another can start: state a pass is still writing must
+// not be dropped under it (it would come back half, as stray rows).
+func (e *Engine) whileStopped(fn func() error) error {
+	e.mu.Lock()
+	if e.stopRun != nil {
+		e.stopRun()
+	}
+	e.mu.Unlock()
+	e.runMu.Lock()
+	defer e.runMu.Unlock()
+	return fn()
 }
 
 // AddPair saves a new pair. For a pair the app creates the folder of
@@ -307,7 +321,9 @@ func (e *Engine) RemovePair(key string) error {
 	if err != nil {
 		return err
 	}
-	return e.db.ForgetPair(removed.ID)
+	err = e.whileStopped(func() error { return e.db.ForgetPair(removed.ID) })
+	e.SyncNow() // the other pairs' run was stopped
+	return err
 }
 
 // excludeFolders adds folders to a pair's exclude_paths.

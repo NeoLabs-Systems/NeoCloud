@@ -4,6 +4,7 @@ const OpenAI = require('openai');
 const { OpenAICompatibleProvider } = require('./openai_compatible');
 const { kindFromModelId } = require('./base');
 const { wrapProviderError } = require('./provider_error');
+const { aiFetch } = require('../http');
 
 // Models OpenAI lists that neither chat nor embed nor transcribe.
 const DROP = /dall-e|tts|moderat|realtime|audio|search-api|-image-|babbage|davinci-002|^sora|-instruct|deep-research|computer-use|gpt-live/i;
@@ -12,7 +13,7 @@ class OpenAIProvider extends OpenAICompatibleProvider {
   constructor(config = {}) {
     super(config);
     this.name = 'openai';
-    this.client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl || undefined, maxRetries: 0 });
+    this.client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl || undefined, maxRetries: 0, fetch: aiFetch });
   }
 
   async listModels(signal = null) {

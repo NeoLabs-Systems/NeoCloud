@@ -476,7 +476,6 @@
   "adminMasterKey": "Master key",
   "adminMasterKeyDescription": "Every file is encrypted under this key. Keep a copy offline: without it, files and backups can’t be decrypted.",
   "adminShowMasterKey": "Show master key",
-  "adminConfirmPassword": "Confirm with your password",
   "officePreviewUnavailable": "There’s no preview for this file. Download it to open it.",
   "play": "Play",
   "pause": "Pause",
@@ -541,6 +540,14 @@
     }
   },
   "backupRunning": "Backing up…",
+  "backupRunningProgress": "Backing up… {percent} % · {done} of {total}",
+  "@backupRunningProgress": {
+    "placeholders": {
+      "percent": {"type": "int"},
+      "done": {"type": "String"},
+      "total": {"type": "String"}
+    }
+  },
   "backupDeleteMessage": "The target is removed from NeoCloud. Backups already on it stay there.",
   "backupHistory": "Recent runs",
   "adminBackupRunOk": "Finished",
@@ -566,6 +573,7 @@
   "sortSize": "Size",
   "sortModified": "Last modified",
   "sortType": "Type",
+  "sortRelevance": "Relevance",
   "sortAscending": "Ascending",
   "sortDescending": "Descending",
   "movedTo": "Moved to “{folder}”.",
@@ -1594,7 +1602,6 @@
   "cameraNeverRun": "Not run yet",
   "cameraUnnamed": "Not read yet",
   "cameraOptions": "Options",
-  "mobileNavCamera": "Camera",
   "mobilePermissionsSet": "{granted} of {total} set",
   "@mobilePermissionsSet": {
     "placeholders": {
@@ -2104,6 +2111,23 @@
     }
   },
   "signInRateLimited": "Too many attempts. Wait a few minutes, then try again.",
+  "confirmLockedMinutes": "Too many wrong passwords or codes for this account. Try again in {minutes} min.",
+  "@confirmLockedMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmLockedSeconds": "Too many wrong passwords or codes for this account. Try again in {seconds} s.",
+  "@confirmLockedSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "passkeyConfirmMessage": "A security key signs in on its own and stays when you change your password, so confirm it's you first.",
   "approvalNeedsServerUpdate": "Approving sign-ins in the app isn't available yet. Approve in a browser where you're signed in instead.",
   "serverUpdateNeeded": "This feature isn't available yet.",
   "approvalNeedsPhone": "Approve sign-ins from the NeoCloud phone app or a browser where you're signed in.",
@@ -2884,5 +2908,133 @@
   "aiErrorTooManyFiles": "That folder has too many files for one go. Pick a smaller folder.",
   "aiErrorTargetNotAllowed": "AI can’t put files there: it is a vault or excluded from AI.",
   "aiErrorShareBoundary": "That move would change who can see the file, so AI doesn’t make it.",
-  "aiErrorNotUndoable": "This change can’t be undone."
+  "aiErrorNotUndoable": "This change can’t be undone.",
+  "photosNav": "Photos",
+  "photosEmptyTitle": "No photos yet",
+  "photosEmptyBody": "Photos and videos you keep in NeoCloud show up here, newest first.",
+  "photosEmptyBackup": "Back up this phone",
+  "photosEmptyOpenFiles": "Go to Files",
+  "photosLoadFailed": "Couldn’t load your photos.",
+  "photosSorting": "{count, plural, =1{Sorting 1 new photo by date…} other{Sorting {count} new photos by date…}}",
+  "@photosSorting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "photosBackupOff": "Backup is off",
+  "photosBackupTurnOn": "Turn on",
+  "photosToday": "Today",
+  "photosYesterday": "Yesterday",
+  "photosZoomIn": "Bigger photos",
+  "photosZoomOut": "More photos at once",
+  "photosSelectGroup": "Select all here",
+  "photosShareOne": "Pick one photo to share a link to it.",
+  "photosPhotoUnavailable": "This photo can’t be shown.",
+  "photosLocalOnPhone": "On this phone",
+  "photosLocalBackUp": "Back up to NeoCloud",
+  "photosLocalBackedUp": "Backed up",
+  "photosLocalChecking": "Checking…",
+  "photosLocalBackingUp": "Backing up…",
+  "photosLocalSignIn": "Connect to NeoCloud to back this up.",
+  "photosLocalBackupFailed": "Couldn’t back this up. Try again.",
+  "aiMoreActions": "More actions",
+  "aiAcceptAllTab": "Accept all on this tab",
+  "aiRejectAllTab": "Reject all on this tab",
+  "aiAcceptAllTitle": "{count, plural, =1{Accept 1 suggestion?} other{Accept {count} suggestions?}}",
+  "@aiAcceptAllTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAcceptAllBody": "Every suggestion on this tab is applied at once. You can undo them right after.",
+  "aiRejectAllTitle": "{count, plural, =1{Reject 1 suggestion?} other{Reject {count} suggestions?}}",
+  "@aiRejectAllTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiRejectAllBody": "Every suggestion on this tab is dismissed. Your files stay as they are.",
+  "aiRejectedMany": "{count, plural, =1{1 suggestion rejected} other{{count} suggestions rejected}}",
+  "@aiRejectedMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesTab": "Duplicates",
+  "duplicatesSubtitle": "Copies of the same file and photos that look alike. Remove the extras to free up space.",
+  "duplicatesExactTitle": "Identical copies",
+  "duplicatesSimilarTitle": "Similar photos · {percent} % alike",
+  "@duplicatesSimilarTitle": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesGroupSummary": "{count} files · {size} can be freed",
+  "@duplicatesGroupSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicatesKeep": "Keep",
+  "duplicatesRemove": "Remove",
+  "duplicatesToggleHint": "Tap to switch between Keep and Remove",
+  "duplicatesTrashGroup": "{count, plural, =1{Move 1 to trash} other{Move {count} to trash}}",
+  "@duplicatesTrashGroup": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesNotDuplicates": "Not duplicates",
+  "duplicatesCleanUpAll": "{count, plural, =1{Clean up all (1 file)} other{Clean up all ({count} files)}}",
+  "@duplicatesCleanUpAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesCleanUpTitle": "{count, plural, =1{Move 1 file to the trash?} other{Move {count} files to the trash?}}",
+  "@duplicatesCleanUpTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesCleanUpBody": "In every group the file marked Keep stays and the others go to the trash. You can undo this right after, or restore them from the trash later.",
+  "duplicatesEmptyTitle": "No duplicates found",
+  "duplicatesEmptyBody": "Copies of the same file and photos that look alike show up here.",
+  "duplicatesChecking": "{count, plural, =1{Checking your photos… 1 left} other{Checking your photos… {count} left}}",
+  "@duplicatesChecking": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesTrashFailed": "{count, plural, =1{1 file couldn’t be moved to the trash.} other{{count} files couldn’t be moved to the trash.}}",
+  "@duplicatesTrashFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

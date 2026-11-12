@@ -37,4 +37,16 @@ function readHttpRuntimeConfig(env = process.env) {
   return { publicUrl: publicUrl || null, secureCookies, trustProxy };
 }
 
-module.exports = { parseTrustProxy, readHttpRuntimeConfig };
+/**
+ * A startup warning when TRUST_PROXY was left unset and every private
+ * address is trusted: then any host on the LAN or Docker network can set
+ * X-Forwarded-For and pick the address the rate limits see. Null otherwise.
+ */
+function trustProxyWarning(config, env = process.env) {
+  if (String(env.TRUST_PROXY ?? '').trim()) return null;
+  if (!Array.isArray(config.trustProxy)) return null;
+  return 'TRUST_PROXY is unset, so proxies on any loopback, link-local or private address are trusted. '
+    + 'Set TRUST_PROXY to your reverse proxy\'s address (e.g. TRUST_PROXY=172.18.0.2) — see docs/operations.md.';
+}
+
+module.exports = { parseTrustProxy, readHttpRuntimeConfig, trustProxyWarning };

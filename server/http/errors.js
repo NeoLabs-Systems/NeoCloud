@@ -38,7 +38,14 @@ function sendJsonError(res, err, fallbackStatus = 500) {
   // A refused upload may still be sending its body; closing the connection
   // after the answer stops it without leaving the socket to drain.
   if (status === 413 || status === 507) res.set('Connection', 'close');
-  return res.status(status).json({ error: err?.message || 'Request failed.', ...(code ? { code } : {}) });
+  // A throttled account (429 LOGIN_LOCKED) says how many seconds to wait.
+  const retryAfter = Number.isInteger(err?.retryAfter) ? err.retryAfter : null;
+  if (retryAfter) res.set('Retry-After', String(retryAfter));
+  return res.status(status).json({
+    error: err?.message || 'Request failed.',
+    ...(code ? { code } : {}),
+    ...(retryAfter ? { retryAfter } : {}),
+  });
 }
 
 // The JSON and form parsers' errors carry a `type`, not a code; their

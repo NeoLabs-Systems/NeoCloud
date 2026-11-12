@@ -119,8 +119,9 @@ NOT_FOUND` for an unknown, expired or already decided code.
   more than `delete_guard_percent` (50) % of the pair's tracked files or
   more than `delete_guard_files` (500), or when the
   server folder is suddenly empty while files are tracked (`remoteEmpty`,
-  any count), no deletion runs: the pair waits with
-  `needsConfirmation { remoteDeletes, localDeletes, reason: massDelete|remoteEmpty, digest }`
+  any count), or the local folder is (`localEmpty`: nothing in it at all,
+  not even ignored files, any count), no deletion runs: the pair waits with
+  `needsConfirmation { remoteDeletes, localDeletes, reason: massDelete|remoteEmpty|localEmpty, digest }`
   (`digest`: SHA-256 over the held deletions, side and path).
   Everything else in the pass (uploads, downloads, renames) still runs, and
   folders whose deletion waits are not recreated. The user approves with
@@ -136,12 +137,33 @@ NOT_FOUND` for an unknown, expired or already decided code.
   into the local folder. If a pair that wrote it finds it missing or
   holding another id, the pair stops with "folder looks unmounted or
   replaced"; nothing is synced until the pair is removed and added again.
-  A missing local folder stops a synced pair the same way.
+  A missing local folder stops a synced pair the same way. The folder and
+  its marker are checked again after the local scan and right before the
+  pass deletes anything, so a drive unplugged mid-pass stops the pass
+  (its rows stay) instead of reading as "everything was deleted". A
+  pair's folder that is a symbolic link (or a Windows junction) is
+  scanned at its target.
+- **Unreadable folders.** A folder the scan cannot list (a permission
+  error, a network share that drops out), or whose `.cloudignore` cannot
+  be read, is reported as `unreadable` and left alone on both sides; the
+  rest of the pair syncs. Only a path that is really gone (not found)
+  counts as deleted when the pass re-checks it before acting.
+- **Folders with content synced elsewhere.** A folder deleted locally is
+  trashed on the server as a whole only when everything in it is being
+  deleted too. When it still holds something this computer does not sync
+  (an excluded subfolder, a name Windows cannot hold, an ignored file, a
+  file moved into an ignored folder), only the synced files go; the folder
+  stays in the cloud and is reported as `keptInCloud`.
 - **Local trash.** Remote-driven local deletes and overwrites never unlink
   user data: the old file (or folder) moves to
   `<root>/.neocloud/trash/<YYYY-MM-DD>/<relative path>` (` 2`, ` 3`… when
   taken). Day folders older than `trash_retention_days` (30; 0 keeps them)
-  are pruned at the start of a pass.
+  are pruned at the start of a pass, except a day that holds the only
+  copy of something (the local version that lost a conflict under
+  `prefer_remote`, `newer` or the issues view's "keep the cloud's", ignored
+  files of a folder deleted in the cloud or of an excluded folder): it is
+  marked with `<YYYY-MM-DD>.keep` next to it and stays until removed by
+  hand.
   A folder deleted on the server moves as a whole, ignored files included,
   when everything in it may go (unchanged tracked files, ignored files);
   one that only holds empty folders and OS junk (`.DS_Store`, `Thumbs.db`,
@@ -151,6 +173,16 @@ NOT_FOUND` for an unknown, expired or already decided code.
 - **One instance per pair.** A pass holds an exclusive lock file in the
   state folder (`locks/<pair>.lock`); a second instance reports
   "Another NeoCloud instance is syncing this folder right now."
+  Signing out, signing in to another account and removing a pair stop the
+  run in progress first, so no pass writes rows after they were dropped.
+- **Lost or damaged state.** `state.db` is checked when it is opened
+  (`PRAGMA quick_check`). A damaged one is moved aside as
+  `state.db.damaged-<time>` and a fresh one is created; a lost one is
+  simply recreated. Without rows every pair merges like a first sync:
+  equal files are recorded, one-sided files are copied (a file deleted on
+  one side while the state was lost comes back), differing ones become
+  conflict copies. Nothing is deleted. The same holds after removing a
+  pair and adding the same folder again, and after signing out and in.
 
 ### Not synced
 
@@ -163,6 +195,9 @@ is not deleted remotely). Each comes with a reason code and a text:
 | `specialFile` | a socket, pipe or device |
 | `nameClash` | differs from another name only by case or Unicode normalization (`not synced: name clashes with X`); the tracked one, else the one on the other side, else the first in sort order keeps syncing |
 | `invalidName` | a server path that would leave the pair's folder (absolute, an empty, `.` or `..` segment, `\` or NUL); on Windows also `CON`, `PRN`, `AUX`, `NUL`, `COM1–9`, `LPT1–9` (any extension), a trailing dot or space, `<>:"/\|?*` or control characters |
+| `unreadable` | a local folder (or its `.cloudignore`) that could not be read; its content is left alone on both sides until it can |
+| `movedIgnored` | a synced file moved into an ignored or excluded folder on this computer (see "Ignoring files"); the cloud copy stays |
+| `keptInCloud` | a folder deleted on this computer that stays in the cloud because it still holds files this computer does not sync |
 | `pathTooLong` | Windows only: the local path would exceed 259 characters |
 | `tooLarge` | a file over the pair's `max_file_size_mb` |
 | `excluded` | an excluded folder kept locally because it holds files that are not in NeoCloud |
@@ -242,7 +277,20 @@ the root included; its patterns are relative to that folder.
   downloaded. If it can't be fetched the pass stops without acting.
 - When a change ignores files that were synced, they stop syncing and both
   copies stay as they are: nothing is deleted on either side, and the
-  pass forgets their state rows. When they are un-ignored, both sides merge
+  pass forgets their state rows.
+- Moving a synced file (or folder) into an ignored or excluded folder is
+  not a delete, unlike in git: when a synced file vanishes from its path
+  and the same content turns up in an ignored place on this computer, it
+  stops syncing, the cloud copy stays where it was and the path is
+  reported as `movedIgnored`. Its row is parked (meta `detached`): if the
+  file turns up at its old path again (an editor that saves by renaming
+  the original to an ignored `*.tmp`), it syncs as an edit of the cloud
+  copy; if the cloud copy changes, it comes back to its old path; if the
+  cloud copy is deleted, the parked row is dropped. A file deleted while
+  an identical copy sits in an ignored folder is treated the same way, so
+  the cloud copy stays rather than being deleted. Up to 100 000 entries of
+  ignored folders are looked at, and only when a pass would delete
+  something in the cloud. When they are un-ignored, both sides merge
   like a first sync: equal files are recorded, one-sided ones copied, and
   only files that really differ become conflict copies. Nothing is deleted
   either way.
@@ -576,6 +624,16 @@ as a terminal QR on `neocloud-lite login`.
   it off and cancels the background task. After signing in again, or to
   another server or account, the app asks once whether to set it up again;
   with another account it starts with no folder and an empty ledger.
+  One pass runs at a time across the app, the background tasks and the
+  new-photo trigger: a lease file (`<app support>/camera/pass.lease`,
+  created exclusively, renewed before each file and every minute, taken
+  over after 5 minutes without renewal). Before sending a photo the app
+  asks `POST /api/uploads/check` whether the folder or a folder below it
+  already holds that content, and sends the SHA-256 with the upload.
+  "Wi-Fi only" is checked before each file. "New photos only" leaves out
+  what was in the library when backup was turned on, by asset id, so a
+  photo saved later with an older date is still backed up. Camera upload
+  never deletes anything from the photo library.
 - **Share to NeoCloud (Android).** `MainActivity` handles `ACTION_SEND` and
   `ACTION_SEND_MULTIPLE` itself (`ShareIntake.kt`, channels
   `systems.neolabs.neocloud/share` and `…/share/events`). Only `content://`

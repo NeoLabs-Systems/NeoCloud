@@ -123,6 +123,9 @@ func openApp(logger *log.Logger) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
+	if aside := db.Recovered(); aside != "" {
+		logger.Printf("the sync state was damaged and was moved to %s; every folder is merged again without deleting anything", aside)
+	}
 	api.SetProxy(proxy.For(cfg.Get().GlobalSettings))
 	return &app{dir: dir, cfg: cfg, db: db, engine: sync.New(cfg, db, logger)}, nil
 }

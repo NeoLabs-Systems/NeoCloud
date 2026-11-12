@@ -145,9 +145,19 @@ test('a backup uploads what its database snapshot references, nothing written la
   assert.equal(run.blobsUploaded, manifest.blobs.length);
 });
 
-test('runs left running by a crash are marked interrupted', () => {
-  const stuck = db.prepare("INSERT INTO backup_runs (target_id, status, snapshot) VALUES (?, 'running', 'x')").run(target.id);
+test('runs left running by a crash are marked interrupted, runs still beating are not', () => {
+  const stuck = db.prepare(`
+    INSERT INTO backup_runs (target_id, status, snapshot, started_at, heartbeat_at)
+    VALUES (?, 'running', 'x', datetime('now', '-2 hours'), datetime('now', '-6 minutes'))
+  `).run(target.id);
+  // `neocloud backup run` in another process, a day into a big first backup.
+  const alive = db.prepare(`
+    INSERT INTO backup_runs (target_id, status, snapshot, started_at, heartbeat_at)
+    VALUES (?, 'running', 'y', datetime('now', '-2 days'), datetime('now', '-10 seconds'))
+  `).run(target.id);
   assert.equal(runner.markInterruptedRuns(), 1);
+  assert.equal(db.prepare('SELECT status FROM backup_runs WHERE id = ?').get(alive.lastInsertRowid).status, 'running');
+  db.prepare("UPDATE backup_runs SET status = 'failed' WHERE id = ?").run(alive.lastInsertRowid);
   const row = db.prepare('SELECT status, error, finished_at FROM backup_runs WHERE id = ?').get(stuck.lastInsertRowid);
   assert.equal(row.status, 'failed');
   assert.equal(row.error, 'interrupted');

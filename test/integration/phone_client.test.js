@@ -21,8 +21,12 @@ test.before(async () => {
   member = await registerUser('phonemember');
 });
 
-function totp(secret) {
-  return generateSync({ secret, strategy: 'totp', digits: 6, period: 30 });
+// A code works once per time step (the server keeps the last one used), so
+// a second code in the same test is taken `ahead` steps later.
+function totp(secret, ahead = 0) {
+  return generateSync({
+    secret, strategy: 'totp', digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 * ahead,
+  });
 }
 
 // Issued by the service: the account routes' rate limit is for people.
@@ -80,7 +84,7 @@ test('2FA setup and disable work from a phone and still ask for the password', a
   await phone.post('/api/account/2fa/enable').send({ code: totp(setup.body.manualKey) }).expect(200);
   assert.equal((await phone.get('/api/account').expect(200)).body.twoFactor.enabled, true);
   await phone.post('/api/account/2fa/disable').send({ currentPassword: STRONG_PASSWORD }).expect(401);
-  await phone.post('/api/account/2fa/disable').send({ currentPassword: STRONG_PASSWORD, code: totp(setup.body.manualKey) }).expect(200);
+  await phone.post('/api/account/2fa/disable').send({ currentPassword: STRONG_PASSWORD, code: totp(setup.body.manualKey, 1) }).expect(200);
 });
 
 test('security keys are added in a browser only', async () => {
@@ -140,11 +144,15 @@ test('desktop tokens and WebDAV app passwords reach no account, settings, import
   for (const platform of ['lite', 'macos', 'windows', 'linux', 'webdav', '']) {
     const { bearer } = issueToken(admin, platform);
     const client = as(bearer);
-    assert.equal((await client.get('/api/account').expect(403)).body.code, 'PHONE_REQUIRED', platform);
-    await client.get('/api/account/sessions').expect(403);
-    await client.put('/api/account/password').send({ currentPassword: STRONG_PASSWORD, newPassword: 'x' }).expect(403);
-    await client.get('/api/settings').expect(403);
-    await client.get('/api/imports').expect(403);
+    // A WebDAV app password is no bearer token at all (401); a desktop
+    // token is one, but not the phone's (403 PHONE_REQUIRED).
+    const refused = platform === 'webdav' ? 401 : 403;
+    const res = await client.get('/api/account').expect(refused);
+    if (platform !== 'webdav') assert.equal(res.body.code, 'PHONE_REQUIRED', platform);
+    await client.get('/api/account/sessions').expect(refused);
+    await client.put('/api/account/password').send({ currentPassword: STRONG_PASSWORD, newPassword: 'x' }).expect(refused);
+    await client.get('/api/settings').expect(refused);
+    await client.get('/api/imports').expect(refused);
     await client.get('/api/admin/users').expect(403);
   }
   await request(app).get('/api/account').set('Authorization', 'Bearer nc_forged').expect(401);

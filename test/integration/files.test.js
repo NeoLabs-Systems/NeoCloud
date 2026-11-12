@@ -193,6 +193,36 @@ test('a damaged single upload is rejected by checksum', async () => {
   assert.equal(res.body.code, 'CHECKSUM_MISMATCH');
 });
 
+test('uploads/check finds content in the folder or below it, never in the trash or elsewhere', async () => {
+  const photos = await owner.agent.post('/api/folders').send({ name: 'Kamera' }).expect(201);
+  const sorted = await owner.agent.post('/api/folders').send({ parentId: photos.body.id, path: '2026/Urlaub' }).expect(201);
+  const outside = await owner.agent.post('/api/folders').send({ name: 'Anderswo' }).expect(201);
+  const content = 'IMG_0001 bytes';
+  const hash = crypto.createHash('sha256').update(content).digest('hex');
+  const check = (body) => owner.agent.post('/api/uploads/check').send({ parentId: photos.body.id, ...body });
+
+  assert.equal((await check({ sha256: hash, size: content.length }).expect(200)).body.exists, false);
+  await upload(owner.agent, 'other.jpg', 'elsewhere', { parentId: outside.body.id }).expect(201);
+  const elsewhere = crypto.createHash('sha256').update('elsewhere').digest('hex');
+  assert.equal((await check({ sha256: elsewhere, size: 9 }).expect(200)).body.exists, false);
+
+  const file = await upload(owner.agent, 'IMG_0001.jpg', content, { parentId: sorted.body.id }).expect(201);
+  assert.equal((await check({ sha256: hash.toUpperCase(), size: content.length }).expect(200)).body.exists, true);
+  assert.equal((await check({ sha256: hash, size: content.length + 1 }).expect(200)).body.exists, false);
+
+  await owner.agent.delete(`/api/nodes/${sorted.body.id}`).expect(200);
+  assert.equal((await check({ sha256: hash, size: content.length }).expect(200)).body.exists, false);
+
+  assert.equal((await check({ sha256: 'xyz', size: 1 }).expect(400)).body.code, 'INVALID_HASH');
+  assert.equal((await check({ size: 1 }).expect(400)).body.code, 'INVALID_HASH');
+  assert.equal((await check({ sha256: hash, size: -1 }).expect(400)).body.code, 'INVALID_SIZE');
+  // A file in the trash is gone like any other node; a missing id too.
+  await owner.agent.post('/api/uploads/check').send({ parentId: file.body.id, sha256: hash, size: 1 }).expect(404);
+  const loose = await upload(owner.agent, 'loose.jpg', 'x', { parentId: photos.body.id }).expect(201);
+  const notFolder = await owner.agent.post('/api/uploads/check').send({ parentId: loose.body.id, sha256: hash, size: 1 }).expect(400);
+  assert.equal(notFolder.body.code, 'NOT_A_FOLDER');
+});
+
 test('zip download contains folders and files', async () => {
   const folder = await owner.agent.post('/api/folders').send({ name: 'Archiv' }).expect(201);
   await upload(owner.agent, 'a.txt', 'aaa', { parentId: folder.body.id }).expect(201);

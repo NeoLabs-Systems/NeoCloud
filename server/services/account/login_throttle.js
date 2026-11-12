@@ -7,7 +7,9 @@
 // failures leaves the window. Locks are short on purpose: anyone who knows a
 // username can trigger one, so it must never shut the owner out for long.
 // A pending second-factor sign-in also gets at most 5 codes, then needs the
-// password again.
+// password again. Asking a signed-in account for its password or code again
+// (confirmKey) is throttled the same way under its own key, so a stolen
+// session can't guess the password faster than sign-in could.
 
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
@@ -27,10 +29,16 @@ function accountKey(user, typedName) {
   return user ? `user:${user.id}` : `name:${String(typedName || '').trim().toLowerCase().slice(0, 254)}`;
 }
 
-function signInLocked(retryAfterMs) {
+/** The key a signed-in account's password and code confirmations count under. */
+function confirmKey(userId) {
+  return `confirm:user:${userId}`;
+}
+
+function signInLocked(retryAfterMs, key) {
   const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
   const wait = retryAfter >= 90 ? `${Math.ceil(retryAfter / 60)} minutes` : `${retryAfter} seconds`;
-  const error = httpError(429, `Too many failed sign-in attempts for this account. Try again in ${wait}.`, 'LOGIN_LOCKED');
+  const what = key.startsWith('confirm:') ? 'wrong passwords or codes' : 'failed sign-in attempts';
+  const error = httpError(429, `Too many ${what} for this account. Try again in ${wait}.`, 'LOGIN_LOCKED');
   error.retryAfter = retryAfter;
   return error;
 }
@@ -41,11 +49,11 @@ function assertSignInAllowed(key, now = Date.now()) {
     SELECT failed_at_ms FROM login_failures WHERE account_key = ? AND failed_at_ms > ? ORDER BY failed_at_ms
   `).all(key, now - FAILURE_WINDOW_MS).map((row) => row.failed_at_ms);
   if (failures.length >= FAILURES_BEFORE_LOCK) {
-    throw signInLocked(failures[failures.length - FAILURES_BEFORE_LOCK] + FAILURE_WINDOW_MS - now);
+    throw signInLocked(failures[failures.length - FAILURES_BEFORE_LOCK] + FAILURE_WINDOW_MS - now, key);
   }
   if (failures.length >= FAILURES_BEFORE_DELAY) {
     const next = failures[failures.length - 1] + BASE_DELAY_MS * 2 ** (failures.length - FAILURES_BEFORE_DELAY);
-    if (now < next) throw signInLocked(next - now);
+    if (now < next) throw signInLocked(next - now, key);
   }
 }
 
@@ -78,5 +86,6 @@ module.exports = {
   assertSignInAllowed,
   challengeExhausted,
   clearFailures,
+  confirmKey,
   recordFailure,
 };

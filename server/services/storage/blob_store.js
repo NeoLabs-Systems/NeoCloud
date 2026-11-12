@@ -9,7 +9,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { Transform } = require('stream');
+const { Readable, Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 const { BLOB_DIR, PREVIEW_DIR, UPLOAD_TMP_DIR, ensurePrivateDirectory } = require('../../../runtime/paths');
 const { getUserDek } = require('../crypto/keys');
@@ -146,6 +146,32 @@ function openBlob(userId, blobId, size, range) {
   return createDecryptStream(blobPath(userId, blobId), getUserDek(userId), blobId, size, range);
 }
 
+/**
+ * Like openBlob, but resolves only once the first segment has been read and
+ * authenticated, so a missing or damaged blob is an error the caller can
+ * still answer with a status instead of a connection cut mid-response.
+ */
+async function openBlobChecked(userId, blobId, size, range) {
+  const iterator = openBlob(userId, blobId, size, range)[Symbol.asyncIterator]();
+  let first;
+  try {
+    first = await iterator.next();
+  } catch (err) {
+    logger.error(`Blob ${blobId} of account ${Number(userId)} can't be read: ${err.code === 'ENOENT' ? 'missing' : err.message}`);
+    throw httpError(500, 'This file can’t be read: its stored data is missing or damaged.', 'FILE_UNREADABLE');
+  }
+  async function* rest() {
+    try {
+      if (first.done) return;
+      yield first.value;
+      for (let next = await iterator.next(); !next.done; next = await iterator.next()) yield next.value;
+    } finally {
+      await iterator.return();
+    }
+  }
+  return Readable.from(rest(), { objectMode: false });
+}
+
 // Decrypts an encrypted temporary file (an upload part) written by
 // writeTemporaryBlob with the same id.
 function openTemporaryBlob(userId, filePath, blobId, size) {
@@ -157,11 +183,17 @@ function previewDirectory(userId, blobId) {
   return path.join(PREVIEW_DIR, String(Number(userId)), blobId);
 }
 
-// Removes blobs and every preview made from them.
+// Removes blobs and every preview made from them. Runs after the transaction
+// that dropped their rows has committed, so it never throws: a file it can't
+// remove only wastes space.
 async function deleteBlobFiles(userId, blobIds) {
   for (const blobId of blobIds) {
     await removeQuietly(blobPath(userId, blobId));
-    await fs.promises.rm(previewDirectory(userId, blobId), { recursive: true, force: true });
+    try {
+      await fs.promises.rm(previewDirectory(userId, blobId), { recursive: true, force: true });
+    } catch (err) {
+      logger.warn(`Could not remove previews of blob ${blobId}: ${err.message}`);
+    }
   }
 }
 
@@ -177,6 +209,7 @@ module.exports = {
   deleteUserBlobDirectory,
   moveIntoPlace,
   openBlob,
+  openBlobChecked,
   openTemporaryBlob,
   previewDirectory,
   removeQuietly,

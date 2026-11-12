@@ -10,6 +10,7 @@ const { httpError } = require('../../utils/http_error');
 const { isReservedAdminUsername } = require('../access/admin');
 const { revokeAllDeviceTokens } = require('../devices/tokens');
 const { revokeAllSessionsForUser } = require('./sessions');
+const throttle = require('./login_throttle');
 const {
   MIN_PASSWORD_LENGTH,
   evaluatePasswordStrength,
@@ -76,11 +77,21 @@ function hashPassword(password) {
   return bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 }
 
+/**
+ * The signed-in account's password, asked again before a sensitive change.
+ * Wrong tries count per account like sign-in failures (login_throttle), so
+ * a stolen session can't guess it faster than the sign-in page: 429
+ * LOGIN_LOCKED with `retryAfter` once throttled.
+ */
 async function verifyPassword(userId, password) {
+  const key = throttle.confirmKey(userId);
+  throttle.assertSignInAllowed(key);
+  throttle.recordFailure(key, { kind: 'password' });
   const user = db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
   if (!user || !(await bcrypt.compare(String(password || ''), user.password))) {
     throw httpError(401, 'Current password is incorrect', 'WRONG_PASSWORD');
   }
+  throttle.clearFailures(key, 'password');
 }
 
 /**

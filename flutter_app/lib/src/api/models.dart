@@ -284,6 +284,7 @@ class UserSettings {
     this.aiModels = const <String, String>{},
     this.aiFeatures = const <String, bool>{},
     this.aiNamingTemplate = '',
+    this.folderViews = const <String, Object?>{},
   });
 
   factory UserSettings.fromJson(Map<String, dynamic> json) => UserSettings(
@@ -302,6 +303,7 @@ class UserSettings {
     },
     aiFeatures: _aiFeatures(json['ai_features']),
     aiNamingTemplate: _string(json['ai_naming_template']),
+    folderViews: json['folder_views'] is Map ? (json['folder_views'] as Map).cast<String, Object?>() : const <String, Object?>{},
   );
 
   final String? language;
@@ -334,6 +336,10 @@ class UserSettings {
   /// How suggested names are built (`ai_naming_template`); empty for the
   /// server's default.
   final String aiNamingTemplate;
+
+  /// Sort and view per folder and page (`folder_views`), as stored; read
+  /// through [FolderViews] (src/files/folder_views.dart).
+  final Map<String, Object?> folderViews;
 }
 
 class SessionInfo {

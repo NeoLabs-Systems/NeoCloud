@@ -20,15 +20,18 @@ class NeoCloudController extends ChangeNotifier {
     CameraUploads? cameraUploads,
     ShareIntake? shareIntake,
     AiApi? ai,
+    PhotoLibrary? photoLibrary,
     Uri? launchUri,
   }) : _preferences = preferences,
        ai = ai ?? AiApi(client),
+       photoLibrary = photoLibrary ?? PhotoLibrary(client),
        deviceSessions = deviceSessions ?? createDeviceSessions(),
        cameraUploads = cameraUploads ?? createCameraUploads(),
        shareIntake = shareIntake ?? createShareIntake() {
     client.onSessionExpired = _handleSessionExpired;
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
     uploadJournal = UploadJournal(preferences, uploads);
+    folderViews = FolderViews(preferences: preferences, save: (patch) => client.updateSettings(<String, Object?>{'folder_views': patch}));
     vaults = VaultSessions(client);
     aiReview = AiReviewState(this.ai)..addListener(notifyListeners);
     liveUpdates = LiveFileUpdates(
@@ -63,11 +66,18 @@ class NeoCloudController extends ChangeNotifier {
   final SharedPreferences _preferences;
   late final UploadQueue uploads;
 
+  /// Sort and view per folder and page, kept on the device and the server.
+  late final FolderViews folderViews;
+
   /// Upload metadata kept across reloads, and the leave-page guard.
   late final UploadJournal uploadJournal;
 
   /// The floating "moved to trash · Undo" bar.
   final UndoCenter undo = UndoCenter();
+
+  /// The Photos tab's timeline and thumbnails, kept across tab switches; a
+  /// fake in tests.
+  final PhotoLibrary photoLibrary;
 
   /// Changes made elsewhere (another tab, a device, WebDAV, the sync
   /// client), batched; pages refresh what they show from it.
@@ -507,6 +517,7 @@ class NeoCloudController extends ChangeNotifier {
   Future<void> _enterSession(AccountUser account) async {
     qrLogin.clear();
     user = account;
+    folderViews.open('${account.id}');
     isAwaitingTwoFactor = false;
     errorMessage = null;
     authErrorCode = null;
@@ -522,6 +533,7 @@ class NeoCloudController extends ChangeNotifier {
   Future<void> _loadSettings() async {
     try {
       settings = await client.settings();
+      folderViews.reconcile(settings.folderViews);
       uploads.defaultConflict = settings.uploadConflict;
       _themeMode = _themeModeFromName(settings.theme);
       await _preferences.setString(_themePreferenceKey, settings.theme);
@@ -540,6 +552,7 @@ class NeoCloudController extends ChangeNotifier {
   void _handleSessionExpired() {
     if (user == null) return;
     user = null;
+    folderViews.close();
     openFolderId = null;
     openSharedFolderId = null;
     sharedWithMe = const <SharedWithMe>[];
@@ -733,6 +746,8 @@ class NeoCloudController extends ChangeNotifier {
   });
 
   Future<void> logout() async {
+    await folderViews.flush();
+    folderViews.close();
     if (usesDeviceLogin) {
       // Disconnect: the phone forgets its token, which stays listed under
       // Devices until it is revoked there. Camera upload goes off with it.
@@ -778,6 +793,7 @@ class NeoCloudController extends ChangeNotifier {
         return AppRoute(AppSection.settings.name, page == null ? null : AppRoute.slug(page.name));
       case AppSection.admin:
         return AppRoute(AppSection.admin.name, _adminTab == _AdminTab.users ? null : _adminTab.name);
+      case AppSection.photos:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
@@ -834,6 +850,7 @@ class NeoCloudController extends ChangeNotifier {
         settingsPage = SettingsPage.values.where((page) => AppRoute.slug(page.name) == detail).firstOrNull;
       case AppSection.admin:
         _adminTab = _AdminTab.values.where((tab) => tab.name == detail).firstOrNull ?? _AdminTab.users;
+      case AppSection.photos:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:

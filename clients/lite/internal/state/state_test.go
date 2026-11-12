@@ -1,6 +1,12 @@
 package state
 
-import "testing"
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestEntriesAndMove(t *testing.T) {
 	db, err := Open(t.TempDir())
@@ -83,5 +89,70 @@ func TestCursorUploadsAndReset(t *testing.T) {
 	c, _ := db.Cursor("p")
 	if len(rows) != 0 || c != 0 {
 		t.Errorf("reset left %d rows, cursor %d", len(rows), c)
+	}
+}
+
+// A damaged state.db is moved aside and replaced by an empty one, so the
+// engine merges like a first sync instead of refusing to start (or
+// trusting garbage rows).
+func TestDamagedDatabaseIsSetAside(t *testing.T) {
+	for name, damage := range map[string]func(path string){
+		"garbage": func(path string) {
+			os.WriteFile(path, bytes.Repeat([]byte("not sqlite "), 2000), 0o600)
+		},
+		"truncated page": func(path string) {
+			data, _ := os.ReadFile(path)
+			// Keep the header, scribble over the pages after it.
+			for i := 100; i < len(data); i++ {
+				data[i] = 0xA5
+			}
+			os.WriteFile(path, data, 0o600)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			db, err := Open(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i := 0; i < 200; i++ {
+				db.Put("p", Entry{Path: fmt.Sprintf("f%03d", i), NodeID: "n", Type: "file"})
+			}
+			db.Close()
+			path := filepath.Join(dir, "state.db")
+			os.Remove(path + "-wal")
+			os.Remove(path + "-shm")
+			damage(path)
+
+			db, err = Open(dir)
+			if err != nil {
+				t.Fatalf("a damaged database must not stop the client: %v", err)
+			}
+			defer db.Close()
+			if db.Recovered() == "" {
+				t.Fatal("recovery not reported")
+			}
+			if _, err := os.Stat(db.Recovered()); err != nil {
+				t.Fatalf("the damaged file was not kept: %v", err)
+			}
+			if rows, err := db.Entries("p"); err != nil || len(rows) != 0 {
+				t.Fatalf("fresh database holds %d rows (%v)", len(rows), err)
+			}
+		})
+	}
+}
+
+func TestHealthyDatabaseIsKept(t *testing.T) {
+	dir := t.TempDir()
+	db, _ := Open(dir)
+	db.Put("p", Entry{Path: "a", NodeID: "n", Type: "file"})
+	db.Close()
+	db, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if rows, _ := db.Entries("p"); len(rows) != 1 || db.Recovered() != "" {
+		t.Fatalf("rows %v, recovered %q", rows, db.Recovered())
 	}
 }

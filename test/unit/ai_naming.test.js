@@ -133,9 +133,9 @@ test('the EXIF reader finds the camera and the capture date', () => {
   block.writeUInt32LE(dateAt, exifIfd + 10);
   make.copy(block, makeAt);
   date.copy(block, dateAt);
-  assert.deepEqual(readExif(Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), block])), { make: 'Google', model: null, takenAt: '2026-03-12' });
-  assert.deepEqual(readExif(Buffer.from('garbage')), { make: null, model: null, takenAt: null });
-  assert.deepEqual(readExif(undefined), { make: null, model: null, takenAt: null });
+  assert.deepEqual(readExif(Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), block])), { make: 'Google', model: null, takenAt: '2026-03-12', takenDateTime: '2026-03-12T14:22:33' });
+  assert.deepEqual(readExif(Buffer.from('garbage')), { make: null, model: null, takenAt: null, takenDateTime: null });
+  assert.deepEqual(readExif(undefined), { make: null, model: null, takenAt: null, takenDateTime: null });
 });
 
 test('the model’s answer is checked against the text and cleaned', () => {

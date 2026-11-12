@@ -10,7 +10,7 @@ const { contentDisposition } = require('../../utils/file_names');
 const { parseRange } = require('../../utils/http_range');
 const { isActiveContent } = require('../../utils/mime');
 const { createServiceLogger } = require('../../utils/logger');
-const { openBlob } = require('../storage/blob_store');
+const { openBlob, openBlobChecked } = require('../storage/blob_store');
 const { getLiveNode, liveSubtree } = require('../files/tree');
 const { getVersion } = require('../files/versions');
 const { getPreview, pdfVariantFor } = require('../preview/previews');
@@ -43,6 +43,17 @@ async function sendFile(req, res, userId, fileId, { download = false, version = 
     source = { blobId: node.blob_id, size: node.size, etag: node.etag, modifiedAt: node.modified_at };
   }
 
+  const range = parseRange(req.get('range'), source.size);
+  const start = range && !range.unsatisfiable ? range.start : 0;
+  const end = range && !range.unsatisfiable ? range.end : source.size - 1;
+  const conditional = etagMatches(req.get('if-none-match'), source.etag);
+  // Opened before any header is set: a missing or damaged blob answers with
+  // a plain JSON error status rather than a reset connection or an error
+  // body labelled as the file.
+  const content = conditional || range?.unsatisfiable || req.method === 'HEAD'
+    ? null
+    : await openBlobChecked(userId, source.blobId, source.size, { start, end });
+
   const mime = node.mime || 'application/octet-stream';
   const disposition = download || isActiveContent(mime) ? 'attachment' : 'inline';
   res.set({
@@ -56,18 +67,14 @@ async function sendFile(req, res, userId, fileId, { download = false, version = 
     'Content-Security-Policy': SANDBOX_CSP,
   });
 
-  if (etagMatches(req.get('if-none-match'), source.etag)) {
+  if (conditional) {
     res.status(304).end();
     return;
   }
-
-  const range = parseRange(req.get('range'), source.size);
   if (range?.unsatisfiable) {
     res.status(416).set('Content-Range', `bytes */${source.size}`).end();
     return;
   }
-  const start = range ? range.start : 0;
-  const end = range ? range.end : source.size - 1;
   if (range) {
     res.status(206).set('Content-Range', `bytes ${start}-${end}/${source.size}`);
   }
@@ -76,7 +83,7 @@ async function sendFile(req, res, userId, fileId, { download = false, version = 
     res.end();
     return;
   }
-  await pipeline(openBlob(userId, source.blobId, source.size, { start, end }), res);
+  await pipeline(content, res);
 }
 
 /**
@@ -94,10 +101,13 @@ async function sendPreview(req, res, userId, fileId, variant) {
     return;
   }
   const preview = await getPreview(userId, fileId, resolved);
+  // A URL naming the content (?v=<etag>) never shows anything else, so the
+  // client may keep it for good; photo grids scroll from the cache.
+  const pinned = req.query?.v === node.etag;
   res.set({
     'Content-Type': preview.mime,
     'Content-Length': String(preview.size),
-    'Cache-Control': 'private, max-age=86400',
+    'Cache-Control': pinned ? 'private, max-age=31536000, immutable' : 'private, max-age=86400',
     ETag: etag,
     'X-Content-Type-Options': 'nosniff',
     'Content-Security-Policy': SANDBOX_CSP,

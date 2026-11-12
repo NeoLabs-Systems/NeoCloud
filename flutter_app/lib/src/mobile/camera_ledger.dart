@@ -89,9 +89,17 @@ class CameraRecord {
 
 /// Everything camera backup remembers between passes.
 class CameraLedger {
-  CameraLedger({this.account, Map<String, CameraRecord>? records, List<String>? log, this.lastRun, this.lastSuccess, this.lastBlock})
-    : records = records ?? <String, CameraRecord>{},
-      log = log ?? <String>[];
+  CameraLedger({
+    this.account,
+    Map<String, CameraRecord>? records,
+    List<String>? log,
+    this.lastRun,
+    this.lastSuccess,
+    this.lastBlock,
+    this.baseline,
+    this.baselineSince,
+  }) : records = records ?? <String, CameraRecord>{},
+       log = log ?? <String>[];
 
   factory CameraLedger.fromJson(Map<String, dynamic> json) => CameraLedger(
     account: json['account'] as String?,
@@ -103,6 +111,8 @@ class CameraLedger {
     lastRun: DateTime.tryParse(json['lastRun'] as String? ?? ''),
     lastSuccess: DateTime.tryParse(json['lastSuccess'] as String? ?? ''),
     lastBlock: CameraBlock.values.where((b) => b.name == json['lastBlock']).firstOrNull,
+    baseline: json['baseline'] is List ? <String>{for (final id in json['baseline'] as List) '$id'} : null,
+    baselineSince: DateTime.tryParse(json['baselineSince'] as String? ?? ''),
   );
 
   /// The account (`<server>#<account id>`) the records are about.
@@ -116,6 +126,13 @@ class CameraLedger {
 
   /// What stopped the last pass, if anything.
   CameraBlock? lastBlock;
+
+  /// With "new photos only": the assets that were in the library when
+  /// backup was turned on ([baselineSince]). Everything else is new, whatever
+  /// date it carries: a photo saved from a chat or imported later keeps the
+  /// date it was taken, which can be long before.
+  Set<String>? baseline;
+  DateTime? baselineSince;
 
   Iterable<CameraRecord> get present => records.values.where((record) => record.present);
 
@@ -152,6 +169,8 @@ class CameraLedger {
     'lastRun': lastRun?.toIso8601String(),
     'lastSuccess': lastSuccess?.toIso8601String(),
     'lastBlock': lastBlock?.name,
+    'baseline': baseline?.toList(),
+    'baselineSince': baselineSince?.toIso8601String(),
   };
 
   String encode() => jsonEncode(toJson());

@@ -27,6 +27,7 @@ import (
 type harness struct {
 	t      *testing.T
 	srv    *fakeServer
+	home   string // config and state folder
 	root   string
 	db     *state.DB
 	engine *Engine
@@ -35,7 +36,13 @@ type harness struct {
 
 func newHarness(t *testing.T, srv *fakeServer, direction string, ignore ...string) *harness {
 	t.Helper()
-	home, root := t.TempDir(), t.TempDir()
+	return newHarnessAt(t, srv, t.TempDir(), "/Shared", direction, ignore...)
+}
+
+// newHarnessAt is newHarness for a given local folder and remote path.
+func newHarnessAt(t *testing.T, srv *fakeServer, root, remote, direction string, ignore ...string) *harness {
+	t.Helper()
+	home := t.TempDir()
 	cfg, err := config.Open(home)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +52,7 @@ func newHarness(t *testing.T, srv *fakeServer, direction string, ignore ...strin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	pair, err := config.NewPair(root, "/Shared", direction, ignore, false)
+	pair, err := config.NewPair(root, remote, direction, ignore, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +64,7 @@ func newHarness(t *testing.T, srv *fakeServer, direction string, ignore ...strin
 	}
 	engine := New(cfg, db, log.New(io.Discard, "", 0))
 	engine.conditions = func() netstate.Conditions { return netstate.Conditions{} } // not this computer's battery
-	return &harness{t: t, srv: srv, root: root, db: db, engine: engine, pair: pair}
+	return &harness{t: t, srv: srv, home: home, root: root, db: db, engine: engine, pair: pair}
 }
 
 // configure changes the pair's settings in the config the engine reads.
@@ -128,6 +135,9 @@ func (h *harness) trashed() map[string]string {
 		}
 		rel, _ := filepath.Rel(base, full)
 		parts := strings.SplitN(filepath.ToSlash(rel), "/", 2)
+		if len(parts) < 2 {
+			return nil // a day's .keep mark
+		}
 		data, _ := os.ReadFile(full)
 		out[parts[1]] = string(data)
 		return nil
@@ -157,13 +167,19 @@ func TestGuardThresholds(t *testing.T) {
 		t.Error("custom limits not applied")
 	}
 	evaluateGuard := defaults.evaluate
-	if got := evaluateGuard(0, 3, 5, true); got == nil || got.Reason != GuardRemoteEmpty {
+	if got := evaluateGuard(0, 3, 5, true, false); got == nil || got.Reason != GuardRemoteEmpty {
 		t.Errorf("remote empty: %+v", got)
 	}
-	if got := evaluateGuard(0, 0, 5, true); got != nil {
+	if got := evaluateGuard(0, 0, 5, true, false); got != nil {
 		t.Errorf("remote empty without local deletes: %+v", got)
 	}
-	if got := evaluateGuard(25, 0, 30, false); got == nil || got.Reason != GuardMassDelete || got.RemoteDeletes != 25 {
+	if got := evaluateGuard(3, 0, 5, false, true); got == nil || got.Reason != GuardLocalEmpty {
+		t.Errorf("local empty: %+v", got)
+	}
+	if got := evaluateGuard(0, 0, 5, false, true); got != nil {
+		t.Errorf("local empty without remote deletes: %+v", got)
+	}
+	if got := evaluateGuard(25, 0, 30, false, false); got == nil || got.Reason != GuardMassDelete || got.RemoteDeletes != 25 {
 		t.Errorf("mass delete: %+v", got)
 	}
 	approved := DeleteConfirmation{RemoteDeletes: 25, Reason: GuardMassDelete, Digest: "d1"}
@@ -378,7 +394,7 @@ func TestMoveToTrashKeepsBothOnNameClash(t *testing.T) {
 	now := time.Now()
 	for i, content := range []string{"one", "two"} {
 		os.WriteFile(filepath.Join(root, "a.txt"), []byte(content), 0o644)
-		if _, err := moveToTrash(root, "a.txt", now); err != nil {
+		if _, err := moveToTrash(root, "a.txt", now, false); err != nil {
 			t.Fatal(i, err)
 		}
 	}

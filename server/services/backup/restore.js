@@ -9,21 +9,45 @@
 const fs = require('fs');
 const path = require('path');
 const { pipeline } = require('stream/promises');
+const Database = require('better-sqlite3');
 const { DATA_DIR } = require('../../../runtime/paths');
 const { latestSchemaVersion } = require('../../../lib/schema_migrations');
 const { getBackupKey } = require('../crypto/keys');
+const { encryptedSize } = require('../crypto/stream_cipher');
 const { removeQuietly } = require('../storage/blob_store');
 const { syncDirectory, syncFile } = require('../../utils/durable_fs');
-const { openTarget } = require('./targets');
+const { openTarget, openTargetSpec } = require('./targets');
 const { DATABASE_OBJECT, localBlobPath, readManifest, snapshotIdFor } = require('./runner');
 const { assertRestorable, assertServerStopped, decryptDatabase, swapInDatabase } = require('./database_file');
 
-async function downloadMissingBlobs(adapter, blobs) {
+// Plaintext size of every blob the restored database records, by
+// "<user id>/<blob id>".
+function blobSizesOf(stagedFile) {
+  const copy = new Database(stagedFile, { readonly: true, fileMustExist: true });
+  try {
+    return new Map(copy.prepare('SELECT id, user_id, size FROM blobs').all().map((row) => [`${row.user_id}/${row.id}`, row.size]));
+  } finally {
+    copy.close();
+  }
+}
+
+// A local blob is kept only when it has the length its recorded size
+// implies; a truncated or overgrown one (a damaged disk, an interrupted
+// copy) is fetched again from the backup.
+function localBlobIsWhole(local, size) {
+  try {
+    return size === undefined || fs.statSync(local).size === encryptedSize(size);
+  } catch {
+    return false;
+  }
+}
+
+async function downloadMissingBlobs(adapter, blobs, sizes) {
   let fetched = 0;
   const directories = new Set();
   for (const blob of blobs) {
     const local = localBlobPath(blob);
-    if (fs.existsSync(local)) continue;
+    if (localBlobIsWhole(local, sizes.get(blob))) continue;
     fs.mkdirSync(path.dirname(local), { recursive: true, mode: 0o700 });
     await pipeline(await adapter.get(`blobs/${blob}`), fs.createWriteStream(`${local}.part`, { mode: 0o600 }));
     await syncFile(`${local}.part`);
@@ -35,9 +59,18 @@ async function downloadMissingBlobs(adapter, blobs) {
   return fetched;
 }
 
-async function restoreSnapshot(targetId, name, { log = () => {} } = {}) {
+/**
+ * `source` is a target id from this install's database, or `{ from }`: a
+ * backup folder or target JSON file (see openTargetSpec) for an install
+ * whose database doesn't know the target, such as a new machine.
+ */
+function openSource(source) {
+  return typeof source === 'object' && source !== null ? openTargetSpec(source.from) : openTarget(source);
+}
+
+async function restoreSnapshot(source, name, { log = () => {} } = {}) {
   await assertServerStopped();
-  const { adapter } = await openTarget(targetId);
+  const { adapter } = await openSource(source);
   const stamp = Date.now();
   const encrypted = path.join(DATA_DIR, `restore-${stamp}.enc`);
   const staged = path.join(DATA_DIR, `restore-${stamp}.db`);
@@ -54,7 +87,7 @@ async function restoreSnapshot(targetId, name, { log = () => {} } = {}) {
     assertRestorable(staged);
     log('Database snapshot decrypted and checked.');
 
-    log(`Downloaded ${await downloadMissingBlobs(adapter, manifest.blobs)} blob(s).`);
+    log(`Downloaded ${await downloadMissingBlobs(adapter, manifest.blobs, blobSizesOf(staged))} blob(s).`);
     const { previous } = await swapInDatabase(staged);
     log(previous ? `Database restored. The previous one is at ${previous}.` : 'Database restored.');
   } finally {
@@ -63,4 +96,4 @@ async function restoreSnapshot(targetId, name, { log = () => {} } = {}) {
   }
 }
 
-module.exports = { restoreSnapshot };
+module.exports = { openSource, restoreSnapshot };

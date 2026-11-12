@@ -19,13 +19,18 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
 
   bool get _compact => MediaQuery.sizeOf(context).width < 760;
 
-  Future<void> _setView(String view) => controller.updateSettings(<String, Object?>{'fileView': view});
+  /// The entry a choice made now belongs to: the search's or the folder's.
+  String get _viewKey => searching ? FolderViewKeys.search : folderViewKey;
 
+  /// Remembered for this folder (or the search) only; the folder reloads
+  /// through [_onFolderViewsChanged] when its sort changed.
+  Future<void> _setView(String view) async => controller.folderViews.set(_viewKey, folderView.copyWith(view: view));
+
+  /// [order] null: a click on the sorted column turns it around.
   Future<void> _setSort(String field, {String? order}) async {
-    final settings = controller.settings;
-    final nextOrder = order ?? (settings.sortField == field && settings.sortOrder == 'asc' ? 'desc' : 'asc');
-    await controller.updateSettings(<String, Object?>{'sortField': field, 'sortOrder': nextOrder});
-    await load(quiet: true);
+    final current = folderView;
+    final nextOrder = order ?? (current.sort == field && current.dir == 'asc' ? 'desc' : 'asc');
+    controller.folderViews.set(_viewKey, current.copyWith(sort: field, dir: nextOrder));
   }
 
   /// What the command palette offers while the Files page is open.
@@ -93,38 +98,11 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     );
   }
 
-  Widget _sortMenu() {
-    final settings = controller.settings;
-    final fields = <(String, String)>[
-      ('name', appStrings.sortName),
-      ('modified', appStrings.sortModified),
-      ('size', appStrings.sortSize),
-      ('type', appStrings.sortType),
-    ];
-    return MenuAnchor(
-      alignmentOffset: const Offset(0, 6),
-      menuChildren: <Widget>[
-        for (final (field, label) in fields)
-          MenuItemButton(
-            leadingIcon: Icon(settings.sortField == field ? Icons.check_rounded : null, size: 18),
-            onPressed: () => unawaited(_setSort(field, order: settings.sortOrder)),
-            child: Text(label),
-          ),
-        const Divider(),
-        for (final (order, label) in <(String, String)>[('asc', appStrings.sortAscending), ('desc', appStrings.sortDescending)])
-          MenuItemButton(
-            leadingIcon: Icon(settings.sortOrder == order ? Icons.check_rounded : null, size: 18),
-            onPressed: () => unawaited(_setSort(settings.sortField, order: order)),
-            child: Text(label),
-          ),
-      ],
-      builder: (context, menu, _) => IconButton(
-        tooltip: appStrings.sortBy,
-        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-        icon: const Icon(Icons.sort_rounded, size: 20),
-      ),
-    );
-  }
+  Widget _sortMenu() => _SortMenu(
+    view: folderView,
+    relevance: searching,
+    onChanged: (field, order) => unawaited(_setSort(field, order: order)),
+  );
 
   Widget _toolbar() {
     final search = SizedBox(
@@ -299,7 +277,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       ];
     }
     final wide = !_compact;
-    final settings = controller.settings;
+    final view = folderView;
     return <Widget>[
       _fileListSliver(
         items: items,
@@ -308,8 +286,8 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         startKey: itemsStartKey,
         header: wide && !searching
             ? _ListHeader(
-                sortField: settings.sortField,
-                sortOrder: settings.sortOrder,
+                sortField: view.sort,
+                sortOrder: view.dir,
                 onSort: (field) => unawaited(_setSort(field)),
                 allSelected: selection.selected.length == items.length,
                 someSelected: !selection.isEmpty,

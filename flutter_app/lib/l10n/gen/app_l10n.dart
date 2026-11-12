@@ -1765,12 +1765,6 @@ abstract class AppL10n {
   /// **'Show master key'**
   String get adminShowMasterKey;
 
-  /// No description provided for @adminConfirmPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm with your password'**
-  String get adminConfirmPassword;
-
   /// No description provided for @officePreviewUnavailable.
   ///
   /// In en, this message translates to:
@@ -2053,6 +2047,12 @@ abstract class AppL10n {
   /// **'Backing up…'**
   String get backupRunning;
 
+  /// No description provided for @backupRunningProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Backing up… {percent} % · {done} of {total}'**
+  String backupRunningProgress(int percent, String done, String total);
+
   /// No description provided for @backupDeleteMessage.
   ///
   /// In en, this message translates to:
@@ -2160,6 +2160,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Type'**
   String get sortType;
+
+  /// No description provided for @sortRelevance.
+  ///
+  /// In en, this message translates to:
+  /// **'Relevance'**
+  String get sortRelevance;
 
   /// No description provided for @sortAscending.
   ///
@@ -4933,12 +4939,6 @@ abstract class AppL10n {
   /// **'Options'**
   String get cameraOptions;
 
-  /// No description provided for @mobileNavCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera'**
-  String get mobileNavCamera;
-
   /// No description provided for @mobilePermissionsSet.
   ///
   /// In en, this message translates to:
@@ -6468,6 +6468,24 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Too many attempts. Wait a few minutes, then try again.'**
   String get signInRateLimited;
+
+  /// No description provided for @confirmLockedMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong passwords or codes for this account. Try again in {minutes} min.'**
+  String confirmLockedMinutes(int minutes);
+
+  /// No description provided for @confirmLockedSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong passwords or codes for this account. Try again in {seconds} s.'**
+  String confirmLockedSeconds(int seconds);
+
+  /// No description provided for @passkeyConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A security key signs in on its own and stays when you change your password, so confirm it\'s you first.'**
+  String get passkeyConfirmMessage;
 
   /// No description provided for @approvalNeedsServerUpdate.
   ///
@@ -8658,6 +8676,294 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'This change can’t be undone.'**
   String get aiErrorNotUndoable;
+
+  /// No description provided for @photosNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get photosNav;
+
+  /// No description provided for @photosEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No photos yet'**
+  String get photosEmptyTitle;
+
+  /// No description provided for @photosEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and videos you keep in NeoCloud show up here, newest first.'**
+  String get photosEmptyBody;
+
+  /// No description provided for @photosEmptyBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up this phone'**
+  String get photosEmptyBackup;
+
+  /// No description provided for @photosEmptyOpenFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Files'**
+  String get photosEmptyOpenFiles;
+
+  /// No description provided for @photosLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load your photos.'**
+  String get photosLoadFailed;
+
+  /// No description provided for @photosSorting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Sorting 1 new photo by date…} other{Sorting {count} new photos by date…}}'**
+  String photosSorting(int count);
+
+  /// No description provided for @photosBackupOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup is off'**
+  String get photosBackupOff;
+
+  /// No description provided for @photosBackupTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get photosBackupTurnOn;
+
+  /// No description provided for @photosToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get photosToday;
+
+  /// No description provided for @photosYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get photosYesterday;
+
+  /// No description provided for @photosZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Bigger photos'**
+  String get photosZoomIn;
+
+  /// No description provided for @photosZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'More photos at once'**
+  String get photosZoomOut;
+
+  /// No description provided for @photosSelectGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all here'**
+  String get photosSelectGroup;
+
+  /// No description provided for @photosShareOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one photo to share a link to it.'**
+  String get photosShareOne;
+
+  /// No description provided for @photosPhotoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This photo can’t be shown.'**
+  String get photosPhotoUnavailable;
+
+  /// No description provided for @photosLocalOnPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'On this phone'**
+  String get photosLocalOnPhone;
+
+  /// No description provided for @photosLocalBackUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up to NeoCloud'**
+  String get photosLocalBackUp;
+
+  /// No description provided for @photosLocalBackedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Backed up'**
+  String get photosLocalBackedUp;
+
+  /// No description provided for @photosLocalChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get photosLocalChecking;
+
+  /// No description provided for @photosLocalBackingUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Backing up…'**
+  String get photosLocalBackingUp;
+
+  /// No description provided for @photosLocalSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to NeoCloud to back this up.'**
+  String get photosLocalSignIn;
+
+  /// No description provided for @photosLocalBackupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t back this up. Try again.'**
+  String get photosLocalBackupFailed;
+
+  /// No description provided for @aiMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get aiMoreActions;
+
+  /// No description provided for @aiAcceptAllTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept all on this tab'**
+  String get aiAcceptAllTab;
+
+  /// No description provided for @aiRejectAllTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject all on this tab'**
+  String get aiRejectAllTab;
+
+  /// No description provided for @aiAcceptAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Accept 1 suggestion?} other{Accept {count} suggestions?}}'**
+  String aiAcceptAllTitle(int count);
+
+  /// No description provided for @aiAcceptAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every suggestion on this tab is applied at once. You can undo them right after.'**
+  String get aiAcceptAllBody;
+
+  /// No description provided for @aiRejectAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Reject 1 suggestion?} other{Reject {count} suggestions?}}'**
+  String aiRejectAllTitle(int count);
+
+  /// No description provided for @aiRejectAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every suggestion on this tab is dismissed. Your files stay as they are.'**
+  String get aiRejectAllBody;
+
+  /// No description provided for @aiRejectedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 suggestion rejected} other{{count} suggestions rejected}}'**
+  String aiRejectedMany(int count);
+
+  /// No description provided for @duplicatesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates'**
+  String get duplicatesTab;
+
+  /// No description provided for @duplicatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies of the same file and photos that look alike. Remove the extras to free up space.'**
+  String get duplicatesSubtitle;
+
+  /// No description provided for @duplicatesExactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Identical copies'**
+  String get duplicatesExactTitle;
+
+  /// No description provided for @duplicatesSimilarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar photos · {percent} % alike'**
+  String duplicatesSimilarTitle(int percent);
+
+  /// No description provided for @duplicatesGroupSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files · {size} can be freed'**
+  String duplicatesGroupSummary(int count, String size);
+
+  /// No description provided for @duplicatesKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get duplicatesKeep;
+
+  /// No description provided for @duplicatesRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get duplicatesRemove;
+
+  /// No description provided for @duplicatesToggleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to switch between Keep and Remove'**
+  String get duplicatesToggleHint;
+
+  /// No description provided for @duplicatesTrashGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Move 1 to trash} other{Move {count} to trash}}'**
+  String duplicatesTrashGroup(int count);
+
+  /// No description provided for @duplicatesNotDuplicates.
+  ///
+  /// In en, this message translates to:
+  /// **'Not duplicates'**
+  String get duplicatesNotDuplicates;
+
+  /// No description provided for @duplicatesCleanUpAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Clean up all (1 file)} other{Clean up all ({count} files)}}'**
+  String duplicatesCleanUpAll(int count);
+
+  /// No description provided for @duplicatesCleanUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Move 1 file to the trash?} other{Move {count} files to the trash?}}'**
+  String duplicatesCleanUpTitle(int count);
+
+  /// No description provided for @duplicatesCleanUpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'In every group the file marked Keep stays and the others go to the trash. You can undo this right after, or restore them from the trash later.'**
+  String get duplicatesCleanUpBody;
+
+  /// No description provided for @duplicatesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No duplicates found'**
+  String get duplicatesEmptyTitle;
+
+  /// No description provided for @duplicatesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies of the same file and photos that look alike show up here.'**
+  String get duplicatesEmptyBody;
+
+  /// No description provided for @duplicatesChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Checking your photos… 1 left} other{Checking your photos… {count} left}}'**
+  String duplicatesChecking(int count);
+
+  /// No description provided for @duplicatesTrashFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file couldn’t be moved to the trash.} other{{count} files couldn’t be moved to the trash.}}'**
+  String duplicatesTrashFailed(int count);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

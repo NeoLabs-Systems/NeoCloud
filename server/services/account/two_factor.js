@@ -25,6 +25,11 @@ const TOTP_OPTIONS = {
 
 const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+// The last TOTP time step accepted for the account, so a code works once:
+// a row in user_settings that the settings API never reads (like the AI
+// provider rows), erased with the account.
+const LAST_STEP_KEY = 'two_factor_last_step';
+
 function normalizeCode(value) {
   return String(value || '').trim().replace(/\s+/g, '').toUpperCase();
 }
@@ -62,17 +67,24 @@ function getTwoFactorStatus(userId) {
 
 // Replacing a factor that is already on takes that factor (a TOTP or a
 // recovery code), like turning it off does; the password alone is not enough.
+// Wrong codes count per account (login_throttle.confirmKey), as wrong
+// passwords do.
 async function assertCurrentFactor(userId, code) {
   if (getTwoFactorRow(userId)?.enabled !== 1) return;
   if (!String(code || '').trim()) {
     throw httpError(401, 'Enter a code from your current authenticator or a recovery code.', 'TWO_FACTOR_REQUIRED');
   }
+  const key = throttle.confirmKey(userId);
+  throttle.assertSignInAllowed(key);
+  throttle.recordFailure(key, { kind: 'second_factor' });
   if (!(await verifyLoginCode(userId, code))) throw httpError(401, 'Invalid 2FA code', 'INVALID_CODE');
+  throttle.clearFailures(key, 'second_factor');
 }
 
 /**
- * Asks again who is there before something that can't be undone (exporting
- * or deleting the account): the password, plus a code when 2FA is on.
+ * Asks again who is there before something sensitive (exporting or deleting
+ * the account, adding a security key, the master key): the password, plus a
+ * code when 2FA is on.
  */
 async function confirmIdentity(userId, { currentPassword, code }) {
   await verifyCurrentPassword(userId, currentPassword);
@@ -111,15 +123,30 @@ async function beginSetup(userId, currentPassword, currentCode) {
   };
 }
 
-function verifyTotp(secret, code) {
+/** The time step `code` belongs to when it is valid for `secret`, else null. */
+function totpTimeStep(secret, code) {
   const token = normalizeCode(code);
-  if (!/^\d{6}$/.test(token)) return false;
+  if (!/^\d{6}$/.test(token)) return null;
   const result = verifySync({
     ...TOTP_OPTIONS,
     secret,
     token,
   });
-  return result?.valid === true;
+  return result?.valid === true ? result.timeStep : null;
+}
+
+/**
+ * Takes time step `step` for the account if it is later than the last one
+ * taken, in one statement, so the same code can't be used twice, not even
+ * by two requests at once.
+ */
+function claimTimeStep(userId, step) {
+  const result = db.prepare(`
+    INSERT INTO user_settings (user_id, key, value, updated_at) VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    WHERE CAST(user_settings.value AS INTEGER) < CAST(excluded.value AS INTEGER)
+  `).run(userId, LAST_STEP_KEY, String(step));
+  return result.changes === 1;
 }
 
 async function storeRecoveryCodes(userId) {
@@ -147,22 +174,30 @@ async function enable(userId, code, currentCode) {
     throw error;
   }
   const secret = decryptValue(row.pending_secret);
-  if (!verifyTotp(secret, code)) {
+  const step = totpTimeStep(secret, code);
+  if (step === null) {
     const error = new Error('Invalid 2FA code');
     error.statusCode = 401;
     throw error;
   }
   await assertCurrentFactor(userId, currentCode);
   const recoveryCodes = await storeRecoveryCodes(userId);
-  db.prepare(`
-    UPDATE user_two_factor
-    SET secret = pending_secret,
-        pending_secret = NULL,
-        enabled = 1,
-        enabled_at = datetime('now'),
-        updated_at = datetime('now')
-    WHERE user_id = ?
-  `).run(userId);
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE user_two_factor
+      SET secret = pending_secret,
+          pending_secret = NULL,
+          enabled = 1,
+          enabled_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE user_id = ?
+    `).run(userId);
+    // The new secret's history starts with the code that turned it on.
+    db.prepare(`
+      INSERT INTO user_settings (user_id, key, value, updated_at) VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).run(userId, LAST_STEP_KEY, String(step));
+  })();
   return {
     success: true,
     recoveryCodes,
@@ -181,9 +216,12 @@ async function consumeRecoveryCode(userId, code) {
   `).all(userId);
   for (const row of rows) {
     if (await bcrypt.compare(normalized, row.code_hash)) {
-      db.prepare('UPDATE user_recovery_codes SET used_at = datetime(\'now\') WHERE id = ? AND user_id = ?')
-        .run(row.id, userId);
-      return true;
+      // Two requests with the same code may both get here; only the one
+      // that marks it used wins.
+      const result = db.prepare(`
+        UPDATE user_recovery_codes SET used_at = datetime('now') WHERE id = ? AND user_id = ? AND used_at IS NULL
+      `).run(row.id, userId);
+      return result.changes === 1;
     }
   }
   return false;
@@ -192,8 +230,8 @@ async function consumeRecoveryCode(userId, code) {
 async function verifyLoginCode(userId, code) {
   const row = getTwoFactorRow(userId);
   if (!row || row.enabled !== 1 || !row.secret) return true;
-  const secret = decryptValue(row.secret);
-  if (verifyTotp(secret, code)) return true;
+  const step = totpTimeStep(decryptValue(row.secret), code);
+  if (step !== null) return claimTimeStep(userId, step);
   return consumeRecoveryCode(userId, code);
 }
 
@@ -222,11 +260,7 @@ async function disable(userId, { currentPassword, code }) {
   if (!row || row.enabled !== 1) {
     return { success: true, status: getTwoFactorStatus(userId) };
   }
-  if (!(await verifyLoginCode(userId, code))) {
-    const error = new Error('Invalid 2FA code');
-    error.statusCode = 401;
-    throw error;
-  }
+  await assertCurrentFactor(userId, code);
   db.transaction(() => {
     db.prepare(`
       UPDATE user_two_factor
@@ -238,17 +272,14 @@ async function disable(userId, { currentPassword, code }) {
       WHERE user_id = ?
     `).run(userId);
     db.prepare('DELETE FROM user_recovery_codes WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM user_settings WHERE user_id = ? AND key = ?').run(userId, LAST_STEP_KEY);
   })();
   return { success: true, status: getTwoFactorStatus(userId) };
 }
 
 async function regenerateRecoveryCodes(userId, { currentPassword, code }) {
   await verifyCurrentPassword(userId, currentPassword);
-  if (!(await verifyLoginCode(userId, code))) {
-    const error = new Error('Invalid 2FA code');
-    error.statusCode = 401;
-    throw error;
-  }
+  await assertCurrentFactor(userId, code);
   const recoveryCodes = await storeRecoveryCodes(userId);
   return { success: true, recoveryCodes, status: getTwoFactorStatus(userId) };
 }

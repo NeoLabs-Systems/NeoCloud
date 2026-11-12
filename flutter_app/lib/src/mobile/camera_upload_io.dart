@@ -15,13 +15,13 @@ import '../files/upload_queue.dart';
 import '../l10n/app_language.dart';
 import 'background_reliability.dart';
 import 'camera_backup.dart';
+import 'camera_lease.dart';
 import 'camera_upload.dart';
 import 'camera_upload_stub.dart';
 
 CameraUploads createCameraUploads() => Platform.isAndroid || Platform.isIOS ? _IoCameraUploads() : NoCameraUploads();
 
 const String _settingsKey = 'camera.settings';
-const String _leaseKey = 'camera.lease';
 const String _limitedKey = 'camera.limited';
 const String _reconfirmKey = 'camera.reconfirm';
 const String _pausedKey = 'camera.pausedUntil';
@@ -30,9 +30,9 @@ const String _pausedKey = 'camera.pausedUntil';
 /// up now" ends it sooner.
 const Duration _pauseFor = Duration(hours: 1);
 
-/// Two passes (foreground and background task) must not run at once; a
-/// lease older than this is taken to be from a pass that died.
-const Duration _leaseTimeout = Duration(minutes: 20);
+/// How often a running pass renews its lease while one file takes long;
+/// before each file it renews it anyway. Well below [CameraLease.staleAfter].
+const Duration _leaseRenewal = Duration(minutes: 1);
 
 /// Must match BGTaskSchedulerPermittedIdentifiers in ios/Runner/Info.plist
 /// and the registration in AppDelegate.swift. iOS runs it when the system
@@ -143,6 +143,12 @@ class _CameraTransfer {
   }
 }
 
+Future<Directory> _cameraDir() async {
+  final dir = Directory('${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}camera');
+  await dir.create(recursive: true);
+  return dir;
+}
+
 /// The ledger as `<app support>/camera/ledger.json`, replaced atomically
 /// (write a temp file, then rename over the old one). A ledger of another
 /// account than [account] reads as empty.
@@ -151,11 +157,7 @@ class _FileLedgerStore implements CameraLedgerStore {
 
   final String? account;
 
-  static Future<File> _file() async {
-    final dir = Directory('${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}camera');
-    await dir.create(recursive: true);
-    return File('${dir.path}${Platform.pathSeparator}ledger.json');
-  }
+  static Future<File> _file() async => File('${(await _cameraDir()).path}${Platform.pathSeparator}ledger.json');
 
   static Future<void> clear() async {
     final file = await _file();
@@ -307,8 +309,20 @@ class _ServerTarget implements CameraTarget {
   }
 
   @override
-  Future<void> upload(String folderId, CameraFile file) async {
-    final task = await _queue.send(folderId, UploadSource(name: file.name, size: file.size, openRead: file.openRead));
+  Future<bool> contains(String folderId, String sha256, int size) async {
+    try {
+      return await _client.uploadContentExists(folderId, sha256, size);
+    } catch (error) {
+      final failure = _classify(error);
+      // A server from before the check answers 404: it can't tell.
+      if (failure.kind == CameraFailureKind.file) return false;
+      throw failure;
+    }
+  }
+
+  @override
+  Future<void> upload(String folderId, CameraFile file, {required String sha256}) async {
+    final task = await _queue.send(folderId, UploadSource(name: file.name, size: file.size, openRead: file.openRead, sha256: sha256));
     if (task.status == UploadStatus.done) return;
     // The queue reports text only; ask the server what is wrong with it as
     // a whole before blaming the file.
@@ -346,14 +360,18 @@ Future<CameraPassResult?> _pass(
     final paused = DateTime.tryParse(preferences.getString(_pausedKey) ?? '');
     if (paused != null && DateTime.now().isBefore(paused)) return null;
   }
-  final lease = DateTime.tryParse(preferences.getString(_leaseKey) ?? '');
-  final now = DateTime.now();
-  if (lease != null && now.difference(lease) < _leaseTimeout) return null;
-  await preferences.setString(_leaseKey, now.toIso8601String());
+  final lease = CameraLease(File('${(await _cameraDir()).path}${Platform.pathSeparator}pass.lease'));
+  if (!await lease.acquire()) return null;
+  var leaseLost = false;
+  final renewal = Timer.periodic(_leaseRenewal, (_) async {
+    try {
+      if (!await lease.renew()) leaseLost = true;
+    } on FileSystemException {
+      // Tried again before the next file.
+    }
+  });
   final transfer = _CameraTransfer();
   try {
-    final network = await Connectivity().checkConnectivity();
-    final onWifi = network.contains(ConnectivityResult.wifi) || network.contains(ConnectivityResult.ethernet);
     final engine = CameraBackupEngine(
       store: _FileLedgerStore(account),
       library: _PhotoLibrary(),
@@ -369,13 +387,26 @@ Future<CameraPassResult?> _pass(
         scope: settings.scope,
         since: settings.enabledAt,
       ),
-      CameraConditions(onWifi: onWifi, charging: charging, signedIn: true),
+      CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
       manual: manual,
       onProgress: (progress) {
         transfer.show(progress);
         onProgress?.call(progress);
       },
-      interruption: () => transfer.stopWith,
+      interruption: () async {
+        final stop = transfer.stopWith;
+        if (stop != null) return stop;
+        // Another pass took the lease over (this one was frozen past its
+        // timeout): it goes on, this one ends here. So does one that can't
+        // tell.
+        try {
+          if (leaseLost || !await lease.renew()) return CameraBlock.interrupted;
+        } on FileSystemException {
+          return CameraBlock.interrupted;
+        }
+        return null;
+      },
+      conditionsNow: () async => CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
     );
     await preferences.setBool(_limitedKey, result.limitedAccess);
     if (result.block == CameraBlock.paused) {
@@ -383,9 +414,20 @@ Future<CameraPassResult?> _pass(
     }
     return result;
   } finally {
+    renewal.cancel();
     await transfer.release();
-    await preferences.remove(_leaseKey);
+    await lease.release();
   }
+}
+
+/// "Wi-Fi only" means an unmetered connection. Android answers that
+/// directly (as WorkManager's UNMETERED constraint does); the transport
+/// list is the fallback where it can't, or on iOS.
+Future<bool> _onWifi() async {
+  final unmetered = Platform.isAndroid ? await NeoCloudBackground.isUnmetered() : null;
+  if (unmetered != null) return unmetered;
+  final network = await Connectivity().checkConnectivity();
+  return network.contains(ConnectivityResult.wifi) || network.contains(ConnectivityResult.ethernet);
 }
 
 /// For [CameraBackupEngine.retryFailed], which uploads nothing.
@@ -396,7 +438,11 @@ class _NoTarget implements CameraTarget {
   Future<List<RemoteCameraFile>> list(String folderId) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
 
   @override
-  Future<void> upload(String folderId, CameraFile file) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
+  Future<bool> contains(String folderId, String sha256, int size) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
+
+  @override
+  Future<void> upload(String folderId, CameraFile file, {required String sha256}) =>
+      throw const CameraUploadFailure(CameraFailureKind.signedOut);
 }
 
 class _IoCameraUploads extends CameraUploads {
@@ -411,8 +457,25 @@ class _IoCameraUploads extends CameraUploads {
   /// The signed-in account (`<server>#<account id>`); null when signed out.
   String? _account;
 
+  /// The client of the last pass, for the pass a returning Wi-Fi starts.
+  BackendClient? _client;
+  StreamSubscription<List<ConnectivityResult>>? _networkWatch;
+
   @override
   bool get supported => true;
+
+  /// A pass that stopped for Wi-Fi only runs again on the next trigger, so
+  /// its "waiting for Wi-Fi" stays up after Wi-Fi is back. While the app
+  /// runs, Wi-Fi (or Ethernet) coming back starts that pass right away.
+  void _watchNetwork() {
+    _networkWatch ??= Connectivity().onConnectivityChanged.listen((network) {
+      final client = _client;
+      if (network.contains(ConnectivityResult.none) || client == null || _running || _ledger.lastBlock != CameraBlock.waitingWifi) return;
+      unawaited(() async {
+        if (await _onWifi()) await runNow(client);
+      }().catchError((Object _) {}));
+    });
+  }
 
   /// Settings of another account (or with nobody signed in) show as off.
   @override
@@ -578,6 +641,8 @@ class _IoCameraUploads extends CameraUploads {
 
   @override
   Future<void> runNow(BackendClient client, {bool manual = false}) async {
+    _client = client;
+    _watchNetwork();
     final account = _account;
     if (_running || account == null || !_settings.activeFor(account)) return;
     _running = true;

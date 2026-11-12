@@ -31,6 +31,14 @@ router.post('/uploads', jsonHandler((req) => transfers.createUpload(req.userId, 
   sha256: req.body?.sha256,
 }), { status: 201 }));
 
+// Before sending: is this content (SHA-256 and size) already in the folder
+// or below it? Camera upload skips what the server has.
+router.post('/uploads/check', jsonHandler((req) => transfers.contentExists(req.userId, {
+  parentId: req.body?.parentId || ROOT_ALIAS,
+  sha256: req.body?.sha256,
+  size: req.body?.size,
+})));
+
 router.get('/uploads/:id', jsonHandler((req) => transfers.getUpload(req.userId, req.params.id)));
 
 router.put('/uploads/:id/parts/:index', jsonHandler((req) => transfers.putPart(

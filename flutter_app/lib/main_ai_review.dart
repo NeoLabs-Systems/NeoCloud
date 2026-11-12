@@ -3,8 +3,11 @@ part of 'main.dart';
 // Files › Review: the AI suggestions waiting for a decision, one tab per
 // kind (names, folders, tags). High-confidence ones can be accepted in one
 // go, low-confidence ones stay hidden until asked for, and rule proposals
-// ("Always move these here?") lead the page. On phones it is the same page
-// in the phone frame; editing opens sheets.
+// ("Always move these here?") lead the page. Each AI tab can also be
+// accepted or rejected as a whole from the ⋯ menu. The Duplicates tab
+// (main_ai_duplicates.dart) needs no AI and is the whole page while AI is
+// off. On phones it is the same page in the phone frame; editing opens
+// sheets.
 
 /// The kinds of suggestion, by their API name, with their tab label.
 List<(String, String)> get _aiReviewTabs => <(String, String)>[
@@ -22,7 +25,7 @@ class AiReviewPage extends StatefulWidget {
   State<AiReviewPage> createState() => _AiReviewPageState();
 }
 
-class _AiReviewPageState extends State<AiReviewPage> {
+class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
   static const int _pageSize = 50;
 
   String _kind = 'rename';
@@ -36,9 +39,11 @@ class _AiReviewPageState extends State<AiReviewPage> {
   String? _note;
   final Set<String> _busy = <String>{};
   bool _acceptingHigh = false;
+  bool _bulkBusy = false;
   AiSuggestionCounts? _seenCounts;
   int _generation = 0;
 
+  @override
   NeoCloudController get _controller => widget.controller;
   AiReviewState get _review => _controller.aiReview;
 
@@ -46,12 +51,15 @@ class _AiReviewPageState extends State<AiReviewPage> {
   void initState() {
     super.initState();
     _seenCounts = _review.counts;
+    if (!_review.enabled) _kind = _duplicatesTab;
     _review.addListener(_onReviewChanged);
     unawaited(_load());
+    unawaited(_loadDuplicates());
   }
 
   @override
   void dispose() {
+    _disposeDuplicates();
     _review.removeListener(_onReviewChanged);
     super.dispose();
   }
@@ -62,10 +70,18 @@ class _AiReviewPageState extends State<AiReviewPage> {
     final counts = _review.counts;
     if (counts == _seenCounts) return;
     _seenCounts = counts;
-    if (_busy.isEmpty && !_acceptingHigh) unawaited(_load(quiet: true));
+    if (_onDuplicates) {
+      // AI switched on or off: the page shows other tabs.
+      setState(() {});
+      return;
+    }
+    if (_busy.isEmpty && !_acceptingHigh && !_bulkBusy) unawaited(_load(quiet: true));
   }
 
+  bool get _onDuplicates => _kind == _duplicatesTab || !_review.enabled;
+
   Future<void> _load({bool quiet = false}) async {
+    if (_onDuplicates) return _loadDuplicates(quiet: quiet);
     final generation = ++_generation;
     if (!quiet) {
       setState(() {
@@ -119,7 +135,7 @@ class _AiReviewPageState extends State<AiReviewPage> {
       _kind = kind;
       _note = null;
     });
-    unawaited(_load());
+    unawaited(_load(quiet: kind == _duplicatesTab));
   }
 
   void _toggleLow() {
@@ -222,6 +238,92 @@ class _AiReviewPageState extends State<AiReviewPage> {
     return ids;
   }
 
+  /// Every suggestion the active tab shows (all pages, low-confidence
+  /// ones only while they are shown).
+  Future<List<String>> _tabIds() async {
+    final ids = <String>[];
+    int? offset = 0;
+    while (offset != null && ids.length < 1000) {
+      final page = await _controller.ai.suggestions(kind: _kind, tier: _showLow ? 'all' : null, limit: 200, offset: offset);
+      ids.addAll(page.items.map((item) => item.id));
+      offset = page.nextOffset;
+    }
+    return ids.take(1000).toList();
+  }
+
+  /// "Accept all" / "Reject all" on the active tab, after a confirmation
+  /// with the count. Accepting offers one Undo for the whole batch.
+  Future<void> _decideTab(String action) async {
+    if (_bulkBusy || _acceptingHigh) return;
+    final accept = action == 'accept';
+    setState(() {
+      _bulkBusy = true;
+      _note = null;
+    });
+    List<String> ids;
+    try {
+      ids = await _tabIds();
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _bulkBusy = false;
+          _error = _aiFriendlyError(_controller, error);
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (ids.isEmpty) {
+      setState(() => _bulkBusy = false);
+      return;
+    }
+    final confirmed = await showAdaptiveSheet<bool>(
+      context: context,
+      builder: (dialogContext) => _AdaptiveDialog(
+        title: Text(accept ? appStrings.aiAcceptAllTitle(ids.length) : appStrings.aiRejectAllTitle(ids.length)),
+        content: SizedBox(
+          width: 420,
+          child: Text(accept ? appStrings.aiAcceptAllBody : appStrings.aiRejectAllBody, style: TextStyle(color: _textSecondary, height: 1.45)),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(appStrings.cancel)),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(accept ? appStrings.aiAccept : appStrings.aiReject)),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      if (mounted) setState(() => _bulkBusy = false);
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      final result = await _controller.ai.bulkDecide(ids, action);
+      final decided = ids.where((id) => !result.failed.containsKey(id)).toList();
+      for (final id in decided) {
+        _controller.aiReview.forget(id);
+      }
+      if (accept) {
+        _controller.notifyFilesChanged();
+        if (result.done > 0) {
+          _controller.undo.show(UndoEntry(
+            message: appStrings.aiAcceptedMany(result.done),
+            onUndo: decided.isEmpty ? null : () => _undoAiSuggestions(_controller, messenger, decided),
+          ));
+        }
+      } else if (result.done > 0) {
+        messenger?.showSnackBar(SnackBar(content: Text(appStrings.aiRejectedMany(result.done))));
+      }
+      if (mounted && result.failed.isNotEmpty) setState(() => _note = appStrings.aiAcceptHighFailed(result.failed.length));
+    } catch (error) {
+      if (mounted) setState(() => _error = _aiFriendlyError(_controller, error));
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+    await _review.refreshSuggestions();
+    if (accept && _kind == 'move') unawaited(_refreshProposals());
+    if (mounted) await _load(quiet: true);
+  }
+
   Future<void> _createRule(AiRuleProposal proposal) async {
     try {
       await _controller.ai.acceptProposal(proposal.id);
@@ -242,28 +344,81 @@ class _AiReviewPageState extends State<AiReviewPage> {
     }
   }
 
+  /// The gold "Accept all high-confidence" and, beside it, the ⋯ menu with
+  /// Accept all / Reject all for the active tab.
+  Widget? _aiActions(AiSuggestionCounts counts) {
+    final hasItems = (_items ?? const <AiSuggestion>[]).isNotEmpty;
+    if (counts.high == 0 && !hasItems) return null;
+    final busy = _acceptingHigh || _bulkBusy;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (counts.high > 0)
+          FilledButton.icon(
+            onPressed: busy ? null : () => unawaited(_acceptAllHigh()),
+            icon: _acceptingHigh
+                ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _onAccent))
+                : const Icon(Icons.done_all_rounded, size: 18),
+            label: Text(appStrings.aiAcceptHigh(counts.high)),
+          ),
+        if (hasItems) ...<Widget>[
+          const SizedBox(width: 6),
+          PopupMenuButton<String>(
+            enabled: !busy,
+            tooltip: appStrings.aiMoreActions,
+            icon: _bulkBusy
+                ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _textMuted))
+                : Icon(Icons.more_horiz_rounded, color: _textSecondary),
+            onSelected: (action) => unawaited(_decideTab(action)),
+            itemBuilder: (context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(value: 'accept', child: Text(appStrings.aiAcceptAllTab)),
+              PopupMenuItem<String>(value: 'reject', child: Text(appStrings.aiRejectAllTab)),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _tabs(AiSuggestionCounts counts, {required bool aiOn}) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        if (aiOn)
+          for (final (kind, label) in _aiReviewTabs)
+            _AiReviewTab(label: label, count: counts.ofKind(kind), active: kind == _kind, onTap: () => _openTab(kind)),
+        _AiReviewTab(
+          label: appStrings.duplicatesTab,
+          count: _duplicateGroupCount,
+          active: _onDuplicates,
+          onTap: () => _openTab(_duplicatesTab),
+        ),
+        if (aiOn && !_onDuplicates && (counts.hiddenLow > 0 || _showLow))
+          TextButton.icon(
+            onPressed: _toggleLow,
+            icon: Icon(_showLow ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 17),
+            label: Text(_showLow ? appStrings.aiHideLow : appStrings.aiShowLow(counts.hiddenLow)),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!_review.enabled) {
+    final aiOn = _review.enabled;
+    final counts = _review.counts;
+    if (_onDuplicates) {
       return _PageScaffold(
+        onRefresh: _loadDuplicates,
         children: <Widget>[
-          _PageTitle(title: appStrings.aiReviewTitle, subtitle: appStrings.aiReviewSubtitle),
-          _EmptyCard(
-            icon: Icons.auto_awesome_outlined,
-            title: appStrings.aiReviewOffTitle,
-            subtitle: appStrings.aiReviewOffBody,
-            action: OutlinedButton(
-              onPressed: () {
-                _controller.setSettingsPage(SettingsPage.ai);
-                _controller.setSelectedSection(AppSection.settings);
-              },
-              child: Text(appStrings.aiOpenSettings),
-            ),
-          ),
+          _PageTitle(title: appStrings.aiReviewTitle, subtitle: aiOn ? appStrings.aiReviewSubtitle : appStrings.duplicatesSubtitle),
+          _tabs(counts, aiOn: aiOn),
+          ..._duplicateChildren(),
         ],
       );
     }
-    final counts = _review.counts;
     final items = _items;
     return _PageScaffold(
       onRefresh: _load,
@@ -271,15 +426,7 @@ class _AiReviewPageState extends State<AiReviewPage> {
         _PageTitle(
           title: appStrings.aiReviewTitle,
           subtitle: appStrings.aiReviewSubtitle,
-          trailing: counts.high > 0
-              ? FilledButton.icon(
-                  onPressed: _acceptingHigh ? null : () => unawaited(_acceptAllHigh()),
-                  icon: _acceptingHigh
-                      ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _onAccent))
-                      : const Icon(Icons.done_all_rounded, size: 18),
-                  label: Text(appStrings.aiAcceptHigh(counts.high)),
-                )
-              : null,
+          trailing: _aiActions(counts),
         ),
         for (final proposal in _proposals)
           _AiRuleProposalCard(
@@ -287,21 +434,7 @@ class _AiReviewPageState extends State<AiReviewPage> {
             onCreate: () => unawaited(_createRule(proposal)),
             onDismiss: () => unawaited(_dismissProposal(proposal)),
           ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            for (final (kind, label) in _aiReviewTabs)
-              _AiReviewTab(label: label, count: counts.ofKind(kind), active: kind == _kind, onTap: () => _openTab(kind)),
-            if (counts.hiddenLow > 0 || _showLow)
-              TextButton.icon(
-                onPressed: _toggleLow,
-                icon: Icon(_showLow ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 17),
-                label: Text(_showLow ? appStrings.aiHideLow : appStrings.aiShowLow(counts.hiddenLow)),
-              ),
-          ],
-        ),
+        _tabs(counts, aiOn: aiOn),
         if (_note != null) _Notice(message: _note!, color: _textSecondary, icon: Icons.info_outline_rounded, onDismiss: () => setState(() => _note = null)),
         if (_error != null)
           _LoadError(

@@ -31,7 +31,7 @@ func registerKey(t *testing.T, s *server, key *fidotest.Authenticator) {
 			} `json:"user"`
 		} `json:"options"`
 	}
-	s.mustJSON(t, "POST", "/api/account/security-keys/register/options", map[string]any{}, &started)
+	s.mustJSON(t, "POST", "/api/account/security-keys/register/options", map[string]any{"currentPassword": strongPassword}, &started)
 	userID, err := base64.RawURLEncoding.DecodeString(started.Options.User.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -79,12 +79,12 @@ func TestSecurityKeySignInAgainstRealServer(t *testing.T) {
 	if _, err := securitykey.SignIn(ctx, client, platform, "", "0000", "e2e-key"); !errors.Is(err, securitykey.ErrWrongPIN) {
 		t.Fatalf("wrong PIN: %v", err)
 	}
-	for _, username := range []string{"", "neo"} {
+	for _, username := range []string{"", testUser} {
 		outcome, err := securitykey.SignIn(ctx, client, platform, username, "4711", "e2e-key")
 		if err != nil {
 			t.Fatalf("sign-in (username %q): %v", username, err)
 		}
-		if outcome.Token == nil || !strings.HasPrefix(outcome.Token.Token, "nc_") || outcome.Token.User.Username != "neo" {
+		if outcome.Token == nil || !strings.HasPrefix(outcome.Token.Token, "nc_") || outcome.Token.User.Username != testUser {
 			t.Fatalf("unexpected outcome: %+v", outcome)
 		}
 		me, err := api.New(s.url, outcome.Token.Token).Me(ctx)
