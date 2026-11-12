@@ -253,6 +253,15 @@ class CameraBackupEngine {
     if (options.wifiOnly && !conditions.onWifi) return stop(CameraBlock.waitingWifi);
     if (options.chargingOnly && conditions.charging != true && !manual) return stop(CameraBlock.waitingCharger);
 
+    // The pass is going: the previous stop ("waiting for Wi-Fi") no longer
+    // holds. Cleared now, not at the end, because a first backup runs for
+    // hours and the status (read by the app while a background pass runs)
+    // would show the old reason all that time.
+    if (ledger.lastBlock != null) {
+      ledger.lastBlock = null;
+      await store.save(ledger);
+    }
+
     // What the server already has, by name and by content.
     final List<RemoteCameraFile> remote;
     try {
