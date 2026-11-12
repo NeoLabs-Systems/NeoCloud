@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
@@ -55,9 +56,17 @@ func TestCloudFirstPairDownloadsEverything(t *testing.T) {
 	if len(made) != 1 || made[0] != root {
 		t.Fatalf("made %v", made)
 	}
-	// What the folder icon leaves behind on macOS and Windows.
-	os.WriteFile(filepath.Join(root, "Icon\r"), nil, 0o644)
-	os.WriteFile(filepath.Join(root, "desktop.ini"), []byte("[.ShellClassInfo]"), 0o644)
+	// What the folder icon leaves behind on macOS and Windows. Windows names
+	// can't hold a carriage return, so "Icon\r" exists only elsewhere.
+	iconFiles := []string{"desktop.ini"}
+	if runtime.GOOS != "windows" {
+		iconFiles = append(iconFiles, "Icon\r")
+	}
+	for _, name := range iconFiles {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("[.ShellClassInfo]"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	h := &harness{t: t, srv: srv, root: root, db: db, engine: engine, pair: pair}
 	h.mustSync()
@@ -71,10 +80,12 @@ func TestCloudFirstPairDownloadsEverything(t *testing.T) {
 	if h.read("notes.txt") != "notes" || !h.exists("Empty") {
 		t.Error("root file or empty folder not downloaded")
 	}
-	if !h.exists("Icon\r") || !h.exists("desktop.ini") {
-		t.Error("the folder icon files were removed")
+	for _, name := range iconFiles {
+		if !h.exists(name) {
+			t.Errorf("the folder icon file %q was removed", name)
+		}
 	}
-	for _, name := range []string{"Icon\r", "desktop.ini"} {
+	for _, name := range iconFiles {
 		if srv.lookup(name) != nil {
 			t.Errorf("%q was uploaded", name)
 		}
