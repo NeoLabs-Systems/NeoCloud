@@ -156,7 +156,7 @@ part 'main_viewer.dart';
 const String _configuredBackendUrl = String.fromEnvironment('NEOCLOUD_BACKEND_URL');
 
 Future<void> main() async {
-  // Real paths (/app/files/…) instead of #/ addresses; a no-op off the web.
+  // Use the app root without a hash in the browser; a no-op off the web.
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await ensureAppLanguageLoaded();
@@ -185,7 +185,7 @@ class NeoCloudApp extends StatefulWidget {
 
 class _NeoCloudAppState extends State<NeoCloudApp> {
   late final _AppRouterDelegate _routerDelegate = _AppRouterDelegate(widget.controller);
-  late final _AppRouteProvider _routeProvider = _AppRouteProvider(widget.controller);
+  late final _AppRouteProvider _routeProvider = _AppRouteProvider();
 
   @override
   void dispose() {

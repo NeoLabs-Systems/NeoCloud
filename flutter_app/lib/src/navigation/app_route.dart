@@ -1,4 +1,4 @@
-/// A place in the app as the web address shows it below /app/:
+/// A place in the app, stored in preferences:
 ///
 /// * `files` and `files/<folderId>`
 /// * `photos` (the timeline of photos and videos)
@@ -7,8 +7,7 @@
 /// * `settings` and `settings/<page>`, e.g. `settings/shared-links`
 /// * `admin` and `admin/<tab>`, e.g. `admin/backups`
 ///
-/// The same text is kept in the preferences, so the native apps reopen where
-/// they were left. [section] and [detail] are names; the controller maps them
+/// The apps reopen where they were left. [section] and [detail] are names; the controller maps them
 /// to its pages and ignores what it doesn't know.
 class AppRoute {
   const AppRoute(this.section, [this.detail]);

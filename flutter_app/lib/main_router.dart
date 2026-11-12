@@ -1,11 +1,7 @@
 part of 'main.dart';
 
-// The web address follows the open page (/app/files/<folderId>,
-// /app/settings/security, /app/admin/backups …), so a reload, a bookmark or
-// the browser's back and forward buttons land on the same page. The
-// controller stays the single source of truth: the router only reads
-// [NeoCloudController.currentRoute] and hands addresses to
-// [NeoCloudController.openRoute].
+// The selected page is stored in preferences. The browser address stays at
+// the app root; older page links are still accepted on entry.
 
 class _AppRouteParser extends RouteInformationParser<AppRoute> {
   const _AppRouteParser();
@@ -15,24 +11,17 @@ class _AppRouteParser extends RouteInformationParser<AppRoute> {
       SynchronousFuture<AppRoute>(AppRoute.parse(routeInformation.uri.path));
 
   @override
-  RouteInformation restoreRouteInformation(AppRoute configuration) => RouteInformation(uri: Uri.parse(configuration.location));
+  RouteInformation restoreRouteInformation(AppRoute configuration) => RouteInformation(uri: Uri.parse('/'));
 }
 
-/// Pushes a history entry per page change, except where the controller asks
-/// for a replacement (the first address after signing in, a page the
-/// browser itself opened, a folder that no longer exists).
+/// Page changes replace the address instead of adding browser history.
 class _AppRouteProvider extends PlatformRouteInformationProvider {
-  _AppRouteProvider(this.controller)
+  _AppRouteProvider()
     : super(initialRouteInformation: RouteInformation(uri: Uri.parse(WidgetsBinding.instance.platformDispatcher.defaultRouteName)));
-
-  final NeoCloudController controller;
-  bool _reported = false;
 
   @override
   void routerReportsNewRouteInformation(RouteInformation routeInformation, {RouteInformationReportingType type = RouteInformationReportingType.none}) {
-    final replace = controller._takeRouteReplacement() || !_reported;
-    _reported = true;
-    super.routerReportsNewRouteInformation(routeInformation, type: replace ? RouteInformationReportingType.neglect : type);
+    super.routerReportsNewRouteInformation(routeInformation, type: RouteInformationReportingType.neglect);
   }
 }
 

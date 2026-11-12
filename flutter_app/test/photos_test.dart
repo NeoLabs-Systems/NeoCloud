@@ -161,7 +161,7 @@ void main() {
   });
 
   group('navigation', () {
-    test('/app/photos opens Photos and the address follows it', () async {
+    test('a Photos route opens Photos and is saved', () async {
       SharedPreferences.setMockInitialValues(const <String, Object>{});
       final controller = NeoCloudController(
         client: BackendClient(baseUrl: 'http://localhost:1'),

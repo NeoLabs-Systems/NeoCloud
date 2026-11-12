@@ -119,7 +119,6 @@ class NeoCloudController extends ChangeNotifier {
   /// Leaves the pairing page for the app (or its sign-in).
   void finishPairLanding() {
     pendingPairCode = null;
-    _replaceRoute = true;
     replaceBrowserPath('/${Uri.base.pathSegments.where((s) => s.isNotEmpty && s != 'pair').map((s) => '$s/').join()}');
     notifyListeners();
   }
@@ -127,7 +126,6 @@ class NeoCloudController extends ChangeNotifier {
   /// Leaves the approval page for the app.
   void finishDeviceApproval() {
     pendingDeviceCode = null;
-    _replaceRoute = true;
     final base = Uri.base;
     final segments = base.pathSegments.where((segment) => segment.isNotEmpty).toList();
     if (segments.isNotEmpty && segments.last == 'device') {
@@ -774,7 +772,7 @@ class NeoCloudController extends ChangeNotifier {
 
   // Navigation
 
-  /// The page the address bar and the preferences show; null while nobody
+  /// The page kept in preferences; null while nobody
   /// is signed in or another screen (device approval, pairing) is up, so a
   /// deep link survives the sign-in.
   AppRoute? get currentRoute {
@@ -805,16 +803,6 @@ class NeoCloudController extends ChangeNotifier {
   /// A page asked for before signing in (a deep link), opened after it.
   AppRoute? _requestedRoute;
 
-  /// Whether the next address replaces the current history entry instead
-  /// of adding one.
-  bool _replaceRoute = false;
-
-  bool _takeRouteReplacement() {
-    final replace = _replaceRoute;
-    _replaceRoute = false;
-    return replace;
-  }
-
   /// Opens [route] from the address bar: at start ([initial]) or from the
   /// browser's back and forward buttons ([fromBrowser]).
   void openRoute(AppRoute route, {bool initial = false, bool fromBrowser = false}) {
@@ -823,7 +811,6 @@ class NeoCloudController extends ChangeNotifier {
       return;
     }
     if (initial && route.isNone) return;
-    if (fromBrowser) _replaceRoute = true;
     _applyRoute(route.isNone ? AppRoute(AppSection.files.name) : route);
     _storeRoute();
     notifyListeners();
@@ -834,7 +821,7 @@ class NeoCloudController extends ChangeNotifier {
     final requested = _requestedRoute;
     _requestedRoute = null;
     _applyRoute(requested ?? AppRoute.parse(_preferences.getString(_routePreferenceKey) ?? ''));
-    _replaceRoute = true;
+    _storeRoute();
   }
 
   void _applyRoute(AppRoute route) {
@@ -860,7 +847,7 @@ class NeoCloudController extends ChangeNotifier {
     selectedSection = section;
   }
 
-  /// Native apps have no address bar; they reopen the page kept here.
+  /// Reopens the last page on this device.
   void _storeRoute() {
     final route = _routeOfPage();
     unawaited(_preferences.setString(_routePreferenceKey, route.location.substring(1)));
@@ -873,12 +860,10 @@ class NeoCloudController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Opens [folderId] in Files (the root when null). [replace] swaps the
-  /// history entry, for a folder that turned out to be gone.
+  /// Opens [folderId] in Files (the root when null).
   void openFolder(String? folderId, {bool replace = false}) {
     openFolderId = folderId;
     selectedSection = AppSection.files;
-    if (replace) _replaceRoute = true;
     _storeRoute();
     notifyListeners();
   }
@@ -888,7 +873,6 @@ class NeoCloudController extends ChangeNotifier {
   void openSharedFolder(String? folderId, {bool replace = false}) {
     openSharedFolderId = folderId;
     selectedSection = AppSection.shared;
-    if (replace) _replaceRoute = true;
     if (folderId == null) unawaited(refreshSharedWithMe());
     _storeRoute();
     notifyListeners();
