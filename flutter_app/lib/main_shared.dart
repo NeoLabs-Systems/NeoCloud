@@ -13,9 +13,14 @@ EdgeInsets _pagePadding(BuildContext context) {
 
 /// Scrollable page frame: header plus content, centered at a readable width.
 class _PageScaffold extends StatelessWidget {
-  const _PageScaffold({required this.children, this.onRefresh});
+  const _PageScaffold({
+    required this.children,
+    this.onRefresh,
+    this.lazy = false,
+  });
 
   final List<Widget> children;
+  final bool lazy;
 
   /// Pull to refresh, where the page can reload.
   final Future<void> Function()? onRefresh;
@@ -23,27 +28,52 @@ class _PageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final refresh = onRefresh;
-    final list = ListView(
-      physics: refresh == null ? null : const AlwaysScrollableScrollPhysics(),
-      padding: _pagePadding(context),
-      children: <Widget>[
-        Center(
+    final Widget list;
+    if (lazy) {
+      list = ListView.builder(
+        physics: refresh == null ? null : const AlwaysScrollableScrollPhysics(),
+        padding: _pagePadding(context),
+        cacheExtent: 0,
+        itemCount: children.length,
+        itemBuilder: (context, index) => Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                for (var index = 0; index < children.length; index++) ...<Widget>[
-                  if (index > 1) const SizedBox(height: 20),
-                  children[index],
-                ],
-              ],
+            child: Padding(
+              padding: EdgeInsets.only(top: index > 1 ? 20 : 0),
+              child: children[index],
             ),
           ),
         ),
-      ],
-    );
-    return refresh == null ? list : RefreshIndicator(onRefresh: refresh, child: list);
+      );
+    } else {
+      list = ListView(
+        physics: refresh == null ? null : const AlwaysScrollableScrollPhysics(),
+        padding: _pagePadding(context),
+        children: <Widget>[
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  for (
+                    var index = 0;
+                    index < children.length;
+                    index++
+                  ) ...<Widget>[
+                    if (index > 1) const SizedBox(height: 20),
+                    children[index],
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return refresh == null
+        ? list
+        : RefreshIndicator(onRefresh: refresh, child: list);
   }
 }
 

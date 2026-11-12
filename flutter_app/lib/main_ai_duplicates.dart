@@ -383,21 +383,92 @@ class _DuplicateThumbState extends State<_DuplicateThumb> {
 
   bool get _isImage => (widget.node.mime ?? '').startsWith('image/');
 
+  ScrollPosition? _position;
+  bool _requested = false;
+  int _generation = 0;
+
   @override
-  void initState() {
-    super.initState();
-    if (!_isImage) return;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.maybeOf(context)?.position;
+    if (_position != position) {
+      _position?.removeListener(_checkVisibility);
+      _position = position;
+      _position?.addListener(_checkVisibility);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+  }
+
+  void _checkVisibility() {
+    if (!mounted || !_isImage || _bytes != null) return;
+    final render = context.findRenderObject();
+    final viewport = render == null
+        ? null
+        : RenderAbstractViewport.maybeOf(render);
+    if (render == null ||
+        viewport == null ||
+        !render.attached ||
+        _position == null) {
+      return;
+    }
+    final start = viewport.getOffsetToReveal(render, 0).offset;
+    final end = viewport.getOffsetToReveal(render, 1).offset;
+    if (start >= _position!.pixels + _position!.viewportDimension || end <= _position!.pixels) {
+      if (_requested) {
+        _cache.release(widget.node.id, widget.node.etag);
+        _requested = false;
+        _generation += 1;
+      }
+      return;
+    }
+    if (_requested) return;
     _bytes = _cache.peek(widget.node.id, widget.node.etag);
-    if (_bytes == null) {
-      unawaited(_cache.load(widget.node.id, widget.node.etag).then((bytes) {
-        if (mounted && bytes != null) setState(() => _bytes = bytes);
-      }).catchError((Object _) {}));
+    if (_bytes != null) {
+      setState(() {});
+      return;
+    }
+    _requested = true;
+    final generation = ++_generation;
+    final id = widget.node.id;
+    final etag = widget.node.etag;
+    unawaited(
+      _cache.load(id, etag).then((bytes) {
+        if (mounted &&
+            generation == _generation &&
+            widget.node.id == id &&
+            widget.node.etag == etag &&
+            bytes != null) {
+          setState(() => _bytes = bytes);
+        }
+      }),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_DuplicateThumb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.node.id != widget.node.id ||
+        oldWidget.node.etag != widget.node.etag ||
+        oldWidget.controller != widget.controller) {
+      if (_requested && _bytes == null) {
+        oldWidget.controller.photoLibrary.thumbnails.release(
+          oldWidget.node.id,
+          oldWidget.node.etag,
+        );
+      }
+      _bytes = null;
+      _requested = false;
+      _generation += 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
     }
   }
 
   @override
   void dispose() {
-    if (_isImage && _bytes == null) _cache.release(widget.node.id, widget.node.etag);
+    _position?.removeListener(_checkVisibility);
+    if (_requested && _bytes == null) {
+      _cache.release(widget.node.id, widget.node.etag);
+    }
     super.dispose();
   }
 

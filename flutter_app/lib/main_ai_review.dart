@@ -412,6 +412,7 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
     if (_onDuplicates) {
       return _PageScaffold(
         onRefresh: _loadDuplicates,
+        lazy: true,
         children: <Widget>[
           _PageTitle(title: appStrings.aiReviewTitle, subtitle: aiOn ? appStrings.aiReviewSubtitle : appStrings.duplicatesSubtitle),
           _tabs(counts, aiOn: aiOn),
