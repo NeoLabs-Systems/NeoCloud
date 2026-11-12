@@ -96,7 +96,7 @@ class _AdminAiModelsTabState extends State<AdminAiModelsTab> with _PageLoad {
   @override
   Widget build(BuildContext context) {
     if (_missing) {
-      return _AiSetupCard(title: appStrings.aiNotAvailableTitle, body: appStrings.aiNotAvailableBody, icon: Icons.cloud_off_outlined);
+      return _AiSetupCard(title: appStrings.aiAdminNotAvailableTitle, body: appStrings.aiAdminNotAvailableBody, icon: Icons.cloud_off_outlined);
     }
     final config = _config;
     if (config == null) {
@@ -334,7 +334,7 @@ class _AdminAiProvidersCardState extends State<_AdminAiProvidersCard> with _Page
   @override
   Widget build(BuildContext context) {
     if (_missing) {
-      return _AiSetupCard(title: appStrings.aiNotAvailableTitle, body: appStrings.aiNotAvailableBody, icon: Icons.cloud_off_outlined);
+      return _AiSetupCard(title: appStrings.aiAdminNotAvailableTitle, body: appStrings.aiAdminNotAvailableBody, icon: Icons.cloud_off_outlined);
     }
     final providers = _providers;
     final configured = providers?.where((p) => p.configured).length ?? 0;

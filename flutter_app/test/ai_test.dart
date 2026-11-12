@@ -202,9 +202,10 @@ void main() {
   testWidgets('Settings › AI without a model leads with the setup card and still offers keys', (tester) async {
     final ai = _FakeAi(currentStatus: const AiStatus(available: false, enabled: true, optedIn: false));
     await _pump(tester, AiSettingsPage(controller: await _controller(ai, admin: true)));
-    expect(find.text('No AI model is set up yet'), findsOneWidget);
+    expect(find.text("AI isn't set up yet"), findsOneWidget);
     expect(find.text('Open Admin'), findsOneWidget);
-    expect(find.text('Bring your own key'), findsOneWidget);
+    // Advanced opens by itself: the account's own keys are a way in.
+    expect(find.text('Your own AI service'), findsOneWidget);
     expect(find.text('NeoRouter'), findsOneWidget);
     expect(find.text('Using your key'), findsOneWidget);
   });
@@ -222,22 +223,33 @@ void main() {
       catalog: _catalog,
     );
     await _pump(tester, AiSettingsPage(controller: await _controller(ai)));
-    expect(find.text('No AI model is set up yet'), findsNothing);
+    expect(find.text("AI isn't set up yet"), findsNothing);
     expect(find.text('Use AI features'), findsOneWidget);
-    for (final label in <String>['Text', 'Smart', 'Vision', 'Embedding']) {
-      expect(find.text(label), findsOneWidget);
-    }
-    expect(find.text('Auto'), findsNWidgets(4));
     expect(find.text('Suggest names'), findsOneWidget);
     expect(find.text('Suggest tags'), findsOneWidget);
     expect(find.text('Apply high-confidence suggestions automatically'), findsOneWidget);
-    expect(find.text('1,200 of 10,000 tokens'), findsOneWidget);
+    // Usage is a plain share; the token counts stay in the tooltip.
+    expect(find.text('12% used · resets on the 1st'), findsOneWidget);
+    expect(find.byTooltip('1,200 of 10,000 tokens'), findsOneWidget);
     expect(find.text('Open Admin'), findsNothing);
+    // The models and own keys wait under Advanced.
+    expect(find.text('Everyday tasks'), findsNothing);
+    expect(find.text('Your own AI service'), findsNothing);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    for (final label in <String>['Everyday tasks', 'Images', 'Similar files']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    // "Summaries" is both a suggestion and a kind of work.
+    expect(find.text('Summaries'), findsNWidgets(2));
+    expect(find.text('Auto'), findsNWidgets(4));
+    expect(find.text('Your own AI service'), findsOneWidget);
   });
 
   testWidgets('Settings › AI on a server without AI says so', (tester) async {
     await _pump(tester, AiSettingsPage(controller: await _controller(_FakeAi())));
-    expect(find.text("AI isn't available on this server"), findsOneWidget);
+    expect(find.text("AI isn't available yet"), findsOneWidget);
+    expect(find.text("This feature isn't available yet."), findsOneWidget);
   });
 
   testWidgets('Admin › Providers shows NeoRouter first, then the provider rows', (tester) async {

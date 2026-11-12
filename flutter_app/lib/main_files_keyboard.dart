@@ -57,9 +57,9 @@ mixin _FilesKeyboard on _FilesBase, _FilesActions {
 
   // Pointer
 
-  /// Ctrl/⌘-click toggles, Shift-click selects the range. With a mouse a
-  /// click selects and focuses; on touch a tap opens (or, while selecting,
-  /// toggles).
+  /// A click opens, as in the other NeoLabs apps; selecting is the
+  /// checkbox, Ctrl/⌘-click (toggle) and Shift-click (range). On touch a
+  /// tap opens too, or toggles while a selection is being made.
   void onItemTap(FileNode node) {
     panelFocus.requestFocus();
     if (HardwareKeyboard.instance.isShiftPressed) {
@@ -71,7 +71,8 @@ mixin _FilesKeyboard on _FilesBase, _FilesActions {
       return;
     }
     if (_usesMouse) {
-      setState(() => selection.click(node.id));
+      setState(selection.clear);
+      open(node);
       return;
     }
     if (!selection.isEmpty) {

@@ -77,7 +77,7 @@ function resolveRoleModel(models, settings, role) {
   }
   const [ranked] = rankModels(pool, spec.profile);
   if (ranked) return { model: ranked, source: 'auto', requestedUnavailable };
-  throw httpError(503, `No AI model is available for ${role} work. Ask your admin to set up a provider, or add your own key in Settings › AI.`, 'AI_MODELS_UNAVAILABLE');
+  throw httpError(503, `No AI model is available for ${role} work yet. Ask the person who runs your NeoCloud, or add your own key in Settings › AI.`, 'AI_MODELS_UNAVAILABLE');
 }
 
 module.exports = { MODEL_ROLES, resolveRoleModel };

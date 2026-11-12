@@ -79,13 +79,30 @@ async function call(method, path, body, signal) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(sentence(data.error || res.statusText || "Request failed"));
+  if (!res.ok) throw new Error(humanError(data.error || res.statusText || "Request failed"));
   return data;
 }
 
 // Go errors start in lower case; the page shows them as sentences.
 function sentence(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// NeoCloud's answers reach the page as "neocloud: 507 DISK_FULL: …". The
+// known codes get plain words; otherwise only the server's message is kept.
+const PLAIN_ERRORS = {
+  DISK_FULL: "NeoCloud is out of space right now. Try again later or contact the person who runs it.",
+  QUOTA_EXCEEDED: "Your NeoCloud storage is full. Free up space, then try again.",
+  SERVER_STOPPING: "NeoCloud is restarting. Try again in a moment.",
+};
+
+function humanError(text) {
+  const answer = /neocloud: (\d{3})(?: ([A-Z][A-Z0-9_]+):)? (.*)$/s.exec(text);
+  if (!answer) return sentence(text);
+  const [, status, code, message] = answer;
+  if (PLAIN_ERRORS[code]) return PLAIN_ERRORS[code];
+  if (status === "507") return PLAIN_ERRORS.DISK_FULL;
+  return sentence(text.slice(0, answer.index) + message);
 }
 
 let toastTimer = 0;
@@ -175,8 +192,8 @@ function host(server) {
 
 const DIRECTIONS = {
   both: { icon: "both", title: "Both ways", text: "Changes on either side are copied to the other. Best for a folder you work in." },
-  up: { icon: "up", title: "Upload only", text: "Back up this computer's folder. Changes made on the server are not downloaded." },
-  down: { icon: "down", title: "Download only", text: "Keep a copy of the server folder here. Local changes are not uploaded." },
+  up: { icon: "up", title: "Upload only", text: "Back up this computer's folder. Changes made in NeoCloud are not downloaded." },
+  down: { icon: "down", title: "Download only", text: "Keep a copy of the NeoCloud folder here. Local changes are not uploaded." },
 };
 
 // ---------- State ----------
@@ -488,7 +505,7 @@ function overall() {
     const n = S.status.changes;
     return ["busy", n ? "Syncing " + n + (n === 1 ? " file" : " files") : "Syncing", ""];
   }
-  if (state === "offline") return ["", "Offline", "Can't reach the server; retrying"];
+  if (state === "offline") return ["", "Offline", "Can't reach NeoCloud; retrying"];
   if (state === "error" || state === "needs-confirmation" || attention) return ["bad", "Needs attention", ""];
   return ["ok", "Up to date", seen(S.status.lastSync) ? "Checked " + ago(S.status.lastSync) : ""];
 }
@@ -567,11 +584,11 @@ function attentionCards() {
     const name = baseName(pair.local);
     const pending = r.needsConfirmation;
     if (pending) {
-      const why = pending.reason === "remoteEmpty" ? "The server folder is suddenly empty." : "This sync would delete many files at once.";
+      const why = pending.reason === "remoteEmpty" ? "The NeoCloud folder is suddenly empty." : "This sync would delete many files at once.";
       const parts = [];
-      if (pending.remoteDeletes) parts.push(pending.remoteDeletes + " on the server");
+      if (pending.remoteDeletes) parts.push(pending.remoteDeletes + " in NeoCloud");
       if (pending.localDeletes) parts.push(pending.localDeletes + " on this computer");
-      const where = pending.localDeletes ? " Files deleted here go to .neocloud/trash for 30 days." : " Files deleted on the server go to its trash.";
+      const where = pending.localDeletes ? " Files deleted here go to .neocloud/trash for 30 days." : " Files deleted in NeoCloud go to its trash.";
       cards.push(attention("alert", "Deletions in " + name + " are waiting",
         why + " Nothing was deleted yet: " + parts.join(" and ") + " would go." + where,
         [
@@ -580,7 +597,7 @@ function attentionCards() {
           pair.paused ? null : button("Pause folder", () => act(() => call("PUT", "/api/pairs/" + pair.id, { paused: true }))),
         ]));
     } else if (r.error && S.status.state !== "offline") {
-      cards.push(attention("alert", name + " could not sync", r.error, [
+      cards.push(attention("alert", name + " could not sync", humanError(r.error), [
         button("Try again", () => act(() => call("POST", "/api/pairs/" + pair.id + "/sync"), "Syncing " + name), { icon: "sync" }),
         button("Edit", () => go({ name: "edit", id: pair.id })),
       ]));
@@ -667,7 +684,7 @@ function activityList() {
   if (!items.length) return el("section", { class: "card activity" }, el("div", { class: "act none" }, "Nothing has changed yet."));
   const words = {
     upload: ["up", "Uploaded"], download: ["down", "Downloaded"],
-    "delete-remote": ["trash", "Deleted on the server"], "delete-local": ["trash", "Deleted here"],
+    "delete-remote": ["trash", "Deleted in NeoCloud"], "delete-local": ["trash", "Deleted here"],
     conflict: ["copy", "Kept both versions of"],
   };
   return el("section", { class: "card activity" }, items.map((item) => {
@@ -1245,7 +1262,7 @@ function keyLockCard() {
   const pin = el("input", { class: "input", id: "pin", type: "password", autocomplete: "off", placeholder: "Only if your key has one" });
   const run = async () => {
     if (lock.enrolled) {
-      const yes = await ask({ title: "Turn off the security key lock?", body: "The device token is stored as before. Your key must be plugged in.", ok: "Turn off", danger: true });
+      const yes = await ask({ title: "Turn off the security key lock?", body: "This computer stays signed in as before. Your key must be plugged in.", ok: "Turn off", danger: true });
       if (!yes) return;
     }
     view.keyBusy = true;
@@ -1268,7 +1285,7 @@ function keyLockCard() {
         el("strong", { class: "status" }, dot(kind), word),
         el("span", {}, lock.enrolled
           ? lock.message + ". NeoCloud syncs while the key is plugged in and locks when you remove it."
-          : "Sync only while your FIDO2 security key is plugged in. The device token is then stored encrypted.")),
+          : "Sync only while your FIDO2 security key is plugged in. This computer's sign-in is then stored encrypted.")),
       button(busy ? "Touch your key…" : (lock.enrolled ? "Turn off" : "Turn on"), run, { kind: lock.enrolled ? "danger" : "primary", disabled: busy })),
     lock.enrolled ? null : el("div", { class: "setting column" },
       el("label", { class: "field", for: "pin" }, "Security key PIN", pin),

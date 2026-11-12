@@ -167,7 +167,6 @@ class _FileRowState extends State<_FileRow> {
               child: InkWell(
                 borderRadius: radius,
                 onTap: () => callbacks.onTap(node),
-                onDoubleTap: mouse ? () => callbacks.onOpen(node) : null,
                 onLongPress: callbacks.onLongPress == null || mouse ? null : () => callbacks.onLongPress!(node),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
@@ -289,7 +288,6 @@ class _FileTile extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => callbacks.onTap(node),
-              onDoubleTap: mouse ? () => callbacks.onOpen(node) : null,
               onLongPress: callbacks.onLongPress == null || mouse ? null : () => callbacks.onLongPress!(node),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 4, 2, 12),

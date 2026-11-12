@@ -30,7 +30,7 @@ function assertDiskSpace(bytes = 0) {
   const free = freeDiskBytes();
   if (free === null) return;
   if (free - Math.max(0, Number(bytes) || 0) < minFreeDiskBytes()) {
-    throw httpError(507, 'The server is running out of disk space and cannot take uploads right now. Ask the admin to free some space.', 'DISK_FULL');
+    throw httpError(507, 'NeoCloud is out of space right now. Try again later or contact the person who runs it.', 'DISK_FULL');
   }
 }
 

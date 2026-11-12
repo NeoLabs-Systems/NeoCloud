@@ -13,7 +13,7 @@ function isAiEnabled() {
 }
 
 function assertAiUsable(userId) {
-  if (!isAiEnabled()) throw httpError(403, 'AI features are turned off on this server.', 'AI_DISABLED');
+  if (!isAiEnabled()) throw httpError(403, 'AI features aren’t turned on.', 'AI_DISABLED');
   if (readSettings(userId).ai_opt_in !== true) {
     throw httpError(403, 'Turn on AI features in Settings › AI first.', 'AI_NOT_OPTED_IN');
   }

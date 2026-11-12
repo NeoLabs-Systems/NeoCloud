@@ -82,7 +82,7 @@ test('uploads are refused with 507 DISK_FULL below NEOCLOUD_MIN_FREE_DISK', asyn
     // A non-admin still gets the real reason: the message is written for people.
     const single = await upload(member.agent, 'full.txt', 'no room').expect(507);
     assert.equal(single.body.code, 'DISK_FULL');
-    assert.match(single.body.error, /disk space/);
+    assert.match(single.body.error, /out of space/);
 
     const part = await member.agent.put(`/api/uploads/${session.id}/parts/0`)
       .set('Content-Type', 'application/octet-stream').send(Buffer.from('12345')).expect(507);

@@ -202,7 +202,7 @@ abstract class AppL10n {
   /// No description provided for @connectionError.
   ///
   /// In en, this message translates to:
-  /// **'Can’t reach the NeoCloud server.'**
+  /// **'Can’t reach NeoCloud. Check your connection and try again.'**
   String get connectionError;
 
   /// No description provided for @signIn.
@@ -238,7 +238,7 @@ abstract class AppL10n {
   /// No description provided for @firstAccountSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'This account will administer NeoCloud on this server.'**
+  /// **'You’re the first one here. With this account you set up NeoCloud and invite others.'**
   String get firstAccountSubtitle;
 
   /// No description provided for @createAnotherAccount.
@@ -280,7 +280,7 @@ abstract class AppL10n {
   /// No description provided for @forgotPasswordAskAdmin.
   ///
   /// In en, this message translates to:
-  /// **'NeoCloud doesn\'t send emails yet. Ask an administrator of this server to set a new password for you (Admin › Users).'**
+  /// **'NeoCloud doesn\'t send emails yet. Ask the person who runs your NeoCloud to reset your password.'**
   String get forgotPasswordAskAdmin;
 
   /// No description provided for @alreadyHaveAnAccount.
@@ -526,7 +526,7 @@ abstract class AppL10n {
   /// No description provided for @filesSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Everything you keep here is encrypted on your server.'**
+  /// **'Everything you keep here is encrypted.'**
   String get filesSubtitle;
 
   /// No description provided for @upload.
@@ -1606,7 +1606,7 @@ abstract class AppL10n {
   /// No description provided for @accountLastAdmin.
   ///
   /// In en, this message translates to:
-  /// **'You are the only admin. Make someone else an admin first.'**
+  /// **'You’re the only admin, so your account can’t be deleted yet. Make someone else an admin first.'**
   String get accountLastAdmin;
 
   /// No description provided for @accountConfirmMismatch.
@@ -2470,7 +2470,7 @@ abstract class AppL10n {
   /// No description provided for @vaultSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'End-to-end encrypted. Names and contents are encrypted on this device; the server can’t read them.'**
+  /// **'End-to-end encrypted. Names and contents are encrypted on this device; NeoCloud can’t read them.'**
   String get vaultSubtitle;
 
   /// No description provided for @vaultIntro.
@@ -2494,7 +2494,7 @@ abstract class AppL10n {
   /// No description provided for @vaultNoRecovery.
   ///
   /// In en, this message translates to:
-  /// **'The passphrase can’t be recovered or reset, not even by an admin. If you forget it, the files in this vault are lost.'**
+  /// **'The passphrase can’t be recovered or reset, not even by NeoCloud. If you forget it, the files in this vault are lost.'**
   String get vaultNoRecovery;
 
   /// No description provided for @vaultCreate.
@@ -2758,7 +2758,7 @@ abstract class AppL10n {
   /// No description provided for @cameraAccessMessage.
   ///
   /// In en, this message translates to:
-  /// **'NeoCloud reads new photos and videos from your library to upload them to your server. Nothing else leaves the phone. You can choose “All photos” or a selection in the next step.'**
+  /// **'NeoCloud reads new photos and videos from your library to upload them to your NeoCloud. Nothing else leaves the phone. You can choose “All photos” or a selection in the next step.'**
   String get cameraAccessMessage;
 
   /// No description provided for @cameraAccessDenied.
@@ -3262,7 +3262,7 @@ abstract class AppL10n {
   /// No description provided for @vaultWarningCallout.
   ///
   /// In en, this message translates to:
-  /// **'Only you hold the key. If you lose both the passphrase and the recovery key, nobody — not even an admin — can open this vault again.'**
+  /// **'Only you hold the key. If you lose both the passphrase and the recovery key, nobody, not even NeoCloud, can open this vault again.'**
   String get vaultWarningCallout;
 
   /// No description provided for @vaultNext.
@@ -3634,13 +3634,13 @@ abstract class AppL10n {
   /// No description provided for @securityDiskFull.
   ///
   /// In en, this message translates to:
-  /// **'The server’s disk is full. Ask the admin to free up space; nothing was saved.'**
+  /// **'NeoCloud is out of space right now, so nothing was saved. Try again later or contact the person who runs it.'**
   String get securityDiskFull;
 
   /// No description provided for @securityServerStopping.
   ///
   /// In en, this message translates to:
-  /// **'The server is restarting. Try again in a moment.'**
+  /// **'NeoCloud is restarting. Try again in a moment.'**
   String get securityServerStopping;
 
   /// No description provided for @filesFavoritesEmpty.
@@ -4378,7 +4378,7 @@ abstract class AppL10n {
   /// No description provided for @cameraStatusUnreachable.
   ///
   /// In en, this message translates to:
-  /// **'Server unreachable'**
+  /// **'Can’t reach NeoCloud'**
   String get cameraStatusUnreachable;
 
   /// No description provided for @cameraStatusSignedOut.
@@ -4390,7 +4390,7 @@ abstract class AppL10n {
   /// No description provided for @cameraStatusServerFull.
   ///
   /// In en, this message translates to:
-  /// **'Server full'**
+  /// **'NeoCloud is full'**
   String get cameraStatusServerFull;
 
   /// No description provided for @cameraStatusFailed.
@@ -5014,7 +5014,7 @@ abstract class AppL10n {
   /// No description provided for @pairPhoneDescription.
   ///
   /// In en, this message translates to:
-  /// **'Show a QR code that signs the NeoCloud app on a phone in to this account, without typing the server address or a password.'**
+  /// **'Show a QR code that signs the NeoCloud app on a phone in to this account, without typing an address or a password.'**
   String get pairPhoneDescription;
 
   /// No description provided for @showQrCode.
@@ -5692,13 +5692,13 @@ abstract class AppL10n {
   /// No description provided for @searchSettingsContentsHint.
   ///
   /// In en, this message translates to:
-  /// **'The server indexes the text of your documents so search finds the words in them. Turn this off to keep your files out of the index.'**
+  /// **'NeoCloud indexes the text in your documents so search finds the words in them. Turn this off to keep your files out of the index.'**
   String get searchSettingsContentsHint;
 
   /// No description provided for @searchSettingsContentsOff.
   ///
   /// In en, this message translates to:
-  /// **'Full-text search is off on this server. If an admin turns it on, this decides whether your files are indexed.'**
+  /// **'Searching inside documents isn’t turned on in your NeoCloud yet. Once it is, this decides whether your files are included.'**
   String get searchSettingsContentsOff;
 
   /// No description provided for @adminSearchTitle.
@@ -5842,7 +5842,7 @@ abstract class AppL10n {
   /// No description provided for @importHostBlocked.
   ///
   /// In en, this message translates to:
-  /// **'Only an admin can import from a server on your local network.'**
+  /// **'NeoCloud can’t import from an address on your local network.'**
   String get importHostBlocked;
 
   /// No description provided for @filesWelcomeDontShowAgain.
@@ -6058,7 +6058,7 @@ abstract class AppL10n {
   /// No description provided for @sharedWithMeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Files and folders other people on this server shared with you.'**
+  /// **'Files and folders other people on NeoCloud shared with you.'**
   String get sharedWithMeSubtitle;
 
   /// No description provided for @sharedWithMeEmpty.
@@ -6154,7 +6154,7 @@ abstract class AppL10n {
   /// No description provided for @sharePeopleHelp.
   ///
   /// In en, this message translates to:
-  /// **'Enter the exact email address or username of someone with an account on this server.'**
+  /// **'Enter the exact email address or username of someone who uses this NeoCloud.'**
   String get sharePeopleHelp;
 
   /// No description provided for @sharePublicLinkTitle.
@@ -6472,13 +6472,13 @@ abstract class AppL10n {
   /// No description provided for @approvalNeedsServerUpdate.
   ///
   /// In en, this message translates to:
-  /// **'This server can\'t approve sign-ins from the app yet. Update NeoCloud on the server, or approve in a browser where you\'re signed in.'**
+  /// **'Approving sign-ins in the app isn\'t available yet. Approve in a browser where you\'re signed in instead.'**
   String get approvalNeedsServerUpdate;
 
   /// No description provided for @serverUpdateNeeded.
   ///
   /// In en, this message translates to:
-  /// **'This server is too old for this in the app. Update NeoCloud on the server.'**
+  /// **'This feature isn\'t available yet.'**
   String get serverUpdateNeeded;
 
   /// No description provided for @approvalNeedsPhone.
@@ -6556,7 +6556,7 @@ abstract class AppL10n {
   /// No description provided for @authForgotPasswordAskAdmin.
   ///
   /// In en, this message translates to:
-  /// **'Forgot your password? Ask your server admin to reset it in Admin → Users.'**
+  /// **'Forgot your password? Ask the person who runs your NeoCloud to reset it.'**
   String get authForgotPasswordAskAdmin;
 
   /// No description provided for @authPhoneSignInTitle.
@@ -6580,7 +6580,7 @@ abstract class AppL10n {
   /// No description provided for @aiPageDescription.
   ///
   /// In en, this message translates to:
-  /// **'Suggestions for names and folders, the models behind them and your own keys.'**
+  /// **'Let AI suggest names, folders and tags for your files.'**
   String get aiPageDescription;
 
   /// No description provided for @aiOptInTitle.
@@ -6598,49 +6598,49 @@ abstract class AppL10n {
   /// No description provided for @aiPrivacyNote.
   ///
   /// In en, this message translates to:
-  /// **'Names, extracted text and previews of the files you ask about go to the AI provider. Vault files are never processed, and nothing changes until you approve a suggestion.'**
+  /// **'When AI looks at a file, its name, text and preview are sent to the AI service. Files in a vault never are, and nothing changes until you approve a suggestion.'**
   String get aiPrivacyNote;
 
   /// No description provided for @aiModelsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Default models'**
+  /// **'Models'**
   String get aiModelsTitle;
 
   /// No description provided for @aiModelsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Each kind of work uses its own model. Auto uses NeoRouter or the best available model.'**
+  /// **'Which AI model handles each kind of work. Auto picks the best one available.'**
   String get aiModelsDescription;
 
   /// No description provided for @aiRoleText.
   ///
   /// In en, this message translates to:
-  /// **'Text'**
+  /// **'Everyday tasks'**
   String get aiRoleText;
 
   /// No description provided for @aiRoleTextDescription.
   ///
   /// In en, this message translates to:
-  /// **'Fast model for names, tags and sorting.'**
+  /// **'Names, tags and sorting.'**
   String get aiRoleTextDescription;
 
   /// No description provided for @aiRoleSmart.
   ///
   /// In en, this message translates to:
-  /// **'Smart'**
+  /// **'Summaries'**
   String get aiRoleSmart;
 
   /// No description provided for @aiRoleSmartDescription.
   ///
   /// In en, this message translates to:
-  /// **'Stronger model for summaries and questions about a file.'**
+  /// **'Summaries and questions about a file.'**
   String get aiRoleSmartDescription;
 
   /// No description provided for @aiRoleVision.
   ///
   /// In en, this message translates to:
-  /// **'Vision'**
+  /// **'Images'**
   String get aiRoleVision;
 
   /// No description provided for @aiRoleVisionDescription.
@@ -6652,7 +6652,7 @@ abstract class AppL10n {
   /// No description provided for @aiRoleEmbedding.
   ///
   /// In en, this message translates to:
-  /// **'Embedding'**
+  /// **'Similar files'**
   String get aiRoleEmbedding;
 
   /// No description provided for @aiRoleEmbeddingDescription.
@@ -6676,7 +6676,7 @@ abstract class AppL10n {
   /// No description provided for @aiAutoSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'NeoRouter or the best available model'**
+  /// **'The best available model'**
   String get aiAutoSubtitle;
 
   /// No description provided for @aiSelectModel.
@@ -6730,13 +6730,13 @@ abstract class AppL10n {
   /// No description provided for @aiGrantedHint.
   ///
   /// In en, this message translates to:
-  /// **'An admin granted you this model. It is switched off for everyone else.'**
+  /// **'This model was unlocked just for you. It is switched off for everyone else.'**
   String get aiGrantedHint;
 
   /// No description provided for @aiByokTag.
   ///
   /// In en, this message translates to:
-  /// **'BYOK'**
+  /// **'Your key'**
   String get aiByokTag;
 
   /// No description provided for @aiPriceFree.
@@ -6760,19 +6760,19 @@ abstract class AppL10n {
   /// No description provided for @aiNoModelTitle.
   ///
   /// In en, this message translates to:
-  /// **'No AI model is set up yet'**
+  /// **'AI isn\'t set up yet'**
   String get aiNoModelTitle;
 
   /// No description provided for @aiNoModelBody.
   ///
   /// In en, this message translates to:
-  /// **'NeoCloud needs an AI model for suggestions. Connect NeoRouter or add an API key from a provider such as OpenAI, Anthropic or Google.'**
+  /// **'Ask the person who runs your NeoCloud, or use your own NeoRouter account or API key under Advanced.'**
   String get aiNoModelBody;
 
   /// No description provided for @aiNoModelAdminHint.
   ///
   /// In en, this message translates to:
-  /// **'As an admin you can also set up providers for everyone under Admin → Providers.'**
+  /// **'Set up AI for everyone in Admin, or use your own NeoRouter account or API key under Advanced.'**
   String get aiNoModelAdminHint;
 
   /// No description provided for @aiOpenAdmin.
@@ -6790,26 +6790,38 @@ abstract class AppL10n {
   /// No description provided for @aiDisabledBody.
   ///
   /// In en, this message translates to:
-  /// **'AI features are not turned on for this server.'**
+  /// **'AI features aren\'t turned on. Ask the person who runs your NeoCloud if you\'d like to use them.'**
   String get aiDisabledBody;
 
   /// No description provided for @aiDisabledAdminHint.
   ///
   /// In en, this message translates to:
-  /// **'As an admin you can turn them on under Admin → Models.'**
+  /// **'AI features aren\'t turned on. You can turn them on for everyone in Admin.'**
   String get aiDisabledAdminHint;
 
   /// No description provided for @aiNotAvailableTitle.
   ///
   /// In en, this message translates to:
-  /// **'AI isn\'t available on this server'**
+  /// **'AI isn\'t available yet'**
   String get aiNotAvailableTitle;
 
   /// No description provided for @aiNotAvailableBody.
   ///
   /// In en, this message translates to:
-  /// **'Update NeoCloud on the server to use AI features.'**
+  /// **'This feature isn\'t available yet.'**
   String get aiNotAvailableBody;
+
+  /// No description provided for @aiAdminNotAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI isn\'t available on this server'**
+  String get aiAdminNotAvailableTitle;
+
+  /// No description provided for @aiAdminNotAvailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Update NeoCloud on the server to use AI features.'**
+  String get aiAdminNotAvailableBody;
 
   /// No description provided for @aiFeaturesTitle.
   ///
@@ -6886,7 +6898,7 @@ abstract class AppL10n {
   /// No description provided for @aiUsageTitle.
   ///
   /// In en, this message translates to:
-  /// **'Usage this month'**
+  /// **'AI usage this month'**
   String get aiUsageTitle;
 
   /// No description provided for @aiUsageOf.
@@ -6901,22 +6913,46 @@ abstract class AppL10n {
   /// **'{used} tokens · no limit'**
   String aiUsageUnlimited(String used);
 
+  /// No description provided for @aiUsagePercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% used · resets on the 1st'**
+  String aiUsagePercent(int percent);
+
+  /// No description provided for @aiUsageNoLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No monthly limit'**
+  String get aiUsageNoLimit;
+
+  /// No description provided for @aiAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get aiAdvanced;
+
+  /// No description provided for @aiAdvancedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Models, your own NeoRouter account and API keys.'**
+  String get aiAdvancedDescription;
+
   /// No description provided for @aiByokTitle.
   ///
   /// In en, this message translates to:
-  /// **'Bring your own key'**
+  /// **'Your own AI service'**
   String get aiByokTitle;
 
   /// No description provided for @aiByokDescription.
   ///
   /// In en, this message translates to:
-  /// **'Use your own keys or endpoint for your AI features. Keys are encrypted and never shown again.'**
+  /// **'Use your own NeoRouter account or API keys for your AI features. Keys are stored encrypted and never shown again.'**
   String get aiByokDescription;
 
   /// No description provided for @aiByokNoProviders.
   ///
   /// In en, this message translates to:
-  /// **'No providers are available to configure yet.'**
+  /// **'There\'s nothing to connect yet.'**
   String get aiByokNoProviders;
 
   /// No description provided for @aiByokUsingYourKey.
@@ -6964,7 +7000,7 @@ abstract class AppL10n {
   /// No description provided for @aiRemoveKeyBody.
   ///
   /// In en, this message translates to:
-  /// **'AI features fall back to the shared server key for {provider}, if one is configured. This can’t be undone.'**
+  /// **'NeoCloud stops using your {provider} key. This can’t be undone.'**
   String aiRemoveKeyBody(String provider);
 
   /// No description provided for @aiKeyRemoved.
@@ -7012,7 +7048,7 @@ abstract class AppL10n {
   /// No description provided for @aiCustomEndpointBody.
   ///
   /// In en, this message translates to:
-  /// **'Point NeoCloud at any OpenAI-compatible Chat Completions API: your own server, a self-hosted model, or another hosted provider.'**
+  /// **'Point NeoCloud at any OpenAI-compatible Chat Completions API, such as a self-hosted model or another hosted service.'**
   String get aiCustomEndpointBody;
 
   /// No description provided for @aiYourKeyTitle.
@@ -7036,7 +7072,7 @@ abstract class AppL10n {
   /// No description provided for @aiNameHint.
   ///
   /// In en, this message translates to:
-  /// **'e.g. My local server'**
+  /// **'e.g. My own model'**
   String get aiNameHint;
 
   /// No description provided for @aiBaseUrl.
@@ -7072,7 +7108,7 @@ abstract class AppL10n {
   /// No description provided for @aiByokLimitsNote.
   ///
   /// In en, this message translates to:
-  /// **'Server usage limits don\'t apply to models running on your own key.'**
+  /// **'The monthly AI limit doesn\'t apply to models running on your own key.'**
   String get aiByokLimitsNote;
 
   /// No description provided for @aiShow.
@@ -7120,13 +7156,13 @@ abstract class AppL10n {
   /// No description provided for @aiNeoRouterServerInUse.
   ///
   /// In en, this message translates to:
-  /// **'This server already uses a NeoRouter for everyone. Connect your own NeoRouter account for your own models and budget.'**
+  /// **'NeoCloud already uses a NeoRouter for everyone. Connect your own NeoRouter account to use your own models and limit.'**
   String get aiNeoRouterServerInUse;
 
   /// No description provided for @aiNeoRouterUserDescription.
   ///
   /// In en, this message translates to:
-  /// **'Use your own NeoRouter account for the work switched on under Manage instead of this server\'s providers.'**
+  /// **'Use your own NeoRouter account for the work you pick under Manage.'**
   String get aiNeoRouterUserDescription;
 
   /// No description provided for @aiNeoRouterServerDescription.
@@ -7726,7 +7762,7 @@ abstract class AppL10n {
   /// No description provided for @aiErrorDisabled.
   ///
   /// In en, this message translates to:
-  /// **'AI features are turned off on this server.'**
+  /// **'AI features aren\'t turned on.'**
   String get aiErrorDisabled;
 
   /// No description provided for @aiErrorNotOptedIn.
@@ -7750,7 +7786,7 @@ abstract class AppL10n {
   /// No description provided for @aiErrorProvider.
   ///
   /// In en, this message translates to:
-  /// **'The AI provider didn’t answer properly. Try again later.'**
+  /// **'The AI service didn’t answer properly. Try again later.'**
   String get aiErrorProvider;
 
   /// No description provided for @aiErrorVault.

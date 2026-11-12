@@ -1,10 +1,11 @@
 part of 'main.dart';
 
-// Settings › AI, after NeoAgent's Settings › Models (_ModelsSettingsPage):
-// the opt-in with what leaves the server, one model per kind of work, the
-// suggestions (Phase 2 switches), this month's usage and the account's own
-// keys with NeoRouter first. Without a model it leads with NeoAgent's
-// setup card; Admin › AI is one tap away for admins.
+// Settings › AI, after NeoAgent's Settings › Models (_ModelsSettingsPage),
+// written for people who don't run the server: the opt-in with what leaves
+// NeoCloud, the suggestions in plain words and this month's usage as a bar.
+// Models per kind of work, the naming template and the account's own
+// NeoRouter and keys sit under Advanced. Without a model it leads with
+// NeoAgent's setup card; only admins see the way to Admin › AI.
 
 /// The default for `ai_naming_template`; the server builds names from it.
 const String _aiDefaultNamingTemplate = '{date} {issuer} – {subject}';
@@ -121,6 +122,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     _controller.setSelectedSection(AppSection.admin);
   }
 
+  /// The Advanced disclosure: closed unless no model is set up, when the
+  /// account's own NeoRouter or key is the way to get going.
+  bool? _advancedOpen;
+
   @override
   Widget build(BuildContext context) {
     final status = _status;
@@ -137,26 +142,26 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         },
       );
     }
+    // Only admins hear about Admin; everyone else is told whom to ask.
     final isAdmin = _controller.isAdmin;
     if (!status.enabled) {
       return _AiSetupCard(
         title: appStrings.aiDisabledTitle,
-        body: appStrings.aiDisabledBody,
-        adminHint: isAdmin ? appStrings.aiDisabledAdminHint : null,
+        body: isAdmin ? appStrings.aiDisabledAdminHint : appStrings.aiDisabledBody,
         icon: Icons.power_settings_new_rounded,
         onOpenAdmin: isAdmin ? () => _openAdmin(_AdminTab.models) : null,
       );
     }
     final settings = _controller.settings;
     final noModel = !status.available && _models.where((model) => model.available).isEmpty;
+    final advancedOpen = _advancedOpen ?? noModel;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (noModel) ...<Widget>[
           _AiSetupCard(
             title: appStrings.aiNoModelTitle,
-            body: appStrings.aiNoModelBody,
-            adminHint: isAdmin ? appStrings.aiNoModelAdminHint : null,
+            body: isAdmin ? appStrings.aiNoModelAdminHint : appStrings.aiNoModelBody,
             icon: Icons.key_rounded,
             onOpenAdmin: isAdmin ? () => _openAdmin(_AdminTab.providers) : null,
           ),
@@ -171,11 +176,6 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
               control: Switch(value: settings.aiOptIn, onChanged: (value) => unawaited(_save(<String, Object?>{'ai_opt_in': value}))),
             ),
           ],
-        ),
-        _SettingsGroup(
-          title: appStrings.aiModelsTitle,
-          description: appStrings.aiModelsDescription,
-          children: <Widget>[for (final role in AiRole.values) _modelRow(role, status, settings)],
         ),
         _SettingsGroup(
           title: appStrings.aiFeaturesTitle,
@@ -196,18 +196,6 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                       : null,
                 ),
               ),
-            _SettingsRow(
-              label: appStrings.aiNamingTemplate,
-              description: appStrings.aiNamingTemplateDescription,
-              fillControl: true,
-              control: TextField(
-                controller: _template,
-                enabled: settings.aiOptIn,
-                decoration: const InputDecoration(isDense: true, hintText: _aiDefaultNamingTemplate),
-                onSubmitted: (_) => _saveTemplate(),
-                onTapOutside: (_) => _saveTemplate(),
-              ),
-            ),
           ],
         ),
         if (settings.aiOptIn && status.available) ...<Widget>[
@@ -231,7 +219,29 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
           title: appStrings.aiUsageTitle,
           children: <Widget>[_SettingsBlock(child: _AiUsageMeter(used: status.budgetUsed, limit: status.budgetLimit))],
         ),
-        ByokSettingsCard(controller: _controller, onChanged: () => unawaited(_load())),
+        _AiAdvancedToggle(open: advancedOpen, onToggle: () => setState(() => _advancedOpen = !advancedOpen)),
+        if (advancedOpen) ...<Widget>[
+          _SettingsGroup(
+            title: appStrings.aiModelsTitle,
+            description: appStrings.aiModelsDescription,
+            children: <Widget>[
+              for (final role in AiRole.values) _modelRow(role, status, settings),
+              _SettingsRow(
+                label: appStrings.aiNamingTemplate,
+                description: appStrings.aiNamingTemplateDescription,
+                fillControl: true,
+                control: TextField(
+                  controller: _template,
+                  enabled: settings.aiOptIn,
+                  decoration: const InputDecoration(isDense: true, hintText: _aiDefaultNamingTemplate),
+                  onSubmitted: (_) => _saveTemplate(),
+                  onTapOutside: (_) => _saveTemplate(),
+                ),
+              ),
+            ],
+          ),
+          ByokSettingsCard(controller: _controller, onChanged: () => unawaited(_load())),
+        ],
       ],
     );
   }
@@ -258,7 +268,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   }
 }
 
-/// This month's tokens against the budget, as a bar when there is one.
+/// This month's AI use as a plain bar against the limit. The raw token
+/// numbers stay in the tooltip for whoever wants them.
 class _AiUsageMeter extends StatelessWidget {
   const _AiUsageMeter({required this.used, required this.limit});
 
@@ -268,18 +279,64 @@ class _AiUsageMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final limit = this.limit;
-    if (limit == null) return Text(appStrings.aiUsageUnlimited(_aiNumber(used)), style: TextStyle(color: _textSecondary));
-    final share = (used / limit).clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Text(appStrings.aiUsageOf(_aiNumber(used), _aiNumber(limit)), style: TextStyle(color: _textSecondary)),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          child: LinearProgressIndicator(value: share, minHeight: 6, backgroundColor: _bgTertiary, color: share >= 1 ? _danger : _accent),
+    if (limit == null) {
+      return Tooltip(
+        message: appStrings.aiUsageUnlimited(_aiNumber(used)),
+        child: Text(appStrings.aiUsageNoLimit, style: TextStyle(color: _textSecondary)),
+      );
+    }
+    final share = limit <= 0 ? 1.0 : (used / limit).clamp(0.0, 1.0);
+    return Tooltip(
+      message: appStrings.aiUsageOf(_aiNumber(used), _aiNumber(limit)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(appStrings.aiUsagePercent((share * 100).round()), style: TextStyle(color: _textSecondary)),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(value: share, minHeight: 6, backgroundColor: _bgTertiary, color: share >= 1 ? _danger : _accent),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The "Advanced" disclosure over the models, the naming template and the
+/// account's own NeoRouter and keys.
+class _AiAdvancedToggle extends StatelessWidget {
+  const _AiAdvancedToggle({required this.open, required this.onToggle});
+
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(appStrings.aiAdvanced, style: _sectionTitleStyle()),
+                    const SizedBox(height: 3),
+                    Text(appStrings.aiAdvancedDescription, style: TextStyle(fontSize: 13, color: _textSecondary, height: 1.45)),
+                  ],
+                ),
+              ),
+              Icon(open ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: _textSecondary),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -287,12 +344,13 @@ class _AiUsageMeter extends StatelessWidget {
 /// NeoAgent's _ModelSetupCard: why AI cannot run yet, and for admins the
 /// way to Admin › AI.
 class _AiSetupCard extends StatelessWidget {
-  const _AiSetupCard({required this.title, required this.body, required this.icon, this.adminHint, this.onOpenAdmin});
+  const _AiSetupCard({required this.title, required this.body, required this.icon, this.onOpenAdmin});
 
   final String title;
   final String body;
   final IconData icon;
-  final String? adminHint;
+
+  /// Only ever set for admins.
   final VoidCallback? onOpenAdmin;
 
   @override
@@ -318,10 +376,6 @@ class _AiSetupCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(body, style: TextStyle(color: _textSecondary, height: 1.45)),
-          if (adminHint != null) ...<Widget>[
-            const SizedBox(height: 6),
-            Text(adminHint!, style: TextStyle(color: _textMuted, height: 1.45)),
-          ],
           if (onOpenAdmin != null) ...<Widget>[
             const SizedBox(height: 14),
             FilledButton.icon(

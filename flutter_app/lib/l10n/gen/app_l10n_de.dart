@@ -61,7 +61,8 @@ class AppL10nDe extends AppL10n {
       'Etwas ist schiefgelaufen. Bitte versuche es erneut.';
 
   @override
-  String get connectionError => 'Der NeoCloud-Server ist nicht erreichbar.';
+  String get connectionError =>
+      'NeoCloud ist nicht erreichbar. Prüfe deine Verbindung und versuch es noch einmal.';
 
   @override
   String get signIn => 'Anmelden';
@@ -80,7 +81,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get firstAccountSubtitle =>
-      'Dieses Konto verwaltet NeoCloud auf diesem Server.';
+      'Du bist als Erstes hier. Mit diesem Konto richtest du NeoCloud ein und lädst andere ein.';
 
   @override
   String get createAnotherAccount => 'Lege ein weiteres NeoCloud-Konto an.';
@@ -102,7 +103,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get forgotPasswordAskAdmin =>
-      'NeoCloud verschickt noch keine E-Mails. Bitte einen Admin dieses Servers, dir ein neues Passwort zu setzen (Admin › Benutzer).';
+      'NeoCloud verschickt noch keine E-Mails. Bitte die Person, die deine NeoCloud betreibt, dein Passwort zurückzusetzen.';
 
   @override
   String get alreadyHaveAnAccount => 'Schon ein Konto? Anmelden';
@@ -239,8 +240,7 @@ class AppL10nDe extends AppL10n {
   String get filesTitle => 'Dateien';
 
   @override
-  String get filesSubtitle =>
-      'Alles hier liegt verschlüsselt auf deinem Server.';
+  String get filesSubtitle => 'Alles hier liegt verschlüsselt.';
 
   @override
   String get upload => 'Hochladen';
@@ -874,7 +874,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get accountLastAdmin =>
-      'Du bist der einzige Admin. Mach zuerst jemand anderen zum Admin.';
+      'Du bist der einzige Admin, daher lässt sich dein Konto noch nicht löschen. Mach zuerst jemand anderen zum Admin.';
 
   @override
   String get accountConfirmMismatch => 'Der Benutzername stimmt nicht.';
@@ -1371,7 +1371,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get vaultSubtitle =>
-      'Ende-zu-Ende-verschlüsselt. Namen und Inhalte werden auf diesem Gerät verschlüsselt; der Server kann sie nicht lesen.';
+      'Ende-zu-Ende-verschlüsselt. Namen und Inhalte werden auf diesem Gerät verschlüsselt; NeoCloud kann sie nicht lesen.';
 
   @override
   String get vaultIntro =>
@@ -1385,7 +1385,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get vaultNoRecovery =>
-      'Die Passphrase lässt sich nicht wiederherstellen oder zurücksetzen, auch nicht durch einen Admin. Vergisst du sie, sind die Dateien in diesem Tresor verloren.';
+      'Die Passphrase lässt sich nicht wiederherstellen oder zurücksetzen, auch nicht durch NeoCloud. Vergisst du sie, sind die Dateien in diesem Tresor verloren.';
 
   @override
   String get vaultCreate => 'Tresor erstellen';
@@ -1538,7 +1538,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get cameraAccessMessage =>
-      'NeoCloud liest neue Fotos und Videos aus deiner Mediathek, um sie auf deinen Server hochzuladen. Sonst verlässt nichts das Telefon. Im nächsten Schritt kannst du „Alle Fotos“ oder eine Auswahl erlauben.';
+      'NeoCloud liest neue Fotos und Videos aus deiner Mediathek, um sie in deine NeoCloud hochzuladen. Sonst verlässt nichts das Telefon. Im nächsten Schritt kannst du „Alle Fotos“ oder eine Auswahl erlauben.';
 
   @override
   String get cameraAccessDenied =>
@@ -1876,7 +1876,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get vaultWarningCallout =>
-      'Nur du hast den Schlüssel. Wenn du Passphrase und Wiederherstellungsschlüssel verlierst, kann niemand – auch kein Admin – diesen Tresor wieder öffnen.';
+      'Nur du hast den Schlüssel. Wenn du Passphrase und Wiederherstellungsschlüssel verlierst, kann niemand – auch nicht NeoCloud – diesen Tresor wieder öffnen.';
 
   @override
   String get vaultNext => 'Weiter';
@@ -2110,11 +2110,11 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get securityDiskFull =>
-      'Die Festplatte des Servers ist voll. Bitte den Admin, Platz zu schaffen; nichts wurde gespeichert.';
+      'NeoCloud hat gerade keinen Platz mehr, daher wurde nichts gespeichert. Versuch es später noch einmal oder wende dich an die Person, die sie betreibt.';
 
   @override
   String get securityServerStopping =>
-      'Der Server startet neu. Versuch es gleich noch einmal.';
+      'NeoCloud startet neu. Versuch es gleich noch einmal.';
 
   @override
   String get filesFavoritesEmpty => 'Noch keine Favoriten';
@@ -2630,13 +2630,13 @@ class AppL10nDe extends AppL10n {
   String get cameraStatusNoFolder => 'Kein Ordner gewählt';
 
   @override
-  String get cameraStatusUnreachable => 'Server nicht erreichbar';
+  String get cameraStatusUnreachable => 'NeoCloud nicht erreichbar';
 
   @override
   String get cameraStatusSignedOut => 'Abgemeldet';
 
   @override
-  String get cameraStatusServerFull => 'Server voll';
+  String get cameraStatusServerFull => 'NeoCloud ist voll';
 
   @override
   String cameraStatusFailed(int count) {
@@ -3037,7 +3037,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get pairPhoneDescription =>
-      'Zeigt einen QR-Code an, mit dem sich die NeoCloud-App auf einem Telefon bei diesem Konto anmeldet, ohne Serveradresse oder Passwort einzugeben.';
+      'Zeigt einen QR-Code an, mit dem sich die NeoCloud-App auf einem Telefon bei diesem Konto anmeldet, ohne Adresse oder Passwort einzugeben.';
 
   @override
   String get showQrCode => 'QR-Code anzeigen';
@@ -3446,11 +3446,11 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get searchSettingsContentsHint =>
-      'Der Server indexiert den Text deiner Dokumente, damit die Suche Wörter darin findet. Schalte das aus, um deine Dateien aus dem Index herauszuhalten.';
+      'NeoCloud indexiert den Text in deinen Dokumenten, damit die Suche Wörter darin findet. Schalte das aus, um deine Dateien aus dem Index herauszuhalten.';
 
   @override
   String get searchSettingsContentsOff =>
-      'Die Volltextsuche ist auf diesem Server aus. Schaltet ein Admin sie ein, entscheidet diese Option, ob deine Dateien indexiert werden.';
+      'Die Suche in Dokumenten ist in deiner NeoCloud noch nicht eingeschaltet. Sobald sie es ist, entscheidet diese Option, ob deine Dateien dabei sind.';
 
   @override
   String get adminSearchTitle => 'Volltextsuche';
@@ -3530,7 +3530,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get importHostBlocked =>
-      'Nur ein Admin kann von einem Server in deinem lokalen Netzwerk importieren.';
+      'NeoCloud kann nicht von einer Adresse in deinem lokalen Netzwerk importieren.';
 
   @override
   String get filesWelcomeDontShowAgain => 'Nicht mehr anzeigen';
@@ -3660,7 +3660,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get sharedWithMeSubtitle =>
-      'Dateien und Ordner, die andere auf diesem Server für dich freigegeben haben.';
+      'Dateien und Ordner, die andere auf NeoCloud für dich freigegeben haben.';
 
   @override
   String get sharedWithMeEmpty => 'Noch nichts für dich freigegeben';
@@ -3724,7 +3724,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get sharePeopleHelp =>
-      'Gib die genaue E-Mail-Adresse oder den Benutzernamen einer Person mit Konto auf diesem Server ein.';
+      'Gib die genaue E-Mail-Adresse oder den Benutzernamen einer Person ein, die diese NeoCloud nutzt.';
 
   @override
   String get sharePublicLinkTitle => 'Öffentlicher Link';
@@ -3912,11 +3912,10 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get approvalNeedsServerUpdate =>
-      'Dieser Server kann Anmeldungen noch nicht aus der App bestätigen. Aktualisiere NeoCloud auf dem Server oder bestätige im Browser, in dem du angemeldet bist.';
+      'Anmeldungen in der App zu bestätigen ist noch nicht verfügbar. Bestätige stattdessen im Browser, in dem du angemeldet bist.';
 
   @override
-  String get serverUpdateNeeded =>
-      'Dieser Server ist dafür in der App zu alt. Aktualisiere NeoCloud auf dem Server.';
+  String get serverUpdateNeeded => 'Diese Funktion ist noch nicht verfügbar.';
 
   @override
   String get approvalNeedsPhone =>
@@ -3961,7 +3960,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get authForgotPasswordAskAdmin =>
-      'Passwort vergessen? Bitte deinen Server-Admin, es unter Admin → Benutzer zurückzusetzen.';
+      'Passwort vergessen? Bitte die Person, die deine NeoCloud betreibt, es zurückzusetzen.';
 
   @override
   String get authPhoneSignInTitle => 'Bei NeoCloud anmelden';
@@ -3975,7 +3974,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiPageDescription =>
-      'Vorschläge für Namen und Ordner, die Modelle dahinter und deine eigenen Schlüssel.';
+      'Lass dir von KI Namen, Ordner und Schlagwörter für deine Dateien vorschlagen.';
 
   @override
   String get aiOptInTitle => 'KI-Funktionen';
@@ -3985,38 +3984,37 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiPrivacyNote =>
-      'Namen, ausgelesener Text und Vorschauen der betroffenen Dateien gehen an den KI-Anbieter. Tresordateien werden nie verarbeitet, und nichts ändert sich, bevor du einen Vorschlag annimmst.';
+      'Wenn die KI eine Datei ansieht, gehen Name, Text und Vorschau an den KI-Dienst. Dateien im Tresor nie, und nichts ändert sich, bevor du einen Vorschlag annimmst.';
 
   @override
-  String get aiModelsTitle => 'Standardmodelle';
+  String get aiModelsTitle => 'Modelle';
 
   @override
   String get aiModelsDescription =>
-      'Jede Aufgabe nutzt ihr eigenes Modell. Auto nimmt NeoRouter oder das beste verfügbare Modell.';
+      'Welches KI-Modell welche Aufgabe übernimmt. Auto wählt das beste verfügbare.';
 
   @override
-  String get aiRoleText => 'Text';
+  String get aiRoleText => 'Alltägliche Aufgaben';
 
   @override
-  String get aiRoleTextDescription =>
-      'Schnelles Modell für Namen, Schlagwörter und Sortierung.';
+  String get aiRoleTextDescription => 'Namen, Schlagwörter und Sortieren.';
 
   @override
-  String get aiRoleSmart => 'Gründlich';
+  String get aiRoleSmart => 'Zusammenfassungen';
 
   @override
   String get aiRoleSmartDescription =>
-      'Stärkeres Modell für Zusammenfassungen und Fragen zu einer Datei.';
+      'Zusammenfassungen und Fragen zu einer Datei.';
 
   @override
-  String get aiRoleVision => 'Bilderkennung';
+  String get aiRoleVision => 'Bilder';
 
   @override
   String get aiRoleVisionDescription =>
-      'Liest Fotos, Screenshots und Scans. Nur Modelle, die Bilder verstehen.';
+      'Liest Fotos, Screenshots und Scans. Nur Modelle, die Bilder sehen können.';
 
   @override
-  String get aiRoleEmbedding => 'Embedding';
+  String get aiRoleEmbedding => 'Ähnliche Dateien';
 
   @override
   String get aiRoleEmbeddingDescription =>
@@ -4029,7 +4027,7 @@ class AppL10nDe extends AppL10n {
   String get aiAuto => 'Auto';
 
   @override
-  String get aiAutoSubtitle => 'NeoRouter oder das beste verfügbare Modell';
+  String get aiAutoSubtitle => 'Das beste verfügbare Modell';
 
   @override
   String aiSelectModel(String name) {
@@ -4061,10 +4059,10 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiGrantedHint =>
-      'Ein Admin hat dir dieses Modell freigegeben. Für alle anderen ist es ausgeschaltet.';
+      'Dieses Modell wurde nur für dich freigeschaltet. Für alle anderen ist es ausgeschaltet.';
 
   @override
-  String get aiByokTag => 'BYOK';
+  String get aiByokTag => 'Dein Schlüssel';
 
   @override
   String get aiPriceFree => 'Kostenlos';
@@ -4078,15 +4076,15 @@ class AppL10nDe extends AppL10n {
   }
 
   @override
-  String get aiNoModelTitle => 'Noch ist kein KI-Modell eingerichtet';
+  String get aiNoModelTitle => 'KI ist noch nicht eingerichtet';
 
   @override
   String get aiNoModelBody =>
-      'NeoCloud braucht ein KI-Modell für Vorschläge. Verbinde NeoRouter oder füge einen API-Schlüssel eines Anbieters wie OpenAI, Anthropic oder Google hinzu.';
+      'Frag die Person, die deine NeoCloud betreibt, oder nutze unter Erweitert dein eigenes NeoRouter-Konto oder einen eigenen API-Schlüssel.';
 
   @override
   String get aiNoModelAdminHint =>
-      'Als Admin kannst du Anbieter auch für alle unter Admin → Anbieter einrichten.';
+      'Richte KI im Admin-Bereich für alle ein oder nutze unter Erweitert dein eigenes NeoRouter-Konto oder einen eigenen API-Schlüssel.';
 
   @override
   String get aiOpenAdmin => 'Admin öffnen';
@@ -4096,17 +4094,24 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiDisabledBody =>
-      'KI-Funktionen sind auf diesem Server nicht eingeschaltet.';
+      'KI-Funktionen sind nicht eingeschaltet. Frag die Person, die deine NeoCloud betreibt, wenn du sie nutzen möchtest.';
 
   @override
   String get aiDisabledAdminHint =>
-      'Als Admin kannst du sie unter Admin → Modelle einschalten.';
+      'KI-Funktionen sind nicht eingeschaltet. Du kannst sie im Admin-Bereich für alle einschalten.';
 
   @override
-  String get aiNotAvailableTitle => 'KI ist auf diesem Server nicht verfügbar';
+  String get aiNotAvailableTitle => 'KI ist noch nicht verfügbar';
 
   @override
-  String get aiNotAvailableBody =>
+  String get aiNotAvailableBody => 'Diese Funktion ist noch nicht verfügbar.';
+
+  @override
+  String get aiAdminNotAvailableTitle =>
+      'KI ist auf diesem Server nicht verfügbar';
+
+  @override
+  String get aiAdminNotAvailableBody =>
       'Aktualisiere NeoCloud auf dem Server, um KI-Funktionen zu nutzen.';
 
   @override
@@ -4152,7 +4157,7 @@ class AppL10nDe extends AppL10n {
       'Wie vorgeschlagene Namen aus Datum, Absender und Betreff gebaut werden, die die KI findet.';
 
   @override
-  String get aiUsageTitle => 'Nutzung diesen Monat';
+  String get aiUsageTitle => 'KI-Nutzung diesen Monat';
 
   @override
   String aiUsageOf(String used, String limit) {
@@ -4165,15 +4170,29 @@ class AppL10nDe extends AppL10n {
   }
 
   @override
-  String get aiByokTitle => 'Eigenen Schlüssel verwenden';
+  String aiUsagePercent(int percent) {
+    return '$percent % genutzt · beginnt am 1. neu';
+  }
+
+  @override
+  String get aiUsageNoLimit => 'Kein monatliches Limit';
+
+  @override
+  String get aiAdvanced => 'Erweitert';
+
+  @override
+  String get aiAdvancedDescription =>
+      'Modelle, dein eigenes NeoRouter-Konto und eigene API-Schlüssel.';
+
+  @override
+  String get aiByokTitle => 'Eigener KI-Dienst';
 
   @override
   String get aiByokDescription =>
-      'Eigene Schlüssel oder einen eigenen Endpunkt für deine KI-Funktionen nutzen. Schlüssel werden verschlüsselt und nie wieder angezeigt.';
+      'Nutze dein eigenes NeoRouter-Konto oder eigene API-Schlüssel für deine KI-Funktionen. Schlüssel werden verschlüsselt gespeichert und nie wieder angezeigt.';
 
   @override
-  String get aiByokNoProviders =>
-      'Es sind noch keine Anbieter zum Einrichten verfügbar.';
+  String get aiByokNoProviders => 'Hier lässt sich noch nichts verbinden.';
 
   @override
   String get aiByokUsingYourKey => 'Dein Schlüssel';
@@ -4200,7 +4219,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String aiRemoveKeyBody(String provider) {
-    return 'KI-Funktionen greifen dann auf den gemeinsamen Serverschlüssel für $provider zurück, falls einer eingerichtet ist. Das lässt sich nicht rückgängig machen.';
+    return 'NeoCloud verwendet deinen $provider-Schlüssel dann nicht mehr. Das lässt sich nicht rückgängig machen.';
   }
 
   @override
@@ -4229,7 +4248,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiCustomEndpointBody =>
-      'Richte NeoCloud auf eine beliebige OpenAI-kompatible Chat-Completions-API: deinen eigenen Server, ein selbst gehostetes Modell oder einen anderen gehosteten Anbieter.';
+      'Richte NeoCloud auf eine beliebige OpenAI-kompatible Chat-Completions-API, etwa ein selbst gehostetes Modell oder einen anderen gehosteten Dienst.';
 
   @override
   String aiYourKeyTitle(String provider) {
@@ -4245,7 +4264,7 @@ class AppL10nDe extends AppL10n {
   String get aiNameOptional => 'Name (optional)';
 
   @override
-  String get aiNameHint => 'z. B. Mein lokaler Server';
+  String get aiNameHint => 'z. B. Mein eigenes Modell';
 
   @override
   String get aiBaseUrl => 'Basis-URL';
@@ -4265,7 +4284,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiByokLimitsNote =>
-      'Servernutzungslimits gelten nicht für Modelle mit deinem eigenen Schlüssel.';
+      'Das monatliche KI-Limit gilt nicht für Modelle mit deinem eigenen Schlüssel.';
 
   @override
   String get aiShow => 'Anzeigen';
@@ -4293,11 +4312,11 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiNeoRouterServerInUse =>
-      'Dieser Server nutzt bereits einen NeoRouter für alle. Verbinde dein eigenes NeoRouter-Konto für eigene Modelle und eigenes Budget.';
+      'NeoCloud nutzt bereits einen NeoRouter für alle. Verbinde dein eigenes NeoRouter-Konto für eigene Modelle und ein eigenes Limit.';
 
   @override
   String get aiNeoRouterUserDescription =>
-      'Nutze für die unter Verwalten eingeschalteten Aufgaben dein eigenes NeoRouter-Konto statt der Anbieter dieses Servers.';
+      'Nutze dein eigenes NeoRouter-Konto für die Aufgaben, die du unter Verwalten auswählst.';
 
   @override
   String get aiNeoRouterServerDescription =>
@@ -4653,8 +4672,7 @@ class AppL10nDe extends AppL10n {
   String get aiUsageFeatures => 'Nach Funktion';
 
   @override
-  String get aiErrorDisabled =>
-      'KI-Funktionen sind auf diesem Server ausgeschaltet.';
+  String get aiErrorDisabled => 'KI-Funktionen sind nicht eingeschaltet.';
 
   @override
   String get aiErrorNotOptedIn =>
@@ -4669,7 +4687,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiErrorProvider =>
-      'Der KI-Anbieter hat nicht richtig geantwortet. Versuche es später noch einmal.';
+      'Der KI-Dienst hat nicht richtig geantwortet. Versuche es später noch einmal.';
 
   @override
   String get aiErrorVault => 'Dateien in einem Tresor gehen nie an die KI.';

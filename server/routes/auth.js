@@ -154,7 +154,7 @@ function isRegistrationOpen() {
 
 function assertRegistrationOpen() {
   if (!isRegistrationOpen()) {
-    throw httpError(403, 'Registration is closed on this server. Ask an admin for an account.', 'SIGNUP_DISABLED');
+    throw httpError(403, 'Registration is closed. Ask the person who runs this NeoCloud for an account.', 'SIGNUP_DISABLED');
   }
 }
 
