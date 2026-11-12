@@ -1,7 +1,7 @@
 {
   "name": "neocloud",
   "private": true,
-  "version": "0.1.1-beta.8",
+  "version": "0.1.1-beta.9",
   "description": "Self-hosted, encrypted multi-user file storage — the NeoLabs alternative to Nextcloud",
   "license": "AGPL-3.0-only",
   "main": "server/index.js",
