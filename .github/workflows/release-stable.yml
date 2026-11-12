@@ -57,8 +57,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          # Runs not finished after 3 hours are stuck on GitHub's side (they
+          # can be neither cancelled nor deleted), so they don't block.
           running="$(gh run list --repo "$REPOSITORY" --workflow release-beta.yml --limit 20 \
-            --json status --jq '[.[] | select(.status != "completed")] | length')"
+            --json status,createdAt --jq '[.[] | select(.status != "completed")
+              | select((.createdAt | fromdateiso8601) > (now - 10800))] | length')"
           if [ "$running" != "0" ]; then
             echo "::error::A Release Beta run is still in progress; run this again when it has finished."
             exit 1
