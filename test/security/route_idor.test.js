@@ -226,6 +226,9 @@ const CLASSIFIED = {
   'GET /api/ai/suggestions': () => ['GET', `/api/ai/suggestions?nodeId=${v.file}`],
   'GET /api/ai/suggestions/counts': OWN,
   'POST /api/ai/suggestions/accept-high': OWN,
+  'POST /api/ai/suggestions/bulk': () => ['POST', '/api/ai/suggestions/bulk', { ids: [v.suggestion], action: 'accept' }],
+  'GET /api/ai/duplicates': OWN,
+  'POST /api/ai/duplicates/dismiss': () => ['POST', '/api/ai/duplicates/dismiss', { nodeIds: [v.file] }],
   'POST /api/ai/suggestions/:id/accept': () => ['POST', `/api/ai/suggestions/${v.suggestion}/accept`],
   'POST /api/ai/suggestions/:id/reject': () => ['POST', `/api/ai/suggestions/${v.suggestion}/reject`],
   'POST /api/ai/suggestions/:id/undo': () => ['POST', `/api/ai/suggestions/${v.suggestion}/undo`],
@@ -251,6 +254,13 @@ const CLASSIFIED = {
 const EMPTY_ANSWER = {
   'GET /api/shares': (body) => assert.deepEqual(body.shares, []),
   'GET /api/ai/suggestions': (body) => assert.deepEqual(body.items, []),
+  // Bulk answers per id: another account's id is a failure, nothing done.
+  'POST /api/ai/suggestions/bulk': (body) => {
+    assert.equal(body.done, 0);
+    assert.equal(body.failed.length, 1);
+  },
+  // Dismissing names the caller's own view only; the owner's files stay.
+  'POST /api/ai/duplicates/dismiss': () => {},
   'GET /api/search': (body) => assert.ok(!JSON.stringify(body).includes('secret.txt')),
 };
 

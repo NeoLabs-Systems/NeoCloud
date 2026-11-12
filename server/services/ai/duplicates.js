@@ -23,7 +23,16 @@ const { catchUp } = require('../photos/indexer');
 
 const logger = createServiceLogger('Duplicates');
 
+// At most 6 of 64 bits apart: 90 % alike or more. Every photo in a group
+// must be that close to every other one (no chains of "A like B like C").
 const MAX_DISTANCE = 6;
+// A hash with this few (or this many) set bits comes from a nearly flat
+// picture (black frame, white page, one colour): such pictures all look
+// alike to a dHash, so they are never called similar.
+const MIN_DETAIL_BITS = 10;
+// Pictures whose shapes differ this much (width/height ratio) aren't
+// variations of one photo.
+const MAX_ASPECT_DIFFERENCE = 0.1;
 const MAX_GROUPS = 500;
 const MAX_SOURCE_BYTES = 200 * 1024 * 1024;
 const HASH_BATCH = 50;
@@ -142,18 +151,6 @@ function chunkOf(hash, [from, to]) {
   return value;
 }
 
-function makeUnion(size) {
-  const parent = Array.from({ length: size }, (_, i) => i);
-  const find = (i) => {
-    while (parent[i] !== i) {
-      parent[i] = parent[parent[i]];
-      i = parent[i];
-    }
-    return i;
-  };
-  return { find, join: (a, b) => { parent[find(a)] = find(b); } };
-}
-
 function exactGroups(userId) {
   // The content hash is the blob's SHA-256 (also the file's etag), as for
   // the Storage page's duplicates.
@@ -197,10 +194,22 @@ function similarGroups(userId) {
     seen.add(row.etag);
     photos.push({ row, hash: parseHash(row.dhash) });
   }
-  const union = makeUnion(photos.length);
+  const detailed = photos.filter((photo) => {
+    const bits = popcount32(photo.hash[0]) + popcount32(photo.hash[1]);
+    return bits >= MIN_DETAIL_BITS && bits <= 64 - MIN_DETAIL_BITS;
+  });
+  const aspect = (row) => (row.width && row.height ? row.width / row.height : null);
+  const alike = (a, b) => {
+    if (distance(a.hash, b.hash) > MAX_DISTANCE) return false;
+    const ra = aspect(a.row);
+    const rb = aspect(b.row);
+    return ra == null || rb == null || Math.abs(ra - rb) / Math.max(ra, rb) <= MAX_ASPECT_DIFFERENCE;
+  };
+  // Candidate pairs: only hashes sharing a chunk can be 6 bits apart.
+  const neighbours = detailed.map(() => new Set());
   for (const chunk of CHUNKS) {
     const buckets = new Map();
-    photos.forEach((photo, index) => {
+    detailed.forEach((photo, index) => {
       const key = chunkOf(photo.hash, chunk);
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push(index);
@@ -208,17 +217,30 @@ function similarGroups(userId) {
     for (const bucket of buckets.values()) {
       for (let i = 0; i < bucket.length; i += 1) {
         for (let j = i + 1; j < bucket.length; j += 1) {
-          if (distance(photos[bucket[i]].hash, photos[bucket[j]].hash) <= MAX_DISTANCE) union.join(bucket[i], bucket[j]);
+          if (alike(detailed[bucket[i]], detailed[bucket[j]])) {
+            neighbours[bucket[i]].add(bucket[j]);
+            neighbours[bucket[j]].add(bucket[i]);
+          }
         }
       }
     }
   }
+  // Groups where every photo is alike to every other (complete linkage),
+  // built greedily from the photo with the most close matches.
+  const assigned = new Set();
+  const order = detailed.map((_, index) => index).sort((a, b) => neighbours[b].size - neighbours[a].size);
   const byRoot = new Map();
-  photos.forEach((photo, index) => {
-    const root = union.find(index);
-    if (!byRoot.has(root)) byRoot.set(root, []);
-    byRoot.get(root).push(photo);
-  });
+  for (const seed of order) {
+    if (assigned.has(seed) || neighbours[seed].size === 0) continue;
+    const members = [seed];
+    for (const candidate of neighbours[seed]) {
+      if (assigned.has(candidate)) continue;
+      if (members.every((member) => neighbours[candidate].has(member))) members.push(candidate);
+    }
+    if (members.length < 2) continue;
+    for (const member of members) assigned.add(member);
+    byRoot.set(seed, members.map((index) => detailed[index]));
+  }
   const groups = [];
   for (const members of byRoot.values()) {
     if (members.length < 2) continue;
