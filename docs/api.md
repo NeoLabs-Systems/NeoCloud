@@ -314,7 +314,7 @@ signed-in account's own live files (no vault, no trash).
 `group`: `{ kind: "exact"|"similar", similarity (percent), items: [{ node,
 size, takenAt?, width?, height?, keep }] }`. `exact`: the same content (the
 SHA-256 etag), any file type. `similar`: photos whose 64-bit perceptual hash
-(dHash of a 9×8 grayscale thumbnail) differs in at most 6 bits (about 90 %);
+(dHash of a 9×8 grayscale thumbnail) differs in at most 3 bits (about 95 %);
 exact copies appear there once. `node` carries `path`. `keep` marks the one
 to keep: the oldest copy (exact) or the largest picture (similar). Removing
 the others uses `DELETE /api/nodes/:id` (the trash), so it can be undone.

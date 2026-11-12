@@ -7,7 +7,7 @@
 //            also the etag),
 //            any type, of the account's own live files (no vault, no trash);
 //   similar  photos whose 64-bit perceptual hashes (dHash of a 9×8
-//            grayscale thumbnail) differ in at most 6 bits (about 90 %).
+//            grayscale thumbnail) differ in at most 3 bits (about 95 %).
 //
 // The hashes are made in the background when the page asks and kept per
 // content (image_hashes, keyed by node id and etag). Photos come from the
@@ -23,9 +23,9 @@ const { catchUp } = require('../photos/indexer');
 
 const logger = createServiceLogger('Duplicates');
 
-// At most 6 of 64 bits apart: 90 % alike or more. Every photo in a group
+// At most 3 of 64 bits apart: 95 % alike or more. Every photo in a group
 // must be that close to every other one (no chains of "A like B like C").
-const MAX_DISTANCE = 6;
+const MAX_DISTANCE = 3;
 // A hash with this few (or this many) set bits comes from a nearly flat
 // picture (black frame, white page, one colour): such pictures all look
 // alike to a dHash, so they are never called similar.
@@ -138,7 +138,7 @@ function distance(a, b) {
   return popcount32((a[0] ^ b[0]) >>> 0) + popcount32((a[1] ^ b[1]) >>> 0);
 }
 
-// Seven chunks of the 64 bits: two hashes at most 6 bits apart agree on at
+// Seven chunks of the 64 bits: two hashes at most 3 bits apart agree on at
 // least one chunk, so only hashes sharing a chunk are compared.
 const CHUNKS = [[0, 9], [9, 18], [18, 27], [27, 36], [36, 45], [45, 54], [54, 64]];
 
@@ -205,7 +205,7 @@ function similarGroups(userId) {
     const rb = aspect(b.row);
     return ra == null || rb == null || Math.abs(ra - rb) / Math.max(ra, rb) <= MAX_ASPECT_DIFFERENCE;
   };
-  // Candidate pairs: only hashes sharing a chunk can be 6 bits apart.
+  // Candidate pairs: only hashes sharing a chunk can be this few bits apart.
   const neighbours = detailed.map(() => new Set());
   for (const chunk of CHUNKS) {
     const buckets = new Map();
