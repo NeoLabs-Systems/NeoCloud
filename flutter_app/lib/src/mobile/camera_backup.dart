@@ -18,7 +18,10 @@ export 'camera_ledger.dart';
 // folder and every folder below it, so a re-run, a reinstall or a second
 // device never uploads the same photo twice, even after it was sorted into a
 // subfolder. The hash goes with the upload, and the server refuses content
-// that arrives different. Only one pass runs at a time (camera_lease.dart);
+// that arrives different; a file of the same name and content it already has
+// is that upload sent again (its answer was lost), so a retry never leaves
+// "IMG (1).jpg". A large file goes in parts whose upload id is kept in the
+// record, so an interrupted one resumes. Only one pass runs at a time (camera_lease.dart);
 // the pass is told before each file whether it still holds that lease.
 
 abstract class CameraLedgerStore {
@@ -106,7 +109,17 @@ abstract class CameraTarget {
 
   /// Uploads [file], whose content hashes to [sha256]; a taken name gets a
   /// suffix, nothing is replaced. Throws [CameraUploadFailure].
-  Future<void> upload(String folderId, CameraFile file, {required String sha256});
+  ///
+  /// A large file goes as a resumable upload: [onResumable] gets its id as
+  /// soon as it exists, and [resumeId] (one an earlier attempt left) is
+  /// continued, sending only the parts still missing.
+  Future<void> upload(
+    String folderId,
+    CameraFile file, {
+    required String sha256,
+    String? resumeId,
+    Future<void> Function(String uploadId)? onResumable,
+  });
 }
 
 /// A library that can make a photo's perceptual hash (camera_dhash.dart)
@@ -205,9 +218,11 @@ class CameraBackupEngine {
   final CameraTarget target;
   final DateTime Function() _clock;
 
-  /// Saved every few files and at the end; a crash in between only means a
-  /// few files are compared with the server again.
+  /// Saved every few files (or every few seconds of a slow pass) and at the
+  /// end; a crash in between only means those files are hashed and compared
+  /// with the server again, never sent again.
   static const int _saveEvery = 10;
+  static const Duration _saveAfter = Duration(seconds: 20);
 
   /// One pass. [manual] means the user asked for it, so "charging only"
   /// can't hold it back on a platform that can't tell. [interruption] is
@@ -308,6 +323,7 @@ class CameraBackupEngine {
     var failed = 0;
     var streak = 0;
     var sinceSave = 0;
+    var savedAt = _clock();
     var current = conditions;
     final similarity = _SimilarPhotos(
       enabled: options.skipSimilar,
@@ -343,6 +359,9 @@ class CameraBackupEngine {
           ..name = file.name
           ..size = file.size;
         final hash = await sha256OfStream(file.openRead());
+        // A resumable upload left for other content (the photo was edited)
+        // can't be continued.
+        if (record.sha256 != hash) record.uploadId = null;
         record.sha256 = hash;
         final sameName = byName[file.name];
         String? doneReason;
@@ -356,7 +375,17 @@ class CameraBackupEngine {
         } else {
           // A different file under the same name is uploaded too; the
           // server picks a free name.
-          await target.upload(folderId, file, sha256: hash);
+          await target.upload(
+            folderId,
+            file,
+            sha256: hash,
+            resumeId: record.uploadId,
+            onResumable: (uploadId) async {
+              // Kept at once: a pass killed mid-file resumes it.
+              record.uploadId = uploadId;
+              await store.save(ledger);
+            },
+          );
           uploaded += 1;
           etags.add(hash);
           if (sameName == null) byName[file.name] = RemoteCameraFile(name: file.name, size: file.size, etag: hash);
@@ -366,6 +395,7 @@ class CameraBackupEngine {
         record
           ..status = CameraRecordStatus.done
           ..reason = doneReason
+          ..uploadId = null
           ..doneAt = _clock();
         streak = 0;
       } on CameraUploadFailure catch (failure) {
@@ -385,8 +415,9 @@ class CameraBackupEngine {
         return stop(CameraBlock.tooManyFailures, partial: partial());
       }
       sinceSave += 1;
-      if (sinceSave >= _saveEvery) {
+      if (sinceSave >= _saveEvery || _clock().difference(savedAt) >= _saveAfter) {
         sinceSave = 0;
+        savedAt = _clock();
         await store.save(ledger);
       }
     }
@@ -439,7 +470,9 @@ class CameraBackupEngine {
     record
       ..status = CameraRecordStatus.failed
       ..attempts += 1
-      ..reason = reason;
+      ..reason = reason
+      // The server's resumable upload went with the failure.
+      ..uploadId = null;
     ledger.addLog('failed (${record.attempts}×): ${record.name.isEmpty ? record.assetId : record.name}: $reason', _clock());
   }
 

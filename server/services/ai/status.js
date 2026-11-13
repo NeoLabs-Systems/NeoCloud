@@ -5,6 +5,7 @@ const { getSupportedModels } = require('./models');
 const { MODEL_ROLES, resolveRoleModel } = require('./model_router');
 const { budgetOf } = require('./usage');
 const { isAiEnabled } = require('./policy');
+const { FILE_TYPE_CATEGORIES } = require('./file_types');
 
 function notReady() {
   return { ready: false, model: null, source: null, requestedUnavailable: false };
@@ -12,7 +13,8 @@ function notReady() {
 
 /**
  * What the apps show: whether AI can run here, whether the person opted in,
- * which model each role resolves to right now, and this month's tokens.
+ * which model each role resolves to right now, this month's tokens, and the
+ * file type categories Settings › AI can leave out.
  * While the admin switch is off nothing is discovered (no provider is asked).
  */
 async function getAiStatus(userId, { signal } = {}) {
@@ -36,6 +38,7 @@ async function getAiStatus(userId, { signal } = {}) {
     optedIn: settings.ai_opt_in === true,
     roles,
     budget: budgetOf(userId),
+    fileTypes: FILE_TYPE_CATEGORIES,
   };
 }
 

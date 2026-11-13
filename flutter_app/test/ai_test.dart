@@ -246,6 +246,51 @@ void main() {
     expect(find.text('Your own AI service'), findsOneWidget);
   });
 
+  test('file types: a category off, single formats off, and back', () {
+    const images = AiFileTypeCategory(id: 'images', extensions: <String>['jpg', 'png']);
+    const other = AiFileTypeCategory(id: 'other');
+    const none = AiSkipTypes();
+    expect(none.categoryOn(images), isTrue);
+    final off = none.withCategory(images, false);
+    expect((off.categoryOn(images), off.formatOn(images, 'png')), (false, false));
+    expect(off.toJson(), <String, Object?>{'categories': <String>['images'], 'extensions': <String>[]});
+    // One format back on: the category is on with the other format left out.
+    final onePng = off.withFormat(images, 'png', true);
+    expect(onePng.toJson(), <String, Object?>{'categories': <String>[], 'extensions': <String>['jpg']});
+    // Its last format off again: the whole category is off.
+    expect(onePng.withFormat(images, 'png', false).toJson()['categories'], <String>['images']);
+    expect(none.withCategory(other, false).categoryOn(other), isFalse);
+    expect(AiSkipTypes.fromJson(<String, dynamic>{'categories': <String>['code'], 'extensions': <String>['md']}).extensions, <String>{'md'});
+  });
+
+  testWidgets('Settings › AI lists file types with their formats', (tester) async {
+    final ai = _FakeAi(
+      currentStatus: const AiStatus(
+        available: true,
+        enabled: true,
+        optedIn: true,
+        roles: <String, AiRoleStatus>{'text': AiRoleStatus(ready: true, model: 'neorouter::auto:fast')},
+        fileTypes: <AiFileTypeCategory>[
+          AiFileTypeCategory(id: 'images', extensions: <String>['jpg', 'heic']),
+          AiFileTypeCategory(id: 'other'),
+        ],
+      ),
+      catalog: _catalog,
+    );
+    final controller = await _controller(ai);
+    controller.settings = const UserSettings(aiOptIn: true, aiSkipTypes: AiSkipTypes(extensions: <String>{'heic'}));
+    await _pump(tester, AiSettingsPage(controller: controller));
+    expect(find.text('File types'), findsOneWidget);
+    expect(find.text('Images'), findsWidgets);
+    expect(find.text('1 of 2 formats'), findsOneWidget);
+    expect(find.text('Every format not listed above'), findsOneWidget);
+    expect(find.text('.heic'), findsNothing);
+    await tester.tap(find.text('Choose formats'));
+    await tester.pumpAndSettle();
+    expect(find.text('.jpg'), findsOneWidget);
+    expect(find.text('.heic'), findsOneWidget);
+  });
+
   testWidgets('Settings › AI on a server without AI says so', (tester) async {
     await _pump(tester, AiSettingsPage(controller: await _controller(_FakeAi())));
     expect(find.text("AI isn't available yet"), findsOneWidget);

@@ -16,7 +16,8 @@
 const db = require('../../../db/database');
 const { createServiceLogger } = require('../../../utils/logger');
 const { assertAiAllowedForNode } = require('../exclusions');
-const { JOB_KINDS, aiFeatures, pauseReason } = require('./features');
+const { JOB_KINDS, aiFeatures, isTypeSkipped, pauseReason } = require('./features');
+const { dropOldVotes } = require('./new_folders');
 const { suggestForFile } = require('./pipeline');
 const { announceSuggestions } = require('./suggestions');
 const { enqueue, sqlTime } = require('./queue');
@@ -34,7 +35,7 @@ const IDLE_MS = 5 * 1000;
 const FIRST_PASS_MS = 20 * 1000;
 const BUSY_GAP_MS = 50;
 
-const SKIP_CODES = new Set(['NOT_FOUND', 'AI_VAULT', 'AI_EXCLUDED', 'NOT_A_FILE', 'AI_FEATURE_OFF']);
+const SKIP_CODES = new Set(['NOT_FOUND', 'AI_VAULT', 'AI_EXCLUDED', 'NOT_A_FILE', 'AI_FEATURE_OFF', 'AI_TYPE_SKIPPED']);
 const PAUSE_CODES = new Set(['AI_DISABLED', 'AI_NOT_OPTED_IN', 'AI_BUDGET_EXCEEDED']);
 
 // --- Following the journal ------------------------------------------------------------------
@@ -84,7 +85,7 @@ function followJournal() {
   const cache = new Map();
   while (cursor < upto) {
     const rows = db.prepare(`
-      SELECT c.seq, c.user_id, c.node_id FROM changes c JOIN nodes n ON n.id = c.node_id
+      SELECT c.seq, c.user_id, c.node_id, n.name FROM changes c JOIN nodes n ON n.id = c.node_id
       WHERE c.seq > ? AND c.seq <= ? AND c.op = 'create' AND n.type = 'file'
       ORDER BY c.seq LIMIT ?
     `).all(cursor, upto, JOURNAL_PAGE);
@@ -92,7 +93,7 @@ function followJournal() {
     db.transaction(() => {
       for (const row of rows) {
         const kinds = uploadKinds(row.user_id, cache);
-        if (kinds && uploadAllowed(row.user_id, row.node_id)) {
+        if (kinds && !isTypeSkipped(row.user_id, row.name) && uploadAllowed(row.user_id, row.node_id)) {
           enqueue(row.user_id, [row.node_id], { kinds, source: 'upload' });
         }
       }
@@ -137,6 +138,7 @@ async function runJob(job) {
       kinds: JSON.parse(job.kinds),
       explicit: job.explicit === 1,
       waitForIndex: job.source === 'upload',
+      batchKey: job.batch_id,
     });
   } catch (error) {
     jobFailed(job, error);
@@ -174,6 +176,7 @@ function cleanUp() {
   db.prepare(`
     DELETE FROM ai_jobs WHERE status IN ('done', 'skipped', 'failed') AND updated_at < datetime('now', ?)
   `).run(`-${KEEP_FINISHED_DAYS} days`);
+  dropOldVotes();
 }
 
 async function workPass(maxJobs) {

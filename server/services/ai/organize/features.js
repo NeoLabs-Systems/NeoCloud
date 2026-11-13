@@ -1,15 +1,18 @@
 'use strict';
 
 // A person's AI feature switches (setting `ai_features`) with their
-// defaults, and whether AI may run for them at all right now.
+// defaults, the file types they leave out of AI (`ai_skip_types`), and
+// whether AI may run for them at all right now.
 
 const { readSettings } = require('../../settings/store');
 const { isAiEnabled } = require('../policy');
 const { budgetOf } = require('../usage');
 const { httpError } = require('../../../utils/http_error');
+const { isSkippedType } = require('../file_types');
 
 // On-demand features are on once the person opted in; anything that acts
-// without being asked (on upload, auto-apply) is off until switched on.
+// without being asked (on upload, auto-apply) or makes something new in the
+// person's tree (new folders) is off until switched on.
 const FEATURE_DEFAULTS = Object.freeze({
   names: true,
   folders: true,
@@ -40,6 +43,17 @@ function assertFeature(userId, feature) {
   }
 }
 
+/** Whether the person left files of this name's type out of AI (Settings › AI › File types). */
+function isTypeSkipped(userId, name) {
+  return isSkippedType(name, readSettings(userId).ai_skip_types);
+}
+
+function assertTypeAllowed(userId, name) {
+  if (isTypeSkipped(userId, name)) {
+    throw httpError(422, 'AI is turned off for this kind of file in Settings › AI.', 'AI_TYPE_SKIPPED');
+  }
+}
+
 /**
  * Why AI can't run for the account now (AI_DISABLED, AI_NOT_OPTED_IN,
  * AI_BUDGET_EXCEEDED), or null when it can. Jobs of a paused account wait.
@@ -52,4 +66,4 @@ function pauseReason(userId) {
   return null;
 }
 
-module.exports = { JOB_KINDS, aiFeatures, assertFeature, pauseReason };
+module.exports = { JOB_KINDS, aiFeatures, assertFeature, assertTypeAllowed, isTypeSkipped, pauseReason };

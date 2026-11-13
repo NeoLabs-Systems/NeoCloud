@@ -92,6 +92,17 @@ mixin _FilesActions on _FilesBase {
     if (folder != null) controller.openFolder(folder.id);
   }
 
+  /// Turns [node] into a vault in its place, or continues doing so.
+  Future<void> convertToVault(FileNode node) async {
+    final vault = await showConvertToVault(context, controller, node);
+    if (!mounted) return;
+    if (vault != null) {
+      controller.openFolder(vault.id);
+    } else {
+      await load(quiet: true);
+    }
+  }
+
   // Opening
 
   void open(FileNode node) {
@@ -437,6 +448,12 @@ mixin _FilesActions on _FilesBase {
           node.aiExcluded ? Icons.auto_awesome_outlined : Icons.do_not_disturb_on_outlined,
           node.aiExcluded ? appStrings.aiFolderInclude : appStrings.aiFolderExclude,
           () => unawaited(setAiExcluded(node, !node.aiExcluded)),
+        ),
+      if (own && node.isFolder && !vault)
+        _FileAction(
+          Icons.enhanced_encryption_outlined,
+          vaultConversionPending(controller, node.id) ? appStrings.vaultConvertResumeAction : appStrings.vaultConvertAction,
+          () => unawaited(convertToVault(node)),
         ),
       if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
       ...aiActionsFor(node),

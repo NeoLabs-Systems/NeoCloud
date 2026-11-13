@@ -4,7 +4,10 @@
 // (with the live `ai:suggestions` event) and turned stale. A pending
 // suggestion turns `stale` once its file changed in a way that matters: new
 // content (any kind), another name (renames), another folder (moves), or the
-// file went to the trash. Deciding on them is review.js.
+// file went to the trash. A move into a new folder also turns stale once the
+// person switched "new folders" off, and is never high-tier: it is never
+// auto-applied or taken by "accept all high-confidence"; the person accepts
+// it on its own. Deciding on them is review.js.
 
 const crypto = require('crypto');
 const db = require('../../../db/database');
@@ -12,6 +15,7 @@ const { httpError } = require('../../../utils/http_error');
 const { emitToUser } = require('../../events');
 const { serializeNode, withFolderPaths, NODE_COLUMNS } = require('../../files/tree');
 const { proposalCount } = require('./rules');
+const { aiFeatures } = require('./features');
 
 const KINDS = ['rename', 'move', 'tags'];
 const TIERS = ['high', 'medium', 'low'];
@@ -54,6 +58,13 @@ function refreshStale(userId) {
     WHERE s.user_id = ? AND s.status = 'pending'
   `).all(userId);
   const stale = rows.filter((row) => isStale(row, row.node_id ? row : null)).map((row) => row.id);
+  if (!aiFeatures(userId).newFolders) {
+    const newFolderMoves = db.prepare(`
+      SELECT id FROM ai_suggestions
+      WHERE user_id = ? AND status = 'pending' AND kind = 'move' AND json_extract(to_json, '$.id') IS NULL
+    `).all(userId).map((row) => row.id);
+    stale.push(...newFolderMoves.filter((id) => !stale.includes(id)));
+  }
   if (stale.length > 0) {
     db.prepare(`
       UPDATE ai_suggestions SET status = 'stale', decided_at = datetime('now')
@@ -63,13 +74,17 @@ function refreshStale(userId) {
   return stale.length;
 }
 
-/** Pending suggestions per kind (high and medium) and low ones apart, plus open rule proposals. */
+/**
+ * Pending suggestions per kind (high and medium) and low ones apart, the
+ * high ones in all and per kind, plus open rule proposals.
+ */
 function suggestionCounts(userId) {
   refreshStale(userId);
   const rows = db.prepare(`
     SELECT kind, tier, COUNT(*) AS count FROM ai_suggestions WHERE user_id = ? AND status = 'pending' GROUP BY kind, tier
   `).all(userId);
   const pending = { rename: 0, move: 0, tags: 0, total: 0 };
+  const highByKind = { rename: 0, move: 0, tags: 0 };
   let hiddenLow = 0;
   let high = 0;
   for (const row of rows) {
@@ -79,9 +94,12 @@ function suggestionCounts(userId) {
     }
     pending[row.kind] += row.count;
     pending.total += row.count;
-    if (row.tier === 'high') high += row.count;
+    if (row.tier === 'high') {
+      high += row.count;
+      highByKind[row.kind] += row.count;
+    }
   }
-  return { pending, high, hiddenLow, proposals: proposalCount(userId) };
+  return { pending, high, highByKind, hiddenLow, proposals: proposalCount(userId) };
 }
 
 /** Tells the account's open apps to refresh their review counts. */
@@ -90,6 +108,15 @@ function announceSuggestions(userId) {
 }
 
 // --- Creating ---------------------------------------------------------------------------
+
+// A rule's suggestion is high. A move into a folder that doesn't exist yet
+// is at most medium, so nothing applies it in bulk or by itself.
+function tierOf(suggestion, confidence) {
+  if (suggestion.source === 'rule') return 'high';
+  const tier = tierFor(confidence);
+  const newFolder = suggestion.kind === 'move' && suggestion.to && suggestion.to.id === null;
+  return newFolder && tier === 'high' ? 'medium' : tier;
+}
 
 /**
  * Stores a pending suggestion for the owner's file `node` (a node row):
@@ -122,7 +149,7 @@ function createSuggestion(userId, node, suggestion) {
       toJson,
       String(suggestion.reason || '').slice(0, 300),
       confidence,
-      suggestion.source === 'rule' ? 'high' : tierFor(confidence),
+      tierOf(suggestion, confidence),
       suggestion.source === 'rule' ? 'rule' : 'ai',
       suggestion.ruleId ?? null,
       suggestion.model ?? null,

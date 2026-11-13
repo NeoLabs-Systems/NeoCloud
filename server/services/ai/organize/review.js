@@ -6,6 +6,12 @@
 // high-confidence suggestions are applied at once and stay listed as
 // `applied`, undoable like any other. Applying goes through the normal file
 // operations (journal, live updates, name conflicts).
+//
+// A move into a folder that doesn't exist yet creates that folder only
+// here, when the person accepts it, in the same transaction as the move
+// (no folder without its file), and only while "new folders" is on. The
+// folder is marked created_by_ai; undoing the move removes it again when it
+// is left empty.
 
 const db = require('../../../db/database');
 const { httpError } = require('../../../utils/http_error');
@@ -13,6 +19,8 @@ const { validateName } = require('../../../utils/file_names');
 const { announceChanges } = require('../../files/changes');
 const { getLiveNode, serializeNode } = require('../../files/tree');
 const operations = require('../../files/operations');
+const { trashNode } = require('../../files/trash');
+const { aiFeatures } = require('./features');
 const { acceptedTags, saveTags } = require('./extraction');
 const { normalizeTag } = require('./fields');
 const { assertMoveTarget, folderPath } = require('./targets');
@@ -72,16 +80,37 @@ function moveTarget(userId, row, node, value) {
     if (typeof value !== 'string' || !value) throw httpError(400, 'value must be a folder id.', 'INVALID_VALUE');
     return assertMoveTarget(userId, node, value).id;
   }
-  const to = parseJson(row.to_json, {});
-  if (to.id) return assertMoveTarget(userId, node, to.id).id;
-  // A new folder: created (or reused) where the suggestion said.
+  return assertMoveTarget(userId, node, parseJson(row.to_json, {}).id).id;
+}
+
+// The new folder (or an existing one of that name) and the move, in one
+// transaction. updateNode's own transaction runs as a savepoint inside it,
+// so a failing move leaves no folder behind.
+function moveIntoNewFolder(userId, row, node, to) {
+  if (!aiFeatures(userId).newFolders) {
+    markStale(row);
+    throw httpError(409, 'Suggesting new folders is turned off in Settings › AI.', 'AI_NEW_FOLDERS_OFF');
+  }
   assertMoveTarget(userId, node, to.parentId);
-  return operations.createFolder(userId, { parentId: to.parentId, name: to.name, conflict: 'replace' }).id;
+  return db.transaction(() => {
+    const { node: folder, created } = operations.createFolderInTransaction(userId, to.parentId, to.name, 'replace');
+    if (created) db.prepare('UPDATE nodes SET created_by_ai = 1 WHERE id = ?').run(folder.id);
+    const result = operations.updateNode(userId, node.id, { parentId: folder.id, conflict: 'rename' });
+    return { targetId: folder.id, result };
+  })();
 }
 
 function applyMove(userId, row, node, value) {
-  const targetId = moveTarget(userId, row, node, value);
-  const result = operations.updateNode(userId, node.id, { parentId: targetId, conflict: 'rename' });
+  const to = parseJson(row.to_json, {});
+  let targetId;
+  let result;
+  if (value === undefined && !to.id) {
+    ({ targetId, result } = moveIntoNewFolder(userId, row, node, to));
+    announceChanges(userId, [to.parentId]);
+  } else {
+    targetId = moveTarget(userId, row, node, value);
+    result = operations.updateNode(userId, node.id, { parentId: targetId, conflict: 'rename' });
+  }
   return {
     to: { id: targetId, path: folderPath(userId, targetId) },
     applied: { name: result.name, parentId: result.parentId },
@@ -209,6 +238,15 @@ function undoConflict() {
   return httpError(409, 'The file changed since; it can’t be put back automatically.', 'AI_UNDO_CONFLICT');
 }
 
+// A folder AI made for a move that was just undone goes to the trash once nothing is left in it.
+function removeIfEmptyAiFolder(userId, folderId) {
+  const empty = db.prepare(`
+    SELECT 1 FROM nodes f WHERE f.id = ? AND f.user_id = ? AND f.created_by_ai = 1 AND f.trashed_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM nodes c WHERE c.parent_id = f.id AND c.trashed_at IS NULL)
+  `).get(folderId, userId);
+  if (empty) trashNode(userId, folderId);
+}
+
 /**
  * Puts an accepted or auto-applied suggestion back: the old name, folder or
  * tags, as long as the file is still as the suggestion left it (else 409
@@ -240,6 +278,7 @@ function undoSuggestion(userId, id) {
     } else {
       operations.updateNode(userId, node.id, { parentId: from.id, name: row.basis_name, conflict: 'fail' });
       if (row.status === 'accepted') recordAcceptedMove(userId, parseJson(row.signal_json, {}), applied.parentId, -1);
+      removeIfEmptyAiFolder(userId, applied.parentId);
     }
   }
   const updated = db.prepare(`

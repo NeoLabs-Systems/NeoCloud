@@ -76,6 +76,15 @@ class AiApi {
   Future<AiBulkResult> bulkDecide(List<String> ids, String action) async =>
       AiBulkResult.fromJson(await _send('POST', '/api/ai/suggestions/bulk', <String, Object?>{'ids': ids, 'action': action}));
 
+  // Empty folders AI left behind
+
+  /// Empty folders AI created, and other empty top-level folders of the last week.
+  Future<AiEmptyFolders> emptyFolders() async => AiEmptyFolders.fromJson(await _get('/api/ai/cleanup/folders'));
+
+  /// Moves the chosen empty folders to the trash (only ones still empty).
+  Future<AiCleanupResult> removeEmptyFolders(List<String> ids) async =>
+      AiCleanupResult.fromJson(await _send('POST', '/api/ai/cleanup/folders', <String, Object?>{'ids': ids}));
+
   // Duplicates (no AI needed)
 
   /// Groups of identical files and look-alike photos.

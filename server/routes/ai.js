@@ -1,8 +1,8 @@
 'use strict';
 
 // AI for the signed-in account: what can run, which folders AI must never
-// read, the review queue of suggestions, the jobs behind it, sorting rules
-// and summaries. A browser session or the phone app; desktop tokens don't
+// read, the review queue of suggestions, the jobs behind it, sorting rules,
+// summaries, and removing empty folders AI left behind. A browser session or the phone app; desktop tokens don't
 // reach these routes.
 
 const express = require('express');
@@ -14,6 +14,7 @@ const review = require('../services/ai/organize/review');
 const jobs = require('../services/ai/organize/jobs');
 const rules = require('../services/ai/organize/rules');
 const { summarizeFile } = require('../services/ai/organize/summaries');
+const cleanup = require('../services/ai/organize/cleanup');
 const duplicates = require('../services/ai/duplicates');
 const { jsonHandler, rateLimiter } = require('./_helpers/http');
 
@@ -44,6 +45,9 @@ router.post('/suggestions/bulk', jsonHandler((req) => review.bulkDecide(req.user
 router.post('/suggestions/:id/accept', jsonHandler((req) => review.acceptSuggestion(req.userId, req.params.id, { value: req.body?.value })));
 router.post('/suggestions/:id/reject', jsonHandler((req) => review.rejectSuggestion(req.userId, req.params.id)));
 router.post('/suggestions/:id/undo', jsonHandler((req) => review.undoSuggestion(req.userId, req.params.id)));
+
+router.get('/cleanup/folders', jsonHandler((req) => cleanup.listEmptyFolders(req.userId)));
+router.post('/cleanup/folders', jsonHandler((req) => cleanup.removeEmptyFolders(req.userId, { ids: req.body?.ids })));
 
 router.get('/jobs', jsonHandler((req) => jobs.jobStatus(req.userId, { batchId: queryText(req.query.batchId) })));
 router.post('/jobs', workLimiter, jsonHandler((req) => jobs.requestSuggestions(req.userId, {

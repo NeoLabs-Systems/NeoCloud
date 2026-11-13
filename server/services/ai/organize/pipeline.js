@@ -4,7 +4,10 @@
 // and move suggestion as asked and switched on, then auto-apply when the
 // person wants it. Renames need a meaningless name (classifyName) unless the
 // person asked for this file; camera photos get tags (and their caption in
-// the metadata) but no new name unless asked.
+// the metadata) but no new name unless asked. File types the person left
+// out of AI are skipped before anything is read. A move into a new folder
+// is held until enough files of the job would go there (new_folders.js);
+// nothing is created or moved here.
 
 const db = require('../../../db/database');
 const { readSettings } = require('../../settings/store');
@@ -12,9 +15,10 @@ const { assertAiAllowedForNode } = require('../exclusions');
 const { freeName } = require('../../files/operations');
 const { getLiveNode } = require('../../files/tree');
 const { acceptedTags, extractFile } = require('./extraction');
-const { aiFeatures } = require('./features');
+const { aiFeatures, isTypeSkipped } = require('./features');
 const { classifyName, renderName, templateFields } = require('./naming');
 const { decideMove } = require('./sorting');
+const { holdNewFolderMove } = require('./new_folders');
 const { autoApply } = require('./review');
 const { createSuggestion } = require('./suggestions');
 const { folderPath } = require('./targets');
@@ -96,15 +100,17 @@ function knownTagsOf(userId) {
 }
 
 /**
- * Suggestions for one of the owner's files. `kinds`: names, folders, tags.
+ * Suggestions for one of the owner's files. `kinds`: names, folders, tags;
+ * `batchKey` groups new-folder votes (the job's batch, or uploads).
  * Returns { created: [rows] }, { wait: true } (the indexer reads it soon) or
  * { skipped: code }. Throws the guard's errors for vault, excluded or
  * missing files and the facade's for AI that can't run.
  */
-async function suggestForFile(userId, nodeId, { kinds, explicit = false, waitForIndex = false, signal } = {}) {
+async function suggestForFile(userId, nodeId, { kinds, explicit = false, waitForIndex = false, batchKey = null, signal } = {}) {
   assertAiAllowedForNode(userId, nodeId);
   const node = getLiveNode(userId, nodeId);
   if (node.type !== 'file') return { skipped: 'NOT_A_FILE' };
+  if (isTypeSkipped(userId, node.name)) return { skipped: 'AI_TYPE_SKIPPED' };
   const features = aiFeatures(userId);
   const wanted = kinds.filter((kind) => features[kind]);
   if (wanted.length === 0) return { skipped: 'AI_FEATURE_OFF' };
@@ -130,7 +136,13 @@ async function suggestForFile(userId, nodeId, { kinds, explicit = false, waitFor
   if (current.etag !== node.etag || current.name !== node.name || current.parent_id !== node.parent_id) {
     return { skipped: 'CHANGED' };
   }
-  const created = drafts.filter(Boolean).map((draft) => createSuggestion(userId, node, draft)).filter(Boolean);
+  const ready = [];
+  for (const draft of drafts.filter(Boolean)) {
+    if (draft.kind === 'move' && draft.to.id === null) ready.push(...holdNewFolderMove(userId, node, draft, { batchKey }));
+    else ready.push({ node, draft });
+  }
+  const created = ready.map((entry) => createSuggestion(userId, entry.node, entry.draft)).filter(Boolean);
+  // Auto-apply never creates a folder: those moves are never high-tier (suggestions.js).
   if (features.autoApplyHighConfidence) autoApply(userId, created);
   return { created };
 }

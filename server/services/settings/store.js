@@ -6,6 +6,7 @@
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
 const { parseModelSelectionId } = require('../ai/model_identity');
+const { SKIP_TYPES_DEFAULT, isSkipTypes } = require('../ai/file_types');
 
 const oneOf = (...values) => (value) => values.includes(value);
 const isBoolean = (value) => typeof value === 'boolean';
@@ -83,6 +84,8 @@ const SETTINGS = {
   ai_model_transcription: { default: 'auto', valid: isModelChoice },
   ai_features: { default: {}, valid: isFeatureFlags },
   ai_naming_template: { default: '{date} {issuer} – {subject}', valid: isNamingTemplate },
+  // File types every AI feature leaves alone (services/ai/file_types.js).
+  ai_skip_types: { default: SKIP_TYPES_DEFAULT, valid: isSkipTypes },
   folder_views: { default: {}, valid: isFolderViewsPatch, merge: mergeFolderViews },
 };
 

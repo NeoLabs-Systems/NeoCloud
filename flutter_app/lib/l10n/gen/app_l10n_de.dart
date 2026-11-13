@@ -2024,6 +2024,194 @@ class AppL10nDe extends AppL10n {
   String get vaultUnlocking => 'Wird entsperrt…';
 
   @override
+  String get vaultConvertAction => 'In Tresor umwandeln…';
+
+  @override
+  String get vaultConvertResumeAction => 'Umwandlung in Tresor fortsetzen…';
+
+  @override
+  String vaultConvertTitle(String name) {
+    return '„$name“ in einen Tresor umwandeln';
+  }
+
+  @override
+  String get vaultConvertIntro =>
+      'Alles in diesem Ordner wird auf diesem Gerät verschlüsselt und in einen neuen Tresor kopiert, den nur du öffnen kannst.';
+
+  @override
+  String get vaultConvertStepCopy =>
+      'Jede Datei wird heruntergeladen, hier verschlüsselt und wieder hochgeladen. Große Ordner brauchen eine Weile; du kannst anhalten und später weitermachen.';
+
+  @override
+  String get vaultConvertStepPassphrase =>
+      'Du wählst eine Passphrase und bekommst einen Wiederherstellungsschlüssel. Ohne einen von beiden kann niemand diese Dateien je wieder öffnen, auch NeoCloud nicht.';
+
+  @override
+  String get vaultConvertStepTrash =>
+      'Erst wenn jede Datei sicher im Tresor ist, kommt der ursprüngliche Ordner in den Papierkorb. Lösche ihn dort für vollen Schutz.';
+
+  @override
+  String vaultConvertSummary(int files, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      files,
+      locale: localeName,
+      other: '$files Dateien',
+      one: '1 Datei',
+      zero: 'Keine Dateien',
+    );
+    return '$_temp0 · $size';
+  }
+
+  @override
+  String get vaultConvertTrashSpace =>
+      'Bis du den Papierkorb leerst, zählen die Originale weiter zu deinem Speicher.';
+
+  @override
+  String vaultConvertNoSpace(String needed, String free) {
+    return 'Für die verschlüsselte Kopie ist nicht genug Platz: Sie braucht $needed, frei sind $free. Schaffe Platz oder bitte um mehr Speicher.';
+  }
+
+  @override
+  String get vaultConvertStart => 'Passphrase wählen';
+
+  @override
+  String get vaultConvertRefusedTitle =>
+      'Dieser Ordner kann kein Tresor werden';
+
+  @override
+  String get vaultConvertProblemShared =>
+      'Er ist mit anderen geteilt, die den Zugriff verlieren würden. Beende zuerst die Freigabe.';
+
+  @override
+  String get vaultConvertProblemLink =>
+      'Er oder etwas darin hat einen öffentlichen Link. Entferne zuerst den Link.';
+
+  @override
+  String get vaultConvertProblemContainsVault =>
+      'Er enthält schon einen Tresor, und Tresore können nicht in anderen Tresoren liegen.';
+
+  @override
+  String get vaultConvertProblemInVault => 'Er liegt schon in einem Tresor.';
+
+  @override
+  String get vaultConvertProblemOther =>
+      'Er kann gerade nicht umgewandelt werden.';
+
+  @override
+  String vaultConvertProgressTitle(String name) {
+    return '„$name“ wird umgewandelt';
+  }
+
+  @override
+  String vaultConvertProgressFiles(int done, int total) {
+    return '$done von $total Dateien';
+  }
+
+  @override
+  String vaultConvertProgressBytes(String done, String total) {
+    return '$done von $total';
+  }
+
+  @override
+  String get vaultConvertFinishing => 'Wird geprüft und abgeschlossen…';
+
+  @override
+  String get vaultConvertKeepOpen =>
+      'Lass das hier offen, bis es fertig ist. Schließt sich die App, wähle beim Ordner wieder „In Tresor umwandeln…“, um weiterzumachen.';
+
+  @override
+  String get vaultConvertStop => 'Anhalten';
+
+  @override
+  String vaultConvertDoneTitle(String name) {
+    return '„$name“ ist jetzt ein Tresor';
+  }
+
+  @override
+  String get vaultConvertDoneBody =>
+      'Die ursprünglichen Dateien liegen im Papierkorb. Bis du sie dort löschst, lassen sie sich ohne Passphrase öffnen.';
+
+  @override
+  String vaultConvertDoneSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Dateien, die nicht kopiert werden konnten, liegen',
+      one: '1 Datei, die nicht kopiert werden konnte, liegt',
+    );
+    return '$_temp0 mit den Originalen im Papierkorb.';
+  }
+
+  @override
+  String get vaultConvertOpenVault => 'Tresor öffnen';
+
+  @override
+  String get vaultConvertStoppedTitle => 'Umwandlung angehalten';
+
+  @override
+  String get vaultConvertStoppedBody =>
+      'Dein ursprünglicher Ordner ist unverändert. Der teilweise gefüllte Tresor bleibt daneben; wähle beim Ordner „In Tresor umwandeln…“, um weiterzumachen, oder lösche den Tresor.';
+
+  @override
+  String get vaultConvertOffline =>
+      'Die Verbindung ist weg. Dein ursprünglicher Ordner ist unverändert; mach weiter, sobald du wieder online bist.';
+
+  @override
+  String get vaultConvertQuota =>
+      'Dein Speicher ist voll. Dein ursprünglicher Ordner ist unverändert; schaffe Platz und mach dann weiter.';
+
+  @override
+  String get vaultConvertChanging =>
+      'Dateien im Ordner ändern sich laufend. Warte, bis sie fertig sind, und mach dann weiter.';
+
+  @override
+  String get vaultConvertVerifyFailed =>
+      'Eine Datei ließ sich aus dem Tresor nicht korrekt zurücklesen, deshalb bleiben die Originale, wo sie sind. Versuch es noch einmal; passiert es wieder, lösche den Tresor.';
+
+  @override
+  String vaultConvertError(String error) {
+    return 'Etwas ist schiefgegangen: $error. Dein ursprünglicher Ordner ist unverändert.';
+  }
+
+  @override
+  String get vaultConvertFailedTitle =>
+      'Einige Dateien konnten nicht kopiert werden';
+
+  @override
+  String vaultConvertFailedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Dateien konnten nicht kopiert werden',
+      one: '1 Datei konnte nicht kopiert werden',
+    );
+    return '$_temp0; alles andere ist im Tresor. Versuch es noch einmal oder schließe ohne sie ab: Sie kommen mit den anderen Originalen in den Papierkorb.';
+  }
+
+  @override
+  String get vaultConvertRetry => 'Noch einmal versuchen';
+
+  @override
+  String get vaultConvertFinishAnyway => 'Ohne sie abschließen';
+
+  @override
+  String get vaultConvertContinue => 'Weiter';
+
+  @override
+  String get vaultConvertLater => 'Später';
+
+  @override
+  String get vaultConvertResumeIntro =>
+      'Die Umwandlung dieses Ordners wurde schon begonnen. Gib die Passphrase des Tresors ein, um weiterzumachen.';
+
+  @override
+  String get vaultConvertForget => 'Neu beginnen';
+
+  @override
+  String get vaultConvertForgetNote =>
+      'Beim Neubeginn bleibt der teilweise gefüllte Tresor bestehen; lösche ihn selbst, wenn du ihn nicht brauchst.';
+
+  @override
   String get securityChecklistTitle => 'Server wiederherstellbar machen';
 
   @override
@@ -2758,6 +2946,9 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get backgroundNotificationPause => 'Pausieren';
+
+  @override
+  String get backgroundNotificationChecking => 'Suche nach neuen Fotos';
 
   @override
   String get backgroundCameraPaused => 'Pausiert';
@@ -4690,7 +4881,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiFeatureAutoApplyDescription =>
-      'Sonst wartet jeder Vorschlag auf dich. Jede Änderung lässt sich rückgängig machen.';
+      'Sonst wartet jeder Vorschlag auf dich. Legt nie Ordner an. Jede Änderung lässt sich rückgängig machen.';
 
   @override
   String get aiUsageFeatures => 'Nach Funktion';
@@ -4779,7 +4970,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiAcceptHighBody =>
-      'Namen, Ordner und Tags aus allen Reitern werden auf einmal übernommen. Du kannst sie gleich danach rückgängig machen.';
+      'Die sicheren Vorschläge in diesem Reiter werden auf einmal übernommen. Verschieben in neue Ordner wartet immer auf dich. Du kannst sie gleich danach rückgängig machen.';
 
   @override
   String aiAcceptHighFailed(int count) {
@@ -4868,6 +5059,102 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiNewFolder => 'neuer Ordner';
+
+  @override
+  String aiCleanupBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count leere Ordner, von der KI angelegt',
+      one: '1 leerer Ordner, von der KI angelegt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiCleanupRecentBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count leere Ordner aus den letzten 7 Tagen',
+      one: '1 leerer Ordner aus den letzten 7 Tagen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiCleanupRemove => 'Entfernen';
+
+  @override
+  String get aiCleanupRecentAction => 'Leere Ordner entfernen';
+
+  @override
+  String get aiCleanupTitle => 'Leere Ordner entfernen?';
+
+  @override
+  String get aiCleanupBodyAi =>
+      'Die KI hat diese Ordner angelegt, und sie sind jetzt leer. Sie wandern in den Papierkorb.';
+
+  @override
+  String get aiCleanupBodyRecent =>
+      'Diese leeren Ordner auf oberster Ebene sind in den letzten 7 Tagen entstanden. Wähle die aus, die weg sollen; sie wandern in den Papierkorb.';
+
+  @override
+  String aiCleanupDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Ordner in den Papierkorb verschoben',
+      one: '1 Ordner in den Papierkorb verschoben',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiFileTypesTitle => 'Dateitypen';
+
+  @override
+  String get aiFileTypesDescription =>
+      'Dateien der Typen, die du ausschaltest, lässt die KI in Ruhe: keine Namen, Tags, Ordner oder Zusammenfassungen.';
+
+  @override
+  String get aiFileTypesChoose => 'Formate wählen';
+
+  @override
+  String aiFileTypesSome(int on, int total) {
+    return '$on von $total Formaten';
+  }
+
+  @override
+  String get aiFileTypeImages => 'Bilder';
+
+  @override
+  String get aiFileTypeVideos => 'Videos';
+
+  @override
+  String get aiFileTypeDocuments => 'Dokumente';
+
+  @override
+  String get aiFileTypeSpreadsheets => 'Tabellen';
+
+  @override
+  String get aiFileTypePresentations => 'Präsentationen';
+
+  @override
+  String get aiFileTypeArchives => 'Archive';
+
+  @override
+  String get aiFileTypeAudio => 'Audio';
+
+  @override
+  String get aiFileTypeCode => 'Code';
+
+  @override
+  String get aiFileTypeOther => 'Sonstige';
+
+  @override
+  String get aiFileTypeOtherDescription =>
+      'Alle Formate, die oben nicht stehen';
 
   @override
   String aiShowLow(int count) {
@@ -5175,7 +5462,7 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get aiFeatureNewFoldersDescription =>
-      'Erlaubt der KI, einen Ordner vorzuschlagen, den es noch nicht gibt; er wird beim Annehmen angelegt.';
+      'Erlaubt der KI, einen Ordner vorzuschlagen, den es noch nicht gibt, wenn mindestens drei Dateien hineingehören. Er wird erst angelegt, wenn du annimmst.';
 
   @override
   String get aiReviewSettingsLabel => 'Vorschläge zum Prüfen';

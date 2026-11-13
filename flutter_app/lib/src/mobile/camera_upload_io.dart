@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
@@ -31,13 +32,19 @@ const String _pausedKey = 'camera.pausedUntil';
 /// up now" ends it sooner.
 const Duration _pauseFor = Duration(hours: 1);
 
+/// A pass that waits for Wi-Fi tries again in the background after this,
+/// once Wi-Fi is there.
+const Duration _wifiRecheck = Duration(minutes: 15);
+
 /// How often a running pass renews its lease while one file takes long;
 /// before each file it renews it anyway. Well below [CameraLease.staleAfter].
 const Duration _leaseRenewal = Duration(minutes: 1);
 
 /// Must match BGTaskSchedulerPermittedIdentifiers in ios/Runner/Info.plist
 /// and the registration in AppDelegate.swift. iOS runs it when the system
-/// decides (typically a few times a day); Android every ~hour at the earliest.
+/// decides (typically a few times a day). Android books its own background
+/// work (neocloud_background's CameraWork) and runs [cameraBackgroundMain];
+/// this name only cancels the task earlier versions booked there.
 const String cameraUploadTaskId = 'systems.neolabs.neocloud.cameraUpload';
 
 /// iOS only: a BGProcessingTask, minutes long, which iOS runs mostly
@@ -46,11 +53,12 @@ const String cameraUploadTaskId = 'systems.neolabs.neocloud.cameraUpload';
 /// next.
 const String cameraProcessingTaskId = 'systems.neolabs.neocloud.cameraUpload.processing';
 
-/// The background entry point: workmanager starts a headless engine and
-/// calls this for the periodic task, the new-photo trigger and the
-/// after-reboot run on Android, and for both BGTasks on iOS. It signs in
-/// with the stored device token and runs one pass, if camera upload is on
-/// for that very account, then books the one-shot triggers again.
+/// The iOS background entry point: workmanager starts a headless engine and
+/// calls this for both BGTasks (and, on Android, for work an earlier
+/// version booked until the app replaces it). It signs in with the stored
+/// device token and runs one pass, if camera upload is on for that very
+/// account. On iOS the processing task is booked again first: iOS may end
+/// the task before the pass ends.
 @pragma('vm:entry-point')
 void cameraUploadDispatcher() {
   Workmanager().executeTask((task, _) async {
@@ -62,6 +70,14 @@ void cameraUploadDispatcher() {
     if (connection == null || account == null) return true;
     final client = BackendClient(baseUrl: connection.server)..bearerToken = connection.token;
     final preferences = await SharedPreferences.getInstance();
+    Future<void> arm() async {
+      final settings = CameraUploadSettings.decode(preferences.getString(_settingsKey));
+      if (settings.activeFor(account) && settings.folderId != null) await _armTriggers(settings).catchError((Object _) {});
+    }
+
+    // On Android, booking replaces the earlier version's work, this task
+    // included: only once its pass is over.
+    if (Platform.isIOS) await arm();
     try {
       // Android runs the task only while charging when that was asked for.
       await _pass(client, preferences, account: account, charging: Platform.isAndroid ? true : null);
@@ -69,17 +85,51 @@ void cameraUploadDispatcher() {
     } catch (_) {
       return false;
     } finally {
-      final settings = CameraUploadSettings.decode(preferences.getString(_settingsKey));
-      if (settings.activeFor(account) && settings.folderId != null) await _armTriggers(settings).catchError((Object _) {});
+      if (Platform.isAndroid) await arm();
     }
   });
 }
 
-/// The one-shot triggers for [settings]: Android's new-photo job, iOS's
-/// processing task. The periodic task is registered once, in `update`.
+/// The Android background entry point: CameraUploadWorker starts an engine
+/// on it for every background pass (hourly, after new photos, to continue
+/// a stopped pass) and ends when it reports back. The worker books the next
+/// new-photo trigger itself, and a pass that stops with files left books
+/// its continuation (see [_pass]).
+@pragma('vm:entry-point')
+Future<void> cameraBackgroundMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  try {
+    await ensureAppLanguageLoaded();
+    final connection = await createDeviceSessions().read();
+    final account = connection?.accountKey;
+    if (connection != null && account != null) {
+      final client = BackendClient(baseUrl: connection.server)..bearerToken = connection.token;
+      // The work runs only while charging when that was asked for.
+      await _pass(client, await SharedPreferences.getInstance(), account: account, charging: true);
+    }
+  } catch (error) {
+    debugPrint('camera background pass: $error');
+  } finally {
+    await NeoCloudBackground.cameraWorkerDone();
+  }
+}
+
+/// Books the background work for [settings]: on Android all of it (native,
+/// see [cameraBackgroundMain]), on iOS the one-shot processing task; iOS's
+/// periodic task is registered once, in `update`.
 Future<void> _armTriggers(CameraUploadSettings settings) async {
   if (Platform.isAndroid) {
-    await NeoCloudBackground.armMediaTrigger(unmeteredOnly: settings.wifiOnly, chargingOnly: settings.chargingOnly);
+    final callback = PluginUtilities.getCallbackHandle(cameraBackgroundMain);
+    if (callback == null) return;
+    await NeoCloudBackground.configureCameraWork(
+      callback: callback.toRawHandle(),
+      unmeteredOnly: settings.wifiOnly,
+      chargingOnly: settings.chargingOnly,
+      channelName: appStrings.backgroundNotificationChannel,
+      title: appStrings.backgroundNotificationChecking,
+      pauseLabel: appStrings.backgroundNotificationPause,
+    );
   } else if (Platform.isIOS) {
     await Workmanager().registerProcessingTask(
       cameraProcessingTaskId,
@@ -93,7 +143,7 @@ Future<void> _armTriggers(CameraUploadSettings settings) async {
 }
 
 Future<void> _disarmTriggers(Workmanager workmanager) async {
-  await NeoCloudBackground.disarmMediaTrigger();
+  await NeoCloudBackground.disableCameraWork();
   if (Platform.isIOS) await workmanager.cancelByUniqueName(cameraProcessingTaskId);
 }
 
@@ -105,9 +155,17 @@ Future<void> _disarmTriggers(Workmanager workmanager) async {
 class _CameraTransfer {
   static const String _owner = 'camera';
 
+  _CameraTransfer() {
+    // Before anything shows: a background worker can be stopped while the
+    // pass still compares the library with the server.
+    NeoCloudBackground.watchStop(_owner, _stop);
+  }
+
   bool _held = false;
   DateTime _shown = DateTime(0);
   CameraBlock? stopWith;
+
+  void _stop(BackgroundStopReason reason) => stopWith = reason == BackgroundStopReason.pause ? CameraBlock.paused : CameraBlock.interrupted;
 
   void show(CameraProgress progress) {
     final now = DateTime.now();
@@ -123,7 +181,7 @@ class _CameraTransfer {
         pauseLabel: appStrings.backgroundNotificationPause,
         current: progress.current,
         total: progress.total,
-        onStop: (reason) => stopWith = reason == BackgroundStopReason.pause ? CameraBlock.paused : CameraBlock.interrupted,
+        onStop: _stop,
       ));
       return;
     }
@@ -139,9 +197,7 @@ class _CameraTransfer {
     ));
   }
 
-  Future<void> release() async {
-    if (_held) await NeoCloudBackground.stopTransfer(_owner);
-  }
+  Future<void> release() => NeoCloudBackground.stopTransfer(_owner);
 }
 
 Future<Directory> _cameraDir() async {
@@ -295,7 +351,7 @@ class _ServerTarget implements CameraTarget, CameraSimilarityTarget {
 
   static CameraUploadFailure _classify(Object error) {
     if (error is ApiException) {
-      if (error.code == 'NETWORK' || error.code == 'SERVER_STOPPING' || error.statusCode == 503) {
+      if (error.code == 'NETWORK' || error.code == 'SERVER_STOPPING' || error.statusCode == 502 || error.statusCode == 503 || error.statusCode == 504) {
         return CameraUploadFailure(CameraFailureKind.serverUnreachable, error.message);
       }
       if (error.statusCode == 401) return CameraUploadFailure(CameraFailureKind.signedOut, error.message);
@@ -351,9 +407,24 @@ class _ServerTarget implements CameraTarget, CameraSimilarityTarget {
   }
 
   @override
-  Future<void> upload(String folderId, CameraFile file, {required String sha256}) async {
-    final task = await _queue.send(folderId, UploadSource(name: file.name, size: file.size, openRead: file.openRead, sha256: sha256));
+  Future<void> upload(
+    String folderId,
+    CameraFile file, {
+    required String sha256,
+    String? resumeId,
+    Future<void> Function(String uploadId)? onResumable,
+  }) async {
+    final task = await _queue.send(
+      folderId,
+      UploadSource(name: file.name, size: file.size, openRead: file.openRead, sha256: sha256),
+      resumeUploadId: resumeId,
+      onSession: onResumable,
+    );
     if (task.status == UploadStatus.done) return;
+    final failure = task.failure;
+    // A lost connection or a server going down stops the pass; what was
+    // sent of a large file stays on the server for the next attempt.
+    if (failure != null && _classify(failure).kind == CameraFailureKind.serverUnreachable) throw _classify(failure);
     // The queue reports text only; ask the server what is wrong with it as
     // a whole before blaming the file.
     try {
@@ -392,6 +463,7 @@ Future<CameraPassResult?> _pass(
   }
   final lease = CameraLease(File('${(await _cameraDir()).path}${Platform.pathSeparator}pass.lease'));
   if (!await lease.acquire()) return null;
+  await NeoCloudBackground.cameraPassStarted();
   var leaseLost = false;
   final renewal = Timer.periodic(_leaseRenewal, (_) async {
     try {
@@ -440,14 +512,26 @@ Future<CameraPassResult?> _pass(
       conditionsNow: () async => CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
     );
     await preferences.setBool(_limitedKey, result.limitedAccess);
-    if (result.block == CameraBlock.paused) {
-      await preferences.setString(_pausedKey, DateTime.now().add(_pauseFor).toIso8601String());
+    switch (result.block) {
+      case CameraBlock.paused:
+        await preferences.setString(_pausedKey, DateTime.now().add(_pauseFor).toIso8601String());
+      // Stopped by the system with files left (its time limit, the app
+      // closed): the next pass follows right away instead of at the next
+      // trigger, so a first backup goes on in steps.
+      case CameraBlock.interrupted:
+        await NeoCloudBackground.continueCameraWork();
+      // Booked under "Wi-Fi only", so it runs once Wi-Fi is back.
+      case CameraBlock.waitingWifi:
+        await NeoCloudBackground.continueCameraWork(delay: _wifiRecheck);
+      default:
+        break;
     }
     return result;
   } finally {
     renewal.cancel();
     await transfer.release();
     await lease.release();
+    await NeoCloudBackground.cameraPassEnded();
   }
 }
 
@@ -472,8 +556,13 @@ class _NoTarget implements CameraTarget {
   Future<bool> contains(String folderId, String sha256, int size) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
 
   @override
-  Future<void> upload(String folderId, CameraFile file, {required String sha256}) =>
-      throw const CameraUploadFailure(CameraFailureKind.signedOut);
+  Future<void> upload(
+    String folderId,
+    CameraFile file, {
+    required String sha256,
+    String? resumeId,
+    Future<void> Function(String uploadId)? onResumable,
+  }) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
 }
 
 class _IoCameraUploads extends CameraUploads {
@@ -653,16 +742,18 @@ class _IoCameraUploads extends CameraUploads {
     notifyListeners();
     final workmanager = await _workmanager();
     if (next.enabled && next.folderId != null) {
-      await workmanager.registerPeriodicTask(
-        cameraUploadTaskId,
-        cameraUploadTaskId,
-        frequency: const Duration(hours: 1),
-        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-        constraints: Constraints(
-          networkType: next.wifiOnly ? NetworkType.unmetered : NetworkType.connected,
-          requiresCharging: next.chargingOnly,
-        ),
-      );
+      if (Platform.isIOS) {
+        await workmanager.registerPeriodicTask(
+          cameraUploadTaskId,
+          cameraUploadTaskId,
+          frequency: const Duration(hours: 1),
+          existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+          constraints: Constraints(
+            networkType: next.wifiOnly ? NetworkType.unmetered : NetworkType.connected,
+            requiresCharging: next.chargingOnly,
+          ),
+        );
+      }
       await _armTriggers(next);
     } else {
       await workmanager.cancelByUniqueName(cameraUploadTaskId);

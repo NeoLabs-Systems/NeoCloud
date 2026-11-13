@@ -49,7 +49,8 @@ android {
 
 dependencies {
     implementation("androidx.core:core:1.13.1")
-    // The same WorkManager as workmanager_android, whose worker the media
-    // trigger enqueues.
+    // The same WorkManager as workmanager_android (which iOS still uses);
+    // CameraUploadWorker is a CoroutineWorker.
     implementation("androidx.work:work-runtime:2.11.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }

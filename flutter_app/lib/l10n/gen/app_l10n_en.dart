@@ -2005,6 +2005,191 @@ class AppL10nEn extends AppL10n {
   String get vaultUnlocking => 'Unlocking…';
 
   @override
+  String get vaultConvertAction => 'Convert to vault…';
+
+  @override
+  String get vaultConvertResumeAction => 'Continue converting to vault…';
+
+  @override
+  String vaultConvertTitle(String name) {
+    return 'Convert “$name” to a vault';
+  }
+
+  @override
+  String get vaultConvertIntro =>
+      'Everything in this folder is encrypted on this device and copied into a new vault that only you can open.';
+
+  @override
+  String get vaultConvertStepCopy =>
+      'Each file is downloaded, encrypted here and uploaded again. Large folders can take a while; you can stop and continue later.';
+
+  @override
+  String get vaultConvertStepPassphrase =>
+      'You choose a passphrase and get a recovery key. Without one of them nobody can open these files again, not even NeoCloud.';
+
+  @override
+  String get vaultConvertStepTrash =>
+      'Only when every file is safely in the vault does the original folder go to the trash. Delete it from there for full protection.';
+
+  @override
+  String vaultConvertSummary(int files, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      files,
+      locale: localeName,
+      other: '$files files',
+      one: '1 file',
+      zero: 'No files',
+    );
+    return '$_temp0 · $size';
+  }
+
+  @override
+  String get vaultConvertTrashSpace =>
+      'Until you empty the trash, the originals still count towards your storage.';
+
+  @override
+  String vaultConvertNoSpace(String needed, String free) {
+    return 'There isn’t enough space for the encrypted copy: it needs $needed, $free is free. Free up space or ask for more storage.';
+  }
+
+  @override
+  String get vaultConvertStart => 'Choose passphrase';
+
+  @override
+  String get vaultConvertRefusedTitle => 'This folder can’t become a vault';
+
+  @override
+  String get vaultConvertProblemShared =>
+      'It’s shared with other people, who would lose access. Stop sharing it first.';
+
+  @override
+  String get vaultConvertProblemLink =>
+      'It, or something in it, has a public link. Remove the link first.';
+
+  @override
+  String get vaultConvertProblemContainsVault =>
+      'It already contains a vault, and vaults can’t be inside other vaults.';
+
+  @override
+  String get vaultConvertProblemInVault => 'It’s already in a vault.';
+
+  @override
+  String get vaultConvertProblemOther => 'It can’t be converted right now.';
+
+  @override
+  String vaultConvertProgressTitle(String name) {
+    return 'Converting “$name”';
+  }
+
+  @override
+  String vaultConvertProgressFiles(int done, int total) {
+    return '$done of $total files';
+  }
+
+  @override
+  String vaultConvertProgressBytes(String done, String total) {
+    return '$done of $total';
+  }
+
+  @override
+  String get vaultConvertFinishing => 'Checking and finishing…';
+
+  @override
+  String get vaultConvertKeepOpen =>
+      'Keep this open until it’s done. If the app closes, choose Convert to vault… on the folder again to continue.';
+
+  @override
+  String get vaultConvertStop => 'Stop';
+
+  @override
+  String vaultConvertDoneTitle(String name) {
+    return '“$name” is now a vault';
+  }
+
+  @override
+  String get vaultConvertDoneBody =>
+      'The original files are in the trash. Until you delete them there, they can still be opened without the passphrase.';
+
+  @override
+  String vaultConvertDoneSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files that couldn’t be copied are',
+      one: '1 file that couldn’t be copied is',
+    );
+    return '$_temp0 in the trash with the originals.';
+  }
+
+  @override
+  String get vaultConvertOpenVault => 'Open vault';
+
+  @override
+  String get vaultConvertStoppedTitle => 'Conversion paused';
+
+  @override
+  String get vaultConvertStoppedBody =>
+      'Your original folder hasn’t changed. The partly filled vault stays next to it; choose Convert to vault… on the folder to continue, or delete the vault.';
+
+  @override
+  String get vaultConvertOffline =>
+      'The connection was lost. Your original folder hasn’t changed; continue when you’re back online.';
+
+  @override
+  String get vaultConvertQuota =>
+      'Your storage is full. Your original folder hasn’t changed; free up space, then continue.';
+
+  @override
+  String get vaultConvertChanging =>
+      'Files in the folder keep changing. Wait until they’re done, then continue.';
+
+  @override
+  String get vaultConvertVerifyFailed =>
+      'A file didn’t read back correctly from the vault, so the originals stay where they are. Try again; if it happens again, delete the vault.';
+
+  @override
+  String vaultConvertError(String error) {
+    return 'Something went wrong: $error. Your original folder hasn’t changed.';
+  }
+
+  @override
+  String get vaultConvertFailedTitle => 'Some files couldn’t be copied';
+
+  @override
+  String vaultConvertFailedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files couldn’t be copied',
+      one: '1 file couldn’t be copied',
+    );
+    return '$_temp0; everything else is in the vault. Try again, or finish without them: they go to the trash with the other originals.';
+  }
+
+  @override
+  String get vaultConvertRetry => 'Try again';
+
+  @override
+  String get vaultConvertFinishAnyway => 'Finish without them';
+
+  @override
+  String get vaultConvertContinue => 'Continue';
+
+  @override
+  String get vaultConvertLater => 'Later';
+
+  @override
+  String get vaultConvertResumeIntro =>
+      'Converting this folder was started earlier. Enter the vault’s passphrase to continue.';
+
+  @override
+  String get vaultConvertForget => 'Start over';
+
+  @override
+  String get vaultConvertForgetNote =>
+      'Starting over leaves the partly filled vault in place; delete it yourself if you don’t need it.';
+
+  @override
   String get securityChecklistTitle => 'Make this server recoverable';
 
   @override
@@ -2735,6 +2920,9 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get backgroundNotificationPause => 'Pause';
+
+  @override
+  String get backgroundNotificationChecking => 'Checking for new photos';
 
   @override
   String get backgroundCameraPaused => 'Paused';
@@ -4649,7 +4837,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get aiFeatureAutoApplyDescription =>
-      'Otherwise every suggestion waits for you. Each applied change can be undone.';
+      'Otherwise every suggestion waits for you. Never creates folders. Each applied change can be undone.';
 
   @override
   String get aiUsageFeatures => 'By feature';
@@ -4737,7 +4925,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get aiAcceptHighBody =>
-      'Names, folders and tags across all tabs are applied at once. You can undo them right after.';
+      'The high-confidence suggestions on this tab are applied at once. Moves into new folders always wait for you. You can undo them right after.';
 
   @override
   String aiAcceptHighFailed(int count) {
@@ -4825,6 +5013,101 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get aiNewFolder => 'new folder';
+
+  @override
+  String aiCleanupBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count empty folders created by AI',
+      one: '1 empty folder created by AI',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiCleanupRecentBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count empty folders from the last 7 days',
+      one: '1 empty folder from the last 7 days',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiCleanupRemove => 'Remove';
+
+  @override
+  String get aiCleanupRecentAction => 'Remove empty folders';
+
+  @override
+  String get aiCleanupTitle => 'Remove empty folders?';
+
+  @override
+  String get aiCleanupBodyAi =>
+      'AI created these folders and they are empty now. They go to the trash.';
+
+  @override
+  String get aiCleanupBodyRecent =>
+      'These empty folders at the top level were created in the last 7 days. Choose the ones to remove; they go to the trash.';
+
+  @override
+  String aiCleanupDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count folders moved to the trash',
+      one: '1 folder moved to the trash',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiFileTypesTitle => 'File types';
+
+  @override
+  String get aiFileTypesDescription =>
+      'AI leaves files of the types you switch off alone: no names, tags, folders or summaries.';
+
+  @override
+  String get aiFileTypesChoose => 'Choose formats';
+
+  @override
+  String aiFileTypesSome(int on, int total) {
+    return '$on of $total formats';
+  }
+
+  @override
+  String get aiFileTypeImages => 'Images';
+
+  @override
+  String get aiFileTypeVideos => 'Videos';
+
+  @override
+  String get aiFileTypeDocuments => 'Documents';
+
+  @override
+  String get aiFileTypeSpreadsheets => 'Spreadsheets';
+
+  @override
+  String get aiFileTypePresentations => 'Presentations';
+
+  @override
+  String get aiFileTypeArchives => 'Archives';
+
+  @override
+  String get aiFileTypeAudio => 'Audio';
+
+  @override
+  String get aiFileTypeCode => 'Code';
+
+  @override
+  String get aiFileTypeOther => 'Other';
+
+  @override
+  String get aiFileTypeOtherDescription => 'Every format not listed above';
 
   @override
   String aiShowLow(int count) {
@@ -5128,7 +5411,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get aiFeatureNewFoldersDescription =>
-      'Lets AI propose a folder that doesn’t exist yet; it is created when you accept.';
+      'Lets AI propose a folder that doesn’t exist yet when at least three files belong in it. It is created only when you accept.';
 
   @override
   String get aiReviewSettingsLabel => 'Suggestions to review';

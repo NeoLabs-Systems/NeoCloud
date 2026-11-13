@@ -11,9 +11,9 @@ enum BackgroundStopReason { pause, timeout }
 ///
 /// Android: a data sync foreground service with a low-importance progress
 /// notification (and a Pause action) and a partial wakelock, both only
-/// while files are transferred; a WorkManager job that fires when a photo
-/// or video is added; battery optimisation, manufacturer and notification
-/// settings. iOS: extra time to finish a transfer when the app leaves the
+/// while files are transferred from the app; camera upload's background
+/// work, which runs its passes in WorkManager's foreground service;
+/// battery optimisation, manufacturer and notification settings. iOS: extra time to finish a transfer when the app leaves the
 /// screen, and the Background App Refresh, Low Power Mode and notification
 /// status.
 ///
@@ -143,19 +143,68 @@ class NeoCloudBackground {
   /// The app's page in the system settings.
   static Future<void> openAppSettings() => _invoke<void>('openAppSettings');
 
-  /// Android: run a background pass soon after a photo or video is added,
-  /// with the same network and charging conditions as the periodic task.
-  /// Also restored after a reboot or an app update.
-  static Future<void> armMediaTrigger({required bool unmeteredOnly, required bool chargingOnly}) async {
+  /// Android: camera upload is on. Books the background passes natively
+  /// (hourly, soon after a photo or video is added, and continuations of a
+  /// pass that stopped with files left), each run by [callback]'s Dart entry
+  /// point in an engine of its own, as a foreground service where Android
+  /// allows it, under [channelName] with [title] until progress shows.
+  /// Restored after a reboot or an app update.
+  static Future<void> configureCameraWork({
+    required int callback,
+    required bool unmeteredOnly,
+    required bool chargingOnly,
+    required String channelName,
+    required String title,
+    required String pauseLabel,
+  }) async {
     if (!_android) return;
-    await _invoke<void>('armMediaTrigger', <String, Object?>{
+    await _invoke<void>('configureCameraWork', <String, Object?>{
+      'callback': callback,
       'unmeteredOnly': unmeteredOnly,
       'chargingOnly': chargingOnly,
+      'channelName': channelName,
+      'title': title,
+      'pauseLabel': pauseLabel,
     });
   }
 
-  static Future<void> disarmMediaTrigger() async {
+  static Future<void> disableCameraWork() async {
     if (!_android) return;
-    await _invoke<void>('disarmMediaTrigger');
+    await _invoke<void>('disableCameraWork');
+  }
+
+  /// Android: a pass soon (after [delay]) for files a stopped pass left,
+  /// under the same network and charging conditions.
+  static Future<void> continueCameraWork({Duration delay = Duration.zero}) async {
+    if (!_android) return;
+    await _invoke<void>('continueCameraWork', <String, Object?>{'delayMinutes': delay.inMinutes});
+  }
+
+  /// A camera pass holds the lease in this engine; should the engine die
+  /// before [cameraPassEnded], Android frees the lease and books the next
+  /// pass.
+  static Future<void> cameraPassStarted() async {
+    if (!_android) return;
+    await _invoke<void>('cameraPassStarted');
+  }
+
+  static Future<void> cameraPassEnded() async {
+    if (!_android) return;
+    await _invoke<void>('cameraPassEnded');
+  }
+
+  /// The background entry point's pass is over; its worker ends.
+  static Future<void> cameraWorkerDone() async {
+    if (!_android) return;
+    await _invoke<void>('cameraWorkerDone');
+  }
+
+  /// [onStop] runs when the platform wants [owner]'s work to end, whether
+  /// or not it holds the transfer service yet: Pause, a time limit, or the
+  /// background worker being stopped.
+  static void watchStop(String owner, void Function(BackgroundStopReason reason) onStop) {
+    if (!supported) return;
+    _listen();
+    _onStop[owner] = onStop;
   }
 }

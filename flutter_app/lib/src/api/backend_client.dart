@@ -10,6 +10,7 @@ part 'backend_client_ai.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
 part 'backend_client_photos.dart';
+part 'backend_client_vaults.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
 /// the API (e.g. NAME_EXISTS); [message] is readable text for the user.
@@ -307,14 +308,14 @@ class BackendClient {
 
   Future<void> restoreVersion(String fileId, int version) => _request('POST', '/api/files/$fileId/versions/$version/restore');
 
-  Future<Uint8List> _bytes(String path, [Map<String, String>? query]) async {
+  Future<Uint8List> _bytes(String path, [Map<String, String>? query, Map<String, String>? headers]) async {
     final HttpResponseData response;
     try {
-      response = await _http.send('GET', uri(path, query), headers: _authHeaders);
+      response = await _http.send('GET', uri(path, query), headers: <String, String>{..._authHeaders, ...?headers});
     } catch (_) {
       throw const ApiException(0, '', code: 'NETWORK');
     }
-    if (response.statusCode == 200) return response.bodyBytes;
+    if (response.statusCode == 200 || response.statusCode == 206) return response.bodyBytes;
     if (response.statusCode == 401) onSessionExpired?.call();
     String? code;
     var message = 'HTTP ${response.statusCode}';
@@ -555,6 +556,7 @@ class BackendClient {
     required String salt,
     required int iterations,
     required String wrappedKey,
+    String? conflict,
   }) async {
     final body = _map(await _request('POST', '/api/vaults', json: {
       'parentId': parentId,
@@ -562,6 +564,7 @@ class BackendClient {
       'salt': salt,
       'iterations': iterations,
       'wrappedKey': wrappedKey,
+      'conflict': ?conflict,
     }));
     return FileNode.fromJson(body['folder'] is Map ? _map(body['folder']) : body);
   }

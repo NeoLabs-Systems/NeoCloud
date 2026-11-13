@@ -21,8 +21,12 @@ const { replaceContent } = require('./versions');
  *   replace -> becomes the file's new version (same node id)
  * `baseEtag`, when given with replace, must match the file's current etag,
  * so a sync client never overwrites a change it has not seen (412).
+ * `keepIdentical` (the client declared the content's SHA-256): with rename,
+ * a file of that name with the very same content is the upload itself,
+ * sent again after its answer was lost. It is returned as it is, so a
+ * retry never leaves "name (1)" beside it.
  */
-async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null }, blob) {
+async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null, keepIdentical = false }, blob) {
   const cleanName = validateName(name);
   let finalPath = null;
   let result;
@@ -30,6 +34,14 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
     finalPath = await moveIntoPlace(userId, blob);
     result = db.transaction(() => {
       const parent = getLiveNode(userId, parentId, { type: 'folder' });
+      const existing = findLiveChildByName(parent.id, cleanName);
+      if (keepIdentical && conflict === 'rename' && existing && existing.type === 'file'
+        && existing.etag === blob.sha256 && existing.size === blob.size) {
+        if (uploadId && db.prepare('DELETE FROM upload_sessions WHERE id = ?').run(uploadId).changes !== 1) {
+          throw httpError(404, 'Upload not found or expired', 'UPLOAD_NOT_FOUND');
+        }
+        return { orphaned: [], node: existing, unchanged: true };
+      }
       if (blob.size > remainingBytes(userId, { excludeUploadId: uploadId })) {
         throw httpError(413, 'Not enough storage left for this file.', 'QUOTA_EXCEEDED');
       }
@@ -40,7 +52,6 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
         throw httpError(404, 'Upload not found or expired', 'UPLOAD_NOT_FOUND');
       }
 
-      const existing = findLiveChildByName(parent.id, cleanName);
       if (existing && conflict === 'replace' && existing.type === 'file') {
         if (baseEtag && baseEtag !== existing.etag) {
           throw httpError(412, 'The file changed since you last saw it.', 'ETAG_MISMATCH');
@@ -66,6 +77,11 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
   } catch (err) {
     await removeQuietly(finalPath || blob.tmpPath);
     throw err;
+  }
+  if (result.unchanged) {
+    // Nothing references the blob just written.
+    await removeQuietly(finalPath);
+    return serializeNode(result.node);
   }
   // Committed: from here on the blob file belongs to the new row, so nothing
   // that fails below may remove it.

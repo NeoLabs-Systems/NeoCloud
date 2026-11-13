@@ -13,6 +13,8 @@ const { httpError } = require('../../../utils/http_error');
 const { getLiveNode } = require('../../files/tree');
 const { assertAiUsable } = require('../policy');
 const { assertAiAllowedForNode } = require('../exclusions');
+const { readSettings } = require('../../settings/store');
+const { isSkippedType } = require('../file_types');
 const { JOB_KINDS, aiFeatures, pauseReason } = require('./features');
 const { enqueue } = require('./queue');
 const { wakeAiWorker } = require('./worker');
@@ -38,19 +40,20 @@ function parseKinds(userId, value) {
 }
 
 // The files below a folder AI may read: no vault, nothing below an excluded
-// folder, nothing in the trash.
+// folder, nothing in the trash, no file type the person left out of AI.
 function backfillFiles(userId, folderId) {
-  return db.prepare(`
+  const rows = db.prepare(`
     WITH RECURSIVE down(id) AS (
       SELECT id FROM nodes WHERE id = ? AND user_id = ?
       UNION ALL
       SELECT n.id FROM nodes n JOIN down ON n.parent_id = down.id
       WHERE n.trashed_at IS NULL AND n.vault_id IS NULL AND n.ai_excluded = 0
     )
-    SELECT n.id FROM down JOIN nodes n ON n.id = down.id
+    SELECT n.id, n.name FROM down JOIN nodes n ON n.id = down.id
     WHERE n.type = 'file' AND n.blob_id IS NOT NULL
-    LIMIT ?
-  `).all(folderId, userId, MAX_BACKFILL_FILES + 1).map((row) => row.id);
+  `).all(folderId, userId);
+  const skip = readSettings(userId).ai_skip_types;
+  return rows.filter((row) => !isSkippedType(row.name, skip)).slice(0, MAX_BACKFILL_FILES + 1).map((row) => row.id);
 }
 
 /**

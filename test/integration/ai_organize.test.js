@@ -36,7 +36,7 @@ function promptText(body) {
 function kindOf(body) {
   const text = promptText(body);
   if (text.includes('report facts about it')) return 'extract';
-  if (text.includes('You file one document')) return 'sort';
+  if (text.includes('You decide where one file belongs')) return 'sort';
   if (text.includes('Summarize this file')) return 'summary';
   return 'other';
 }
@@ -44,7 +44,8 @@ function kindOf(body) {
 function reply(body) {
   const kind = kindOf(body);
   if (kind === 'extract') return JSON.stringify(typeof extraction === 'function' ? extraction(body) : extraction);
-  if (kind === 'sort') return JSON.stringify(sortChoice(promptText(body)));
+  // The sorting call ends with the file and its folders, after the few-shot examples.
+  if (kind === 'sort') return JSON.stringify(sortChoice(String(body.messages.at(-1).content)));
   if (kind === 'summary') return `Summary ${provider.state.chats.length}`;
   return undefined;
 }
@@ -344,7 +345,9 @@ test('auto-sort: a rule beats embeddings, a clear embedding beats the model, and
   assert.equal(move.tier, 'medium');
   assert.equal(move.reason, 'Phone bills live here');
   assert.doesNotMatch(offered, /Private|Tresor|Team/);
-  assert.match(offered, /\/Photos/);
+  // A document is never offered the photo tree.
+  assert.doesNotMatch(offered, /\/Photos/);
+  assert.match(offered, /^\d+\. \/Finance$/m);
   // Accepting into a vault or across a share border is refused.
   const vaultFolder = db.prepare("SELECT id FROM nodes WHERE user_id = ? AND name = 'Tresor'").get(member.user.id).id;
   assert.equal((await member.agent.post(`/api/ai/suggestions/${move.id}/accept`).send({ value: vaultFolder }).expect(409)).body.code, 'AI_TARGET_NOT_ALLOWED');

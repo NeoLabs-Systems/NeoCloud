@@ -521,6 +521,16 @@ vault contents.
   null outside vaults). Moving or copying nodes in or out of a vault, or
   copying a vault folder, is refused (`409 VAULT_BOUNDARY`); the vault folder
   itself moves freely. Vault files get `404` for thumbnails and previews.
+- **Converting a folder** happens on the client, which alone holds the key:
+  `GET /api/vaults/conversions/:folderId` (counts, room, problems, cursor);
+  a vault beside the folder (`POST /api/vaults` with `conflict: "rename"`);
+  every subfolder created and every file uploaded encrypted with the same
+  relative structure, each upload checked by SHA-256 of the ciphertext
+  (`X-Content-SHA256`, or each part's `sha256` answer) and its final size;
+  then `POST /api/vaults/:id/replace { folderId, cursor }` trashes the
+  originals and gives the vault the folder's name. The originals are never
+  deleted for good by the conversion; they stay in the trash until the user
+  empties it.
 
 Crypto (all base64 is standard with padding unless noted):
 
@@ -634,6 +644,20 @@ as a terminal QR on `neocloud-lite login`.
   what was in the library when backup was turned on, by asset id, so a
   photo saved later with an older date is still backed up. Camera upload
   never deletes anything from the photo library.
+- **Background passes (Android)** are WorkManager work of the app's own
+  (`CameraUploadWorker` in `packages/neocloud_background`): hourly, after a
+  photo or video is added (a MediaStore content trigger, booked again by
+  the worker after each pass), and a continuation as soon as a pass stops
+  with files left (the system's time limit, the app swiped away mid-pass,
+  Wi-Fi to come back). Each runs `cameraBackgroundMain` in an engine of its
+  own, as a data sync foreground service where Android allows that
+  (battery exemption; up to 6 h a day on Android 15+), otherwise as an
+  ordinary job of about 10 minutes, so a first backup goes on in steps.
+  Reboots and app updates book it all again. Passes in the app keep using
+  the transfer service. A large file (resumable upload) keeps its upload id
+  in the ledger, so an interrupted one resumes where it stopped; a retried
+  photo whose first upload did arrive is recognised by content and never
+  stored as `name (1)`.
 - **Share to NeoCloud (Android).** `MainActivity` handles `ACTION_SEND` and
   `ACTION_SEND_MULTIPLE` itself (`ShareIntake.kt`, channels
   `systems.neolabs.neocloud/share` and `…/share/events`). Only `content://`

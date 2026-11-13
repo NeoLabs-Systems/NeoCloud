@@ -2,7 +2,15 @@
 
 const express = require('express');
 const session = require('express-session');
-const SQLiteStore = require('better-sqlite3-session-store')(session);
+const BaseSQLiteStore = require('better-sqlite3-session-store')(session);
+
+// The store's expired-session sweep must not keep the process alive (tests
+// and tools that load the app exit when their work is done).
+class SQLiteStore extends BaseSQLiteStore {
+  startInterval() {
+    setInterval(() => this.clearExpiredSessions(), this.expired.intervalMs).unref();
+  }
+}
 const helmet = require('helmet');
 const cors = require('cors');
 const db = require('../db/database');

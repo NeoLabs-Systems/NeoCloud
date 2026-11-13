@@ -77,7 +77,7 @@ async function uploadStream(userId, { parentId, name, conflict, baseEtag, conten
     await removeQuietly(blob.tmpPath);
     throw httpError(422, 'The file arrived damaged (checksum mismatch).', 'CHECKSUM_MISMATCH');
   }
-  return commitUploadedBlob(userId, { ...target, conflict: mode, baseEtag }, blob);
+  return commitUploadedBlob(userId, { ...target, conflict: mode, baseEtag, keepIdentical: Boolean(expectedHash) }, blob);
 }
 
 function partCount(totalSize) {
@@ -285,6 +285,7 @@ async function completeUpload(userId, uploadId, { baseEtag } = {}) {
       conflict: session.conflict,
       baseEtag,
       uploadId: session.id,
+      keepIdentical: Boolean(session.sha256),
     }, blob);
     await removePartFiles(session.id);
     return node;

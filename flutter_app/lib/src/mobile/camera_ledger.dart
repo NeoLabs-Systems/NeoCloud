@@ -40,6 +40,7 @@ class CameraRecord {
     this.attempts = 0,
     this.doneAt,
     this.present = true,
+    this.uploadId,
   });
 
   factory CameraRecord.fromJson(Map<String, dynamic> json) => CameraRecord(
@@ -55,6 +56,7 @@ class CameraRecord {
     attempts: (json['attempts'] as num?)?.toInt() ?? 0,
     doneAt: DateTime.tryParse(json['doneAt'] as String? ?? ''),
     present: json['present'] != false,
+    uploadId: json['uploadId'] as String?,
   );
 
   final String assetId;
@@ -74,6 +76,11 @@ class CameraRecord {
   /// Still in the photo library (and in scope) at the last pass.
   bool present;
 
+  /// The server's resumable upload of a large file whose sending was cut
+  /// off: the next attempt sends only the parts still missing, even after
+  /// the app was closed. Belongs to the content [sha256].
+  String? uploadId;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': assetId,
     'name': name,
@@ -87,6 +94,7 @@ class CameraRecord {
     'attempts': attempts,
     'doneAt': doneAt?.toIso8601String(),
     'present': present,
+    if (uploadId != null) 'uploadId': uploadId,
   };
 }
 

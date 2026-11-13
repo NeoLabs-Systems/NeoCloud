@@ -3,12 +3,12 @@
 // Before camera upload sends a photo: is an almost identical one (at least
 // 95 %, so 64-bit dHashes at most 3 bits apart) already among the account's
 // own photos? The phone makes the hash the same way as Duplicates does
-// (services/ai/duplicates.js). Only photos hashed already can match; asking
-// starts the background hashing of the rest.
+// (services/ai/duplicates.js). Only photos hashed already can match; the
+// background worker there hashes the rest soon after they are indexed.
 
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
-const { fillHashes } = require('../ai/duplicates');
+const { wakeDuplicateHasher } = require('../ai/duplicates');
 const { catchUp } = require('./indexer');
 
 const MAX_DISTANCE = 3;
@@ -44,7 +44,7 @@ function readHashes(body) {
 function findSimilar(userId, body) {
   const asked = readHashes(body);
   catchUp(userId);
-  fillHashes(userId);
+  wakeDuplicateHasher();
   // Own live photos (the Photos index leaves out vaults and the trash).
   const rows = db.prepare(`
     SELECT n.id, h.dhash FROM photo_items p

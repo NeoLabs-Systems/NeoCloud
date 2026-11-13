@@ -9,10 +9,14 @@
 //   similar  photos whose 64-bit perceptual hashes (dHash of a 9×8
 //            grayscale thumbnail) differ in at most 3 bits (about 95 %).
 //
-// The hashes are made in the background when the page asks and kept per
+// The hashes are made by a low-priority background worker (started with the
+// server, for every account, whether the page is open or not) and kept per
 // content (image_hashes, keyed by node id and etag). Photos come from the
 // Photos index (photo_items), which already leaves out vaults and the trash.
+// Exact groups need no hash and are always complete.
 
+const os = require('os');
+const { performance } = require('perf_hooks');
 const sharp = require('sharp');
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
@@ -35,7 +39,6 @@ const MIN_DETAIL_BITS = 10;
 const MAX_ASPECT_DIFFERENCE = 0.1;
 const MAX_GROUPS = 500;
 const MAX_SOURCE_BYTES = 200 * 1024 * 1024;
-const HASH_BATCH = 50;
 const MAX_DISMISS_IDS = 1000;
 const HASHABLE_MIMES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif',
@@ -70,23 +73,17 @@ async function dHash(buffer) {
   return hex;
 }
 
-function unhashed(userId, limit) {
-  return db.prepare(`
-    SELECT n.id, n.etag, n.size, n.blob_id FROM photo_items p JOIN nodes n ON n.id = p.node_id
+/** The account's photos that can be compared, and how many of them have a hash. */
+function hashProgress(userId) {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS total, COALESCE(SUM(EXISTS (
+      SELECT 1 FROM image_hashes h WHERE h.node_id = n.id AND h.etag = n.etag
+    )), 0) AS hashed
+    FROM photo_items p JOIN nodes n ON n.id = p.node_id
     WHERE p.user_id = ? AND p.kind = 'photo' AND n.blob_id = p.blob_id AND n.size <= ?
       AND n.mime IN (SELECT value FROM json_each(?))
-      AND NOT EXISTS (SELECT 1 FROM image_hashes h WHERE h.node_id = n.id AND h.etag = n.etag)
-    LIMIT ?
-  `).all(userId, MAX_SOURCE_BYTES, JSON.stringify(HASHABLE_MIMES), limit);
-}
-
-function pendingCount(userId) {
-  return db.prepare(`
-    SELECT COUNT(*) AS count FROM photo_items p JOIN nodes n ON n.id = p.node_id
-    WHERE p.user_id = ? AND p.kind = 'photo' AND n.blob_id = p.blob_id AND n.size <= ?
-      AND n.mime IN (SELECT value FROM json_each(?))
-      AND NOT EXISTS (SELECT 1 FROM image_hashes h WHERE h.node_id = n.id AND h.etag = n.etag)
-  `).get(userId, MAX_SOURCE_BYTES, JSON.stringify(HASHABLE_MIMES)).count;
+  `).get(userId, MAX_SOURCE_BYTES, JSON.stringify(HASHABLE_MIMES));
+  return { total: row.total, hashed: row.hashed, pending: row.total - row.hashed };
 }
 
 async function hashOne(userId, row) {
@@ -102,24 +99,192 @@ async function hashOne(userId, row) {
   `).run(row.id, userId, row.etag, hash);
 }
 
-// One background fill per account at a time.
-const filling = new Map();
+// --- The background worker ------------------------------------------------------------
+//
+// Sweeps photo_items in node-id order, a few files at a time, and hashes the
+// photos without a hash for their current content. Between batches it
+// yields and, while the server is busy (the event loop is mostly occupied
+// with requests, or the machine's load is above its CPU count), waits. After
+// a sweep it idles and starts the next one when the Photos index changed
+// (a new, changed or freshly read photo), or after a while regardless.
 
-/** Hashes the account's photos that have no hash for their content yet. */
-function fillHashes(userId) {
-  if (filling.has(userId)) return filling.get(userId);
-  const job = (async () => {
-    for (;;) {
-      const rows = unhashed(userId, HASH_BATCH);
-      for (const row of rows) await hashOne(userId, row);
-      if (rows.length < HASH_BATCH) return;
-      await new Promise((resolve) => setImmediate(resolve));
+const WORKER_BATCH = 20;
+const WORKER_CONCURRENCY = Math.max(1, Math.min(2, Math.floor((os.cpus().length || 1) / 4)));
+const FIRST_PASS_MS = 15 * 1000;
+const IDLE_MS = 10 * 1000;
+const BATCH_GAP_MS = 250;
+const BUSY_WAIT_MS = 5 * 1000;
+const FULL_SWEEP_MS = 10 * 60 * 1000;
+const BUSY_LOOP_UTILIZATION = 0.5;
+
+const HASHABLE_JSON = JSON.stringify(HASHABLE_MIMES);
+
+function unhashedAfter(afterId, limit) {
+  return db.prepare(`
+    SELECT p.user_id, n.id, n.etag, n.size, n.blob_id FROM photo_items p JOIN nodes n ON n.id = p.node_id
+    WHERE p.node_id > ? AND p.kind = 'photo' AND n.blob_id = p.blob_id AND n.size <= ?
+      AND n.mime IN (SELECT value FROM json_each(?))
+      AND NOT EXISTS (SELECT 1 FROM image_hashes h WHERE h.node_id = n.id AND h.etag = n.etag)
+    ORDER BY p.node_id
+    LIMIT ?
+  `).all(afterId, MAX_SOURCE_BYTES, HASHABLE_JSON, limit);
+}
+
+/** Changes whenever photos are added, changed or read by the Photos index. */
+function indexSignature() {
+  const row = db.prepare(`
+    SELECT (SELECT COALESCE(MAX(seq), 0) FROM changes) AS seq,
+      (SELECT COUNT(*) FROM photo_items) AS items,
+      (SELECT COUNT(*) FROM photo_items WHERE probed = 0) AS unprobed
+  `).get();
+  return `${row.seq}:${row.items}:${row.unprobed}`;
+}
+
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms).unref(); });
+
+/** Busy: the last moments' event loop mostly ran requests, or the CPUs are full. */
+async function serverBusy() {
+  const before = performance.eventLoopUtilization();
+  await sleep(BATCH_GAP_MS);
+  const loop = performance.eventLoopUtilization(before).utilization;
+  const load = os.loadavg()[0] / (os.cpus().length || 1);
+  return loop > BUSY_LOOP_UTILIZATION || load > 1;
+}
+
+const hasher = {
+  stopped: true,
+  stopping: false,
+  ticking: false,
+  timer: null,
+  cursor: '',
+  sweeping: false,
+  signature: null,
+  sweptAt: 0,
+  current: Promise.resolve(0),
+};
+
+async function hashBatch(rows) {
+  let next = 0;
+  const lane = async () => {
+    while (next < rows.length && !hasher.stopping) {
+      const row = rows[next];
+      next += 1;
+      await hashOne(row.user_id, row);
     }
-  })()
-    .catch((err) => logger.error('Duplicates hashing failed:', err.message))
-    .finally(() => filling.delete(userId));
-  filling.set(userId, job);
-  return job;
+  };
+  await Promise.all(Array.from({ length: Math.min(WORKER_CONCURRENCY, rows.length) }, lane));
+}
+
+/**
+ * One batch of the sweep: hashes up to WORKER_BATCH photos; returns how many
+ * (0 when the sweep reached the end).
+ */
+async function hashPass() {
+  if (!hasher.sweeping) {
+    hasher.signature = indexSignature();
+    hasher.cursor = '';
+    hasher.sweeping = true;
+  }
+  const rows = unhashedAfter(hasher.cursor, WORKER_BATCH);
+  if (rows.length === 0) {
+    hasher.sweeping = false;
+    hasher.sweptAt = Date.now();
+    return 0;
+  }
+  hasher.cursor = rows[rows.length - 1].id;
+  await hashBatch(rows);
+  return rows.length;
+}
+
+function runHashPass() {
+  hasher.current = hasher.current.catch(() => 0).then(hashPass);
+  return hasher.current;
+}
+
+/** Hashes every photo still without a hash; returns how many it hashed (tests, tools). */
+async function runDuplicateHashingUntilIdle() {
+  hasher.sweeping = false;
+  let total = 0;
+  for (;;) {
+    const done = await runHashPass();
+    total += done;
+    if (done === 0) return total;
+  }
+}
+
+function scheduleHasher(ms) {
+  if (hasher.stopped) return;
+  clearTimeout(hasher.timer);
+  hasher.timer = setTimeout(hasherTick, ms);
+  hasher.timer.unref();
+}
+
+async function hasherTick() {
+  // A wake while a tick runs: the running tick schedules the next one.
+  if (hasher.stopped || hasher.ticking) return;
+  hasher.ticking = true;
+  try {
+    await hasherStep();
+  } finally {
+    hasher.ticking = false;
+  }
+}
+
+async function hasherStep() {
+  // Idle between sweeps: only look again when the Photos index moved.
+  if (!hasher.sweeping && hasher.signature !== null && Date.now() - hasher.sweptAt < FULL_SWEEP_MS) {
+    let signature = null;
+    try {
+      signature = indexSignature();
+    } catch (err) {
+      logger.error('Duplicates hashing check failed:', err.message);
+    }
+    if (signature === hasher.signature) {
+      scheduleHasher(IDLE_MS);
+      return;
+    }
+  }
+  if (await serverBusy()) {
+    scheduleHasher(BUSY_WAIT_MS);
+    return;
+  }
+  if (hasher.stopped) return;
+  let done = 0;
+  try {
+    done = await runHashPass();
+  } catch (err) {
+    hasher.sweeping = false;
+    logger.error('Duplicates hashing failed:', err.message);
+  }
+  // serverBusy() already waited BATCH_GAP_MS: that is the yield between batches.
+  scheduleHasher(done > 0 ? 0 : IDLE_MS);
+}
+
+/** Starts the background hashing; returns a function that stops it. */
+function startDuplicateHasher() {
+  hasher.stopped = false;
+  hasher.stopping = false;
+  hasher.signature = null;
+  hasher.sweeping = false;
+  scheduleHasher(FIRST_PASS_MS);
+  return stopDuplicateHasher;
+}
+
+/** Stops the background hashing and waits for the file it is on. */
+async function stopDuplicateHasher() {
+  hasher.stopped = true;
+  hasher.stopping = true;
+  clearTimeout(hasher.timer);
+  hasher.timer = null;
+  await hasher.current.catch(() => 0);
+  hasher.stopping = false;
+}
+
+/** Looks for new photos now instead of after the idle wait (still yields to a busy server). */
+function wakeDuplicateHasher() {
+  // The tick compares the Photos index first, so this is cheap to call often.
+  if (hasher.stopped || hasher.sweeping || hasher.ticking) return;
+  scheduleHasher(0);
 }
 
 // --- Grouping ---------------------------------------------------------------------------
@@ -282,13 +447,14 @@ function serializeGroups(userId, groups) {
 }
 
 /**
- * The account's duplicate groups, the most space to win first. `pending`:
- * photos not compared yet (their hashes are being made in the background).
+ * The account's duplicate groups, the most space to win first, from what is
+ * known now. `pending`: photos not compared yet (the background worker is
+ * hashing them); `hashed` of `total` photos are.
  */
 function listDuplicates(userId) {
   catchUp(userId);
-  const pending = pendingCount(userId);
-  if (pending > 0) void fillHashes(userId);
+  const { pending, hashed, total } = hashProgress(userId);
+  if (pending > 0) wakeDuplicateHasher();
   const dismissed = dismissedSets(userId);
   const groups = [...exactGroups(userId), ...similarGroups(userId)]
     .filter((group) => !dismissed.some((set) => group.members.every((row) => set.has(row.id))))
@@ -298,7 +464,7 @@ function listDuplicates(userId) {
     }))
     .sort((a, b) => b.wasted - a.wasted)
     .slice(0, MAX_GROUPS);
-  return { groups: serializeGroups(userId, groups), pending };
+  return { groups: serializeGroups(userId, groups), pending, hashed, total };
 }
 
 /** "Not duplicates": the group of these files is not shown again. */
@@ -316,4 +482,12 @@ function dismissDuplicates(userId, nodeIds) {
   return { success: true };
 }
 
-module.exports = { dHash, dismissDuplicates, fillHashes, listDuplicates };
+module.exports = {
+  dHash,
+  dismissDuplicates,
+  listDuplicates,
+  runDuplicateHashingUntilIdle,
+  startDuplicateHasher,
+  stopDuplicateHasher,
+  wakeDuplicateHasher,
+};

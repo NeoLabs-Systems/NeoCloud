@@ -148,6 +148,12 @@ Each feature has a switch in Settings › AI (`ai_features`):
 | `newTags` | on | Tags beyond the ones the account already uses |
 | `newFolders` | off | Moves into a folder that doesn't exist yet |
 
+**File types** (Settings › AI › File types, setting `ai_skip_types`): whole
+categories (images, videos, documents, spreadsheets, presentations,
+archives, audio, code, other) or single formats can be left out. Files of
+those types get no titles, tags, folders or summaries: they are not queued,
+not read and not sent anywhere.
+
 ### Nothing changes without you
 
 AI never renames, moves or tags on its own. Every result is a **suggestion**
@@ -161,6 +167,22 @@ folder, the trash) turns **stale** and can no longer be accepted.
 
 With `autoApplyHighConfidence` on, high-tier suggestions are applied right
 away and listed as "applied", undoable in the same way.
+
+**No folder is made before you accept.** A move into a folder that doesn't
+exist yet is only a suggestion until you accept it; then the folder is
+created in the same step as the move (a move that fails leaves no folder).
+Such a move is never high-tier, so neither auto-apply nor "accept all
+high-confidence" takes it: you accept each one yourself. Undoing it puts the
+file back and removes the folder again once it is empty. Turning
+`newFolders` off turns pending ones stale.
+
+**Cleaning up.** Review shows "N empty folders created by AI — Remove" when
+folders AI made (accepted moves into a new folder) are empty. It also
+offers "Remove empty folders" for any empty folder at the top level created
+in the last seven days, listed by name for you to confirm first: folders AI
+made before NeoCloud kept track can't be told apart from your own. Only
+empty folders are removed, never a vault or a shared folder, and they go to
+the trash.
 
 ### How work starts
 
@@ -218,7 +240,21 @@ unless you ask for them: they get tags and a caption, which search finds.
 
 ### Auto-sort
 
-Where a file should go is decided cheapest first:
+Restraint first: "keep it where it is" is the default, a move has to be
+clearly better. Which folders are considered at all:
+
+- A file at the top level or in an inbox-like folder (Downloads, Unsorted,
+  Scans, Desktop, …) may go into any folder it may move to.
+- A file in a folder you made stays in that folder's subtree: AI never
+  suggests moving it out of your structure.
+- **Photos and videos** only ever go into your existing photo tree (Photos,
+  Fotos, Bilder, Camera Uploads, …), into the year and month folders when
+  you already sort it that way, and never into a new folder. A photo that
+  isn't at the top level stays where it is. Photographed documents (a
+  receipt, a scan) are filed like documents.
+- Documents are never filed into the photo tree.
+
+Then, cheapest first:
 
 1. **Your rules** (Settings › AI › Rules): type, issuer, extension or a name
    pattern → a folder. A rule that matches decides; no model is asked.
@@ -226,13 +262,27 @@ Where a file should go is decided cheapest first:
    (its path and the names inside it), from the `embedding` model; folder
    profiles are embedded once and again only when they change. A clear
    winner decides.
-3. Otherwise the `text` model picks among the ten closest folders.
+3. Otherwise the `text` model picks among the ten closest folders, or keeps
+   the file where it is. The prompt (`server/services/ai/organize/prompts.js`)
+   gives a numbered list to choose from, makes "keep it here" the preferred
+   answer when unsure, asks for a confidence, and shows a few borderline
+   examples. Picks below 60 % confidence are not suggested.
 
 Only folders that exist are suggested (unless `newFolders` is on), never a
 vault, never a folder excluded from AI, and never across the border of a
 shared folder: a move suggestion never changes who can see a file. After
 you accept three moves of the same kind of document from the same issuer
 into one folder, NeoCloud offers a rule for it.
+
+**New folders** (`newFolders` on) are a last resort. A proposed name is
+compared with your folders ignoring case, accents, singular and plural, and
+across languages (Photos = Fotos = Bilder = Pictures = Images, Documents =
+Dokumente = Unterlagen, Invoices = Rechnungen, Receipts = Belege =
+Quittungen, …), then by embedding similarity of the names; a match means
+your existing folder is used instead. A new name is generic ("Invoices",
+not "Invoice from Telekom March 2026") and in the language your folders
+are named in. A new folder is suggested only once three files of the same
+job would go into it, and a job suggests at most three new folders.
 
 ### Tags and search
 
@@ -250,6 +300,6 @@ content changes, and shows which model wrote it.
 | Feature | Sent to the provider | Usage log feature |
 | --- | --- | --- |
 | Names, tags, folders (extraction) | File name, modification date, up to ~12 000 characters of text or one scaled image, the account's existing tag names | `title`, `tags` or `sort` |
-| Folder similarity | Folder paths with up to 15 names inside each; the file's name and extracted fields | `embed` |
+| Folder similarity | Folder paths with up to 15 names inside each; the file's name and extracted fields; for a proposed new folder, its name and your folder names | `embed` |
 | Folder choice | The file's name and extracted fields, up to ten folder paths | `sort` |
 | Summary | File name and up to ~12 000 characters of text, or one scaled image | `summary` |

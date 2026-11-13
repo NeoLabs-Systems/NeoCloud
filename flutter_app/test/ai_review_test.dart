@@ -65,14 +65,21 @@ class _FakeAi extends Fake implements AiApi {
   final List<String> calls = <String>[];
   final Set<String> stale = <String>{};
 
+  AiEmptyFolders emptyFolderLists = const AiEmptyFolders();
+  final List<List<String>> removedFolders = <List<String>>[];
+
   AiSuggestionCounts get _counts {
     int of(String kind) => pending.where((s) => s.kind == kind && s.tier != 'low').length;
+    int highOf(String kind) => pending.where((s) => s.kind == kind && s.tier == 'high').length;
     return AiSuggestionCounts(
       rename: of('rename'),
       move: of('move'),
       tags: of('tags'),
       total: pending.where((s) => s.tier != 'low').length,
       high: pending.where((s) => s.tier == 'high').length,
+      highRename: highOf('rename'),
+      highMove: highOf('move'),
+      highTags: highOf('tags'),
       hiddenLow: pending.where((s) => s.tier == 'low').length,
       proposals: proposals.length,
     );
@@ -124,10 +131,21 @@ class _FakeAi extends Fake implements AiApi {
 
   @override
   Future<AiAcceptHighResult> acceptHigh({String? kind}) async {
-    final high = pending.where((s) => s.tier == 'high').toList();
-    calls.add('accept-high ${high.length}');
-    pending.removeWhere((s) => s.tier == 'high');
+    bool taken(AiSuggestion s) => s.tier == 'high' && (kind == null || s.kind == kind);
+    final high = pending.where(taken).toList();
+    calls.add('accept-high ${kind ?? 'all'} ${high.length}');
+    pending.removeWhere(taken);
     return AiAcceptHighResult(accepted: high.length, failed: const <String, String>{});
+  }
+
+  @override
+  Future<AiEmptyFolders> emptyFolders() async => emptyFolderLists;
+
+  @override
+  Future<AiCleanupResult> removeEmptyFolders(List<String> ids) async {
+    removedFolders.add(ids);
+    emptyFolderLists = const AiEmptyFolders();
+    return AiCleanupResult(removed: ids.length);
   }
 
   @override
@@ -355,7 +373,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Accept')));
     await tester.pumpAndSettle();
-    expect(ai.calls, contains('accept-high 2'));
+    expect(ai.calls, contains('accept-high rename 2'));
     expect(find.text('One.pdf'), findsNothing);
     expect(find.text('Three.pdf'), findsOneWidget);
     expect(controller.undo.current!.message, '2 suggestions accepted');
@@ -366,6 +384,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Four.pdf'), findsOneWidget);
     expect(find.text('Low'), findsOneWidget);
+    await _finish(tester, controller);
+  });
+
+  testWidgets('Review: accept all high-confidence takes only the open tab', (tester) async {
+    const target = AiFolderRef(id: 'f-tel', path: '/Finance/Telekom');
+    final ai = _FakeAi(pending: <AiSuggestion>[
+      _rename('s1', 'f1', 'IMG_1.pdf', 'One.pdf', tier: 'high'),
+      AiSuggestion(
+        id: 'm1',
+        nodeId: 'f2',
+        kind: 'move',
+        from: const AiFolderRef(id: 'root', path: '/'),
+        to: target,
+        confidence: 0.95,
+        tier: 'high',
+        node: _file('f2', 'bill.pdf'),
+      ),
+    ]);
+    final controller = await _controller(ai);
+    await _pump(tester, AiReviewPage(controller: controller));
+    expect(find.text('Accept all high-confidence (1)'), findsOneWidget);
+    await tester.tap(find.text('Accept all high-confidence (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Accept')));
+    await tester.pumpAndSettle();
+    expect(ai.calls, contains('accept-high rename 1'));
+    expect(ai.pending.map((s) => s.id), <String>['m1']);
+    await _finish(tester, controller);
+  });
+
+  testWidgets('Review: empty folders AI made are listed by name and removed after confirming', (tester) async {
+    final ai = _FakeAi(pending: <AiSuggestion>[_rename('s1', 'f1', 'IMG_1.pdf', 'One.pdf')])
+      ..emptyFolderLists = const AiEmptyFolders(
+        aiCreated: <AiEmptyFolder>[
+          AiEmptyFolder(id: 'a1', name: 'Sunset', path: '/Sunset'),
+          AiEmptyFolder(id: 'a2', name: 'Beach', path: '/Beach'),
+        ],
+        recent: <AiEmptyFolder>[AiEmptyFolder(id: 'r1', name: 'New folder', path: '/New folder')],
+      );
+    final controller = await _controller(ai);
+    await _pump(tester, AiReviewPage(controller: controller));
+    expect(find.text('2 empty folders created by AI'), findsOneWidget);
+    expect(find.text('1 empty folder from the last 7 days'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Remove'));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove empty folders?'), findsOneWidget);
+    expect(find.text('Sunset'), findsOneWidget);
+    expect(find.text('Beach'), findsOneWidget);
+    // Keep one of them.
+    await tester.tap(find.text('Beach'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, 'Remove')));
+    await tester.pumpAndSettle();
+    expect(ai.removedFolders, <List<String>>[<String>['a1']]);
+    expect(find.text('2 empty folders created by AI'), findsNothing);
     await _finish(tester, controller);
   });
 

@@ -19,8 +19,8 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 
 /**
- * The `neocloud/background` channel: the transfer service, the new-photo
- * trigger, and the settings that decide whether Android lets NeoCloud run
+ * The `neocloud/background` channel: the transfer service, camera upload's
+ * background work ([CameraWork]), and the settings that decide whether Android lets NeoCloud run
  * in the background (battery optimisation, manufacturer screens,
  * notifications, Data Saver). Registered in every engine, including the
  * headless one of a background pass.
@@ -43,6 +43,24 @@ class NeoCloudBackgroundPlugin :
     private var activity: ActivityPluginBinding? = null
     private var pendingNotifications: MethodChannel.Result? = null
 
+    /** A camera upload pass runs in this engine and holds the lease. */
+    private var passRunning = false
+
+    /** Set by a [CameraUploadWorker] hosting this engine: its pass is done. */
+    var onWorkerDone: (() -> Unit)? = null
+
+    /** Set by a [CameraUploadWorker] hosting this engine: its pass starts sending files. */
+    var onWorkerTransfer: ((TransferService.Progress) -> Unit)? = null
+
+    /** Asks the camera pass in this engine to stop before its next file. */
+    fun requestStop(reason: String) {
+        try {
+            channel?.invokeMethod("stopRequested", mapOf("owner" to null, "reason" to reason))
+        } catch (error: Exception) {
+            // The engine is going away anyway.
+        }
+    }
+
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, CHANNEL).also { it.setMethodCallHandler(this) }
@@ -50,6 +68,12 @@ class NeoCloudBackgroundPlugin :
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel?.let { TransferService.forget(context, it) }
+        // The engine died in the middle of a pass: the app swiped away, or a
+        // stopped worker whose pass didn't end in time.
+        if (passRunning) CameraWork.recoverDeadPass(context)
+        passRunning = false
+        onWorkerDone = null
+        onWorkerTransfer = null
         channel?.setMethodCallHandler(null)
         channel = null
     }
@@ -75,10 +99,18 @@ class NeoCloudBackgroundPlugin :
             "startTransfer" -> {
                 val owner = call.argument<String>("owner") ?: "transfer"
                 val held = channel
-                result.success(held != null && TransferService.start(context, owner, held, progress(call)))
+                val worker = onWorkerTransfer
+                if (held != null && worker != null) {
+                    // A background pass: its worker shows the notification.
+                    TransferService.join(context, owner, held, progress(call))
+                    worker(progress(call))
+                    result.success(true)
+                } else {
+                    result.success(held != null && TransferService.start(context, owner, held, progress(call)))
+                }
             }
             "updateTransfer" -> {
-                TransferService.update(progress(call))
+                TransferService.update(context, progress(call))
                 result.success(null)
             }
             "stopTransfer" -> {
@@ -108,17 +140,40 @@ class NeoCloudBackgroundPlugin :
                 openSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri()))
                 result.success(null)
             }
-            "armMediaTrigger" -> {
-                MediaTrigger.arm(
+            "configureCameraWork" -> {
+                val callback = (call.argument<Any>("callback") as? Number)?.toLong() ?: 0L
+                CameraWork.configure(
                     context,
                     call.argument<Boolean>("unmeteredOnly") != false,
                     call.argument<Boolean>("chargingOnly") == true,
+                    CameraWork.Entry(
+                        callback,
+                        call.argument<String>("channelName") ?: "NeoCloud",
+                        call.argument<String>("title") ?: "NeoCloud",
+                        call.argument<String>("pauseLabel") ?: "Pause",
+                    ),
                 )
                 result.success(null)
             }
-            "disarmMediaTrigger" -> {
-                MediaTrigger.disarm(context)
+            "disableCameraWork" -> {
+                CameraWork.disable(context)
                 result.success(null)
+            }
+            "continueCameraWork" -> {
+                CameraWork.continueSoon(context, (call.argument<Any>("delayMinutes") as? Number)?.toLong() ?: 0L)
+                result.success(null)
+            }
+            "cameraPassStarted" -> {
+                passRunning = true
+                result.success(null)
+            }
+            "cameraPassEnded" -> {
+                passRunning = false
+                result.success(null)
+            }
+            "cameraWorkerDone" -> {
+                result.success(null)
+                onWorkerDone?.invoke()
             }
             else -> result.notImplemented()
         }

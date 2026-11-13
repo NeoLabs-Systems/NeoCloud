@@ -2,7 +2,8 @@ part of 'main.dart';
 
 // Settings › AI, after NeoAgent's Settings › Models (_ModelsSettingsPage),
 // written for people who don't run the server: the opt-in with what leaves
-// NeoCloud, the suggestions in plain words and this month's usage as a bar.
+// NeoCloud, the suggestions in plain words, the file types AI leaves alone
+// (main_ai_file_types.dart) and this month's usage as a bar.
 // Models per kind of work, the naming template and the account's own
 // NeoRouter and keys sit under Advanced. Without a model it leads with
 // NeoAgent's setup card; only admins see the way to Admin › AI.
@@ -198,6 +199,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
               ),
           ],
         ),
+        if (status.fileTypes.isNotEmpty) AiFileTypesGroup(controller: _controller, categories: status.fileTypes, enabled: settings.aiOptIn),
         if (settings.aiOptIn && status.available) ...<Widget>[
           _SettingsGroup(
             title: appStrings.aiReviewTitle,

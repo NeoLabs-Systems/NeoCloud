@@ -214,6 +214,8 @@ const CLASSIFIED = {
   'POST /api/vaults': () => ['POST', '/api/vaults', { parentId: v.folder, name: 'V', ...keyParams() }],
   'GET /api/vaults/:id': () => ['GET', `/api/vaults/${v.vault}`],
   'PUT /api/vaults/:id/key': () => ['PUT', `/api/vaults/${v.vault}/key`, keyParams()],
+  'GET /api/vaults/conversions/:folderId': () => ['GET', `/api/vaults/conversions/${v.folder}`],
+  'POST /api/vaults/:id/replace': () => ['POST', `/api/vaults/${v.vault}/replace`, { folderId: v.folder, cursor: 0 }],
   'GET /api/imports': OWN,
   'POST /api/imports': () => ['POST', '/api/imports', { source: 'webdav', url: 'https://dav.example.com', username: 'x', password: 'y', targetFolderId: v.folder }],
   'POST /api/imports/test': OWN,
@@ -243,6 +245,8 @@ const CLASSIFIED = {
   'PATCH /api/ai/rules/:id': () => ['PATCH', `/api/ai/rules/${v.rule}`, { name: 'x' }],
   'DELETE /api/ai/rules/:id': () => ['DELETE', `/api/ai/rules/${v.rule}`],
   'POST /api/ai/files/:id/summary': () => ['POST', `/api/ai/files/${v.file}/summary`],
+  'GET /api/ai/cleanup/folders': OWN,
+  'POST /api/ai/cleanup/folders': () => ['POST', '/api/ai/cleanup/folders', { ids: [v.folder] }],
   'GET /api/neorouter': OWN,
   'POST /api/neorouter/connect': OWN,
   'GET /api/neorouter/connect/:id': 'flows live in memory and are checked against the account (sign_in.status)',
@@ -258,6 +262,11 @@ const EMPTY_ANSWER = {
   // Bulk answers per id: another account's id is a failure, nothing done.
   'POST /api/ai/suggestions/bulk': (body) => {
     assert.equal(body.done, 0);
+    assert.equal(body.failed.length, 1);
+  },
+  // Removal answers per id: another account's folder is a failure, nothing removed.
+  'POST /api/ai/cleanup/folders': (body) => {
+    assert.equal(body.removed, 0);
     assert.equal(body.failed.length, 1);
   },
   // Dismissing names the caller's own view only; the owner's files stay.

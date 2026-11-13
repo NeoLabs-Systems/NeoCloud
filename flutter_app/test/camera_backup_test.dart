@@ -70,6 +70,18 @@ class _FakeServer implements CameraTarget {
   /// False: a server from before the content check.
   bool canCheck = true;
 
+  /// Resumable uploads: id → bytes that arrived. A file above
+  /// [resumableFrom] bytes goes this way.
+  final Map<String, int> sessions = <String, int>{};
+  int resumableFrom = 1 << 30;
+  final List<String?> resumedWith = <String?>[];
+
+  /// Cut the connection after this many bytes of the next resumable upload.
+  int? dropAfter;
+
+  /// The upload arrives, but its answer is lost (the phone sees an outage).
+  bool loseAnswer = false;
+
   @override
   Future<List<RemoteCameraFile>> list(String folderId) async {
     if (outage != null) throw CameraUploadFailure(outage!);
@@ -84,14 +96,40 @@ class _FakeServer implements CameraTarget {
   }
 
   @override
-  Future<void> upload(String folderId, CameraFile file, {required String sha256}) async {
+  Future<void> upload(
+    String folderId,
+    CameraFile file, {
+    required String sha256,
+    String? resumeId,
+    Future<void> Function(String uploadId)? onResumable,
+  }) async {
     if (outage != null) throw CameraUploadFailure(outage!);
     if (rejectNames.contains(file.name)) throw const CameraUploadFailure(CameraFailureKind.file, 'HTTP 500');
     final content = await file.openRead().expand((chunk) => chunk).toList();
+    if (content.length >= resumableFrom) {
+      resumedWith.add(resumeId);
+      var id = resumeId;
+      if (id == null || !sessions.containsKey(id)) {
+        id = 'up${sessions.length + 1}';
+        sessions[id] = 0;
+        await onResumable?.call(id);
+      }
+      final drop = dropAfter;
+      if (drop != null) {
+        dropAfter = null;
+        sessions[id] = drop;
+        throw const CameraUploadFailure(CameraFailureKind.serverUnreachable, 'connection lost');
+      }
+      sessions[id] = content.length;
+      sessions.remove(id);
+    }
     final hash = await sha256OfStream(Stream<List<int>>.value(content));
     // The server's checksum check.
     if (hash != sha256) throw const CameraUploadFailure(CameraFailureKind.file, 'CHECKSUM_MISMATCH');
     sentHashes.add(sha256);
+    // The server's rule for a hash the client declared: the same name and
+    // content is this upload again, not a second file.
+    if (files.any((f) => f.name == file.name && f.etag == hash)) return;
     var name = file.name;
     var n = 1;
     while (files.any((f) => f.name == name)) {
@@ -99,6 +137,34 @@ class _FakeServer implements CameraTarget {
     }
     files.add(RemoteCameraFile(name: name, size: file.size, etag: hash));
     uploads.add(name);
+    if (loseAnswer) {
+      loseAnswer = false;
+      throw const CameraUploadFailure(CameraFailureKind.serverUnreachable, 'no answer');
+    }
+  }
+}
+
+/// A ledger store whose process "dies" at a chosen save: that save and
+/// everything after it never reach the disk.
+class _DyingStore implements CameraLedgerStore {
+  _DyingStore(this.inner);
+
+  final MemoryCameraLedgerStore inner;
+
+  /// Saves still allowed before the process dies; null never dies.
+  int? savesLeft;
+
+  @override
+  Future<CameraLedger> load() => inner.load();
+
+  @override
+  Future<void> save(CameraLedger ledger) async {
+    final left = savesLeft;
+    if (left != null) {
+      if (left <= 0) throw StateError('process killed');
+      savesLeft = left - 1;
+    }
+    await inner.save(ledger);
   }
 }
 
@@ -358,6 +424,93 @@ void main() {
     final resumed = await engine.run(_options, const CameraConditions());
     expect(resumed.block, isNull);
     expect(server.uploads, hasLength(6));
+  });
+
+  group('a failed or interrupted upload resumes without duplicates', () {
+    test('killed after the upload succeeded but before the ledger was saved', () async {
+      // Six files, saved only at the end: the process dies right there.
+      final dying = _DyingStore(store)..savesLeft = 0;
+      final doomed = CameraBackupEngine(store: dying, library: library, target: server);
+      await expectLater(doomed.run(_options, const CameraConditions()), throwsStateError);
+      expect(server.uploads, hasLength(6));
+      final sentBeforeCrash = List<String>.of(server.uploads);
+      expect((await store.load()).counts.backedUp, 0);
+
+      final result = await engine.run(_options, const CameraConditions());
+      expect(result.skipped, sentBeforeCrash.length);
+      expect(server.uploads, hasLength(6));
+      expect(server.uploads.toSet(), hasLength(6));
+      expect(server.uploads.where((name) => name.contains('(')), isEmpty);
+      expect((await store.load()).counts.backedUp, 6);
+    });
+
+    test('the answer to an upload is lost: the retry finds it and sends nothing again', () async {
+      server.loseAnswer = true;
+      final first = await engine.run(_options, const CameraConditions());
+      expect(first.block, CameraBlock.serverUnreachable);
+      expect(server.uploads, hasLength(1));
+      // A server that can't tell by content still never stores "IMG (1)".
+      server.canCheck = false;
+      final second = await engine.run(_options, const CameraConditions());
+      expect(second.block, isNull);
+      expect(server.files.map((f) => f.name).toSet(), hasLength(6));
+      expect(server.files.where((f) => f.name.contains('(')), isEmpty);
+    });
+
+    test('the connection drops mid-video: the next pass resumes the same upload', () async {
+      library.photos
+        ..clear()
+        ..add(_Photo('v1', 'VID_1.mp4', 'a long video ' * 100, DateTime(2026), video: true));
+      server
+        ..resumableFrom = 1000
+        ..dropAfter = 600;
+      final first = await engine.run(_options, const CameraConditions());
+      expect(first.block, CameraBlock.serverUnreachable);
+      final saved = (await store.load()).records['v1']!;
+      expect(saved.uploadId, 'up1');
+      expect(saved.status, CameraRecordStatus.pending);
+      expect(server.sessions['up1'], 600);
+
+      // Kept across a restart: a new engine reads it from the ledger.
+      final restarted = CameraBackupEngine(store: store, library: library, target: server);
+      final second = await restarted.run(_options, const CameraConditions());
+      expect(second.uploaded, 1);
+      expect(server.resumedWith, <String?>[null, 'up1']);
+      expect(server.uploads, <String>['VID_1.mp4']);
+      expect((await store.load()).records['v1']!.uploadId, isNull);
+    });
+
+    test('an edited video does not continue the upload of its old content', () async {
+      library.photos
+        ..clear()
+        ..add(_Photo('v1', 'VID_1.mp4', 'a long video ' * 100, DateTime(2026), video: true));
+      server
+        ..resumableFrom = 1000
+        ..dropAfter = 600;
+      await engine.run(_options, const CameraConditions());
+      library.photos.single.content = 'an edited video ' * 100;
+      await engine.run(_options, const CameraConditions());
+      expect(server.resumedWith, <String?>[null, null]);
+    });
+
+    test('the app killed mid-pass: finished files are never sent again', () async {
+      for (var i = 7; i <= 30; i++) {
+        library.photos.add(_Photo('a$i', 'IMG_$i.jpg', 'photo $i', DateTime(2000 + i)));
+      }
+      // Saved after 10 files; the process dies at the save after 20.
+      final dying = _DyingStore(store)..savesLeft = 1;
+      final doomed = CameraBackupEngine(store: dying, library: library, target: server);
+      await expectLater(doomed.run(_options, const CameraConditions()), throwsStateError);
+      final saved = (await store.load()).counts.backedUp;
+      expect(saved, 10);
+      expect(server.uploads, hasLength(20));
+
+      final result = await engine.run(_options, const CameraConditions());
+      expect(result.failed, 0);
+      expect(server.uploads, hasLength(30));
+      expect(server.uploads.toSet(), hasLength(30));
+      expect((await store.load()).counts.backedUp, 30);
+    });
   });
 
   test('the ledger survives encoding', () async {

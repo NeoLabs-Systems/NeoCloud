@@ -163,6 +163,7 @@ class AiStatus {
     this.roles = const <String, AiRoleStatus>{},
     this.budgetUsed = 0,
     this.budgetLimit,
+    this.fileTypes = const <AiFileTypeCategory>[],
   });
 
   factory AiStatus.fromJson(Map<String, dynamic> json) {
@@ -176,6 +177,11 @@ class AiStatus {
       roles: <String, AiRoleStatus>{for (final entry in roles.entries) entry.key: AiRoleStatus.fromJson(entry.value)},
       budgetUsed: _int(budget['used']),
       budgetLimit: limit == null || limit <= 0 ? null : limit,
+      fileTypes: <AiFileTypeCategory>[
+        if (json['fileTypes'] is List)
+          for (final item in json['fileTypes'] as List)
+            if (item is Map) AiFileTypeCategory.fromJson(item.cast<String, dynamic>()),
+      ],
     );
   }
 
@@ -192,6 +198,136 @@ class AiStatus {
 
   /// The monthly token budget; null for no limit.
   final int? budgetLimit;
+
+  /// The kinds of file Settings › AI › File types can leave out.
+  final List<AiFileTypeCategory> fileTypes;
+}
+
+/// A kind of file AI can leave out (`fileTypes` of `/api/ai/status`):
+/// `images`, `videos`, `documents`, … with its formats; `other` has none
+/// and stands for every format in no other category.
+class AiFileTypeCategory {
+  const AiFileTypeCategory({required this.id, this.extensions = const <String>[]});
+
+  factory AiFileTypeCategory.fromJson(Map<String, dynamic> json) => AiFileTypeCategory(
+    id: _string(json['id']),
+    extensions: <String>[
+      if (json['extensions'] is List)
+        for (final item in json['extensions'] as List)
+          if (item is String) item,
+    ],
+  );
+
+  final String id;
+  final List<String> extensions;
+}
+
+/// The file types every AI feature leaves alone (`ai_skip_types`): whole
+/// categories and single formats (extensions without the dot).
+class AiSkipTypes {
+  const AiSkipTypes({this.categories = const <String>{}, this.extensions = const <String>{}});
+
+  factory AiSkipTypes.fromJson(Object? raw) {
+    final json = raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
+    Set<String> strings(Object? value) => <String>{
+      if (value is List)
+        for (final item in value)
+          if (item is String) item,
+    };
+    return AiSkipTypes(categories: strings(json['categories']), extensions: strings(json['extensions']));
+  }
+
+  final Set<String> categories;
+  final Set<String> extensions;
+
+  bool get isEmpty => categories.isEmpty && extensions.isEmpty;
+
+  /// Whether AI still reads files of [category] at all (some format of it is on).
+  bool categoryOn(AiFileTypeCategory category) {
+    if (categories.contains(category.id)) return false;
+    if (category.extensions.isEmpty) return true;
+    return category.extensions.any((ext) => !extensions.contains(ext));
+  }
+
+  bool formatOn(AiFileTypeCategory category, String ext) => !categories.contains(category.id) && !extensions.contains(ext);
+
+  /// The whole category on (none of its formats left out) or off.
+  AiSkipTypes withCategory(AiFileTypeCategory category, bool on) {
+    final nextCategories = <String>{...categories}..remove(category.id);
+    final nextExtensions = <String>{...extensions}..removeAll(category.extensions);
+    if (!on) nextCategories.add(category.id);
+    return AiSkipTypes(categories: nextCategories, extensions: nextExtensions);
+  }
+
+  /// One format on or off. Switching a format on in a category that was
+  /// off turns the category on with only its other formats left out.
+  AiSkipTypes withFormat(AiFileTypeCategory category, String ext, bool on) {
+    final nextCategories = <String>{...categories};
+    final nextExtensions = <String>{...extensions};
+    if (nextCategories.remove(category.id)) nextExtensions.addAll(category.extensions);
+    if (on) {
+      nextExtensions.remove(ext);
+    } else {
+      nextExtensions.add(ext);
+    }
+    if (category.extensions.isNotEmpty && category.extensions.every(nextExtensions.contains)) {
+      nextExtensions.removeAll(category.extensions);
+      nextCategories.add(category.id);
+    }
+    return AiSkipTypes(categories: nextCategories, extensions: nextExtensions);
+  }
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'categories': (categories.toList()..sort()),
+    'extensions': (extensions.toList()..sort()),
+  };
+}
+
+/// Empty folders that may be removed (`GET /api/ai/cleanup/folders`):
+/// ones AI created, and other empty top-level folders of the last week.
+class AiEmptyFolders {
+  const AiEmptyFolders({this.aiCreated = const <AiEmptyFolder>[], this.recent = const <AiEmptyFolder>[]});
+
+  factory AiEmptyFolders.fromJson(Map<String, dynamic> json) {
+    List<AiEmptyFolder> list(Object? value) => <AiEmptyFolder>[
+      if (value is List)
+        for (final item in value)
+          if (item is Map) AiEmptyFolder.fromJson(item.cast<String, dynamic>()),
+    ];
+    return AiEmptyFolders(aiCreated: list(json['aiCreated']), recent: list(json['recent']));
+  }
+
+  final List<AiEmptyFolder> aiCreated;
+  final List<AiEmptyFolder> recent;
+}
+
+class AiEmptyFolder {
+  const AiEmptyFolder({required this.id, required this.name, required this.path});
+
+  factory AiEmptyFolder.fromJson(Map<String, dynamic> json) =>
+      AiEmptyFolder(id: _string(json['id']), name: _string(json['name']), path: _string(json['path']));
+
+  final String id;
+  final String name;
+  final String path;
+}
+
+/// `POST /api/ai/cleanup/folders`: how many went to the trash, and the ids
+/// that were no longer empty.
+class AiCleanupResult {
+  const AiCleanupResult({required this.removed, this.failed = const <String>[]});
+
+  factory AiCleanupResult.fromJson(Map<String, dynamic> json) => AiCleanupResult(
+    removed: _int(json['removed']),
+    failed: <String>[
+      if (json['failed'] is List)
+        for (final item in json['failed'] as List)
+          if (item is Map && item['id'] is String) item['id'] as String,
+    ],
+  );
+
+  final int removed;
+  final List<String> failed;
 }
 
 /// One server-wide provider setting (`GET /api/admin/providers`): a key or
@@ -329,17 +465,32 @@ const Map<String, bool> aiFeatureDefaults = <String, bool>{
 /// event): pending high and medium suggestions per kind, the hidden low
 /// ones and the open rule proposals.
 class AiSuggestionCounts {
-  const AiSuggestionCounts({this.rename = 0, this.move = 0, this.tags = 0, this.total = 0, this.high = 0, this.hiddenLow = 0, this.proposals = 0});
+  const AiSuggestionCounts({
+    this.rename = 0,
+    this.move = 0,
+    this.tags = 0,
+    this.total = 0,
+    this.high = 0,
+    this.highRename = 0,
+    this.highMove = 0,
+    this.highTags = 0,
+    this.hiddenLow = 0,
+    this.proposals = 0,
+  });
 
   factory AiSuggestionCounts.fromJson(Object? raw) {
     final json = raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
     final pending = json['pending'] is Map ? (json['pending'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    final highByKind = json['highByKind'] is Map ? (json['highByKind'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
     return AiSuggestionCounts(
       rename: _int(pending['rename']),
       move: _int(pending['move']),
       tags: _int(pending['tags']),
       total: _int(pending['total']),
       high: _int(json['high']),
+      highRename: _int(highByKind['rename']),
+      highMove: _int(highByKind['move']),
+      highTags: _int(highByKind['tags']),
       hiddenLow: _int(json['hiddenLow']),
       proposals: _int(json['proposals']),
     );
@@ -350,6 +501,9 @@ class AiSuggestionCounts {
   final int tags;
   final int total;
   final int high;
+  final int highRename;
+  final int highMove;
+  final int highTags;
   final int hiddenLow;
   final int proposals;
 
@@ -357,6 +511,15 @@ class AiSuggestionCounts {
     'rename' => rename,
     'move' => move,
     'tags' => tags,
+    _ => 0,
+  };
+
+  /// Pending high-confidence suggestions of one kind (what "accept all
+  /// high-confidence" takes on that tab).
+  int highOfKind(String kind) => switch (kind) {
+    'rename' => highRename,
+    'move' => highMove,
+    'tags' => highTags,
     _ => 0,
   };
 
@@ -368,11 +531,14 @@ class AiSuggestionCounts {
       other.tags == tags &&
       other.total == total &&
       other.high == high &&
+      other.highRename == highRename &&
+      other.highMove == highMove &&
+      other.highTags == highTags &&
       other.hiddenLow == hiddenLow &&
       other.proposals == proposals;
 
   @override
-  int get hashCode => Object.hash(rename, move, tags, total, high, hiddenLow, proposals);
+  int get hashCode => Object.hash(rename, move, tags, total, high, highRename, highMove, highTags, hiddenLow, proposals);
 }
 
 /// A folder a move suggestion names: an existing one, or (with no [id]) one

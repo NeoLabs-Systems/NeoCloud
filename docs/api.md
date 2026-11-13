@@ -194,10 +194,14 @@ and the AI keys ([docs/ai.md](ai.md)): `ai_opt_in` (boolean, default `false`),
 `"auto"`), `ai_features` (an object of up to 32 booleans, default `{}`; a
 missing key takes its default: `names`, `folders`, `tags`, `summaries` and
 `newTags` default `true`, `onUpload`, `autoApplyHighConfidence` and
-`newFolders` default `false`, see [AI](#ai--apiai-session-or-phone)) and
+`newFolders` default `false`, see [AI](#ai--apiai-session-or-phone)),
 `ai_naming_template` (1–200 characters, no slashes, default
 `"{date} {issuer} – {subject}"`; placeholders `{date}` `{year}` `{month}`
-`{issuer}` `{subject}` `{type}` `{amount}` `{currency}` `{original}`). Unknown keys
+`{issuer}` `{subject}` `{type}` `{amount}` `{currency}` `{original}`) and
+`ai_skip_types` (`{ categories: [id], extensions: [ext] }`, default both
+empty: file types every AI feature leaves alone; category ids from
+`GET /api/ai/status` `fileTypes`, extensions lowercase without the dot, at
+most 200). Unknown keys
 answer `400 UNKNOWN_SETTING`, bad values `400 INVALID_SETTING_VALUE`.
 
 `fileView`, `sortField` and `sortOrder` are the defaults. `folder_views`
@@ -239,14 +243,15 @@ adminGranted }`. NeoRouter's auto models are `neorouter::auto:<profile>`
 
 | Method | Path | Body | Answer |
 | --- | --- | --- | --- |
-| GET | `/status` | | `{ available, enabled, optedIn, roles: { text, smart, vision, embedding, transcription }, budget: { used, limit } }`. Each role: `{ ready, model, source: "user"\|"neorouter"\|"auto"\|null, requestedUnavailable }`. `available`: the admin switch is on and some role has a model. While the switch is off no provider is asked and every role is `ready: false`. `budget`: this month's tokens and the account's limit (`null`: none) |
+| GET | `/status` | | `{ available, enabled, optedIn, roles: { text, smart, vision, embedding, transcription }, budget: { used, limit }, fileTypes: [{ id, extensions }] }`. Each role: `{ ready, model, source: "user"\|"neorouter"\|"auto"\|null, requestedUnavailable }`. `available`: the admin switch is on and some role has a model. While the switch is off no provider is asked and every role is `ready: false`. `budget`: this month's tokens and the account's limit (`null`: none). `fileTypes`: the categories `ai_skip_types` can name (`images`, `videos`, `documents`, `spreadsheets`, `presentations`, `archives`, `audio`, `code`, `other`; `other` is every extension in none of them) |
 | PUT | `/folders/:id/excluded` | `{ excluded }` (boolean) | `{ node }` with `aiExcluded`. Owner only (another account's folder `404`); `400 NOT_A_FOLDER`, `400 ROOT_FOLDER`, `400 INVALID_VALUE`. Inherited by everything below the folder |
 
 Errors AI features answer with: `403 AI_DISABLED` (admin switch off), `403
 AI_NOT_OPTED_IN`, `429 AI_BUDGET_EXCEEDED`, `503 AI_MODELS_UNAVAILABLE` (no
 model for the role), `502 AI_PROVIDER_ERROR`, `502 AI_BAD_JSON`, and for a
 file `403 AI_VAULT` (vault content) or `403 AI_EXCLUDED` (inside an excluded
-folder), `403 AI_FEATURE_OFF` (the person switched that feature off).
+folder), `403 AI_FEATURE_OFF` (the person switched that feature off),
+`422 AI_TYPE_SKIPPED` (the person left this file type out of AI).
 
 ### Suggestions, jobs, rules and summaries
 
@@ -258,16 +263,23 @@ themselves), `autoApplyHighConfidence` (high-tier suggestions are applied at
 once, listed as `applied`), `newTags` (tags beyond the ones the account
 already has), `newFolders` (moves into a folder that doesn't exist yet).
 
+A move into a new folder (`to: { id: null, parentId, name, path }`) is
+suggested only once three files of the same job would go there, at most
+three new folders per job, and is never high-tier: neither auto-apply nor
+`accept-high` takes it. Nothing is created until it is accepted; the
+folder is then created in the same transaction as the move and marked as
+made by AI. While `newFolders` is off such suggestions turn `stale`.
+
 | Method | Path | Body / query | Answer |
 | --- | --- | --- | --- |
 | GET | `/suggestions` | `kind` (`rename`,`move`,`tags`), `tier` (`high`,`medium`,`low` or `all`; default high,medium), `status` (default `pending`), each comma-separated; `nodeId`, `limit` (50, max 200), `offset` | `{ items: [suggestion], total, nextOffset, counts }`, newest first |
-| GET | `/suggestions/counts` | | `counts`: `{ pending: { rename, move, tags, total }, high, hiddenLow, proposals }` (pending high + medium per kind; low ones counted apart; open rule proposals) |
-| POST | `/suggestions/:id/accept` | `{ value? }`: replaces the proposal: a name (rename), a folder id (move), a tag list (tags) | `{ suggestion }` with `status: "accepted"`. `409 AI_SUGGESTION_STALE` (the file changed; it is now `stale`), `409 AI_SUGGESTION_DECIDED`, `409 AI_TARGET_NOT_ALLOWED` (vault or excluded folder), `409 SHARE_BOUNDARY`, `400 NAME_*`, `400 INVALID_VALUE` |
+| GET | `/suggestions/counts` | | `counts`: `{ pending: { rename, move, tags, total }, high, highByKind: { rename, move, tags }, hiddenLow, proposals }` (pending high + medium per kind; high ones in all and per kind; low ones counted apart; open rule proposals) |
+| POST | `/suggestions/:id/accept` | `{ value? }`: replaces the proposal: a name (rename), a folder id (move), a tag list (tags) | `{ suggestion }` with `status: "accepted"`. `409 AI_SUGGESTION_STALE` (the file changed; it is now `stale`), `409 AI_SUGGESTION_DECIDED`, `409 AI_TARGET_NOT_ALLOWED` (vault or excluded folder), `409 SHARE_BOUNDARY`, `409 AI_NEW_FOLDERS_OFF` (a move into a new folder while `newFolders` is off; it is now `stale`), `409 NAME_EXISTS` (a file has the new folder's name; nothing is created), `400 NAME_*`, `400 INVALID_VALUE` |
 | POST | `/suggestions/:id/reject` | | `{ suggestion }` with `status: "rejected"` (pending or stale ones) |
 | POST | `/suggestions/accept-high` | `{ kind? }` (comma-separated) | `{ accepted, failed: [{ id, code }] }`: every pending high-tier one |
 | POST | `/suggestions/bulk` | `{ ids: [suggestionId], action: "accept"\|"reject" }` (1–1000 ids) | `{ done, failed: [{ id, code }] }`: each one decided as by its own accept or reject route; a failure (`NOT_FOUND`, `AI_SUGGESTION_STALE`, `AI_SUGGESTION_DECIDED`, …) doesn't stop the rest. `400 INVALID_ACTION`, `400 INVALID_REQUEST` |
-| POST | `/suggestions/:id/undo` | | `{ suggestion }` with `status: "undone"`: an `accepted` or `applied` one is put back (name, folder or tags) if the file is still as it left it, else `409 AI_UNDO_CONFLICT` (or `409 NAME_EXISTS` when the old name is taken); `409 AI_NOT_UNDOABLE` for other states |
-| POST | `/jobs` | `{ nodeIds: [fileId] }` or `{ folderId }`, `kinds?: ["names","folders","tags"]` (default: every switched-on kind) | `202 { batchId, queued }`. `nodeIds` (1–1000 files): their names are suggested even when they already read well. `folderId`: a backfill of every file below it (at most 5000, else `413 TOO_MANY_FILES`) skipping vaults and excluded folders, renaming only meaningless names. `403 AI_VAULT` / `AI_EXCLUDED` for a listed file, `400 NOT_A_FILE`, `400 INVALID_KINDS`, `400 INVALID_REQUEST`, `403 AI_FEATURE_OFF`, `403 AI_DISABLED` / `AI_NOT_OPTED_IN` |
+| POST | `/suggestions/:id/undo` | | `{ suggestion }` with `status: "undone"`: an `accepted` or `applied` one is put back (name, folder or tags) if the file is still as it left it (a folder AI created for the move goes to the trash once it is empty), else `409 AI_UNDO_CONFLICT` (or `409 NAME_EXISTS` when the old name is taken); `409 AI_NOT_UNDOABLE` for other states |
+| POST | `/jobs` | `{ nodeIds: [fileId] }` or `{ folderId }`, `kinds?: ["names","folders","tags"]` (default: every switched-on kind) | `202 { batchId, queued }`. `nodeIds` (1–1000 files): their names are suggested even when they already read well. `folderId`: a backfill of every file below it (at most 5000, else `413 TOO_MANY_FILES`) skipping vaults, excluded folders and file types in `ai_skip_types`, renaming only meaningless names. `403 AI_VAULT` / `AI_EXCLUDED` for a listed file, `400 NOT_A_FILE`, `400 INVALID_KINDS`, `400 INVALID_REQUEST`, `403 AI_FEATURE_OFF`, `403 AI_DISABLED` / `AI_NOT_OPTED_IN` |
 | GET | `/jobs` | `batchId?` | `{ pending, running, done, skipped, failed, paused, batches: [{ id, createdAt, total, pending, done, skipped, failed }] }` (the last 10 requests, or the one asked for; unknown `404`). `paused`: why pending jobs wait (`AI_DISABLED`, `AI_NOT_OPTED_IN`, `AI_BUDGET_EXCEEDED`) or null. Finished jobs are kept 7 days |
 | GET | `/rules` | | `{ rules: [rule] }`, in the order they are tried |
 | POST | `/rules` | `{ name, match: { type?, issuer?, extension?, namePattern? }, targetFolderId, enabled? }` | `201 { rule }`. At least one condition (`400 INVALID_RULE`); the target must be the account's folder outside vaults and excluded folders (`409 AI_TARGET_NOT_ALLOWED`); at most 200 rules |
@@ -276,7 +288,9 @@ already has), `newFolders` (moves into a folder that doesn't exist yet).
 | GET | `/rules/proposals` | | `{ proposals: [{ id, type, issuer, targetFolderId, targetPath, accepts, name }] }`: after 3 accepted moves of the same type and issuer into one folder, unless such a rule exists or it was dismissed |
 | POST | `/rules/proposals/:id` | `{ name? }` | `201 { rule }` matching type and issuer |
 | DELETE | `/rules/proposals/:id` | | `{ success: true }`: not offered again |
-| POST | `/files/:id/summary` | `{ refresh? }` | `{ summary, model, etag, createdAt, cached }`. Kept per content (`etag`) until `refresh: true`. Smart role (images: vision). `422 AI_NO_CONTENT`, `400 NOT_A_FILE`, plus the AI errors above |
+| POST | `/files/:id/summary` | `{ refresh? }` | `{ summary, model, etag, createdAt, cached }`. Kept per content (`etag`) until `refresh: true`. Smart role (images: vision). `422 AI_NO_CONTENT`, `422 AI_TYPE_SKIPPED`, `400 NOT_A_FILE`, plus the AI errors above |
+| GET | `/cleanup/folders` | | `{ aiCreated: [folder], recent: [folder] }`, each `{ id, name, path, createdAt }`: empty folders AI created (anywhere), and other empty top-level folders created in the last 7 days. Only empty ones (nothing live inside), never a vault or a shared folder; at most 500 each |
+| POST | `/cleanup/folders` | `{ ids: [folderId] }` (1–500) | `{ removed, failed: [{ id, code }] }`: each moves to the trash if it is still on one of the two lists, else `NOT_EMPTY_OR_NOT_ALLOWED`. `400 INVALID_REQUEST` |
 
 `POST /jobs` and `POST /files/:id/summary` share a limit of 300 per 15
 minutes (`429 RATE_LIMITED`).
@@ -308,7 +322,7 @@ signed-in account's own live files (no vault, no trash).
 
 | Method | Path | Body | Answer |
 | --- | --- | --- | --- |
-| GET | `/duplicates` | | `{ groups: [group], pending }`, the most space to free first (at most 500 groups). `pending`: photos not compared yet; their hashes are made in the background after this request, so ask again while it is above 0 |
+| GET | `/duplicates` | | `{ groups: [group], pending, hashed, total }`, the most space to free first (at most 500 groups), from what is known now. Exact groups are always complete. `total`: the account's photos that can be compared; `hashed` of them are, `pending` not yet. The server hashes photos in the background, independent of this page and of AI, at low priority, soon after they are uploaded or changed. Ask again every few seconds while `pending` is above 0 |
 | POST | `/duplicates/dismiss` | `{ nodeIds: [fileId] }` (2–1000) | `{ success: true }`: "Not duplicates", a group whose files are all among these isn't listed again. Another account's file `404`, `400 INVALID_REQUEST` |
 
 `group`: `{ kind: "exact"|"similar", similarity (percent), items: [{ node,
@@ -434,9 +448,11 @@ End-to-end encrypted folders; the crypto is in [clients.md](clients.md#4-vault-f
 
 | Method | Path | Body | Answer |
 | --- | --- | --- | --- |
-| POST | `/` | `{ parentId, name, salt, iterations, wrappedKey }` | `201 { id, folderId, salt, iterations, wrappedKey, createdAt, updatedAt, folder }` |
+| POST | `/` | `{ parentId, name, salt, iterations, wrappedKey, conflict? }` | `201 { id, folderId, salt, iterations, wrappedKey, createdAt, updatedAt, folder }`. `conflict`: `fail` (default, `409 NAME_EXISTS`) or `rename` ("name (1)") |
 | GET | `/:id` | | `{ id, folderId, salt, iterations, wrappedKey, createdAt, updatedAt }` |
 | PUT | `/:id/key` | `{ wrappedKey, salt, iterations }` | the vault as above |
+| GET | `/conversions/:folderId` | | Whether a plain folder can become a vault: `{ folderId, name, parentId, files, folders, bytes, vaultBytes, freeBytes, cursor, problems }`. `vaultBytes` is what the encrypted copy takes, `freeBytes` the room left (null when unlimited), `cursor` the change-journal position for `replace`. `problems` (empty when it may go ahead): `ROOT`, `IN_VAULT` (a vault or inside one), `CONTAINS_VAULT`, `SHARED` (members on it, on anything in it or on a folder above), `PUBLIC_LINK` (a live link, likewise), `QUOTA` (`freeBytes < vaultBytes`) |
+| POST | `/:id/replace` | `{ folderId, cursor }` | After the client has uploaded the folder's files encrypted into vault `:id`: in one transaction the folder goes to the trash and the vault folder takes its name and parent. `{ folder, trashedId }`. `409 VAULT_SOURCE_CHANGED` when anything below the folder changed after `cursor` (check again and upload what changed), `409 VAULT_CONVERT_REFUSED` when a problem other than `QUOTA` appeared, `409 VAULT_BOUNDARY` when the vault sits inside the folder, `400 INVALID_CURSOR` |
 
 `salt` is 16 bytes and `wrappedKey` 60 bytes (standard base64), `iterations`
 an integer from 600 000 to 10 000 000; anything else is `400
@@ -682,6 +698,13 @@ ETAG_MISMATCH` if the file changed meanwhile).
 5. `DELETE /api/uploads/:id` cancels. An upload expires 24 h after its last part arrived (or after it was created, before any part).
    A part still arriving when its upload is cancelled answers
    `404 UPLOAD_NOT_FOUND` and is discarded.
+
+**Retries** — with `conflict=rename` and a declared SHA-256 (the header, or
+`sha256` of a resumable upload), a file of the same name with that very
+content is taken as this upload sent again after its answer was lost: the
+answer is that file (`201`), nothing is stored twice and no `name (1)`
+appears. Other content under the name, or no declared hash, still gets a
+free name.
 
 **Already there?** — `POST /api/uploads/check` `{ parentId, sha256, size }`
 → `{ exists }`: whether a live file with that content (SHA-256, any case,

@@ -41,7 +41,13 @@ class _Server implements CameraTarget {
   Future<bool> contains(String folderId, String sha256, int size) async => false;
 
   @override
-  Future<void> upload(String folderId, CameraFile file, {required String sha256}) async {
+  Future<void> upload(
+    String folderId,
+    CameraFile file, {
+    required String sha256,
+    String? resumeId,
+    Future<void> Function(String uploadId)? onResumable,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 5));
     uploads.add(file.name);
   }

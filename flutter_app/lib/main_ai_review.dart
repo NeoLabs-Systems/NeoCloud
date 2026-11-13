@@ -1,9 +1,11 @@
 part of 'main.dart';
 
 // Files › Review: the AI suggestions waiting for a decision, one tab per
-// kind (names, folders, tags). High-confidence ones can be accepted in one
-// go, low-confidence ones stay hidden until asked for, and rule proposals
-// ("Always move these here?") lead the page. Each AI tab can also be
+// kind (names, folders, tags). The high-confidence ones of the open tab can
+// be accepted in one go (never moves into new folders: the server keeps
+// those below high), low-confidence ones stay hidden until asked for, and
+// rule proposals ("Always move these here?") lead the page, after the
+// banner for empty folders AI left behind (main_ai_cleanup.dart). Each AI tab can also be
 // accepted or rejected as a whole from the ⋯ menu. The Duplicates tab
 // (main_ai_duplicates.dart) needs no AI and is the whole page while AI is
 // off. On phones it is the same page in the phone frame; editing opens
@@ -42,6 +44,7 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
   bool _bulkBusy = false;
   AiSuggestionCounts? _seenCounts;
   int _generation = 0;
+  int _cleanupToken = 0;
 
   @override
   NeoCloudController get _controller => widget.controller;
@@ -83,6 +86,8 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
   Future<void> _load({bool quiet = false}) async {
     if (_onDuplicates) return _loadDuplicates(quiet: quiet);
     final generation = ++_generation;
+    // The banner reads its lists again on the rebuild that follows.
+    _cleanupToken += 1;
     if (!quiet) {
       setState(() {
         _items = null;
@@ -183,10 +188,11 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
     await _decide(suggestion, () => _acceptAiSuggestion(context, _controller, suggestion, value: edited.$1, valueLabel: edited.$2));
   }
 
-  /// Every pending high-confidence suggestion, after a confirmation. Undo
-  /// puts back all of them that are still as AI left them.
+  /// Every pending high-confidence suggestion of the open tab, after a
+  /// confirmation. Undo puts back all of them that are still as AI left them.
   Future<void> _acceptAllHigh() async {
-    final count = _review.counts.high;
+    final kind = _kind;
+    final count = _review.counts.highOfKind(kind);
     if (count == 0 || _acceptingHigh) return;
     final confirmed = await showAdaptiveSheet<bool>(
       context: context,
@@ -206,8 +212,8 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
       _note = null;
     });
     try {
-      final ids = await _pendingHighIds();
-      final result = await _controller.ai.acceptHigh();
+      final ids = await _pendingHighIds(kind);
+      final result = await _controller.ai.acceptHigh(kind: kind);
       final accepted = ids.where((id) => !result.failed.containsKey(id)).toList();
       _controller.notifyFilesChanged();
       if (result.accepted > 0) {
@@ -226,12 +232,12 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
     if (mounted) await _load(quiet: true);
   }
 
-  /// The ids accept-high will take, so Undo can name them.
-  Future<List<String>> _pendingHighIds() async {
+  /// The ids accept-high will take on the tab of [kind], so Undo can name them.
+  Future<List<String>> _pendingHighIds(String kind) async {
     final ids = <String>[];
     int? offset = 0;
     while (offset != null && ids.length < 1000) {
-      final page = await _controller.ai.suggestions(tier: 'high', limit: 200, offset: offset);
+      final page = await _controller.ai.suggestions(kind: kind, tier: 'high', limit: 200, offset: offset);
       ids.addAll(page.items.map((item) => item.id));
       offset = page.nextOffset;
     }
@@ -348,18 +354,19 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
   /// Accept all / Reject all for the active tab.
   Widget? _aiActions(AiSuggestionCounts counts) {
     final hasItems = (_items ?? const <AiSuggestion>[]).isNotEmpty;
-    if (counts.high == 0 && !hasItems) return null;
+    final high = counts.highOfKind(_kind);
+    if (high == 0 && !hasItems) return null;
     final busy = _acceptingHigh || _bulkBusy;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        if (counts.high > 0)
+        if (high > 0)
           FilledButton.icon(
             onPressed: busy ? null : () => unawaited(_acceptAllHigh()),
             icon: _acceptingHigh
                 ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _onAccent))
                 : const Icon(Icons.done_all_rounded, size: 18),
-            label: Text(appStrings.aiAcceptHigh(counts.high)),
+            label: Text(appStrings.aiAcceptHigh(high)),
           ),
         if (hasItems) ...<Widget>[
           const SizedBox(width: 6),
@@ -429,6 +436,7 @@ class _AiReviewPageState extends State<AiReviewPage> with _ReviewDuplicates {
           subtitle: appStrings.aiReviewSubtitle,
           trailing: _aiActions(counts),
         ),
+        AiCleanupBanner(controller: _controller, refreshToken: _cleanupToken),
         for (final proposal in _proposals)
           _AiRuleProposalCard(
             proposal: proposal,

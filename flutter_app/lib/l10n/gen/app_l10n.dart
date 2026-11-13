@@ -3493,6 +3493,264 @@ abstract class AppL10n {
   /// **'Unlocking…'**
   String get vaultUnlocking;
 
+  /// No description provided for @vaultConvertAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert to vault…'**
+  String get vaultConvertAction;
+
+  /// No description provided for @vaultConvertResumeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue converting to vault…'**
+  String get vaultConvertResumeAction;
+
+  /// No description provided for @vaultConvertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert “{name}” to a vault'**
+  String vaultConvertTitle(String name);
+
+  /// No description provided for @vaultConvertIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in this folder is encrypted on this device and copied into a new vault that only you can open.'**
+  String get vaultConvertIntro;
+
+  /// No description provided for @vaultConvertStepCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Each file is downloaded, encrypted here and uploaded again. Large folders can take a while; you can stop and continue later.'**
+  String get vaultConvertStepCopy;
+
+  /// No description provided for @vaultConvertStepPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'You choose a passphrase and get a recovery key. Without one of them nobody can open these files again, not even NeoCloud.'**
+  String get vaultConvertStepPassphrase;
+
+  /// No description provided for @vaultConvertStepTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Only when every file is safely in the vault does the original folder go to the trash. Delete it from there for full protection.'**
+  String get vaultConvertStepTrash;
+
+  /// No description provided for @vaultConvertSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{files, plural, =0{No files} =1{1 file} other{{files} files}} · {size}'**
+  String vaultConvertSummary(int files, String size);
+
+  /// No description provided for @vaultConvertTrashSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Until you empty the trash, the originals still count towards your storage.'**
+  String get vaultConvertTrashSpace;
+
+  /// No description provided for @vaultConvertNoSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'There isn’t enough space for the encrypted copy: it needs {needed}, {free} is free. Free up space or ask for more storage.'**
+  String vaultConvertNoSpace(String needed, String free);
+
+  /// No description provided for @vaultConvertStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose passphrase'**
+  String get vaultConvertStart;
+
+  /// No description provided for @vaultConvertRefusedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder can’t become a vault'**
+  String get vaultConvertRefusedTitle;
+
+  /// No description provided for @vaultConvertProblemShared.
+  ///
+  /// In en, this message translates to:
+  /// **'It’s shared with other people, who would lose access. Stop sharing it first.'**
+  String get vaultConvertProblemShared;
+
+  /// No description provided for @vaultConvertProblemLink.
+  ///
+  /// In en, this message translates to:
+  /// **'It, or something in it, has a public link. Remove the link first.'**
+  String get vaultConvertProblemLink;
+
+  /// No description provided for @vaultConvertProblemContainsVault.
+  ///
+  /// In en, this message translates to:
+  /// **'It already contains a vault, and vaults can’t be inside other vaults.'**
+  String get vaultConvertProblemContainsVault;
+
+  /// No description provided for @vaultConvertProblemInVault.
+  ///
+  /// In en, this message translates to:
+  /// **'It’s already in a vault.'**
+  String get vaultConvertProblemInVault;
+
+  /// No description provided for @vaultConvertProblemOther.
+  ///
+  /// In en, this message translates to:
+  /// **'It can’t be converted right now.'**
+  String get vaultConvertProblemOther;
+
+  /// No description provided for @vaultConvertProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Converting “{name}”'**
+  String vaultConvertProgressTitle(String name);
+
+  /// No description provided for @vaultConvertProgressFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} files'**
+  String vaultConvertProgressFiles(int done, int total);
+
+  /// No description provided for @vaultConvertProgressBytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total}'**
+  String vaultConvertProgressBytes(String done, String total);
+
+  /// No description provided for @vaultConvertFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking and finishing…'**
+  String get vaultConvertFinishing;
+
+  /// No description provided for @vaultConvertKeepOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this open until it’s done. If the app closes, choose Convert to vault… on the folder again to continue.'**
+  String get vaultConvertKeepOpen;
+
+  /// No description provided for @vaultConvertStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get vaultConvertStop;
+
+  /// No description provided for @vaultConvertDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is now a vault'**
+  String vaultConvertDoneTitle(String name);
+
+  /// No description provided for @vaultConvertDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The original files are in the trash. Until you delete them there, they can still be opened without the passphrase.'**
+  String get vaultConvertDoneBody;
+
+  /// No description provided for @vaultConvertDoneSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file that couldn’t be copied is} other{{count} files that couldn’t be copied are}} in the trash with the originals.'**
+  String vaultConvertDoneSkipped(int count);
+
+  /// No description provided for @vaultConvertOpenVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Open vault'**
+  String get vaultConvertOpenVault;
+
+  /// No description provided for @vaultConvertStoppedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversion paused'**
+  String get vaultConvertStoppedTitle;
+
+  /// No description provided for @vaultConvertStoppedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your original folder hasn’t changed. The partly filled vault stays next to it; choose Convert to vault… on the folder to continue, or delete the vault.'**
+  String get vaultConvertStoppedBody;
+
+  /// No description provided for @vaultConvertOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection was lost. Your original folder hasn’t changed; continue when you’re back online.'**
+  String get vaultConvertOffline;
+
+  /// No description provided for @vaultConvertQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'Your storage is full. Your original folder hasn’t changed; free up space, then continue.'**
+  String get vaultConvertQuota;
+
+  /// No description provided for @vaultConvertChanging.
+  ///
+  /// In en, this message translates to:
+  /// **'Files in the folder keep changing. Wait until they’re done, then continue.'**
+  String get vaultConvertChanging;
+
+  /// No description provided for @vaultConvertVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'A file didn’t read back correctly from the vault, so the originals stay where they are. Try again; if it happens again, delete the vault.'**
+  String get vaultConvertVerifyFailed;
+
+  /// No description provided for @vaultConvertError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong: {error}. Your original folder hasn’t changed.'**
+  String vaultConvertError(String error);
+
+  /// No description provided for @vaultConvertFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some files couldn’t be copied'**
+  String get vaultConvertFailedTitle;
+
+  /// No description provided for @vaultConvertFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file couldn’t be copied} other{{count} files couldn’t be copied}}; everything else is in the vault. Try again, or finish without them: they go to the trash with the other originals.'**
+  String vaultConvertFailedBody(int count);
+
+  /// No description provided for @vaultConvertRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get vaultConvertRetry;
+
+  /// No description provided for @vaultConvertFinishAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish without them'**
+  String get vaultConvertFinishAnyway;
+
+  /// No description provided for @vaultConvertContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get vaultConvertContinue;
+
+  /// No description provided for @vaultConvertLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get vaultConvertLater;
+
+  /// No description provided for @vaultConvertResumeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Converting this folder was started earlier. Enter the vault’s passphrase to continue.'**
+  String get vaultConvertResumeIntro;
+
+  /// No description provided for @vaultConvertForget.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over'**
+  String get vaultConvertForget;
+
+  /// No description provided for @vaultConvertForgetNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting over leaves the partly filled vault in place; delete it yourself if you don’t need it.'**
+  String get vaultConvertForgetNote;
+
   /// No description provided for @securityChecklistTitle.
   ///
   /// In en, this message translates to:
@@ -4572,6 +4830,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Pause'**
   String get backgroundNotificationPause;
+
+  /// No description provided for @backgroundNotificationChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for new photos'**
+  String get backgroundNotificationChecking;
 
   /// No description provided for @backgroundCameraPaused.
   ///
@@ -7780,7 +8044,7 @@ abstract class AppL10n {
   /// No description provided for @aiFeatureAutoApplyDescription.
   ///
   /// In en, this message translates to:
-  /// **'Otherwise every suggestion waits for you. Each applied change can be undone.'**
+  /// **'Otherwise every suggestion waits for you. Never creates folders. Each applied change can be undone.'**
   String get aiFeatureAutoApplyDescription;
 
   /// No description provided for @aiUsageFeatures.
@@ -7918,7 +8182,7 @@ abstract class AppL10n {
   /// No description provided for @aiAcceptHighBody.
   ///
   /// In en, this message translates to:
-  /// **'Names, folders and tags across all tabs are applied at once. You can undo them right after.'**
+  /// **'The high-confidence suggestions on this tab are applied at once. Moves into new folders always wait for you. You can undo them right after.'**
   String get aiAcceptHighBody;
 
   /// No description provided for @aiAcceptHighFailed.
@@ -8040,6 +8304,138 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'new folder'**
   String get aiNewFolder;
+
+  /// No description provided for @aiCleanupBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 empty folder created by AI} other{{count} empty folders created by AI}}'**
+  String aiCleanupBanner(int count);
+
+  /// No description provided for @aiCleanupRecentBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 empty folder from the last 7 days} other{{count} empty folders from the last 7 days}}'**
+  String aiCleanupRecentBanner(int count);
+
+  /// No description provided for @aiCleanupRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get aiCleanupRemove;
+
+  /// No description provided for @aiCleanupRecentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove empty folders'**
+  String get aiCleanupRecentAction;
+
+  /// No description provided for @aiCleanupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove empty folders?'**
+  String get aiCleanupTitle;
+
+  /// No description provided for @aiCleanupBodyAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI created these folders and they are empty now. They go to the trash.'**
+  String get aiCleanupBodyAi;
+
+  /// No description provided for @aiCleanupBodyRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'These empty folders at the top level were created in the last 7 days. Choose the ones to remove; they go to the trash.'**
+  String get aiCleanupBodyRecent;
+
+  /// No description provided for @aiCleanupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 folder moved to the trash} other{{count} folders moved to the trash}}'**
+  String aiCleanupDone(int count);
+
+  /// No description provided for @aiFileTypesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File types'**
+  String get aiFileTypesTitle;
+
+  /// No description provided for @aiFileTypesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'AI leaves files of the types you switch off alone: no names, tags, folders or summaries.'**
+  String get aiFileTypesDescription;
+
+  /// No description provided for @aiFileTypesChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose formats'**
+  String get aiFileTypesChoose;
+
+  /// No description provided for @aiFileTypesSome.
+  ///
+  /// In en, this message translates to:
+  /// **'{on} of {total} formats'**
+  String aiFileTypesSome(int on, int total);
+
+  /// No description provided for @aiFileTypeImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get aiFileTypeImages;
+
+  /// No description provided for @aiFileTypeVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Videos'**
+  String get aiFileTypeVideos;
+
+  /// No description provided for @aiFileTypeDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents'**
+  String get aiFileTypeDocuments;
+
+  /// No description provided for @aiFileTypeSpreadsheets.
+  ///
+  /// In en, this message translates to:
+  /// **'Spreadsheets'**
+  String get aiFileTypeSpreadsheets;
+
+  /// No description provided for @aiFileTypePresentations.
+  ///
+  /// In en, this message translates to:
+  /// **'Presentations'**
+  String get aiFileTypePresentations;
+
+  /// No description provided for @aiFileTypeArchives.
+  ///
+  /// In en, this message translates to:
+  /// **'Archives'**
+  String get aiFileTypeArchives;
+
+  /// No description provided for @aiFileTypeAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get aiFileTypeAudio;
+
+  /// No description provided for @aiFileTypeCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get aiFileTypeCode;
+
+  /// No description provided for @aiFileTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get aiFileTypeOther;
+
+  /// No description provided for @aiFileTypeOtherDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Every format not listed above'**
+  String get aiFileTypeOtherDescription;
 
   /// No description provided for @aiShowLow.
   ///
@@ -8530,7 +8926,7 @@ abstract class AppL10n {
   /// No description provided for @aiFeatureNewFoldersDescription.
   ///
   /// In en, this message translates to:
-  /// **'Lets AI propose a folder that doesn’t exist yet; it is created when you accept.'**
+  /// **'Lets AI propose a folder that doesn’t exist yet when at least three files belong in it. It is created only when you accept.'**
   String get aiFeatureNewFoldersDescription;
 
   /// No description provided for @aiReviewSettingsLabel.

@@ -6,29 +6,31 @@ part of 'main.dart';
 
 /// Creates a vault folder in [parentId] in three steps: name and
 /// passphrase, recovery key, check of three recovery words. Resolves to the
-/// new folder, already unlocked.
-Future<FileNode?> showNewVaultDialog(BuildContext context, NeoCloudController controller, {required String parentId}) {
+/// new folder, already unlocked. With [presetName] (converting a folder) the
+/// name isn't asked for and a free variant of it is taken.
+Future<FileNode?> showNewVaultDialog(BuildContext context, NeoCloudController controller, {required String parentId, String? presetName}) {
   return showAdaptiveSheet<FileNode>(
     context: context,
     dismissible: false,
-    builder: (_) => _NewVaultDialog(controller: controller, parentId: parentId),
+    builder: (_) => _NewVaultDialog(controller: controller, parentId: parentId, presetName: presetName),
   );
 }
 
 enum _NewVaultStep { details, recovery, confirm }
 
 class _NewVaultDialog extends StatefulWidget {
-  const _NewVaultDialog({required this.controller, required this.parentId});
+  const _NewVaultDialog({required this.controller, required this.parentId, this.presetName});
 
   final NeoCloudController controller;
   final String parentId;
+  final String? presetName;
 
   @override
   State<_NewVaultDialog> createState() => _NewVaultDialogState();
 }
 
 class _NewVaultDialogState extends State<_NewVaultDialog> {
-  final TextEditingController _name = TextEditingController();
+  late final TextEditingController _name = TextEditingController(text: widget.presetName ?? '');
   final _PassphraseDraft _passphrase = _PassphraseDraft();
   final Uint8List _key = newVaultKey();
   late final List<String> _words = encodeRecoveryWords(_key);
@@ -103,6 +105,7 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
         name: _name.text.trim(),
         passphrase: _passphrase.passphrase.text,
         key: _key,
+        conflict: widget.presetName == null ? null : 'rename',
       );
       widget.controller.notifyFilesChanged();
       if (mounted) Navigator.of(context).pop(folder);
@@ -120,13 +123,15 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
     return <Widget>[
       Text(appStrings.vaultIntro, style: TextStyle(color: _textSecondary, height: 1.45)),
       const SizedBox(height: AppSpacing.md),
-      TextField(
-        controller: _name,
-        autofocus: true,
-        enabled: !_busy,
-        decoration: InputDecoration(labelText: appStrings.folderName),
-      ),
-      const SizedBox(height: AppSpacing.sm),
+      if (widget.presetName == null) ...<Widget>[
+        TextField(
+          controller: _name,
+          autofocus: true,
+          enabled: !_busy,
+          decoration: InputDecoration(labelText: appStrings.folderName),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+      ],
       _PassphraseFields(draft: _passphrase, enabled: !_busy),
       const SizedBox(height: AppSpacing.md),
       _InlineNote(message: appStrings.vaultWarningCallout, icon: Icons.warning_amber_rounded, color: _warning),
@@ -187,7 +192,7 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(appStrings.newVault),
+          Text(widget.presetName == null ? appStrings.newVault : appStrings.vaultConvertTitle(widget.presetName!)),
           const SizedBox(height: 4),
           Text(stepLabel, style: TextStyle(color: _textMuted, fontSize: 12.5, fontWeight: FontWeight.w500)),
         ],

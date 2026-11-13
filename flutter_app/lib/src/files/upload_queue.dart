@@ -64,7 +64,7 @@ class UploadConflict {
 }
 
 class UploadTask {
-  UploadTask({required this.source, required this.parentId, this.cipher, this.resumeUploadId, this.hidden = false});
+  UploadTask({required this.source, required this.parentId, this.cipher, this.resumeUploadId, this.hidden = false, this.onSession});
 
   final UploadSource source;
   final String parentId;
@@ -81,6 +81,14 @@ class UploadTask {
 
   /// The resumable upload in progress, if the file goes in parts.
   String? uploadId;
+
+  /// Told the id of a new resumable upload, so the caller can keep it and
+  /// resume it later ([resumeUploadId]). Such an upload cut off by a lost
+  /// connection is left on the server instead of cancelled.
+  final Future<void> Function(String uploadId)? onSession;
+
+  /// What made the upload fail.
+  Object? failure;
 
   /// Where the file actually lands: [parentId], or the folder made for
   /// [UploadSource.folder] inside it.
@@ -189,8 +197,10 @@ class UploadQueue extends ChangeNotifier {
   /// Sends one file now, outside the visible list, and resolves when it is
   /// done or failed. Name clashes follow [defaultConflict] (camera uploads
   /// use "rename").
-  Future<UploadTask> send(String parentId, UploadSource source) async {
-    final task = UploadTask(source: source, parentId: parentId, hidden: true)..status = UploadStatus.uploading;
+  /// [resumeUploadId] and [onSession]: see [UploadTask].
+  Future<UploadTask> send(String parentId, UploadSource source, {String? resumeUploadId, Future<void> Function(String uploadId)? onSession}) async {
+    final task = UploadTask(source: source, parentId: parentId, hidden: true, resumeUploadId: resumeUploadId, onSession: onSession)
+      ..status = UploadStatus.uploading;
     await _run(task);
     return task;
   }
@@ -379,6 +389,7 @@ class UploadQueue extends ChangeNotifier {
     } catch (error) {
       task
         ..status = UploadStatus.failed
+        ..failure = error
         ..error = error is ApiException && error.message.isNotEmpty && !error.message.startsWith('HTTP ') ? error.message : null;
     } finally {
       task.waitingForConnection = false;
@@ -449,6 +460,7 @@ class UploadQueue extends ChangeNotifier {
     if (resumeId != null) {
       try {
         final status = await client.uploadStatus(resumeId);
+        if ((status['size'] as num?)?.toInt() != size) throw StateError('Another file');
         final received = <int>{
           for (final part in (status['receivedParts'] as List?) ?? const <Object?>[])
             if (part is num) part.toInt(),
@@ -458,7 +470,9 @@ class UploadQueue extends ChangeNotifier {
         // Expired or gone: start over.
       }
     }
-    return (await _retrying(task, () => client.createUpload(task.targetId!, name, size, conflict: mode, sha256: sha256)), <int>{});
+    final created = await _retrying(task, () => client.createUpload(task.targetId!, name, size, conflict: mode, sha256: sha256));
+    await task.onSession?.call(created['id'].toString());
+    return (created, <int>{});
   }
 
   /// Reads the file once, cutting it into the server's part size, and sends
@@ -501,7 +515,10 @@ class UploadQueue extends ChangeNotifier {
     } on _Cancelled {
       rethrow;
     } catch (error) {
-      unawaited(client.cancelUpload(uploadId).catchError((Object _) {}));
+      // Kept for its owner to resume when only the connection was lost.
+      if (task.onSession == null || error is! ApiException || !_transient(error)) {
+        unawaited(client.cancelUpload(uploadId).catchError((Object _) {}));
+      }
       task.uploadId = null;
       rethrow;
     }

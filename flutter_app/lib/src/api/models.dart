@@ -284,6 +284,7 @@ class UserSettings {
     this.aiModels = const <String, String>{},
     this.aiFeatures = const <String, bool>{},
     this.aiNamingTemplate = '',
+    this.aiSkipTypes = const AiSkipTypes(),
     this.folderViews = const <String, Object?>{},
   });
 
@@ -303,6 +304,7 @@ class UserSettings {
     },
     aiFeatures: _aiFeatures(json['ai_features']),
     aiNamingTemplate: _string(json['ai_naming_template']),
+    aiSkipTypes: AiSkipTypes.fromJson(json['ai_skip_types']),
     folderViews: json['folder_views'] is Map ? (json['folder_views'] as Map).cast<String, Object?>() : const <String, Object?>{},
   );
 
@@ -336,6 +338,9 @@ class UserSettings {
   /// How suggested names are built (`ai_naming_template`); empty for the
   /// server's default.
   final String aiNamingTemplate;
+
+  /// The file types every AI feature leaves alone (`ai_skip_types`).
+  final AiSkipTypes aiSkipTypes;
 
   /// Sort and view per folder and page (`folder_views`), as stored; read
   /// through [FolderViews] (src/files/folder_views.dart).
@@ -565,6 +570,49 @@ class VaultKeyInfo {
   final String salt;
   final int iterations;
   final String wrappedKey;
+}
+
+/// Whether a folder can become a vault (`GET /api/vaults/conversions/:id`):
+/// what is in it, the room an encrypted copy needs, and [problems] that rule
+/// it out (ROOT, IN_VAULT, CONTAINS_VAULT, SHARED, PUBLIC_LINK, QUOTA).
+class VaultConversionCheck {
+  const VaultConversionCheck({
+    required this.folderId,
+    required this.name,
+    required this.files,
+    required this.folders,
+    required this.bytes,
+    required this.vaultBytes,
+    required this.freeBytes,
+    required this.cursor,
+    required this.problems,
+  });
+
+  factory VaultConversionCheck.fromJson(Map<String, dynamic> json) => VaultConversionCheck(
+    folderId: _string(json['folderId']),
+    name: _string(json['name']),
+    files: _int(json['files']),
+    folders: _int(json['folders']),
+    bytes: _int(json['bytes']),
+    vaultBytes: _int(json['vaultBytes']),
+    freeBytes: json['freeBytes'] == null ? null : _int(json['freeBytes']),
+    cursor: _int(json['cursor']),
+    problems: _strings(json['problems']),
+  );
+
+  final String folderId;
+  final String name;
+  final int files;
+  final int folders;
+  final int bytes;
+  final int vaultBytes;
+
+  /// Null when the account has no limit.
+  final int? freeBytes;
+
+  /// The change-journal position to hand to the replace step.
+  final int cursor;
+  final List<String> problems;
 }
 
 /// A device waiting for the account's approval (docs/clients.md §1).

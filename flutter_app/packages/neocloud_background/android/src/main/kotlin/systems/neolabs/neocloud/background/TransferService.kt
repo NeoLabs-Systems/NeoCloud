@@ -1,9 +1,5 @@
 package systems.neolabs.neocloud.background
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -14,10 +10,10 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Keeps the app process, and with it the Flutter engine running the upload,
@@ -28,7 +24,9 @@ import io.flutter.plugin.common.MethodChannel
  *
  * It is a data sync service. Android 15 allows those six hours a day; when
  * they run out, [onTimeout] asks the owners to stop (camera upload saves
- * its ledger and resumes on the next trigger) and the service ends.
+ * its ledger and books a continuation, which goes on as ordinary background
+ * work) and the service ends. Background passes don't use it: they run in a
+ * [CameraUploadWorker], which shows the same notification.
  */
 class TransferService : Service() {
 
@@ -45,11 +43,7 @@ class TransferService : Service() {
     companion object {
         private const val TAG = "NeoCloudTransfer"
 
-        // Low importance: no sound or peek, but the progress shows in the
-        // shade and the status bar.
-        private const val NOTIFICATION_CHANNEL_ID = "neocloud_transfers"
-        private const val NOTIFICATION_ID = 5106
-        private const val ACTION_PAUSE = "systems.neolabs.neocloud.background.PAUSE"
+        const val ACTION_PAUSE = "systems.neolabs.neocloud.background.PAUSE"
 
         // Renewed with every progress update; a stuck engine can't hold the
         // CPU awake for longer than this.
@@ -63,6 +57,23 @@ class TransferService : Service() {
 
         @Volatile
         private var instance: TransferService? = null
+
+        /**
+         * [CameraUploadWorker]s running as a foreground service of their own
+         * (WorkManager's) with this service's notification: owners in their
+         * engines [join] instead of starting this service.
+         */
+        private val foregroundWorkers = AtomicInteger()
+
+        val workerForeground: Boolean get() = foregroundWorkers.get() > 0
+
+        fun workerForegroundStarted() {
+            foregroundWorkers.incrementAndGet()
+        }
+
+        fun workerForegroundEnded() {
+            foregroundWorkers.decrementAndGet()
+        }
 
         /** False when Android refused to start the service from the background. */
         fun start(context: Context, owner: String, channel: MethodChannel, next: Progress): Boolean {
@@ -84,9 +95,21 @@ class TransferService : Service() {
             }
         }
 
-        fun update(next: Progress) {
+        /** An owner in a [CameraUploadWorker]'s engine: shown by the worker, paused through here. */
+        fun join(context: Context, owner: String, channel: MethodChannel, next: Progress) {
+            synchronized(owners) { owners[owner] = channel }
             progress = next
-            instance?.refresh()
+            if (workerForeground) TransferNotification.show(context, next)
+        }
+
+        fun update(context: Context, next: Progress) {
+            progress = next
+            val running = instance
+            if (running != null) {
+                running.refresh()
+            } else if (workerForeground) {
+                TransferNotification.show(context, next)
+            }
         }
 
         fun stop(context: Context, owner: String) {
@@ -120,7 +143,7 @@ class TransferService : Service() {
         }
         instance = this
         try {
-            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), serviceType())
+            ServiceCompat.startForeground(this, TransferNotification.ID, TransferNotification.build(this, progress), serviceType())
         } catch (error: Exception) {
             Log.w(TAG, "Foreground service refused", error)
             synchronized(owners) { owners.clear() }
@@ -153,7 +176,7 @@ class TransferService : Service() {
 
     fun refresh() {
         holdWakeLock()
-        getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification())
+        TransferNotification.show(this, progress)
     }
 
     /** Tells every owner to stop and ends the service right away, as Android requires on a timeout. */
@@ -187,43 +210,4 @@ class TransferService : Service() {
 
     private fun serviceType(): Int =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
-
-    private fun buildNotification(): Notification {
-        val current = progress
-        val manager = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager != null) {
-            manager.createNotificationChannel(
-                NotificationChannel(NOTIFICATION_CHANNEL_ID, current.channelName, NotificationManager.IMPORTANCE_LOW).apply {
-                    setShowBadge(false)
-                    setSound(null, null)
-                    enableVibration(false)
-                },
-            )
-        }
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
-            ?.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        val open = launch?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        }
-        val pause = PendingIntent.getService(
-            this,
-            1,
-            Intent(this, TransferService::class.java).setAction(ACTION_PAUSE),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.neocloud_stat_upload)
-            .setContentTitle(current.title)
-            .setContentText(current.body)
-            .setContentIntent(open)
-            .setProgress(current.total, current.current, current.total <= 0)
-            .addAction(0, current.pauseLabel, pause)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
-    }
 }

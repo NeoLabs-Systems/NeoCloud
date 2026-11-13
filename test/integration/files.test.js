@@ -193,6 +193,42 @@ test('a damaged single upload is rejected by checksum', async () => {
   assert.equal(res.body.code, 'CHECKSUM_MISMATCH');
 });
 
+test('a retried upload of the same content (answer lost) never leaves "name (1)"', async () => {
+  const folder = await owner.agent.post('/api/folders').send({ name: 'Retry' }).expect(201);
+  const content = Buffer.from('IMG_0042 bytes');
+  const hash = crypto.createHash('sha256').update(content).digest('hex');
+  const send = (body, sha256 = hash) => owner.agent
+    .put(`/api/upload?parentId=${folder.body.id}&name=IMG_0042.jpg&conflict=rename`)
+    .set('Content-Type', 'application/octet-stream')
+    .set('X-Content-SHA256', sha256)
+    .send(body);
+  const first = await send(content).expect(201);
+  const usage = async () => (await owner.agent.get('/api/account/usage').expect(200)).body.usedBytes;
+  const used = await usage();
+  const again = await send(content).expect(201);
+  assert.equal(again.body.id, first.body.id);
+  assert.equal(await usage(), used);
+
+  // The same through a resumable upload.
+  const session = await owner.agent.post('/api/uploads')
+    .send({ parentId: folder.body.id, name: 'IMG_0042.jpg', size: content.length, conflict: 'rename', sha256: hash })
+    .expect(201);
+  await owner.agent.put(`/api/uploads/${session.body.id}/parts/0`).set('Content-Type', 'application/octet-stream').send(content).expect(200);
+  const resumed = await owner.agent.post(`/api/uploads/${session.body.id}/complete`).send({}).expect(201);
+  assert.equal(resumed.body.id, first.body.id);
+  await owner.agent.get(`/api/uploads/${session.body.id}`).expect(404);
+
+  // Other content under that name still gets a free name; so does the same
+  // content when the client declared no hash (an explicit "keep both").
+  const other = Buffer.from('IMG_0042 edited');
+  const otherHash = crypto.createHash('sha256').update(other).digest('hex');
+  assert.equal((await send(other, otherHash).expect(201)).body.name, 'IMG_0042 (1).jpg');
+  const kept = await upload(owner.agent, 'IMG_0042.jpg', content, { parentId: folder.body.id, conflict: 'rename' }).expect(201);
+  assert.equal(kept.body.name, 'IMG_0042 (2).jpg');
+  const names = (await owner.agent.get(`/api/folders/${folder.body.id}/children`).expect(200)).body.items.map((item) => item.name).sort();
+  assert.deepEqual(names, ['IMG_0042 (1).jpg', 'IMG_0042 (2).jpg', 'IMG_0042.jpg']);
+});
+
 test('uploads/check finds content in the folder or below it, never in the trash or elsewhere', async () => {
   const photos = await owner.agent.post('/api/folders').send({ name: 'Kamera' }).expect(201);
   const sorted = await owner.agent.post('/api/folders').send({ parentId: photos.body.id, path: '2026/Urlaub' }).expect(201);

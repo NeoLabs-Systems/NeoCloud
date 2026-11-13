@@ -1,6 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- The transfer service: a data sync foreground service with a partial
-         wakelock, only while files are being uploaded. -->
+         wakelock, only while files are being uploaded from the app. Background
+         passes (CameraUploadWorker) run in WorkManager's foreground service,
+         also as data sync. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -18,6 +21,12 @@
             android:name=".TransferService"
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
+        <!-- CameraUploadWorker's setForeground: Android 14+ needs the type
+             declared on WorkManager's service. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge"/>
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

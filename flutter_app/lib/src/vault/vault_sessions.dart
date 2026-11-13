@@ -8,6 +8,7 @@ import '../api/models.dart';
 import '../files/file_format.dart';
 import '../files/upload_queue.dart';
 import '../security/recovery_words.dart';
+import 'vault_conversion.dart';
 import 'vault_keys.dart';
 
 /// A recovery key that is well-formed but opens another vault.
@@ -24,6 +25,8 @@ class VaultSessions extends ChangeNotifier {
 
   final BackendClient _client;
   final Map<String, VaultCrypto> _keys = <String, VaultCrypto>{};
+  // The raw keys behind [_keys], for streamed content (folder conversion).
+  final Map<String, Uint8List> _rawKeys = <String, Uint8List>{};
   final Map<String, Future<VaultKeyInfo>> _info = <String, Future<VaultKeyInfo>>{};
   final Map<String, String> _names = <String, String>{};
 
@@ -47,6 +50,7 @@ class VaultSessions extends ChangeNotifier {
     final key = await _rawKey(vaultId, passphrase);
     if (key == null) return false;
     _keys[vaultId] = await vaultCryptoFromKey(key);
+    _rawKeys[vaultId] = key;
     notifyListeners();
     final info = await this.info(vaultId);
     if (info.iterations < vaultIterations) unawaited(_rewrap(vaultId, key, passphrase).catchError((Object _) {}));
@@ -90,23 +94,33 @@ class VaultSessions extends ChangeNotifier {
     }
     await _rewrap(vaultId, key, newPassphrase);
     _keys[vaultId] = crypto;
+    _rawKeys[vaultId] = Uint8List.fromList(key);
     notifyListeners();
   }
 
   void lock(String vaultId) {
+    _rawKeys.remove(vaultId);
     if (_keys.remove(vaultId) != null) notifyListeners();
   }
 
   void lockAll() {
     _keys.clear();
+    _rawKeys.clear();
     _info.clear();
     _names.clear();
     notifyListeners();
   }
 
   /// Makes a vault folder under [parentId] for [key] (whose recovery words
-  /// the user already saved) and keeps it unlocked.
-  Future<FileNode> create({required String parentId, required String name, required String passphrase, required List<int> key}) async {
+  /// the user already saved) and keeps it unlocked. [conflict] `rename`
+  /// takes a free name instead of failing on a taken one.
+  Future<FileNode> create({
+    required String parentId,
+    required String name,
+    required String passphrase,
+    required List<int> key,
+    String? conflict,
+  }) async {
     final wrapped = await wrapVaultKey(key, passphrase);
     final folder = await _client.createVault(
       parentId: parentId,
@@ -114,10 +128,12 @@ class VaultSessions extends ChangeNotifier {
       salt: wrapped.salt,
       iterations: wrapped.iterations,
       wrappedKey: wrapped.wrappedKey,
+      conflict: conflict,
     );
     final vaultId = folder.vaultId;
     if (vaultId != null) {
       _keys[vaultId] = await vaultCryptoFromKey(key);
+      _rawKeys[vaultId] = Uint8List.fromList(key);
       notifyListeners();
     }
     return folder;
@@ -175,6 +191,13 @@ class VaultSessions extends ChangeNotifier {
   Future<Uint8List> encrypt(String vaultId, Uint8List plaintext) => _key(vaultId).encryptContent(plaintext);
 
   Future<Uint8List> decrypt(String vaultId, Uint8List data) => _key(vaultId).decryptContent(data);
+
+  /// What converting a folder into this (unlocked) vault needs.
+  VaultConversionCipher conversionCipher(String vaultId) {
+    final key = _rawKeys[vaultId];
+    if (key == null) throw StateError('Vault $vaultId is locked.');
+    return VaultConversionCipher(key);
+  }
 
   /// What the upload queue needs to fill a folder of this vault.
   UploadCipher cipherFor(String vaultId) => _VaultUploadCipher(this, vaultId);

@@ -60,13 +60,15 @@ function getVaultRow(userId, vaultId) {
   return row;
 }
 
-/** A new vault folder. Vaults don't nest. */
-function createVault(userId, { parentId, name, salt, iterations, wrappedKey }) {
+/** A new vault folder. Vaults don't nest. `conflict` is fail or rename. */
+function createVault(userId, { parentId, name, salt, iterations, wrappedKey, conflict }) {
   const params = cleanKeyParams({ salt, iterations, wrappedKey });
+  const mode = conflictMode(conflict);
+  if (mode === 'replace') throw httpError(400, 'conflict must be fail or rename.', 'CONFLICT_MODE_INVALID');
   const result = db.transaction(() => {
     const parent = getLiveNode(userId, parentId, { type: 'folder' });
     if (parent.vault_id) throw vaultBoundary();
-    const { node } = createFolderInTransaction(userId, parent.id, name, conflictMode('fail'));
+    const { node } = createFolderInTransaction(userId, parent.id, name, mode);
     const id = crypto.randomUUID();
     db.prepare(`
       INSERT INTO vaults (id, user_id, folder_id, salt, iterations, wrapped_key) VALUES (?, ?, ?, ?, ?, ?)

@@ -1033,6 +1033,131 @@
   "vaultShowRecoveryIntro": "Enter the vault’s passphrase to see its recovery key.",
   "vaultBanner": "No previews, search or sharing in vaults — by design. Names and contents are encrypted on this device before upload.",
   "vaultUnlocking": "Unlocking…",
+  "vaultConvertAction": "Convert to vault…",
+  "vaultConvertResumeAction": "Continue converting to vault…",
+  "vaultConvertTitle": "Convert “{name}” to a vault",
+  "@vaultConvertTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertIntro": "Everything in this folder is encrypted on this device and copied into a new vault that only you can open.",
+  "vaultConvertStepCopy": "Each file is downloaded, encrypted here and uploaded again. Large folders can take a while; you can stop and continue later.",
+  "vaultConvertStepPassphrase": "You choose a passphrase and get a recovery key. Without one of them nobody can open these files again, not even NeoCloud.",
+  "vaultConvertStepTrash": "Only when every file is safely in the vault does the original folder go to the trash. Delete it from there for full protection.",
+  "vaultConvertSummary": "{files, plural, =0{No files} =1{1 file} other{{files} files}} · {size}",
+  "@vaultConvertSummary": {
+    "placeholders": {
+      "files": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertTrashSpace": "Until you empty the trash, the originals still count towards your storage.",
+  "vaultConvertNoSpace": "There isn’t enough space for the encrypted copy: it needs {needed}, {free} is free. Free up space or ask for more storage.",
+  "@vaultConvertNoSpace": {
+    "placeholders": {
+      "needed": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertStart": "Choose passphrase",
+  "vaultConvertRefusedTitle": "This folder can’t become a vault",
+  "vaultConvertProblemShared": "It’s shared with other people, who would lose access. Stop sharing it first.",
+  "vaultConvertProblemLink": "It, or something in it, has a public link. Remove the link first.",
+  "vaultConvertProblemContainsVault": "It already contains a vault, and vaults can’t be inside other vaults.",
+  "vaultConvertProblemInVault": "It’s already in a vault.",
+  "vaultConvertProblemOther": "It can’t be converted right now.",
+  "vaultConvertProgressTitle": "Converting “{name}”",
+  "@vaultConvertProgressTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertProgressFiles": "{done} of {total} files",
+  "@vaultConvertProgressFiles": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultConvertProgressBytes": "{done} of {total}",
+  "@vaultConvertProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertFinishing": "Checking and finishing…",
+  "vaultConvertKeepOpen": "Keep this open until it’s done. If the app closes, choose Convert to vault… on the folder again to continue.",
+  "vaultConvertStop": "Stop",
+  "vaultConvertDoneTitle": "“{name}” is now a vault",
+  "@vaultConvertDoneTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertDoneBody": "The original files are in the trash. Until you delete them there, they can still be opened without the passphrase.",
+  "vaultConvertDoneSkipped": "{count, plural, =1{1 file that couldn’t be copied is} other{{count} files that couldn’t be copied are}} in the trash with the originals.",
+  "@vaultConvertDoneSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultConvertOpenVault": "Open vault",
+  "vaultConvertStoppedTitle": "Conversion paused",
+  "vaultConvertStoppedBody": "Your original folder hasn’t changed. The partly filled vault stays next to it; choose Convert to vault… on the folder to continue, or delete the vault.",
+  "vaultConvertOffline": "The connection was lost. Your original folder hasn’t changed; continue when you’re back online.",
+  "vaultConvertQuota": "Your storage is full. Your original folder hasn’t changed; free up space, then continue.",
+  "vaultConvertChanging": "Files in the folder keep changing. Wait until they’re done, then continue.",
+  "vaultConvertVerifyFailed": "A file didn’t read back correctly from the vault, so the originals stay where they are. Try again; if it happens again, delete the vault.",
+  "vaultConvertError": "Something went wrong: {error}. Your original folder hasn’t changed.",
+  "@vaultConvertError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultConvertFailedTitle": "Some files couldn’t be copied",
+  "vaultConvertFailedBody": "{count, plural, =1{1 file couldn’t be copied} other{{count} files couldn’t be copied}}; everything else is in the vault. Try again, or finish without them: they go to the trash with the other originals.",
+  "@vaultConvertFailedBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultConvertRetry": "Try again",
+  "vaultConvertFinishAnyway": "Finish without them",
+  "vaultConvertContinue": "Continue",
+  "vaultConvertLater": "Later",
+  "vaultConvertResumeIntro": "Converting this folder was started earlier. Enter the vault’s passphrase to continue.",
+  "vaultConvertForget": "Start over",
+  "vaultConvertForgetNote": "Starting over leaves the partly filled vault in place; delete it yourself if you don’t need it.",
   "securityChecklistTitle": "Make this server recoverable",
   "securityChecklistSubtitle": "Three things that decide whether your files survive a lost disk or server.",
   "securityMasterKeyItem": "Master key exported",
@@ -1506,6 +1631,7 @@
     }
   },
   "backgroundNotificationPause": "Pause",
+  "backgroundNotificationChecking": "Checking for new photos",
   "backgroundCameraPaused": "Paused",
   "backgroundTitle": "Keep backup running",
   "backgroundIntroAndroid": "Camera upload keeps going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.",
@@ -2562,7 +2688,7 @@
   "aiFeatureTags": "Suggest tags",
   "aiFeatureTagsDescription": "Tags from a file’s content, like invoice or contract.",
   "aiFeatureAutoApply": "Apply high-confidence suggestions automatically",
-  "aiFeatureAutoApplyDescription": "Otherwise every suggestion waits for you. Each applied change can be undone.",
+  "aiFeatureAutoApplyDescription": "Otherwise every suggestion waits for you. Never creates folders. Each applied change can be undone.",
   "aiUsageFeatures": "By feature",
   "aiErrorDisabled": "AI features aren't turned on.",
   "aiErrorNotOptedIn": "Turn on AI features in Settings → AI first.",
@@ -2613,7 +2739,7 @@
       }
     }
   },
-  "aiAcceptHighBody": "Names, folders and tags across all tabs are applied at once. You can undo them right after.",
+  "aiAcceptHighBody": "The high-confidence suggestions on this tab are applied at once. Moves into new folders always wait for you. You can undo them right after.",
   "aiAcceptHighFailed": "{count, plural, =1{1 suggestion couldn’t be applied; it stays in the list.} other{{count} suggestions couldn’t be applied; they stay in the list.}}",
   "@aiAcceptHighFailed": {
     "placeholders": {
@@ -2683,6 +2809,59 @@
   },
   "aiSourceRuleHint": "One of your sorting rules matched; no model was asked.",
   "aiNewFolder": "new folder",
+  "aiCleanupBanner": "{count, plural, =1{1 empty folder created by AI} other{{count} empty folders created by AI}}",
+  "@aiCleanupBanner": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiCleanupRecentBanner": "{count, plural, =1{1 empty folder from the last 7 days} other{{count} empty folders from the last 7 days}}",
+  "@aiCleanupRecentBanner": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiCleanupRemove": "Remove",
+  "aiCleanupRecentAction": "Remove empty folders",
+  "aiCleanupTitle": "Remove empty folders?",
+  "aiCleanupBodyAi": "AI created these folders and they are empty now. They go to the trash.",
+  "aiCleanupBodyRecent": "These empty folders at the top level were created in the last 7 days. Choose the ones to remove; they go to the trash.",
+  "aiCleanupDone": "{count, plural, =1{1 folder moved to the trash} other{{count} folders moved to the trash}}",
+  "@aiCleanupDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFileTypesTitle": "File types",
+  "aiFileTypesDescription": "AI leaves files of the types you switch off alone: no names, tags, folders or summaries.",
+  "aiFileTypesChoose": "Choose formats",
+  "aiFileTypesSome": "{on} of {total} formats",
+  "@aiFileTypesSome": {
+    "placeholders": {
+      "on": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFileTypeImages": "Images",
+  "aiFileTypeVideos": "Videos",
+  "aiFileTypeDocuments": "Documents",
+  "aiFileTypeSpreadsheets": "Spreadsheets",
+  "aiFileTypePresentations": "Presentations",
+  "aiFileTypeArchives": "Archives",
+  "aiFileTypeAudio": "Audio",
+  "aiFileTypeCode": "Code",
+  "aiFileTypeOther": "Other",
+  "aiFileTypeOtherDescription": "Every format not listed above",
   "aiShowLow": "Show low-confidence ({count})",
   "@aiShowLow": {
     "placeholders": {
@@ -2860,7 +3039,7 @@
   "aiFeatureNewTags": "Suggest new tags",
   "aiFeatureNewTagsDescription": "Otherwise AI only uses tags you already have.",
   "aiFeatureNewFolders": "Suggest new folders",
-  "aiFeatureNewFoldersDescription": "Lets AI propose a folder that doesn’t exist yet; it is created when you accept.",
+  "aiFeatureNewFoldersDescription": "Lets AI propose a folder that doesn’t exist yet when at least three files belong in it. It is created only when you accept.",
   "aiReviewSettingsLabel": "Suggestions to review",
   "aiReviewSettingsDescription": "{count, plural, =0{Nothing waiting right now.} =1{1 suggestion is waiting.} other{{count} suggestions are waiting.}}",
   "@aiReviewSettingsDescription": {
