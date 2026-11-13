@@ -23,6 +23,7 @@ func Watch(engine *sync.Engine, cfg *config.Store, logger *log.Logger) {
 	var mu gosync.Mutex
 	prev := engine.Status()
 	seenConflict := time.Now()
+	gate := newGate()
 	engine.OnStatus(func(next sync.Status) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -35,7 +36,13 @@ func Watch(engine *sync.Engine, cfg *config.Store, logger *log.Logger) {
 		if conflicts > 0 {
 			seenConflict = time.Now()
 		}
+		if next.State == sync.StateIdle {
+			gate.clearErrors() // a good run: a later failure is news again
+		}
 		for _, message := range messages(prev, next, conflicts, cfg.Get().NotifyLevel()) {
+			if !gate.allow(message, time.Now()) {
+				continue
+			}
 			go func() {
 				if err := send(message); err != nil {
 					logger.Printf("notification: %v", err)
@@ -46,6 +53,54 @@ func Watch(engine *sync.Engine, cfg *config.Store, logger *log.Logger) {
 	})
 }
 
+// gate keeps a notification from repeating. Status updates arrive many
+// times a second while a pass runs, and some carry no folder list or flip
+// between "error" and "syncing" on every retry, so comparing with the
+// previous update alone sent the same notice hundreds of times.
+//   - a new folder is announced once per path while the app runs;
+//   - "could not sync" / "waiting for you" once until a run succeeds;
+//   - anything else at most once per text every 30 minutes.
+type gate struct {
+	folders map[string]bool
+	errors  map[string]bool
+	recent  map[string]time.Time
+}
+
+func newGate() *gate {
+	return &gate{folders: map[string]bool{}, errors: map[string]bool{}, recent: map[string]time.Time{}}
+}
+
+func (g *gate) clearErrors() { g.errors = map[string]bool{} }
+
+func (g *gate) allow(m Message, now time.Time) bool {
+	key := m.Title + "\x00" + m.Body
+	switch m.Title {
+	case titleNewFolder:
+		if g.folders[m.Body] {
+			return false
+		}
+		g.folders[m.Body] = true
+		return true
+	case titleError, titleConfirm:
+		if g.errors[m.Title] {
+			return false
+		}
+		g.errors[m.Title] = true
+		return true
+	}
+	if at, ok := g.recent[key]; ok && now.Sub(at) < 30*time.Minute {
+		return false
+	}
+	g.recent[key] = now
+	return true
+}
+
+const (
+	titleError     = "NeoCloud could not sync"
+	titleConfirm   = "NeoCloud is waiting for you"
+	titleNewFolder = "New folder in NeoCloud"
+)
+
 // messages decides what a status change is worth telling.
 func messages(prev, next sync.Status, conflicts int, level string) []Message {
 	if level == config.NotifyOff {
@@ -55,9 +110,9 @@ func messages(prev, next sync.Status, conflicts int, level string) []Message {
 	if next.State != prev.State {
 		switch next.State {
 		case sync.StateError:
-			out = append(out, Message{"NeoCloud could not sync", next.Message})
+			out = append(out, Message{titleError, next.Message})
 		case sync.StateConfirm:
-			out = append(out, Message{"NeoCloud is waiting for you", next.Message})
+			out = append(out, Message{titleConfirm, next.Message})
 		case sync.StateIdle:
 			if level == config.NotifyAll && prev.State == sync.StateSyncing && next.Changes > 0 {
 				out = append(out, Message{"NeoCloud is up to date", plural(next.Changes, "file") + " synced"})
@@ -74,7 +129,7 @@ func messages(prev, next sync.Status, conflicts int, level string) []Message {
 		}
 		for _, folder := range ps.NewFolders {
 			if !known[folder.Path] {
-				out = append(out, Message{"New folder in NeoCloud", folder.Path + " is not synced until you choose to. Open NeoCloud to decide."})
+				out = append(out, Message{titleNewFolder, folder.Path + " is not synced until you choose to. Open NeoCloud to decide."})
 			}
 		}
 	}
