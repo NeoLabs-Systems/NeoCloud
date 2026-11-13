@@ -111,33 +111,31 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
       case 'running':
         return _StatusPill(label: _runningLabel(run), color: _info);
       // Status is a dot plus words, never colored text.
+      // Wraps: on a phone the date and the count don't fit one line.
       case 'ok':
-        return _StatusPill(
-          label: appStrings.backupLastOk(formatDate(_date(run['finishedAt']), locale), (run['blobsUploaded'] as num?)?.toInt() ?? 0),
-          color: _success,
+        return _wrappingStatus(
+          appStrings.backupLastOk(formatDate(_date(run['finishedAt']), locale), (run['blobsUploaded'] as num?)?.toInt() ?? 0),
+          _success,
         );
       default:
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 7,
-              height: 7,
-              margin: const EdgeInsets.only(top: 6, right: 7),
-              decoration: BoxDecoration(color: _danger, shape: BoxShape.circle),
-            ),
-            Expanded(
-              child: Text(
-                appStrings.backupLastFailed('${run['error'] ?? ''}'),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: _textSecondary, fontSize: 13),
-              ),
-            ),
-          ],
-        );
+        return _wrappingStatus(appStrings.backupLastFailed('${run['error'] ?? ''}'), _danger);
     }
   }
+
+  Widget _wrappingStatus(String label, Color color) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Container(
+        width: 7,
+        height: 7,
+        margin: const EdgeInsets.only(top: 6, right: 7),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      Expanded(
+        child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textSecondary, fontSize: 13)),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {

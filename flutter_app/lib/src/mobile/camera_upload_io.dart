@@ -36,6 +36,11 @@ const Duration _pauseFor = Duration(hours: 1);
 /// once Wi-Fi is there.
 const Duration _wifiRecheck = Duration(minutes: 15);
 
+/// [_onWifiSettled] asks this often, this far apart, before a pass stops
+/// for Wi-Fi: about 20 seconds in all.
+const int _wifiSettleChecks = 5;
+const Duration _wifiSettleWait = Duration(seconds: 5);
+
 /// How often a running pass renews its lease while one file takes long;
 /// before each file it renews it anyway. Well below [CameraLease.staleAfter].
 const Duration _leaseRenewal = Duration(minutes: 1);
@@ -247,6 +252,16 @@ class _PhotoLibrary implements CameraLibrary, CameraPhotoHasher {
 
   @override
   Future<CameraAccessLevel> access() async {
+    // photo_manager tells only with an activity: a background pass's
+    // engine has none, and asking threw there.
+    switch (await NeoCloudBackground.photoAccess()) {
+      case 'full':
+        return CameraAccessLevel.full;
+      case 'limited':
+        return CameraAccessLevel.limited;
+      case 'denied':
+        return CameraAccessLevel.denied;
+    }
     final state = await PhotoManager.getPermissionState(requestOption: const PermissionRequestOption());
     if (state == PermissionState.authorized) return CameraAccessLevel.full;
     if (state == PermissionState.limited) return CameraAccessLevel.limited;
@@ -462,6 +477,7 @@ Future<CameraPassResult?> _pass(
     if (paused != null && DateTime.now().isBefore(paused)) return null;
   }
   final lease = CameraLease(File('${(await _cameraDir()).path}${Platform.pathSeparator}pass.lease'));
+  await NeoCloudBackground.clearDeadCameraLease();
   if (!await lease.acquire()) return null;
   await NeoCloudBackground.cameraPassStarted();
   var leaseLost = false;
@@ -473,6 +489,8 @@ Future<CameraPassResult?> _pass(
     }
   });
   final transfer = _CameraTransfer();
+  // Only a pass that stops without Wi-Fi waits out a dropout.
+  final onWifi = settings.wifiOnly ? _onWifiSettled : _onWifi;
   try {
     final engine = CameraBackupEngine(
       store: _FileLedgerStore(account),
@@ -490,7 +508,7 @@ Future<CameraPassResult?> _pass(
         since: settings.enabledAt,
         skipSimilar: settings.skipSimilar,
       ),
-      CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
+      CameraConditions(onWifi: await onWifi(), charging: charging, signedIn: true),
       manual: manual,
       onProgress: (progress) {
         transfer.show(progress);
@@ -509,7 +527,7 @@ Future<CameraPassResult?> _pass(
         }
         return null;
       },
-      conditionsNow: () async => CameraConditions(onWifi: await _onWifi(), charging: charging, signedIn: true),
+      conditionsNow: () async => CameraConditions(onWifi: await onWifi(), charging: charging, signedIn: true),
     );
     await preferences.setBool(_limitedKey, result.limitedAccess);
     switch (result.block) {
@@ -545,6 +563,17 @@ Future<bool> _onWifi() async {
   return network.contains(ConnectivityResult.wifi) || network.contains(ConnectivityResult.ethernet);
 }
 
+/// [_onWifi], asked again for a while before saying no: on a weak signal
+/// Wi-Fi drops for a few seconds and comes back, and a pass that stopped
+/// for it would wait [_wifiRecheck] for its continuation.
+Future<bool> _onWifiSettled() async {
+  for (var attempt = 0; attempt < _wifiSettleChecks; attempt++) {
+    if (await _onWifi()) return true;
+    if (attempt < _wifiSettleChecks - 1) await Future<void>.delayed(_wifiSettleWait);
+  }
+  return false;
+}
+
 /// For [CameraBackupEngine.retryFailed], which uploads nothing.
 class _NoTarget implements CameraTarget {
   const _NoTarget();
@@ -563,6 +592,23 @@ class _NoTarget implements CameraTarget {
     String? resumeId,
     Future<void> Function(String uploadId)? onResumable,
   }) => throw const CameraUploadFailure(CameraFailureKind.signedOut);
+}
+
+/// Photos and videos together with their GPS position (Android's
+/// ACCESS_MEDIA_LOCATION): without it the originals are read with the
+/// position zeroed.
+const PermissionRequestOption _withLocation = PermissionRequestOption(
+  androidPermission: AndroidPermission(type: RequestType.common, mediaLocation: true),
+);
+
+/// Android: an install that was given the photos before NeoCloud asked for
+/// their position too asks for that now. It comes with the photos, so
+/// Android shows nothing; with only selected photos (or none) asking would
+/// open the picker, so it waits for [_IoCameraUploads.requestAccess].
+Future<void> _askForPhotoLocation() async {
+  if (!Platform.isAndroid || await NeoCloudBackground.photoLocationGranted() != false) return;
+  if (await NeoCloudBackground.photoAccess() != 'full') return;
+  await PhotoManager.requestPermissionExtend(requestOption: _withLocation);
 }
 
 class _IoCameraUploads extends CameraUploads {
@@ -672,7 +718,10 @@ class _IoCameraUploads extends CameraUploads {
     }
     await load();
     // Booked again on every start: a force-stop or an iOS update drops them.
-    if (_settings.activeFor(accountKey) && _settings.folderId != null) unawaited(_armTriggers(_settings).catchError((Object _) {}));
+    if (_settings.activeFor(accountKey) && _settings.folderId != null) {
+      unawaited(_armTriggers(_settings).catchError((Object _) {}));
+      unawaited(_askForPhotoLocation().catchError((Object _) {}));
+    }
   }
 
   @override
@@ -701,7 +750,7 @@ class _IoCameraUploads extends CameraUploads {
 
   @override
   Future<CameraAccess> requestAccess() async {
-    final state = await PhotoManager.requestPermissionExtend();
+    final state = await PhotoManager.requestPermissionExtend(requestOption: _withLocation);
     if (state == PermissionState.authorized) return CameraAccess.granted;
     if (state == PermissionState.limited) return CameraAccess.limited;
     return CameraAccess.denied;

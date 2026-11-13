@@ -15,6 +15,7 @@ import androidx.work.WorkManager
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * When camera upload runs in the background on Android: every request is a
@@ -62,14 +63,40 @@ object CameraWork {
     // camera_lease.dart's file and how long it stays fresh unrenewed.
     private const val LEASE_STALE_MS = 5 * 60 * 1000L
 
+    // A lease this young may be one a pass is still taking: Dart writes it,
+    // waits camera_lease.dart's settle time, then reports the pass started.
+    private const val LEASE_TAKING_MS = 15_000L
+
     private val executor = Executors.newSingleThreadExecutor()
+
+    /** Passes running in this process's engines (every pass runs in this process). */
+    private val runningPasses = AtomicInteger(0)
+
+    fun passStarted() {
+        runningPasses.incrementAndGet()
+    }
+
+    fun passEnded() {
+        runningPasses.updateAndGet { if (it > 0) it - 1 else 0 }
+    }
 
     private fun leaseFile(context: Context) = File(File(context.filesDir, "camera"), "pass.lease")
 
-    /** A pass holds a lease it renewed within the last five minutes. */
+    /**
+     * A pass holds a lease it renewed within the last five minutes, and it
+     * runs in this process. A fresh lease no engine here holds is left by
+     * a pass whose process died or that failed to let go: it is removed, so
+     * the next pass needn't wait up to [BUSY_RETRY_MINUTES] for it.
+     */
     fun passAlive(context: Context): Boolean {
         val lease = leaseFile(context)
-        return lease.exists() && System.currentTimeMillis() - lease.lastModified() < LEASE_STALE_MS
+        if (!lease.exists()) return false
+        val age = System.currentTimeMillis() - lease.lastModified()
+        if (age >= LEASE_STALE_MS) return false
+        if (runningPasses.get() > 0 || age < LEASE_TAKING_MS) return true
+        Log.i(TAG, "Removing the lease of a pass that is no longer running")
+        if (!lease.delete()) Log.w(TAG, "Could not remove a dead pass's lease")
+        return false
     }
 
     /** The Dart entry point and the notification texts a background pass starts with. */

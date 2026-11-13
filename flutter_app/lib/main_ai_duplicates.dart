@@ -411,9 +411,12 @@ class _DuplicateThumbState extends State<_DuplicateThumb> {
         _position == null) {
       return;
     }
-    final start = viewport.getOffsetToReveal(render, 0).offset;
-    final end = viewport.getOffsetToReveal(render, 1).offset;
-    if (start >= _position!.pixels + _position!.viewportDimension || end <= _position!.pixels) {
+    // The scroll offsets that put the thumbnail's top at the viewport's top
+    // and its bottom at the viewport's bottom.
+    final viewportHeight = _position!.viewportDimension;
+    final top = viewport.getOffsetToReveal(render, 0).offset;
+    final bottom = viewport.getOffsetToReveal(render, 1).offset + viewportHeight;
+    if (top >= _position!.pixels + viewportHeight || bottom <= _position!.pixels) {
       if (_requested) {
         _cache.release(widget.node.id, widget.node.etag);
         _requested = false;

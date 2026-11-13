@@ -193,6 +193,29 @@ class NeoCloudBackground {
     await _invoke<void>('cameraPassEnded');
   }
 
+  /// Android: removes a camera pass lease that no engine of this process
+  /// holds any more (its pass died or failed to let go), so a new pass
+  /// needn't wait for it to go stale.
+  static Future<void> clearDeadCameraLease() async {
+    if (!_android) return;
+    await _invoke<void>('clearDeadCameraLease');
+  }
+
+  /// Android: camera upload's access to the photos, "full", "limited" or
+  /// "denied", in any engine (photo_manager needs an activity to tell).
+  /// Null elsewhere or when it can't tell.
+  static Future<String?> photoAccess() async {
+    if (!_android) return null;
+    return _invoke<String>('photoAccess');
+  }
+
+  /// Android: whether photos are read with their GPS position
+  /// (ACCESS_MEDIA_LOCATION). Null elsewhere or when it can't tell.
+  static Future<bool?> photoLocationGranted() async {
+    if (!_android) return null;
+    return _invoke<bool>('photoLocationGranted');
+  }
+
   /// The background entry point's pass is over; its worker ends.
   static Future<void> cameraWorkerDone() async {
     if (!_android) return;

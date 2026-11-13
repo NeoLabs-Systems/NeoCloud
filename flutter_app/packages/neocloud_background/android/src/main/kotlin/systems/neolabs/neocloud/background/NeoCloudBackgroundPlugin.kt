@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -70,7 +71,10 @@ class NeoCloudBackgroundPlugin :
         channel?.let { TransferService.forget(context, it) }
         // The engine died in the middle of a pass: the app swiped away, or a
         // stopped worker whose pass didn't end in time.
-        if (passRunning) CameraWork.recoverDeadPass(context)
+        if (passRunning) {
+            CameraWork.passEnded()
+            CameraWork.recoverDeadPass(context)
+        }
         passRunning = false
         onWorkerDone = null
         onWorkerTransfer = null
@@ -164,11 +168,23 @@ class NeoCloudBackgroundPlugin :
                 result.success(null)
             }
             "cameraPassStarted" -> {
+                if (!passRunning) CameraWork.passStarted()
                 passRunning = true
                 result.success(null)
             }
             "cameraPassEnded" -> {
+                if (passRunning) CameraWork.passEnded()
                 passRunning = false
+                result.success(null)
+            }
+            "photoAccess" -> result.success(photoAccess())
+            "photoLocationGranted" -> result.success(
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_MEDIA_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED,
+            )
+            "clearDeadCameraLease" -> {
+                CameraWork.passAlive(context)
                 result.success(null)
             }
             "cameraWorkerDone" -> {
@@ -194,6 +210,27 @@ class NeoCloudBackgroundPlugin :
                 (connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED),
             "manufacturerSettingsAvailable" to ManufacturerSettings.available(context),
         )
+    }
+
+    /**
+     * Camera upload's access to the photos: "full", "limited" (Android 14's
+     * selected photos) or "denied". photo_manager can only tell with an
+     * activity, which a background pass's engine never has.
+     */
+    private fun photoAccess(): String {
+        fun granted(permission: String) =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        val full = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            granted(Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            granted(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        return when {
+            full -> "full"
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                granted(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) -> "limited"
+            else -> "denied"
+        }
     }
 
     private fun progress(call: MethodCall) = TransferService.Progress(
