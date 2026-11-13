@@ -3107,6 +3107,8 @@
   "photosBackupOff": "Backup is off",
   "photosBackupTurnOn": "Turn on",
   "photosToday": "Today",
+  "photosSortingSection": "Sorting new photos…",
+  "photosUnknownDate": "Unknown date",
   "photosYesterday": "Yesterday",
   "photosZoomIn": "Bigger photos",
   "photosZoomOut": "More photos at once",

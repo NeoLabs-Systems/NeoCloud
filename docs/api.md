@@ -465,31 +465,45 @@ in a vault folder (folders, single and resumable uploads, copies) inherit its
 ## Photos — `/api/photos` (session or phone)
 
 The account's own photos and videos (`image/*` except SVG and icons,
-`video/*`), newest first by when they were taken: EXIF `DateTimeOriginal`,
-else the date a phone or camera wrote into the movie or the file name
-(`IMG_20260312_101010.jpg`), else the modification time. `takenAt` is that
+`video/*`), newest first by when they were taken: EXIF `DateTimeOriginal`
+or the date a phone or camera wrote into the movie (`dateSource: "exif"`),
+else the capture or creation date the client sent with the upload
+(`client`), else the date in the file name (`IMG_20260312_101010.jpg`,
+`filename`), else the client's modification date (`mtime`), else only the
+upload time (`upload`: the date is unknown). `takenAt` is that
 wall-clock time, `"YYYY-MM-DDTHH:MM:SS"` with no time zone; the first 10
 characters are the day the photo belongs to. Vault files, trashed files and
 files shared with the account are never listed.
 
 | Method | Path | Query | Answer |
 | --- | --- | --- | --- |
-| GET | `/` | `cursor?`, `day?` (`YYYY-MM-DD`), `limit?` (1–500, default 200) | `{ items: [photo], nextCursor }` |
-| GET | `/summary` | | `{ total, pending, days: [{ date, count }], months: [{ month, count }] }`, newest first |
+| GET | `/` | `cursor?`, `day?` (`YYYY-MM-DD` or `unknown`), `limit?` (1–500, default 200) | `{ items: [photo], nextCursor }` |
+| GET | `/summary` | | `{ total, pending, unknown, days: [{ date, count }], months: [{ month, count }] }`, newest first |
 
-- A photo: `{ id, takenAt, kind: "photo"|"video", width, height,
-  durationSeconds, name, parentId, mime, size, etag, favorite }`. `width`,
+- The timeline has three parts, listed in this order: first the `pending`
+  items whose file wasn't read yet (`provisional: true`; their date is a
+  guess and may still move), then the dated items by day, newest first,
+  then the `unknown` items with no date of their own (`dateUnknown: true`,
+  `takenAt` is the upload time). `days` and `months` count only the dated
+  items; `total = pending + sum(days) + unknown`. A guess never counts as
+  a day, so a fresh upload is never filed under today.
+- A photo: `{ id, takenAt, dateSource, provisional, dateUnknown, kind:
+  "photo"|"video", width, height, durationSeconds, name, parentId, mime,
+  size, etag, favorite }`. `dateSource`: `exif`, `client`, `filename`,
+  `mtime` or `upload`. `width`,
   `height` (as displayed, EXIF rotation applied) and `durationSeconds` are
   `null` until the file was read, and for formats NeoCloud can't read.
 - Pages continue from `nextCursor` (opaque; `null` on the last page) and are
   as fast at the end of a long timeline as at the start. `day` starts the
-  page at the newest item of that day instead, for jumping there; it is
-  ignored when `cursor` is set. `400 INVALID_CURSOR`, `INVALID_DAY`,
+  page at the newest item of that day instead, for jumping there (`unknown`:
+  at the first item without a date); it is ignored when `cursor` is set. `400 INVALID_CURSOR`, `INVALID_DAY`,
   `INVALID_LIMIT`.
-- New uploads show at once with a date from the file name or modification
-  time; a background task then reads each file once (EXIF, the movie header)
-  for its real date and size and makes its `square` thumbnail. `pending`
-  counts items not read yet: their place in the timeline may still move.
+- New uploads show at once, provisional, with a date from the client, the
+  file name or the upload time; a background task then reads each file once
+  (EXIF, the movie header) for its real date and size, settles the date and
+  makes its `square` thumbnail. Items indexed before `dateSource` existed get
+  one worked out on the server's first start: a date that is still the
+  upload time becomes `upload` (date unknown).
 - Thumbnails: `GET /api/files/:id/thumbnail?size=square&v=<etag>`. Videos
   have no thumbnail.
 
@@ -682,11 +696,20 @@ in NeoCloud already share one stored blob and free nothing.
 **Single request** — `PUT /api/upload?parentId=&name=&conflict=` with the
 file as the raw body. Optional headers: `X-Content-SHA256` (verified, `422
 CHECKSUM_MISMATCH`), `If-Match: "<etag>"` with `replace` (`412
-ETAG_MISMATCH` if the file changed meanwhile).
+ETAG_MISMATCH` if the file changed meanwhile), and the file's own dates on
+the device for Photos: `X-File-Created` (when the photo was taken or the
+file created) and `X-File-Modified` (last changed). Each is ISO 8601,
+ideally with the device's offset (`2026-03-12T10:10:10+01:00`; the
+wall-clock time is kept as written), or epoch milliseconds (read in the
+server's time zone). Dates that can't be read, from before 2 January 1970
+or more than a day ahead are ignored, never an error. They belong to this
+content: a later version without them drops them.
 
 **Resumable** (recommended above ~16 MB):
 
-1. `POST /api/uploads` `{ parentId, name, size, conflict?, sha256? }` →
+1. `POST /api/uploads` `{ parentId, name, size, conflict?, sha256?,
+   createdAt?, modifiedAt? }` (the dates as `X-File-Created` /
+   `X-File-Modified` above, which are taken here too) →
    `{ id, partSize, partCount, receivedParts }`. The size is reserved
    against the quota.
 2. `PUT /api/uploads/:id/parts/:index` with exactly `partSize` bytes (the

@@ -371,7 +371,20 @@ class BackendClient {
   /// with `412 ETAG_MISMATCH` when the file changed since it was read.
   /// [sha256] (hex) makes the server refuse content that arrives different
   /// (`422 CHECKSUM_MISMATCH`).
-  Future<FileNode> uploadSmall(String parentId, String name, Uint8List bytes, {required String conflict, String? ifMatch, String? sha256}) async =>
+  ///
+  /// [created] and [modified] are the file's own dates on the device
+  /// (`X-File-Created`, `X-File-Modified`); Photos dates pictures without
+  /// EXIF by them.
+  Future<FileNode> uploadSmall(
+    String parentId,
+    String name,
+    Uint8List bytes, {
+    required String conflict,
+    String? ifMatch,
+    String? sha256,
+    DateTime? created,
+    DateTime? modified,
+  }) async =>
       FileNode.fromJson(_map(await _request(
         'PUT',
         '/api/upload',
@@ -380,15 +393,32 @@ class BackendClient {
         headers: {
           if (ifMatch != null) 'If-Match': '"$ifMatch"',
           'X-Content-SHA256': ?sha256,
+          'X-File-Created': ?clientDate(created),
+          'X-File-Modified': ?clientDate(modified),
         },
       )));
 
-  Future<Map<String, dynamic>> createUpload(String parentId, String name, int size, {required String conflict, String? sha256}) async =>
-      _map(await _request(
-        'POST',
-        '/api/uploads',
-        json: {'parentId': parentId, 'name': name, 'size': size, 'conflict': conflict, 'sha256': ?sha256},
-      ));
+  Future<Map<String, dynamic>> createUpload(
+    String parentId,
+    String name,
+    int size, {
+    required String conflict,
+    String? sha256,
+    DateTime? created,
+    DateTime? modified,
+  }) async => _map(await _request(
+    'POST',
+    '/api/uploads',
+    json: {
+      'parentId': parentId,
+      'name': name,
+      'size': size,
+      'conflict': conflict,
+      'sha256': ?sha256,
+      'createdAt': ?clientDate(created),
+      'modifiedAt': ?clientDate(modified),
+    },
+  ));
 
   /// Whether a file with this content (SHA-256 and size) is in [parentId]
   /// or any folder below it.
@@ -646,4 +676,18 @@ class BackendClient {
     json: {'password': password, 'code': ?code},
     expireOn401: false,
   ))['masterKey'].toString();
+}
+
+/// A device date for the server: local wall-clock time with its offset
+/// ("2026-03-12T10:10:10+01:00"), so the photo keeps the hour it was taken.
+/// Null for none, and for epoch 0, which devices use for "unknown".
+String? clientDate(DateTime? value) {
+  if (value == null || value.millisecondsSinceEpoch <= 0) return null;
+  final local = value.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  final offset = local.timeZoneOffset;
+  final minutes = offset.inMinutes.abs();
+  final sign = offset.isNegative ? '-' : '+';
+  return '${local.year.toString().padLeft(4, '0')}-${two(local.month)}-${two(local.day)}'
+      'T${two(local.hour)}:${two(local.minute)}:${two(local.second)}$sign${two(minutes ~/ 60)}:${two(minutes % 60)}';
 }

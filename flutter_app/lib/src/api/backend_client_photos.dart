@@ -3,7 +3,7 @@ part of 'backend_client.dart';
 /// The Photos timeline (docs/api.md, Photos).
 extension BackendPhotoCalls on BackendClient {
   /// A page of photos, newest first: after [cursor], or from the newest
-  /// photo of [day] (`YYYY-MM-DD`).
+  /// photo of [day] (`YYYY-MM-DD`, or `unknown` for the photos without a date).
   Future<PhotoPage> photos({String? cursor, String? day, int limit = 200}) async => PhotoPage.fromJson(_map(await _request(
     'GET',
     '/api/photos',

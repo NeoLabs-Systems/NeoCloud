@@ -9,15 +9,19 @@
 //      files moved into a vault or renamed to another type ('delete' needs
 //      nothing: the row goes with the node);
 //   2. add the account's photos and videos that have no row for their
-//      current content, dated from the file name or modification time.
+//      current content, dated provisionally (date_state 2) from what is
+//      known without reading the file: the client's dates, the file name,
+//      else the upload time.
 // The background loop then reads each new row's file once (probe.js) for
-// the real date and size, and makes its grid thumbnail ahead of time.
+// the real date and size, settles the date (exif, client, filename, mtime,
+// or upload: date_state 0, "date unknown"), and makes its grid thumbnail
+// ahead of time.
 
 const db = require('../../db/database');
 const { createServiceLogger } = require('../../utils/logger');
 const { LIVE_NODES_CTE, ancestry } = require('../files/tree');
 const { prepareGridThumbnail } = require('../preview/previews');
-const { guessTakenAt, probeMedia } = require('./probe');
+const { probeMedia, resolveTakenAt, takenFromName, uploadedAt } = require('./probe');
 
 const logger = createServiceLogger('Photos');
 
@@ -104,12 +108,47 @@ function followJournal() {
   }
 }
 
+// --- Rows from before taken_at_source --------------------------------------------------
+
+// Works out where an older row's date came from, without reading files:
+// a read row whose date is still the upload time had no date of its own.
+function backfillSources() {
+  const rows = db.prepare(`
+    SELECT p.node_id, p.taken_at, p.probed, n.name, n.modified_at
+    FROM photo_items p JOIN nodes n ON n.id = p.node_id
+    WHERE p.taken_at_source IS NULL LIMIT 1000
+  `).all();
+  if (rows.length === 0) return false;
+  const update = db.prepare('UPDATE photo_items SET taken_at_source = ?, date_state = ? WHERE node_id = ?');
+  db.transaction(() => {
+    for (const row of rows) {
+      let source;
+      if (takenFromName(row.name) === row.taken_at) source = 'filename';
+      else if (uploadedAt(row) === row.taken_at) source = 'upload';
+      else source = row.probed === 1 ? 'exif' : 'upload';
+      const state = row.probed === 0 ? 2 : (source === 'upload' ? 0 : 1);
+      update.run(source, state, row.node_id);
+    }
+  })();
+  return rows.length === 1000;
+}
+
+let backfilled = false;
+
+function backfillOnce() {
+  if (backfilled) return;
+  while (backfillSources());
+  backfilled = true;
+}
+
 // --- Step 2: photos and videos without a row ----------------------------------------
 
 function missingMedia(userId) {
   return db.prepare(`
     ${LIVE_NODES_CTE}
-    SELECT n.id, n.name, n.mime, n.blob_id, n.modified_at FROM nodes n
+    SELECT n.id, n.name, n.mime, n.blob_id, n.modified_at,
+      d.created_at AS client_created_at, d.modified_at AS client_modified_at
+    FROM nodes n LEFT JOIN file_client_dates d ON d.node_id = n.id AND d.blob_id = n.blob_id
     WHERE n.user_id = @userId AND n.type = 'file' AND n.vault_id IS NULL AND n.trashed_at IS NULL
       AND n.blob_id IS NOT NULL AND ${MEDIA_WHERE}
       AND n.id NOT IN (SELECT id FROM hidden)
@@ -120,14 +159,19 @@ function missingMedia(userId) {
 
 function addMissing(userId) {
   const upsert = db.prepare(`
-    INSERT INTO photo_items (node_id, user_id, blob_id, kind, taken_at) VALUES (?, ?, ?, ?, ?)
+    INSERT INTO photo_items (node_id, user_id, blob_id, kind, taken_at, taken_at_source, date_state)
+    VALUES (?, ?, ?, ?, ?, ?, 2)
     ON CONFLICT(node_id) DO UPDATE SET blob_id = excluded.blob_id, kind = excluded.kind,
-      taken_at = excluded.taken_at, width = NULL, height = NULL, duration_seconds = NULL, probed = 0
+      taken_at = excluded.taken_at, taken_at_source = excluded.taken_at_source, date_state = 2,
+      width = NULL, height = NULL, duration_seconds = NULL, probed = 0
   `);
   for (;;) {
     const rows = missingMedia(userId);
     db.transaction(() => {
-      for (const node of rows) upsert.run(node.id, userId, node.blob_id, kindOf(node.mime), guessTakenAt(node));
+      for (const node of rows) {
+        const { takenAt, source } = resolveTakenAt(node);
+        upsert.run(node.id, userId, node.blob_id, kindOf(node.mime), takenAt, source);
+      }
     })();
     if (rows.length < ADD_BATCH) return;
   }
@@ -147,6 +191,7 @@ function accountSeq(userId) {
  * it before answering, so uploads show and trashed files go at once.
  */
 function catchUp(userId) {
+  backfillOnce();
   followJournal();
   const seq = accountSeq(userId);
   if (checkedAt.get(userId) === seq) return;
@@ -158,24 +203,29 @@ function catchUp(userId) {
 
 function unprobed(limit) {
   return db.prepare(`
-    SELECT p.user_id, p.kind, n.id, n.name, n.mime, n.size, n.blob_id
+    SELECT p.user_id, p.kind, n.id, n.name, n.mime, n.size, n.blob_id, n.modified_at,
+      d.created_at AS client_created_at, d.modified_at AS client_modified_at
     FROM photo_items p JOIN nodes n ON n.id = p.node_id
+      LEFT JOIN file_client_dates d ON d.node_id = n.id AND d.blob_id = n.blob_id
     WHERE p.probed = 0 AND n.blob_id = p.blob_id
     ORDER BY p.taken_at DESC
     LIMIT ?
   `).all(limit);
 }
 
-function saveProbe(node, found, probed) {
+function saveProbe(row, found, probed) {
+  const { takenAt, source } = resolveTakenAt(row, found.takenAt || null);
   db.prepare(`
     UPDATE photo_items SET
-      taken_at = COALESCE(@takenAt, taken_at), width = @width, height = @height,
+      taken_at = @takenAt, taken_at_source = @source, date_state = @state, width = @width, height = @height,
       duration_seconds = @durationSeconds, probed = @probed
     WHERE node_id = @nodeId AND blob_id = @blobId
   `).run({
-    nodeId: node.id,
-    blobId: node.blob_id,
-    takenAt: found.takenAt || null,
+    nodeId: row.id,
+    blobId: row.blob_id,
+    takenAt,
+    source,
+    state: source === 'upload' ? 0 : 1,
     width: found.width || null,
     height: found.height || null,
     durationSeconds: found.durationSeconds || null,
@@ -186,10 +236,10 @@ function saveProbe(node, found, probed) {
 async function probeOne(row) {
   const node = { id: row.id, name: row.name, mime: row.mime, size: row.size, blob_id: row.blob_id };
   try {
-    saveProbe(node, await probeMedia(row.user_id, node, row.kind), 1);
+    saveProbe(row, await probeMedia(row.user_id, node, row.kind), 1);
   } catch (err) {
     logger.warn(`Could not read a ${row.mime} file for Photos: ${err.message}`);
-    saveProbe(node, {}, 2);
+    saveProbe(row, {}, 2);
     return;
   }
   if (row.kind === 'photo') {

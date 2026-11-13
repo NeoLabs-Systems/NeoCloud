@@ -10,9 +10,18 @@ const previews = require('../services/preview/previews');
 const { ROOT_ALIAS } = require('../services/files/tree');
 const { jsonHandler, streaming } = require('./_helpers/http');
 const { isIndexEnabled } = require('../services/search_index/indexer');
+const { clientDates } = require('../utils/client_dates');
 
 const router = express.Router();
 router.use(['/upload', '/uploads', '/files', '/download', '/capabilities'], requireAuthOrDevice);
+
+// The file's own dates, when the client sent them (X-File-Created,
+// X-File-Modified; for a resumable upload also createdAt / modifiedAt in
+// the body). Photos uses them for files without EXIF.
+const headerDates = (req) => clientDates({
+  created: req.get('x-file-created') ?? req.body?.createdAt,
+  modified: req.get('x-file-modified') ?? req.body?.modifiedAt,
+});
 
 // PUT /api/upload?parentId=&name=&conflict=fail|rename|replace — body is the file.
 router.put('/upload', jsonHandler((req) => transfers.uploadStream(req.userId, {
@@ -22,6 +31,7 @@ router.put('/upload', jsonHandler((req) => transfers.uploadStream(req.userId, {
   baseEtag: req.get('if-match')?.replace(/"/g, '') || null,
   contentLength: req.get('content-length'),
   sha256: req.get('x-content-sha256'),
+  dates: headerDates(req),
 }, req), { status: 201 }));
 
 router.post('/uploads', jsonHandler((req) => transfers.createUpload(req.userId, {
@@ -30,6 +40,7 @@ router.post('/uploads', jsonHandler((req) => transfers.createUpload(req.userId, 
   size: req.body?.size,
   conflict: req.body?.conflict,
   sha256: req.body?.sha256,
+  dates: headerDates(req),
 }), { status: 201 }));
 
 // Before sending: is this content (SHA-256 and size) already in the folder

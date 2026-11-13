@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // SingleUploadLimit is where uploads switch to the resumable flow
@@ -244,13 +245,24 @@ func (c *Client) UploadFile(ctx context.Context, localPath string, opts UploadOp
 	if err != nil {
 		return nil, err
 	}
+	modified := fileModified(info.ModTime())
 	if info.Size() < SingleUploadLimit {
-		return c.uploadSingle(ctx, localPath, opts)
+		return c.uploadSingle(ctx, localPath, modified, opts)
 	}
-	return c.uploadResumable(ctx, localPath, info.Size(), opts)
+	return c.uploadResumable(ctx, localPath, info.Size(), modified, opts)
 }
 
-func (c *Client) uploadSingle(ctx context.Context, localPath string, opts UploadOptions) (*Node, error) {
+// fileModified is the local modification time as the server takes it
+// (X-File-Modified): local wall-clock time with its offset, so Photos can
+// date a picture without EXIF. Empty for a zero time.
+func fileModified(t time.Time) string {
+	if t.IsZero() || t.Unix() <= 0 {
+		return ""
+	}
+	return t.Local().Format("2006-01-02T15:04:05-07:00")
+}
+
+func (c *Client) uploadSingle(ctx context.Context, localPath, modified string, opts UploadOptions) (*Node, error) {
 	// Small enough to hold in memory, which guarantees the hash we send
 	// describes exactly the bytes we send even if the file changes meanwhile.
 	data, err := os.ReadFile(localPath)
@@ -272,6 +284,9 @@ func (c *Client) uploadSingle(ctx context.Context, localPath string, opts Upload
 	if opts.BaseEtag != "" {
 		req.Header.Set("If-Match", `"`+opts.BaseEtag+`"`)
 	}
+	if modified != "" {
+		req.Header.Set("X-File-Modified", modified)
+	}
 	return decodeNode(c.do(req))
 }
 
@@ -283,7 +298,7 @@ type uploadSession struct {
 	ReceivedParts []int  `json:"receivedParts"`
 }
 
-func (c *Client) uploadResumable(ctx context.Context, localPath string, size int64, opts UploadOptions) (*Node, error) {
+func (c *Client) uploadResumable(ctx context.Context, localPath string, size int64, modified string, opts UploadOptions) (*Node, error) {
 	file, err := os.Open(localPath)
 	if err != nil {
 		return nil, err
@@ -302,6 +317,9 @@ func (c *Client) uploadResumable(ctx context.Context, localPath string, size int
 		body := map[string]any{"parentId": opts.ParentID, "name": opts.Name, "size": size, "sha256": sum}
 		if opts.Conflict != "" {
 			body["conflict"] = opts.Conflict
+		}
+		if modified != "" {
+			body["modifiedAt"] = modified
 		}
 		if err := c.doJSON(ctx, http.MethodPost, "/api/uploads", nil, body, session); err != nil {
 			return nil, err

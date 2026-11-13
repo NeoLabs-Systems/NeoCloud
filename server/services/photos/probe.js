@@ -47,9 +47,25 @@ function takenFromName(name) {
   return isPlausible(taken) ? taken : null;
 }
 
-/** The first guess, without reading the file: its name, else when it changed. */
-function guessTakenAt(node) {
-  return takenFromName(node.name) || String(node.modified_at).replace(' ', 'T').slice(0, 19);
+/** When the file reached the server, as nodes.modified_at has it: a last resort. */
+function uploadedAt(node) {
+  return String(node.modified_at).replace(' ', 'T').slice(0, 19);
+}
+
+/**
+ * The best date known for a photo or video, and where it came from: the
+ * file's own (EXIF or the video's header, `takenAt`), the device's capture
+ * or creation date, the file name, the device's modification date, else
+ * the upload time (source "upload": the date is unknown).
+ * `node`: name, modified_at, client_created_at, client_modified_at.
+ */
+function resolveTakenAt(node, takenAt = null) {
+  if (takenAt) return { takenAt, source: 'exif' };
+  if (node.client_created_at) return { takenAt: node.client_created_at, source: 'client' };
+  const named = takenFromName(node.name);
+  if (named) return { takenAt: named, source: 'filename' };
+  if (node.client_modified_at) return { takenAt: node.client_modified_at, source: 'mtime' };
+  return { takenAt: uploadedAt(node), source: 'upload' };
 }
 
 async function probePhoto(userId, node) {
@@ -103,4 +119,4 @@ async function probeMedia(userId, node, kind) {
   return {};
 }
 
-module.exports = { guessTakenAt, probeMedia, takenFromName };
+module.exports = { probeMedia, resolveTakenAt, takenFromName, uploadedAt };

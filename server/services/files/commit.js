@@ -26,7 +26,20 @@ const { replaceContent } = require('./versions');
  * sent again after its answer was lost. It is returned as it is, so a
  * retry never leaves "name (1)" beside it.
  */
-async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null, keepIdentical = false }, blob) {
+// Keeps the client's dates for this content, or forgets older ones.
+function saveClientDates(node, dates) {
+  if (dates?.createdAt || dates?.modifiedAt) {
+    db.prepare(`
+      INSERT INTO file_client_dates (node_id, blob_id, created_at, modified_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(node_id) DO UPDATE SET blob_id = excluded.blob_id,
+        created_at = excluded.created_at, modified_at = excluded.modified_at
+    `).run(node.id, node.blob_id, dates.createdAt || null, dates.modifiedAt || null);
+  } else {
+    db.prepare('DELETE FROM file_client_dates WHERE node_id = ?').run(node.id);
+  }
+}
+
+async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null, keepIdentical = false, dates = null }, blob) {
   const cleanName = validateName(name);
   let finalPath = null;
   let result;
@@ -58,7 +71,9 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
         }
         const orphaned = replaceContent(userId, existing, { blobId: blob.blobId, size: blob.size, etag: blob.sha256 });
         touchFolder(parent.id);
-        return { orphaned, node: nodeById(existing.id) };
+        const replaced = nodeById(existing.id);
+        saveClientDates(replaced, dates);
+        return { orphaned, node: replaced };
       }
       if (existing && conflict !== 'rename') throw nameExists(existing);
 
@@ -72,6 +87,7 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
       });
       retainBlob(blob.blobId);
       touchFolder(parent.id);
+      saveClientDates(node, dates);
       return { orphaned: [], node };
     })();
   } catch (err) {

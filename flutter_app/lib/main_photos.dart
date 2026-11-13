@@ -7,6 +7,8 @@ part of 'main.dart';
 
 /// "Today", "Yesterday", "Wed, 12 Nov" or "Wed, 12 Nov 2024".
 String _photoDayLabel(String day, {DateTime? now}) {
+  if (day == photoSortingKey) return appStrings.photosSortingSection;
+  if (day == photoUnknownKey) return appStrings.photosUnknownDate;
   final date = DateTime.tryParse(day);
   if (date == null) return day;
   final today = now ?? DateTime.now();
@@ -20,6 +22,7 @@ String _photoDayLabel(String day, {DateTime? now}) {
 
 /// The header of a section: a day, "November 2026" or "2026".
 String _photoSectionLabel(PhotoZoom zoom, String key) {
+  if (isPhotoSpecialKey(key)) return _photoDayLabel(key);
   switch (zoom) {
     case PhotoZoom.day:
       return _photoDayLabel(key);
@@ -33,6 +36,7 @@ String _photoSectionLabel(PhotoZoom zoom, String key) {
 
 /// The scrubber's bubble: "Nov 2026".
 String _photoMonthLabel(String key) {
+  if (isPhotoSpecialKey(key)) return _photoDayLabel(key);
   final date = DateTime.tryParse('${key.length >= 7 ? key.substring(0, 7) : '$key-01'}-01');
   return date == null ? key : DateFormat.yMMM(currentAppLanguage.code).format(date);
 }

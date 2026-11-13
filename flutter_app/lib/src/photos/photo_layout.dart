@@ -32,7 +32,7 @@ extension PhotoZoomSteps on PhotoZoom {
   };
 
   /// The section a day belongs to at this zoom: the day, its month or year.
-  String sectionKey(String day) => switch (this) {
+  String sectionKey(String day) => isPhotoSpecialKey(day) ? day : switch (this) {
     PhotoZoom.day => day,
     PhotoZoom.month => day.length >= 7 ? day.substring(0, 7) : day,
     PhotoZoom.year => day.length >= 4 ? day.substring(0, 4) : day,

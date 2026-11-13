@@ -9145,6 +9145,18 @@ abstract class AppL10n {
   /// **'Today'**
   String get photosToday;
 
+  /// No description provided for @photosSortingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting new photos…'**
+  String get photosSortingSection;
+
+  /// No description provided for @photosUnknownDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown date'**
+  String get photosUnknownDate;
+
   /// No description provided for @photosYesterday.
   ///
   /// In en, this message translates to:

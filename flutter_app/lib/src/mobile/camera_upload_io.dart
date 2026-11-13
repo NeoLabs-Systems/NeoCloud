@@ -315,6 +315,8 @@ class _PhotoLibrary implements CameraLibrary, CameraPhotoHasher {
         name: title.isEmpty ? file.uri.pathSegments.last : title,
         size: await file.length(),
         openRead: file.openRead,
+        created: entity.createDateTime,
+        modified: entity.modifiedDateTime,
       );
     } finally {
       await subscription?.cancel();
@@ -431,7 +433,14 @@ class _ServerTarget implements CameraTarget, CameraSimilarityTarget {
   }) async {
     final task = await _queue.send(
       folderId,
-      UploadSource(name: file.name, size: file.size, openRead: file.openRead, sha256: sha256),
+      UploadSource(
+        name: file.name,
+        size: file.size,
+        openRead: file.openRead,
+        sha256: sha256,
+        createdAt: file.created,
+        modifiedAt: file.modified,
+      ),
       resumeUploadId: resumeId,
       onSession: onResumable,
     );

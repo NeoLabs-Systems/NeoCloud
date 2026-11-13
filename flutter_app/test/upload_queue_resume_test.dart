@@ -19,7 +19,15 @@ class _Server extends BackendClient {
   int? dropAtPart;
 
   @override
-  Future<Map<String, dynamic>> createUpload(String parentId, String name, int size, {required String conflict, String? sha256}) async {
+  Future<Map<String, dynamic>> createUpload(
+    String parentId,
+    String name,
+    int size, {
+    required String conflict,
+    String? sha256,
+    DateTime? created,
+    DateTime? modified,
+  }) async {
     final id = 'up${sizes.length + 1}';
     live[id] = <int>{};
     sizes[id] = size;

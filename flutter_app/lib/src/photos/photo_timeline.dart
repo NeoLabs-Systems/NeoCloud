@@ -137,7 +137,9 @@ class PhotoTimeline extends ChangeNotifier {
     final cursor = start > dayStart ? _continuations[start] : null;
     if (cursor == null) start = dayStart;
     if (!_loading.add(start)) return;
-    unawaited(_fetch(start, cursor == null ? _summary.days[day].date : null, cursor, index));
+    // The sorting section is the top of the timeline: no day to start at.
+    final key = _summary.days[day].date;
+    unawaited(_fetch(start, cursor == null && key != photoSortingKey ? key : null, cursor, index));
   }
 
   Future<void> _fetch(int start, String? day, String? cursor, int wanted) async {
@@ -155,7 +157,7 @@ class PhotoTimeline extends ChangeNotifier {
           if (position >= _items.length) break;
           // The counts moved since the summary (an upload, a delete): the
           // places are off, so start over from fresh counts.
-          if (item.day != _summary.days[_dayOf(position)].date) {
+          if (item.section != _summary.days[_dayOf(position)].date) {
             unawaited(refresh(reloadItems: true));
             return;
           }

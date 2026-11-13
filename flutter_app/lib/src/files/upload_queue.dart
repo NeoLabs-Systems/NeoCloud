@@ -10,7 +10,15 @@ import 'transfer_estimate.dart';
 /// One file to send: its name, size and a way to read its bytes. Picked,
 /// dropped and shared files all become one of these.
 class UploadSource {
-  const UploadSource({required this.name, required this.size, required this.openRead, this.folder = '', this.modifiedAt, this.sha256});
+  const UploadSource({
+    required this.name,
+    required this.size,
+    required this.openRead,
+    this.folder = '',
+    this.modifiedAt,
+    this.createdAt,
+    this.sha256,
+  });
 
   final String name;
   final int size;
@@ -21,8 +29,13 @@ class UploadSource {
   final String folder;
 
   /// The local file's modification time, when the platform tells it; shown
-  /// in the conflict dialog.
+  /// in the conflict dialog and sent along, so Photos can date a picture
+  /// without EXIF.
   final DateTime? modifiedAt;
+
+  /// When the photo was taken or the file created, when known (camera
+  /// upload); sent along like [modifiedAt].
+  final DateTime? createdAt;
 
   /// The content's SHA-256 (hex) when already known; the server then refuses
   /// content that arrives different, e.g. a file that changed while it was
@@ -433,7 +446,15 @@ class UploadQueue extends ChangeNotifier {
   Future<void> _sendSmall(UploadTask task, String mode) async {
     final bytes = task._bytes ??= await _readAll(task.source);
     if (task._cancelRequested) throw const _Cancelled();
-    await _retrying(task, () => client.uploadSmall(task.targetId!, task.source.name, bytes, conflict: mode, sha256: task.source.sha256));
+    await _retrying(task, () => client.uploadSmall(
+        task.targetId!,
+        task.source.name,
+        bytes,
+        conflict: mode,
+        sha256: task.source.sha256,
+        created: task.source.createdAt,
+        modified: task.source.modifiedAt,
+      ));
   }
 
   /// Vault upload: the whole file is encrypted in memory, then sent in one
@@ -470,7 +491,16 @@ class UploadQueue extends ChangeNotifier {
         // Expired or gone: start over.
       }
     }
-    final created = await _retrying(task, () => client.createUpload(task.targetId!, name, size, conflict: mode, sha256: sha256));
+    final created = await _retrying(task, () => client.createUpload(
+        task.targetId!,
+        name,
+        size,
+        conflict: mode,
+        sha256: sha256,
+        // A vault keeps even its dates to itself.
+        created: task.cipher == null ? task.source.createdAt : null,
+        modified: task.cipher == null ? task.source.modifiedAt : null,
+      ));
     await task.onSession?.call(created['id'].toString());
     return (created, <int>{});
   }

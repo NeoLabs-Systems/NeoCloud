@@ -75,6 +75,39 @@ class _FakeSource implements PhotoSource {
   }
 }
 
+/// Serves photos in the server's order (sorting, the days, unknown) with
+/// the summary as the server sends it.
+class _SectionedSource extends _FakeSource {
+  _SectionedSource(super.items);
+
+  @override
+  Future<PhotoSummary> summary() async {
+    final days = <Map<String, Object>>[];
+    for (final item in items.where((item) => !isPhotoSpecialKey(item.section))) {
+      if (days.isNotEmpty && days.last['date'] == item.day) {
+        days.last['count'] = (days.last['count']! as int) + 1;
+      } else {
+        days.add(<String, Object>{'date': item.day, 'count': 1});
+      }
+    }
+    return PhotoSummary.fromJson(<String, dynamic>{
+      'days': days,
+      'pending': items.where((item) => item.provisional).length,
+      'unknown': items.where((item) => item.dateUnknown).length,
+    });
+  }
+
+  @override
+  Future<PhotoPage> page({String? cursor, String? day, int limit = 200}) async {
+    var start = cursor != null ? int.parse(cursor) : 0;
+    if (cursor == null && day != null) {
+      start = items.indexWhere((item) => day == photoUnknownKey ? item.dateUnknown : item.section == day);
+    }
+    final end = (start + limit).clamp(0, items.length);
+    return PhotoPage(items: items.sublist(start, end), nextCursor: end < items.length ? '$end' : null);
+  }
+}
+
 Future<PhotoTimeline> _loadedTimeline(_FakeSource source, {int pageSize = 200}) async {
   final timeline = PhotoTimeline(source, pageSize: pageSize)..attach('test');
   await timeline.refresh();
@@ -327,6 +360,23 @@ void main() {
   });
 
   group('grid', () {
+    testWidgets('a photo whose date is a guess is never under Today', (tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day, 9).toIso8601String().substring(0, 19);
+      final source = _SectionedSource(<PhotoItem>[
+        PhotoItem(id: 'new', takenAt: today, kind: PhotoKind.photo, name: 'chat.jpg', etag: 'a', dateSource: 'upload', provisional: true),
+        const PhotoItem(id: 'old', takenAt: '2024-03-02T10:00:00', kind: PhotoKind.photo, name: 'beach.jpg', etag: 'b'),
+        PhotoItem(id: 'lost', takenAt: today, kind: PhotoKind.photo, name: 'download.jpg', etag: 'c', dateSource: 'upload', dateUnknown: true),
+      ]);
+      final timeline = await _loadedTimeline(source);
+      expect(timeline.summary.days.map((day) => day.date), <String>[photoSortingKey, '2024-03-02', photoUnknownKey]);
+      await _pumpGrid(tester, timeline);
+      expect(find.text('Today'), findsNothing);
+      expect(find.text('Sorting new photos…'), findsOneWidget);
+      expect(find.text('Unknown date'), findsOneWidget);
+      expect(<String?>[for (var i = 0; i < 3; i += 1) timeline.itemAt(i)?.id], <String>['new', 'old', 'lost']);
+    });
+
     testWidgets('day headers, sticky header and video length', (tester) async {
       final timeline = await _loadedTimeline(_FakeSource.generate(days: 40));
       await _pumpGrid(tester, timeline);

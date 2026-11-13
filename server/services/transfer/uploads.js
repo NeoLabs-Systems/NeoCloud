@@ -59,7 +59,7 @@ function precheckTarget(userId, parentId, name, conflict) {
  * The whole file in one request body. `cap` ({ limit, limitError }) lowers
  * the byte limit further, e.g. a share link's own upload allowance.
  */
-async function uploadStream(userId, { parentId, name, conflict, baseEtag, contentLength, sha256, cap = null }, body) {
+async function uploadStream(userId, { parentId, name, conflict, baseEtag, contentLength, sha256, dates = null, cap = null }, body) {
   const mode = conflictMode(conflict);
   const expectedHash = normalizeSha256(sha256);
   const target = precheckTarget(userId, parentId, name, mode);
@@ -77,7 +77,7 @@ async function uploadStream(userId, { parentId, name, conflict, baseEtag, conten
     await removeQuietly(blob.tmpPath);
     throw httpError(422, 'The file arrived damaged (checksum mismatch).', 'CHECKSUM_MISMATCH');
   }
-  return commitUploadedBlob(userId, { ...target, conflict: mode, baseEtag, keepIdentical: Boolean(expectedHash) }, blob);
+  return commitUploadedBlob(userId, { ...target, conflict: mode, baseEtag, keepIdentical: Boolean(expectedHash), dates }, blob);
 }
 
 function partCount(totalSize) {
@@ -146,7 +146,7 @@ function assertNotCompleting(uploadId) {
  * `createdBy` is the member who started it when it goes into a folder shared
  * with them (the upload is still the owner's, `userId`).
  */
-function createUpload(userId, { parentId, name, size, conflict, sha256, createdBy = null }) {
+function createUpload(userId, { parentId, name, size, conflict, sha256, dates = null, createdBy = null }) {
   const mode = conflictMode(conflict);
   const totalSize = Number(size);
   if (!Number.isSafeInteger(totalSize) || totalSize < 0) throw httpError(400, 'size must be a byte count.', 'INVALID_SIZE');
@@ -156,9 +156,11 @@ function createUpload(userId, { parentId, name, size, conflict, sha256, createdB
   db.transaction(() => {
     assertUploadFits(userId, totalSize);
     db.prepare(`
-      INSERT INTO upload_sessions (id, user_id, parent_id, name, conflict, total_size, chunk_size, sha256, expires_at, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?), ?)
-    `).run(id, userId, target.parentId, target.name, mode, totalSize, PART_SIZE, expectedHash, `+${UPLOAD_TTL_HOURS} hours`, createdBy);
+      INSERT INTO upload_sessions (id, user_id, parent_id, name, conflict, total_size, chunk_size, sha256, expires_at, created_by,
+        client_created_at, client_modified_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?), ?, ?, ?)
+    `).run(id, userId, target.parentId, target.name, mode, totalSize, PART_SIZE, expectedHash, `+${UPLOAD_TTL_HOURS} hours`, createdBy,
+      dates?.createdAt ?? null, dates?.modifiedAt ?? null);
   })();
   return serializeSession(getSession(userId, id));
 }
@@ -286,6 +288,7 @@ async function completeUpload(userId, uploadId, { baseEtag } = {}) {
       baseEtag,
       uploadId: session.id,
       keepIdentical: Boolean(session.sha256),
+      dates: { createdAt: session.client_created_at, modifiedAt: session.client_modified_at },
     }, blob);
     await removePartFiles(session.id);
     return node;

@@ -53,11 +53,16 @@ class CameraAsset {
 
 /// An asset's original, ready to read.
 class CameraFile {
-  const CameraFile({required this.name, required this.size, required this.openRead});
+  const CameraFile({required this.name, required this.size, required this.openRead, this.created, this.modified});
 
   final String name;
   final int size;
   final Stream<List<int>> Function() openRead;
+
+  /// When it was taken and last changed, sent with the upload so the
+  /// server dates pictures without EXIF (screenshots, saved images).
+  final DateTime? created;
+  final DateTime? modified;
 }
 
 enum CameraAccessLevel { full, limited, denied }

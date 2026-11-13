@@ -5550,6 +5550,12 @@ class AppL10nEn extends AppL10n {
   String get photosToday => 'Today';
 
   @override
+  String get photosSortingSection => 'Sorting new photos…';
+
+  @override
+  String get photosUnknownDate => 'Unknown date';
+
+  @override
   String get photosYesterday => 'Yesterday';
 
   @override
