@@ -45,6 +45,7 @@ class LiveFileUpdates {
     this.socketUrl,
     this.onSharesChanged,
     this.onAiSuggestions,
+    this.onSigningUpdated,
     this.onPolled,
     this.pollInterval = const Duration(seconds: 15),
     this.maxBackoff = const Duration(seconds: 30),
@@ -60,6 +61,8 @@ class LiveFileUpdates {
   final Uri Function()? socketUrl;
   final void Function()? onSharesChanged;
   final void Function(Map<Object?, Object?> counts)? onAiSuggestions;
+  /// A signing document of the account changed (`signing:updated`).
+  final void Function()? onSigningUpdated;
   final void Function()? onPolled;
   final Duration pollInterval;
   final Duration maxBackoff;
@@ -123,6 +126,7 @@ class LiveFileUpdates {
         onEvent: (event, data) {
           if (event == 'shares:changed') onSharesChanged?.call();
           if (event == 'ai:suggestions' && data is Map) onAiSuggestions?.call(data);
+          if (event == 'signing:updated') onSigningUpdated?.call();
           if (event != 'files:changed' || data is! Map) return;
           final ids = data['folderIds'];
           if (ids is List) feed.addFolders(ids.whereType<String>());

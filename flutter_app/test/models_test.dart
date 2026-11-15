@@ -18,6 +18,23 @@ FileNode _file(String name, {String? mime, int size = 10, String? vaultId}) => F
 });
 
 void main() {
+  test('a node knows whether it is the result of a signing document', () {
+    expect(_file('a.pdf').signed, isFalse);
+    final signed = FileNode.fromJson(<String, dynamic>{
+      'id': 'n2',
+      'parentId': 'p1',
+      'type': 'file',
+      'name': 'a (signed).pdf',
+      'size': 1,
+      'etag': 'e',
+      'version': 1,
+      'signed': true,
+    });
+    expect(signed.signed, isTrue);
+    expect(signed.withName('b.pdf').signed, isTrue);
+    expect(signed.copyWith(favorite: true).signed, isTrue);
+  });
+
   test('share links parse the server shape', () {
     final link = ShareLink.fromJson(<String, dynamic>{
       'id': 7,

@@ -1,0 +1,496 @@
+{
+  "types": {
+    "cells": {
+      "storage": "inline",
+      "requiredPrefs": [
+        "cells"
+      ],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "cells": {
+          "kind": "int",
+          "min": 1,
+          "max": 50
+        },
+        "charset": {
+          "kind": "enum",
+          "values": [
+            "any",
+            "digits",
+            "letters"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "checkbox": {
+      "storage": "inline",
+      "requiredPrefs": [],
+      "prefs": {
+        "color": {
+          "kind": "color"
+        }
+      }
+    },
+    "date": {
+      "storage": "inline",
+      "requiredPrefs": [],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "autoToday": {
+          "kind": "bool"
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "format": {
+          "kind": "pattern",
+          "regex": "^[YMD .,/-]{1,20}$"
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "file": {
+      "storage": "blob",
+      "requiredPrefs": [],
+      "prefs": {}
+    },
+    "heading": {
+      "storage": "static",
+      "requiredPrefs": [],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "image": {
+      "storage": "blob",
+      "requiredPrefs": [],
+      "prefs": {}
+    },
+    "initials": {
+      "storage": "blob",
+      "requiredPrefs": [],
+      "prefs": {
+        "methods": {
+          "kind": "strings",
+          "min": 1,
+          "maxItems": 3,
+          "maxLength": 10
+        }
+      }
+    },
+    "multiple": {
+      "storage": "inline",
+      "requiredPrefs": [
+        "options"
+      ],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "maxSelect": {
+          "kind": "int",
+          "min": 1,
+          "max": 50
+        },
+        "minSelect": {
+          "kind": "int",
+          "min": 1,
+          "max": 50
+        },
+        "options": {
+          "kind": "strings",
+          "min": 1,
+          "maxItems": 50,
+          "maxLength": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "number": {
+      "storage": "inline",
+      "requiredPrefs": [],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "decimals": {
+          "kind": "int",
+          "min": 0,
+          "max": 10
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "format": {
+          "kind": "enum",
+          "values": [
+            "none",
+            "comma",
+            "dot",
+            "space",
+            "usd",
+            "eur",
+            "gbp"
+          ]
+        },
+        "max": {
+          "kind": "number"
+        },
+        "min": {
+          "kind": "number"
+        },
+        "placeholder": {
+          "kind": "string",
+          "max": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "phone": {
+      "storage": "inline",
+      "requiredPrefs": [],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "placeholder": {
+          "kind": "string",
+          "max": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "radio": {
+      "storage": "inline",
+      "requiredPrefs": [
+        "options"
+      ],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "options": {
+          "kind": "strings",
+          "min": 1,
+          "maxItems": 50,
+          "maxLength": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "select": {
+      "storage": "inline",
+      "requiredPrefs": [
+        "options"
+      ],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "options": {
+          "kind": "strings",
+          "min": 1,
+          "maxItems": 50,
+          "maxLength": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    },
+    "signature": {
+      "storage": "blob",
+      "requiredPrefs": [],
+      "prefs": {
+        "methods": {
+          "kind": "strings",
+          "min": 1,
+          "maxItems": 3,
+          "maxLength": 10
+        }
+      }
+    },
+    "stamp": {
+      "storage": "blob",
+      "requiredPrefs": [],
+      "prefs": {}
+    },
+    "text": {
+      "storage": "inline",
+      "requiredPrefs": [],
+      "prefs": {
+        "align": {
+          "kind": "enum",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "color": {
+          "kind": "color"
+        },
+        "fontSize": {
+          "kind": "int",
+          "min": 6,
+          "max": 72
+        },
+        "fontType": {
+          "kind": "enum",
+          "values": [
+            "normal",
+            "bold"
+          ]
+        },
+        "format": {
+          "kind": "enum",
+          "values": [
+            "none",
+            "email"
+          ]
+        },
+        "maxLength": {
+          "kind": "int",
+          "min": 1,
+          "max": 5000
+        },
+        "minLength": {
+          "kind": "int",
+          "min": 1,
+          "max": 5000
+        },
+        "multiline": {
+          "kind": "bool"
+        },
+        "placeholder": {
+          "kind": "string",
+          "max": 100
+        },
+        "valign": {
+          "kind": "enum",
+          "values": [
+            "top",
+            "center",
+            "bottom"
+          ]
+        }
+      }
+    }
+  }
+}

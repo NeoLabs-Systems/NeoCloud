@@ -29,6 +29,7 @@ const RAW_BODY_PATHS = [
   /^\/api\/upload$/,
   /^\/api\/uploads\/[^/]+\/parts\/\d+$/,
   /^\/api\/public\/shares\/[^/]+\/upload$/,
+  /^\/api\/public\/sign\/[^/]+\/fields\/[^/]+\/upload$/,
 ];
 
 // Requests that start writing a file. During shutdown these are turned away
@@ -152,6 +153,12 @@ function applyHttpMiddleware(app, { trustProxy, secureCookies, sessionMiddleware
       // nginx would otherwise buffer whole downloads to disk before sending.
       if (req.method === 'GET' || req.method === 'HEAD') res.setHeader('X-Accel-Buffering', 'no');
     }
+    next();
+  });
+  // Signing links: even a refused request body (bad JSON, too large) is answered
+  // without a Referer policy that would let the token travel on.
+  app.use('/api/public/sign', (req, res, next) => {
+    res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow' });
     next();
   });
   // CSRF: a state-changing API call from a browser must come from an allowed

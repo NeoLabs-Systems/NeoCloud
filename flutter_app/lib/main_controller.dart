@@ -20,10 +20,14 @@ class NeoCloudController extends ChangeNotifier {
     CameraUploads? cameraUploads,
     ShareIntake? shareIntake,
     AiApi? ai,
+    SigningApi? signing,
+    PublicSigningApi Function(String token)? publicSigningFactory,
     PhotoLibrary? photoLibrary,
     Uri? launchUri,
   }) : _preferences = preferences,
        ai = ai ?? AiApi(client),
+       signing = signing ?? BackendSigningApi(client),
+       _publicSigningFactory = publicSigningFactory,
        photoLibrary = photoLibrary ?? PhotoLibrary(client),
        deviceSessions = deviceSessions ?? createDeviceSessions(),
        cameraUploads = cameraUploads ?? createCameraUploads(),
@@ -42,11 +46,14 @@ class NeoCloudController extends ChangeNotifier {
       onSharesChanged: _handleSharesChanged,
       onAiSuggestions: (counts) => aiReview.applyCounts(AiSuggestionCounts.fromJson(counts)),
       onPolled: _handlePolled,
+      onSigningUpdated: () => signingRevision.value += 1,
     );
     fileChanges.addListener((_) => unawaited(refreshAccount()));
     _themeMode = _themeModeFromName(_preferences.getString(_themePreferenceKey));
     pendingDeviceCode = _deviceCodeFrom(launchUri);
     pendingPairCode = _pairCodeFrom(launchUri);
+    final signToken = _signTokenFrom(launchUri);
+    if (signToken != null) openSigningLink(signToken);
   }
 
   static const String _themePreferenceKey = 'app.themeMode';
@@ -59,6 +66,16 @@ class NeoCloudController extends ChangeNotifier {
 
   /// The AI calls (Settings › AI, Admin › AI); a fake in tests.
   final AiApi ai;
+
+  /// The creator's signing calls (documents, fields, parties, links); a fake
+  /// in tests.
+  final SigningApi signing;
+  final PublicSigningApi Function(String token)? _publicSigningFactory;
+
+  /// The signer's calls for the link [token]: no account, no session. Works
+  /// signed out.
+  PublicSigningApi publicSigning(String token) =>
+      (_publicSigningFactory ?? (token) => HttpPublicSigningApi(token: token, resolve: client.uri))(token);
 
   /// Whether AI runs for the account, the review counts and the pending
   /// suggestions the file list marks.
@@ -114,6 +131,52 @@ class NeoCloudController extends ChangeNotifier {
     final segments = uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
     if (segments.isEmpty || segments.last != 'pair') return null;
     return (uri.queryParameters['code'] ?? '').trim();
+  }
+
+  /// The signer's page of `/app/sign/<token>`: no account, no session. It is
+  /// kept here so a language change (which rebuilds the app) doesn't lose
+  /// what the signer has entered.
+  PublicSigningController? signingFlow;
+  bool _bootSkipped = false;
+
+  static String? _signTokenFrom(Uri? uri) {
+    if (uri == null) return null;
+    final route = AppRoute.parse(uri.path);
+    return route.section == AppRoute.signSection ? route.detail : null;
+  }
+
+  /// Opens a signing link as the signer's page. Takes the token or the whole
+  /// link a sender shared.
+  void openSigningLink(String tokenOrLink) {
+    final text = tokenOrLink.trim();
+    final token = text.contains('/') ? _signTokenFrom(Uri.tryParse(text)) : text;
+    if (token == null || token.isEmpty) return;
+    signingFlow?.dispose();
+    signingFlow = PublicSigningController(api: publicSigning(token));
+    unawaited(signingFlow!.start());
+    notifyListeners();
+  }
+
+  /// The language of a signing page: the document's, or the signer's choice.
+  /// Not stored and not sent anywhere (a signer has no account).
+  void useSigningLanguage(AppLanguage language) {
+    currentAppLanguage = language;
+    notifyListeners();
+  }
+
+  /// Leaves the signer's page for the app (its sign-in on the web).
+  void finishSigning() {
+    signingFlow?.dispose();
+    signingFlow = null;
+    final segments = Uri.base.pathSegments.where((segment) => segment.isNotEmpty).toList();
+    final at = segments.indexOf(AppRoute.signSection);
+    if (at >= 0) replaceBrowserPath('/${segments.sublist(0, at).map((segment) => '$segment/').join()}');
+    if (_bootSkipped) {
+      _bootSkipped = false;
+      isBooting = true;
+      unawaited(boot());
+    }
+    notifyListeners();
   }
 
   /// Leaves the pairing page for the app (or its sign-in).
@@ -180,6 +243,14 @@ class NeoCloudController extends ChangeNotifier {
   /// The shared folder open under Shared with me; the list of shares when null.
   String? openSharedFolderId;
 
+  /// The signing document open under Signing (editor or progress page); the
+  /// list when null.
+  String? openSigningId;
+
+  /// Bumped when the server says a signing document changed (socket), and on
+  /// every poll while a signing page is open (phones), so pages reload.
+  final ValueNotifier<int> signingRevision = ValueNotifier<int>(0);
+
   /// What other accounts share with this one (`GET /api/shared-with-me`).
   List<SharedWithMe> sharedWithMe = const <SharedWithMe>[];
 
@@ -208,6 +279,8 @@ class NeoCloudController extends ChangeNotifier {
   /// the owner's journal, not this account's): refresh it on every poll.
   void _handlePolled() {
     unawaited(aiReview.poll());
+    // Without the socket (phones) nobody says when a document changed.
+    if (selectedSection == AppSection.signing && !liveUpdates.connected) signingRevision.value += 1;
     if (selectedSection != AppSection.shared) return;
     unawaited(refreshSharedWithMe());
     final open = openSharedFolderId;
@@ -318,6 +391,13 @@ class NeoCloudController extends ChangeNotifier {
   }
 
   Future<void> boot() async {
+    if (signingFlow != null) {
+      // A signer needs no account: don't ask the server about a session.
+      _bootSkipped = true;
+      isBooting = false;
+      notifyListeners();
+      return;
+    }
     if (usesDeviceLogin) {
       await _bootDevice();
       return;
@@ -761,6 +841,7 @@ class NeoCloudController extends ChangeNotifier {
     user = null;
     openFolderId = null;
     openSharedFolderId = null;
+    openSigningId = null;
     sharedWithMe = const <SharedWithMe>[];
     settingsPage = null;
     vaults.lockAll();
@@ -790,6 +871,8 @@ class NeoCloudController extends ChangeNotifier {
         return AppRoute(AppSection.settings.name, page == null ? null : AppRoute.slug(page.name));
       case AppSection.admin:
         return AppRoute(AppSection.admin.name, _adminTab == _AdminTab.users ? null : _adminTab.name);
+      case AppSection.signing:
+        return AppRoute(AppSection.signing.name, openSigningId);
       case AppSection.photos:
       case AppSection.favorites:
       case AppSection.recent:
@@ -805,6 +888,10 @@ class NeoCloudController extends ChangeNotifier {
   /// Opens [route] from the address bar: at start ([initial]) or from the
   /// browser's back and forward buttons ([fromBrowser]).
   void openRoute(AppRoute route, {bool initial = false, bool fromBrowser = false}) {
+    if (route.section == AppRoute.signSection) {
+      if (route.detail != null && signingFlow == null) openSigningLink(route.detail!);
+      return;
+    }
     if (!isAuthenticated) {
       if (!route.isNone) _requestedRoute = route;
       return;
@@ -836,6 +923,8 @@ class NeoCloudController extends ChangeNotifier {
         settingsPage = SettingsPage.values.where((page) => AppRoute.slug(page.name) == detail).firstOrNull;
       case AppSection.admin:
         _adminTab = _AdminTab.values.where((tab) => tab.name == detail).firstOrNull ?? _AdminTab.users;
+      case AppSection.signing:
+        openSigningId = detail;
       case AppSection.photos:
       case AppSection.favorites:
       case AppSection.recent:
@@ -873,6 +962,14 @@ class NeoCloudController extends ChangeNotifier {
     openSharedFolderId = folderId;
     selectedSection = AppSection.shared;
     if (folderId == null) unawaited(refreshSharedWithMe());
+    _storeRoute();
+    notifyListeners();
+  }
+
+  /// Opens a signing document (the list when null).
+  void openSigning(String? documentId) {
+    openSigningId = documentId;
+    selectedSection = AppSection.signing;
     _storeRoute();
     notifyListeners();
   }
@@ -946,6 +1043,13 @@ class NeoCloudController extends ChangeNotifier {
       return;
     }
     await startDownload(client.downloadUri(node.id), fileName: node.name, headers: client.mediaHeaders);
+  }
+
+  /// A signed file without the appended signature pages (certificate and
+  /// audit trail); the file in the library stays as it is.
+  Future<void> downloadSignedWithoutCertificate(FileNode node) async {
+    final bytes = await signing.cleanPdfForNode(node.id);
+    await saveBytes(bytes, node.name, mime: 'application/pdf');
   }
 
   /// Tells the server [node] was opened, for Quick Access. Best effort.

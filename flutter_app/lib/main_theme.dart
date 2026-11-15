@@ -93,7 +93,7 @@ ThemeData _phoneEntryTheme(ThemeData base) {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: Colors.white.withValues(alpha: dark ? 0.14 : 0.22)),
         ),
-        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, letterSpacing: -0.1),
+        textStyle: GoogleFonts.geist(fontSize: 14.5, fontWeight: FontWeight.w700, letterSpacing: -0.1),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -103,13 +103,13 @@ ThemeData _phoneEntryTheme(ThemeData base) {
         backgroundColor: palette.bgCard.withValues(alpha: dark ? 0.2 : 0.5),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: GoogleFonts.geist(fontSize: 15, fontWeight: FontWeight.w700),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: palette.accentHover,
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -0.05),
+        textStyle: GoogleFonts.geist(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -0.05),
       ),
     ),
   );
@@ -129,6 +129,10 @@ ButtonStyle _altSignInButtonStyle() => OutlinedButton.styleFrom(
 /// Title of a card or section.
 TextStyle _sectionTitleStyle() =>
     TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 15, letterSpacing: -0.15);
+
+/// The app's theme for [brightness]; widget tests use it too.
+ThemeData neoCloudTheme(Brightness brightness) =>
+    _buildNeoCloudTheme(brightness == Brightness.dark ? darkPalette : lightPalette, brightness);
 
 ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
   final base = ThemeData(
@@ -199,7 +203,7 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: palette.textPrimary,
-      contentTextStyle: TextStyle(color: palette.bgPrimary, fontSize: 13.5),
+      contentTextStyle: GoogleFonts.geist(color: palette.bgPrimary, fontSize: 13.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -226,7 +230,7 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: buttonShape,
-        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.geist(fontSize: 13.5, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -236,7 +240,7 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         shape: buttonShape,
-        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+        textStyle: GoogleFonts.geist(fontSize: 13.5, fontWeight: FontWeight.w500),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -244,7 +248,7 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
         foregroundColor: palette.textSecondary,
         minimumSize: const Size(0, 36),
         shape: buttonShape,
-        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5),
+        textStyle: GoogleFonts.geist(fontWeight: FontWeight.w500, fontSize: 13.5),
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
@@ -258,7 +262,7 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
         side: BorderSide(color: palette.borderLight),
         visualDensity: VisualDensity.compact,
         shape: buttonShape,
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        textStyle: GoogleFonts.geist(fontSize: 13, fontWeight: FontWeight.w500),
       ),
     ),
     iconTheme: IconThemeData(color: palette.textSecondary),
@@ -274,13 +278,13 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
       checkmarkColor: palette.textPrimary,
       side: BorderSide(color: palette.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
-      labelStyle: TextStyle(color: palette.textSecondary, fontWeight: FontWeight.w500, fontSize: 13),
+      labelStyle: GoogleFonts.geist(color: palette.textSecondary, fontWeight: FontWeight.w500, fontSize: 13),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       showCheckmark: false,
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(color: palette.textPrimary, borderRadius: BorderRadius.circular(8)),
-      textStyle: TextStyle(color: palette.bgPrimary, fontSize: 12),
+      textStyle: GoogleFonts.geist(color: palette.bgPrimary, fontSize: 12),
       waitDuration: const Duration(milliseconds: 400),
     ),
     // Neutral switches: "on" is the text color, so gold stays reserved for
@@ -304,8 +308,8 @@ ThemeData _buildNeoCloudTheme(NeoCloudPalette palette, Brightness brightness) {
       unselectedLabelColor: palette.textMuted,
       indicatorColor: palette.textPrimary,
       dividerColor: palette.border,
-      labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-      unselectedLabelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+      labelStyle: GoogleFonts.geist(fontSize: 13.5, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: GoogleFonts.geist(fontSize: 13.5, fontWeight: FontWeight.w500),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: palette.bgPrimary,

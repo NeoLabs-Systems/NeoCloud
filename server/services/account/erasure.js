@@ -2,7 +2,7 @@
 
 // Deleting an account with everything it owns: files and folders with their
 // versions, previews and search index entries, links and shares in both
-// directions, vaults, imports with their stored credentials, upload sessions,
+// directions, vaults, signing documents with their values and audit trail, imports with their stored credentials, upload sessions,
 // sessions, device tokens and WebDAV app passwords, sign-in challenges,
 // passkeys and 2FA. The rows go in one transaction; files on disk are
 // removed after it commits. Used by self-service deletion and by admins.
@@ -62,6 +62,9 @@ function deleteRows(userId) {
   run('DELETE FROM shares WHERE user_id = @id');
   run('DELETE FROM search_docs WHERE user_id = @id');
   run('DELETE FROM vaults WHERE user_id = @id');
+  // Signing documents reference blobs and nodes; their parties, fields,
+  // values and events go with them.
+  run('DELETE FROM sign_documents WHERE owner_id = @id');
   run('DELETE FROM import_jobs WHERE user_id = @id');
   run('DELETE FROM upload_sessions WHERE user_id = @id OR created_by = @id');
   run('DELETE FROM favorites WHERE user_id = @id');

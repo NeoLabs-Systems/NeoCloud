@@ -68,7 +68,7 @@ class _UndoCard extends StatelessWidget {
                 if (entry.onUndo != null)
                   TextButton(
                     onPressed: () => unawaited(center.undo()),
-                    style: TextButton.styleFrom(foregroundColor: _bgPrimary, textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, decoration: TextDecoration.underline)),
+                    style: TextButton.styleFrom(foregroundColor: _bgPrimary, textStyle: GoogleFonts.geist(fontWeight: FontWeight.w700, fontSize: 13.5, decoration: TextDecoration.underline)),
                     child: Text(appStrings.undoAction),
                   ),
                 IconButton(

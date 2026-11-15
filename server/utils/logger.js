@@ -10,7 +10,7 @@ function redactSecrets(input) {
   let text = String(input || '');
   if (!text) return text;
   return text
-    .replace(/(\/(?:api\/public\/shares|s|devices\/authorize)\/)[^/?#\s]+/g, '$1[redacted]')
+    .replace(/(\/(?:api\/public\/shares|api\/public\/sign|app\/sign|s|devices\/authorize)\/)[^/?#\s]+/g, '$1[redacted]')
     .replace(/\b(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, '$1[redacted]')
     .replace(/([?&](?:token|access_token|api[_-]?key|secret|password|authorization|cookie|session|sid)=)([^&#\s]+)/gi, '$1[redacted]')
     .replace(/\b(token|access_token|authorization|api[_-]?key|secret|password|cookie|session(?:id)?|sid)\b\s*[:=]\s*("[^"]*"|'[^']*'|[^,\s;]+)/gi, '$1=[redacted]');

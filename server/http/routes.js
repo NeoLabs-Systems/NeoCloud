@@ -23,6 +23,8 @@ const ROUTE_REGISTRY = [
   { basePath: '/api/imports', modulePath: '../routes/imports' },
   { basePath: '/api/ai', modulePath: '../routes/ai' },
   { basePath: '/api/neorouter', modulePath: '../routes/neorouter' },
+  { basePath: '/api/signing', modulePath: '../routes/signing' },
+  { basePath: '/api/public/sign', modulePath: '../routes/public_signing' },
 ];
 
 function registerApiRoutes(app) {

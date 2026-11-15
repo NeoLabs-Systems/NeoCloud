@@ -9610,7 +9610,7 @@ abstract class AppL10n {
   /// No description provided for @signingPrefDefaultToday.
   ///
   /// In en, this message translates to:
-  /// **'Start with today\'s date'**
+  /// **'Default to today\'s date'**
   String get signingPrefDefaultToday;
 
   /// No description provided for @signingPrefMin.
@@ -9828,18 +9828,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Bold'**
   String get signingPrefFontBold;
-
-  /// No description provided for @signingPrefFontItalic.
-  ///
-  /// In en, this message translates to:
-  /// **'Italic'**
-  String get signingPrefFontItalic;
-
-  /// No description provided for @signingPrefFontBoldItalic.
-  ///
-  /// In en, this message translates to:
-  /// **'Bold italic'**
-  String get signingPrefFontBoldItalic;
 
   /// No description provided for @signingPrefColor.
   ///
@@ -10435,12 +10423,6 @@ abstract class AppL10n {
   /// **'Check who signs and how. Each person gets their own link.'**
   String get signingSendIntro;
 
-  /// No description provided for @signingEmailNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Mail delivery comes later. Copy the link and share it yourself.'**
-  String get signingEmailNote;
-
   /// No description provided for @signingOrderLabel.
   ///
   /// In en, this message translates to:
@@ -10774,7 +10756,7 @@ abstract class AppL10n {
   /// No description provided for @signingDownloadSigned.
   ///
   /// In en, this message translates to:
-  /// **'Download'**
+  /// **'Download signed PDF'**
   String get signingDownloadSigned;
 
   /// No description provided for @signingFinalizing.
@@ -10938,6 +10920,666 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'The original file is gone, but the document still works.'**
   String get signingSourceGone;
+
+  /// No description provided for @signingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents you send out for signature, and how far each one is.'**
+  String get signingSubtitle;
+
+  /// No description provided for @signingLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get signingLoadMore;
+
+  /// No description provided for @signingNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No documents match.'**
+  String get signingNoResults;
+
+  /// No description provided for @signingPublicLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get signingPublicLanguage;
+
+  /// No description provided for @signingPublicMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get signingPublicMore;
+
+  /// No description provided for @signingPublicDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline to sign'**
+  String get signingPublicDecline;
+
+  /// No description provided for @signingPublicDeclineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline to sign?'**
+  String get signingPublicDeclineTitle;
+
+  /// No description provided for @signingPublicDeclineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The sender will be told that you didn\'t sign. Nobody can sign this document afterwards.'**
+  String get signingPublicDeclineBody;
+
+  /// No description provided for @signingPublicDeclineReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get signingPublicDeclineReason;
+
+  /// No description provided for @signingPublicDeclineConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get signingPublicDeclineConfirm;
+
+  /// No description provided for @signingPublicInvalidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This link isn\'t valid anymore'**
+  String get signingPublicInvalidTitle;
+
+  /// No description provided for @signingPublicInvalidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been replaced or switched off. Ask the sender for a new link.'**
+  String get signingPublicInvalidBody;
+
+  /// No description provided for @signingPublicRateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests'**
+  String get signingPublicRateTitle;
+
+  /// No description provided for @signingPublicRateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait a moment and try again.'**
+  String get signingPublicRateBody;
+
+  /// No description provided for @signingPublicOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server'**
+  String get signingPublicOfflineTitle;
+
+  /// No description provided for @signingPublicOfflineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get signingPublicOfflineBody;
+
+  /// No description provided for @signingPublicServerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get signingPublicServerTitle;
+
+  /// No description provided for @signingPublicServerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This page couldn\'t be loaded. Please try again in a moment.'**
+  String get signingPublicServerBody;
+
+  /// No description provided for @signingPublicWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s not your turn yet'**
+  String get signingPublicWaitingTitle;
+
+  /// No description provided for @signingPublicWaitingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more person has to sign first} other{{count} more people have to sign first}}. You can keep this page open, it updates by itself.'**
+  String signingPublicWaitingBody(int count);
+
+  /// No description provided for @signingPublicCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get signingPublicCheckNow;
+
+  /// No description provided for @signingPublicToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get signingPublicToday;
+
+  /// No description provided for @signingSavedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device'**
+  String get signingSavedTitle;
+
+  /// No description provided for @signingSavedUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this one'**
+  String get signingSavedUse;
+
+  /// No description provided for @signingSavedRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get signingSavedRemove;
+
+  /// No description provided for @signingSavedRemoveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all'**
+  String get signingSavedRemoveAll;
+
+  /// No description provided for @signingSaveOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Save on this device'**
+  String get signingSaveOnDevice;
+
+  /// No description provided for @signingSaveOnDeviceNote.
+  ///
+  /// In en, this message translates to:
+  /// **'It stays on this device only. Nobody else can see it.'**
+  String get signingSaveOnDeviceNote;
+
+  /// No description provided for @signingDownloadWithCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Download with signature pages'**
+  String get signingDownloadWithCertificate;
+
+  /// No description provided for @signingDownloadWithoutCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Download without signature pages'**
+  String get signingDownloadWithoutCertificate;
+
+  /// No description provided for @signingDownloadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More download options'**
+  String get signingDownloadMore;
+
+  /// No description provided for @signingPublicPartDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve signed this document'**
+  String get signingPublicPartDoneTitle;
+
+  /// No description provided for @signingPublicPartDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks! {done} of {total} have signed. Once everyone has signed, you can download the signed copy here.'**
+  String signingPublicPartDoneBody(int done, int total);
+
+  /// No description provided for @signingPublicAllDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Document completed'**
+  String get signingPublicAllDoneTitle;
+
+  /// No description provided for @signingPublicAllDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone has signed. Download your copy of the signed document.'**
+  String get signingPublicAllDoneBody;
+
+  /// No description provided for @signingPublicPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone has signed. The signed copy is being prepared, this usually takes a few seconds.'**
+  String get signingPublicPreparing;
+
+  /// No description provided for @signingPublicDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download signed document'**
+  String get signingPublicDownload;
+
+  /// No description provided for @signingPublicDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The download didn\'t work. Please try again.'**
+  String get signingPublicDownloadFailed;
+
+  /// No description provided for @signingPublicClosedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can close this page now.'**
+  String get signingPublicClosedNote;
+
+  /// No description provided for @signingPublicDeclinedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This document was declined'**
+  String get signingPublicDeclinedTitle;
+
+  /// No description provided for @signingPublicDeclinedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone declined to sign, so it can no longer be signed. Ask the sender if you need a new one.'**
+  String get signingPublicDeclinedBody;
+
+  /// No description provided for @signingPublicExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This request has expired'**
+  String get signingPublicExpiredTitle;
+
+  /// No description provided for @signingPublicExpiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The time to sign has run out. Ask the sender for a new link.'**
+  String get signingPublicExpiredBody;
+
+  /// No description provided for @signingPublicCanceledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The sender canceled this request'**
+  String get signingPublicCanceledTitle;
+
+  /// No description provided for @signingPublicCanceledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s nothing to sign here anymore. Ask the sender if you think this is a mistake.'**
+  String get signingPublicCanceledBody;
+
+  /// No description provided for @signingPublicLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This document can\'t be signed right now'**
+  String get signingPublicLockedTitle;
+
+  /// No description provided for @signingPublicLockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again later or ask the sender.'**
+  String get signingPublicLockedBody;
+
+  /// No description provided for @signingPublicIntroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign “{title}”'**
+  String signingPublicIntroTitle(String title);
+
+  /// No description provided for @signingPublicIntroLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the document, fill in your fields and sign. It only takes a few minutes.'**
+  String get signingPublicIntroLead;
+
+  /// No description provided for @signingPublicFieldCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 field to fill in} other{{count} fields to fill in}}'**
+  String signingPublicFieldCount(int count);
+
+  /// No description provided for @signingPublicExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Open until {date}'**
+  String signingPublicExpires(String date);
+
+  /// No description provided for @signingPublicConsentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign electronically'**
+  String get signingPublicConsentTitle;
+
+  /// No description provided for @signingPublicConsentCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to sign this document electronically.'**
+  String get signingPublicConsentCheck;
+
+  /// No description provided for @signingPublicNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your full name'**
+  String get signingPublicNameLabel;
+
+  /// No description provided for @signingPublicNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your full name.'**
+  String get signingPublicNameRequired;
+
+  /// No description provided for @signingPublicConsentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please agree to continue.'**
+  String get signingPublicConsentRequired;
+
+  /// No description provided for @signingPublicProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String signingPublicProgress(int current, int total);
+
+  /// No description provided for @signingPublicProgressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Field {current} of {total}: {name}'**
+  String signingPublicProgressLabel(int current, int total, String name);
+
+  /// No description provided for @signingPublicNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get signingPublicNext;
+
+  /// No description provided for @signingPublicBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get signingPublicBack;
+
+  /// No description provided for @signingPublicSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get signingPublicSkip;
+
+  /// No description provided for @signingPublicReviewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get signingPublicReviewAction;
+
+  /// No description provided for @signingPublicRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get signingPublicRequired;
+
+  /// No description provided for @signingPublicOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get signingPublicOptional;
+
+  /// No description provided for @signingPublicAllFields.
+  ///
+  /// In en, this message translates to:
+  /// **'All fields'**
+  String get signingPublicAllFields;
+
+  /// No description provided for @signingPublicStateDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get signingPublicStateDone;
+
+  /// No description provided for @signingPublicStateOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'To do'**
+  String get signingPublicStateOpen;
+
+  /// No description provided for @signingPublicStateEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty'**
+  String get signingPublicStateEmpty;
+
+  /// No description provided for @signingPublicTypeHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Type here'**
+  String get signingPublicTypeHere;
+
+  /// No description provided for @signingPublicPickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get signingPublicPickDate;
+
+  /// No description provided for @signingPublicDateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format: {format}'**
+  String signingPublicDateFormat(String format);
+
+  /// No description provided for @signingPublicCellsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} characters'**
+  String signingPublicCellsHint(int count);
+
+  /// No description provided for @signingPublicChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose…'**
+  String get signingPublicChoose;
+
+  /// No description provided for @signingPublicAddSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your signature'**
+  String get signingPublicAddSignature;
+
+  /// No description provided for @signingPublicAddInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your initials'**
+  String get signingPublicAddInitials;
+
+  /// No description provided for @signingPublicChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get signingPublicChange;
+
+  /// No description provided for @signingPublicRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get signingPublicRemove;
+
+  /// No description provided for @signingPublicChoosePicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a picture'**
+  String get signingPublicChoosePicture;
+
+  /// No description provided for @signingPublicChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get signingPublicChooseFile;
+
+  /// No description provided for @signingPublicReplaceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another'**
+  String get signingPublicReplaceFile;
+
+  /// No description provided for @signingPublicPickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That couldn\'t be read. Please try another one.'**
+  String get signingPublicPickFailed;
+
+  /// No description provided for @signingPublicTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is too large. Please choose one up to {size}.'**
+  String signingPublicTooLarge(String size);
+
+  /// No description provided for @signingPublicUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get signingPublicUploaded;
+
+  /// No description provided for @signingPublicSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get signingPublicSaving;
+
+  /// No description provided for @signingPublicSavedAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All entries saved'**
+  String get signingPublicSavedAll;
+
+  /// No description provided for @signingPublicOfflineBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Your entries are kept and will be saved as soon as you\'re back online.'**
+  String get signingPublicOfflineBanner;
+
+  /// No description provided for @signingPublicRetryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Try now'**
+  String get signingPublicRetryNow;
+
+  /// No description provided for @signingPublicReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review your entries'**
+  String get signingPublicReviewTitle;
+
+  /// No description provided for @signingPublicReviewLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Check everything before you finish. You can\'t change your entries afterwards.'**
+  String get signingPublicReviewLead;
+
+  /// No description provided for @signingPublicMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 required field is missing} other{{count} required fields are missing}}'**
+  String signingPublicMissing(int count);
+
+  /// No description provided for @signingPublicFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get signingPublicFinish;
+
+  /// No description provided for @signingPublicFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing…'**
+  String get signingPublicFinishing;
+
+  /// No description provided for @signingPublicEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get signingPublicEdit;
+
+  /// No description provided for @signingPublicFinishFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t finish. Please try again.'**
+  String get signingPublicFinishFailed;
+
+  /// No description provided for @signingPublicFinishOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your entries because there is no connection. They are kept, try again when you\'re online.'**
+  String get signingPublicFinishOffline;
+
+  /// No description provided for @signingPublicChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'This document changed in the meantime. We reloaded it.'**
+  String get signingPublicChanged;
+
+  /// No description provided for @signingPublicLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this page?'**
+  String get signingPublicLeaveTitle;
+
+  /// No description provided for @signingPublicLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Some entries haven\'t been saved yet. If you leave now, they are lost.'**
+  String get signingPublicLeaveBody;
+
+  /// No description provided for @signingPublicLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get signingPublicLeave;
+
+  /// No description provided for @signingPublicStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get signingPublicStay;
+
+  /// No description provided for @signingPublicDocumentPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {number}'**
+  String signingPublicDocumentPage(int number);
+
+  /// No description provided for @signingPublicNoFields.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing to fill in for you. Review and finish.'**
+  String get signingPublicNoFields;
+
+  /// No description provided for @signingPublicLoadingDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the document…'**
+  String get signingPublicLoadingDocument;
+
+  /// No description provided for @signingPublicSignatureSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature added'**
+  String get signingPublicSignatureSaved;
+
+  /// No description provided for @signingProblemPrefRange.
+  ///
+  /// In en, this message translates to:
+  /// **'One of the settings is outside its allowed range.'**
+  String get signingProblemPrefRange;
+
+  /// No description provided for @signingPaletteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag onto the page, or tap and then tap the page'**
+  String get signingPaletteHint;
+
+  /// No description provided for @signingPartyEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit party'**
+  String get signingPartyEditTitle;
+
+  /// No description provided for @signingColorNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get signingColorNone;
+
+  /// No description provided for @signingSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get signingSave;
+
+  /// No description provided for @signingTabSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get signingTabSettings;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

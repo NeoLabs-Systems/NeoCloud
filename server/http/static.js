@@ -34,7 +34,37 @@ function serveFlutterApp(req, res) {
   return res.send(html);
 }
 
+// A signing link is its own credential: never indexed, never sent on in a
+// Referer, never framed, and the page may only talk to this server (no
+// Google fonts or CanvasKit CDN; build with --no-web-resources-cdn).
+const SIGNING_PAGE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' blob: 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "connect-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "worker-src 'self' blob:",
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+function setSigningPageHeaders(req, res, next) {
+  setNoStoreHeaders(res);
+  res.set({
+    'Referrer-Policy': 'no-referrer',
+    'X-Robots-Tag': 'noindex, nofollow',
+    'Content-Security-Policy': SIGNING_PAGE_CSP,
+  });
+  next();
+}
+
 function registerStaticRoutes(app) {
+  app.use('/app/sign', setSigningPageHeaders);
   app.use('/app', express.static(FLUTTER_WEB_DIR, { index: false, setHeaders: setFlutterStaticHeaders }));
   app.get(/^\/app(\/.*)?$/, serveFlutterApp);
 

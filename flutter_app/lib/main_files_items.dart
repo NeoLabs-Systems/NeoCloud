@@ -202,6 +202,7 @@ class _FileRowState extends State<_FileRow> {
                                   ),
                                   if (node.favorite) ...<Widget>[const SizedBox(width: 6), Icon(Icons.star_rounded, size: 15, color: _accent)],
                                   if (node.shared) ...<Widget>[const SizedBox(width: 6), const _SharedMark(size: 15)],
+                                  if (node.signed) ...<Widget>[const SizedBox(width: 6), const _SignedMark(size: 15)],
                                   if (callbacks.hasAiSuggestion(node.id)) ...<Widget>[
                                     const SizedBox(width: 8),
                                     _AiSuggestionChip(onTap: () => callbacks.onAiSuggestion!(node)),
@@ -303,6 +304,7 @@ class _FileTile extends StatelessWidget {
                         const Spacer(),
                         if (node.favorite) Icon(Icons.star_rounded, size: 16, color: _accent),
                         if (node.shared) const _SharedMark(size: 16),
+                        if (node.signed) const _SignedMark(size: 16),
                         if (callbacks.hasAiSuggestion(node.id)) ...<Widget>[
                           const SizedBox(width: 4),
                           _AiSuggestionChip(compact: true, onTap: () => callbacks.onAiSuggestion!(node)),
@@ -543,6 +545,20 @@ class _SharedMark extends StatelessWidget {
     return Tooltip(
       message: appStrings.sharedWithPeople,
       child: Icon(Icons.people_alt_outlined, size: size, color: _textMuted),
+    );
+  }
+}
+
+class _SignedMark extends StatelessWidget {
+  const _SignedMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: appStrings.signingSignedBadge,
+      child: Icon(Icons.verified_outlined, size: size, color: _textMuted),
     );
   }
 }

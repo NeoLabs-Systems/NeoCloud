@@ -250,6 +250,9 @@ class BackendClient {
         'cursor': ?cursor,
       })));
 
+  /// One node by id (the signed file of a document, for instance).
+  Future<FileNode> getNode(String id) async => FileNode.fromJson(_map(_map(await _request('GET', '/api/nodes/$id'))['node']));
+
   Future<FileNode> createFolder(String parentId, String name) async =>
       FileNode.fromJson(_map(await _request('POST', '/api/folders', json: {'parentId': parentId, 'name': name})));
 

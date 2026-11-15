@@ -17,6 +17,7 @@ const path = require('path');
 const { app, cleanup, registerUser, request, upload } = require('../helpers/app');
 const db = require('../../server/db/database');
 const { createDeviceToken } = require('../../server/services/devices/tokens');
+const { makePdf } = require('../helpers/signing');
 
 test.after(cleanup);
 
@@ -25,6 +26,7 @@ const REGISTRY = [
   ['/api', 'files'], ['/api', 'transfers'], ['/api', 'members'], ['/api/sync', 'sync'], ['/api/devices', 'devices'],
   ['/api/storage', 'storage'], ['/api/shares', 'shares'], ['/api/public/shares', 'public_shares'],
   ['/api/vaults', 'vaults'], ['/api/imports', 'imports'], ['/api/ai', 'ai'], ['/api/neorouter', 'neorouter'],
+  ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
   ['/api/photos', 'photos'],
 ];
 
@@ -95,6 +97,13 @@ test.before(async () => {
     VALUES (?, ?, 'webdav', 'https://dav.example.com', 'me', '/', ?, 'paused')
   `).run(v.import, owner.user.id, v.folder);
   v.otherFile = (await upload(other.agent, 'mine.txt', 'mine').expect(201)).body.id;
+  const pdf = await upload(owner.agent, 'sign-me.pdf', await makePdf(1)).expect(201);
+  const draft = await owner.agent.post('/api/signing/documents').send({ nodeId: pdf.body.id }).expect(201);
+  v.sign = draft.body.document.id;
+  v.signParty = draft.body.parties[0].id;
+  const field = await owner.agent.put(`/api/signing/documents/${v.sign}/fields`)
+    .send({ fields: [{ partyId: v.signParty, type: 'text', areas: [{ page: 0, x: 0.1, y: 0.1, w: 0.3, h: 0.05 }] }] }).expect(200);
+  v.signField = field.body.fields[0].id;
 });
 
 // How another account's ids go into each route. A string says why the route
@@ -247,6 +256,38 @@ const CLASSIFIED = {
   'POST /api/ai/files/:id/summary': () => ['POST', `/api/ai/files/${v.file}/summary`],
   'GET /api/ai/cleanup/folders': OWN,
   'POST /api/ai/cleanup/folders': () => ['POST', '/api/ai/cleanup/folders', { ids: [v.folder] }],
+  'GET /api/signing/capabilities': OWN,
+  'POST /api/signing/documents': () => ['POST', '/api/signing/documents', { nodeId: v.file }],
+  'GET /api/signing/documents': OWN,
+  'GET /api/signing/documents/:id': () => ['GET', `/api/signing/documents/${v.sign}`],
+  'PUT /api/signing/documents/:id': () => ['PUT', `/api/signing/documents/${v.sign}`, { title: 'x' }],
+  'DELETE /api/signing/documents/:id': () => ['DELETE', `/api/signing/documents/${v.sign}`],
+  'PUT /api/signing/documents/:id/fields': () => ['PUT', `/api/signing/documents/${v.sign}/fields`, { fields: [] }],
+  'PUT /api/signing/documents/:id/parties': () => ['PUT', `/api/signing/documents/${v.sign}/parties`, { parties: [{ name: 'x' }] }],
+  'POST /api/signing/documents/:id/import-fields': () => ['POST', `/api/signing/documents/${v.sign}/import-fields`, {}],
+  'POST /api/signing/documents/:id/send': () => ['POST', `/api/signing/documents/${v.sign}/send`, {}],
+  'POST /api/signing/documents/:id/cancel': () => ['POST', `/api/signing/documents/${v.sign}/cancel`, {}],
+  'POST /api/signing/documents/:id/duplicate': () => ['POST', `/api/signing/documents/${v.sign}/duplicate`, {}],
+  'POST /api/signing/documents/:id/finalize': () => ['POST', `/api/signing/documents/${v.sign}/finalize`, {}],
+  'POST /api/signing/documents/:id/parties/:partyId/link': () => ['POST', `/api/signing/documents/${v.sign}/parties/${v.signParty}/link`, {}],
+  'POST /api/signing/documents/:id/parties/:partyId/revoke': () => ['POST', `/api/signing/documents/${v.sign}/parties/${v.signParty}/revoke`, {}],
+  'GET /api/signing/documents/:id/pdf': () => ['GET', `/api/signing/documents/${v.sign}/pdf`],
+  'GET /api/signing/documents/:id/preview-values': () => ['GET', `/api/signing/documents/${v.sign}/preview-values`],
+  'GET /api/signing/documents/:id/values/:fieldId/image': () => ['GET', `/api/signing/documents/${v.sign}/values/${v.signField}/image`],
+  'GET /api/signing/documents/:id/events': () => ['GET', `/api/signing/documents/${v.sign}/events`],
+  'GET /api/signing/documents/:id/audit.json': () => ['GET', `/api/signing/documents/${v.sign}/audit.json`],
+  'GET /api/signing/documents/:id/final': () => ['GET', `/api/signing/documents/${v.sign}/final`],
+  'GET /api/signing/nodes/:nodeId/clean': () => ['GET', `/api/signing/nodes/${v.file}/clean`],
+  'GET /api/public/sign/:token': PUBLIC,
+  'GET /api/public/sign/:token/pdf': PUBLIC,
+  'POST /api/public/sign/:token/consent': PUBLIC,
+  'PUT /api/public/sign/:token/fields/:fieldId': PUBLIC,
+  'POST /api/public/sign/:token/fields/:fieldId/upload': PUBLIC,
+  'GET /api/public/sign/:token/values/:fieldId/image': PUBLIC,
+  'POST /api/public/sign/:token/complete': PUBLIC,
+  'POST /api/public/sign/:token/decline': PUBLIC,
+  'GET /api/public/sign/:token/result': PUBLIC,
+  'GET /api/public/sign/:token/final': PUBLIC,
   'GET /api/neorouter': OWN,
   'POST /api/neorouter/connect': OWN,
   'GET /api/neorouter/connect/:id': 'flows live in memory and are checked against the account (sign_in.status)',
@@ -321,6 +362,9 @@ test('the owner’s things are all still there and unchanged', async () => {
   assert.equal(db.prepare('SELECT status FROM ai_suggestions WHERE id = ?').get(v.suggestion).status, 'pending');
   assert.equal(db.prepare('SELECT status FROM import_jobs WHERE id = ?').get(v.import).status, 'paused');
   assert.equal(db.prepare('SELECT ai_excluded FROM nodes WHERE id = ?').get(v.folder).ai_excluded, 0);
+  assert.equal(db.prepare('SELECT status, title FROM sign_documents WHERE id = ?').get(v.sign).status, 'draft');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_documents WHERE owner_id = ?').get(other.user.id).n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_fields WHERE document_id = ?').get(v.sign).n, 1);
   const owned = db.prepare('SELECT COUNT(*) AS count FROM nodes WHERE user_id = ?').get(other.user.id).count;
   const { body } = await other.agent.get('/api/sync/tree').expect(200);
   assert.ok(!JSON.stringify(body).includes('secret.txt'));

@@ -3308,7 +3308,7 @@
   "signingPrefOptions": "Choices",
   "signingPrefMultiline": "Allow several lines",
   "signingPrefDateFormat": "Date format",
-  "signingPrefDefaultToday": "Start with today's date",
+  "signingPrefDefaultToday": "Default to today's date",
   "signingPrefMin": "Smallest value",
   "signingPrefMax": "Largest value",
   "signingPrefDecimals": "Decimal places",
@@ -3394,8 +3394,6 @@
   "signingPrefFontType": "Font style",
   "signingPrefFontRegular": "Regular",
   "signingPrefFontBold": "Bold",
-  "signingPrefFontItalic": "Italic",
-  "signingPrefFontBoldItalic": "Bold italic",
   "signingPrefColor": "Text color",
   "signingPrefBackground": "Background color",
   "signingPrefValign": "Vertical alignment",
@@ -3501,7 +3499,6 @@
   "signingReload": "Reload",
   "signingSendTitle": "Recipients",
   "signingSendIntro": "Check who signs and how. Each person gets their own link.",
-  "signingEmailNote": "Mail delivery comes later. Copy the link and share it yourself.",
   "signingOrderLabel": "Signing order",
   "signingOrderPreserved": "One after another",
   "signingOrderRandom": "Any order",
@@ -3570,7 +3567,7 @@
   "signingChainBroken": "The audit trail doesn't check out (entry {id}).",
   "@signingChainBroken": {"placeholders": {"id": {"type": "String"}}},
   "signingOpenSigned": "Open signed file",
-  "signingDownloadSigned": "Download",
+  "signingDownloadSigned": "Download signed PDF",
   "signingFinalizing": "Creating the signed file…",
   "signingFinalizeFailed": "The signed file isn't ready yet. NeoCloud keeps trying.",
   "signingRetryNow": "Try now",
@@ -3598,5 +3595,179 @@
   "signingPrefMinSelect": "Fewest choices",
   "signingPrefMaxSelect": "Most choices",
   "signingFinish": "Back to the list",
-  "signingSourceGone": "The original file is gone, but the document still works."
+  "signingSourceGone": "The original file is gone, but the document still works.",
+  "signingSubtitle": "Documents you send out for signature, and how far each one is.",
+  "signingLoadMore": "Load more",
+  "signingNoResults": "No documents match.",
+  "signingPublicLanguage": "Language",
+  "signingPublicMore": "More options",
+  "signingPublicDecline": "Decline to sign",
+  "signingPublicDeclineTitle": "Decline to sign?",
+  "signingPublicDeclineBody": "The sender will be told that you didn't sign. Nobody can sign this document afterwards.",
+  "signingPublicDeclineReason": "Reason (optional)",
+  "signingPublicDeclineConfirm": "Decline",
+  "signingPublicInvalidTitle": "This link isn't valid anymore",
+  "signingPublicInvalidBody": "It may have been replaced or switched off. Ask the sender for a new link.",
+  "signingPublicRateTitle": "Too many requests",
+  "signingPublicRateBody": "Please wait a moment and try again.",
+  "signingPublicOfflineTitle": "Can't reach the server",
+  "signingPublicOfflineBody": "Check your connection and try again.",
+  "signingPublicServerTitle": "Something went wrong",
+  "signingPublicServerBody": "This page couldn't be loaded. Please try again in a moment.",
+  "signingPublicWaitingTitle": "It's not your turn yet",
+  "signingPublicWaitingBody": "{count, plural, =1{1 more person has to sign first} other{{count} more people have to sign first}}. You can keep this page open, it updates by itself.",
+  "@signingPublicWaitingBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicCheckNow": "Check now",
+  "signingPublicToday": "Today",
+  "signingSavedTitle": "Saved on this device",
+  "signingSavedUse": "Use this one",
+  "signingSavedRemove": "Remove",
+  "signingSavedRemoveAll": "Remove all",
+  "signingSaveOnDevice": "Save on this device",
+  "signingSaveOnDeviceNote": "It stays on this device only. Nobody else can see it.",
+  "signingDownloadWithCertificate": "Download with signature pages",
+  "signingDownloadWithoutCertificate": "Download without signature pages",
+  "signingDownloadMore": "More download options",
+  "signingPublicPartDoneTitle": "You've signed this document",
+  "signingPublicPartDoneBody": "Thanks! {done} of {total} have signed. Once everyone has signed, you can download the signed copy here.",
+  "@signingPublicPartDoneBody": {
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "signingPublicAllDoneTitle": "Document completed",
+  "signingPublicAllDoneBody": "Everyone has signed. Download your copy of the signed document.",
+  "signingPublicPreparing": "Everyone has signed. The signed copy is being prepared, this usually takes a few seconds.",
+  "signingPublicDownload": "Download signed document",
+  "signingPublicDownloadFailed": "The download didn't work. Please try again.",
+  "signingPublicClosedNote": "You can close this page now.",
+  "signingPublicDeclinedTitle": "This document was declined",
+  "signingPublicDeclinedBody": "Someone declined to sign, so it can no longer be signed. Ask the sender if you need a new one.",
+  "signingPublicExpiredTitle": "This request has expired",
+  "signingPublicExpiredBody": "The time to sign has run out. Ask the sender for a new link.",
+  "signingPublicCanceledTitle": "The sender canceled this request",
+  "signingPublicCanceledBody": "There's nothing to sign here anymore. Ask the sender if you think this is a mistake.",
+  "signingPublicLockedTitle": "This document can't be signed right now",
+  "signingPublicLockedBody": "Please try again later or ask the sender.",
+  "signingPublicIntroTitle": "Sign “{title}”",
+  "@signingPublicIntroTitle": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "signingPublicIntroLead": "Read the document, fill in your fields and sign. It only takes a few minutes.",
+  "signingPublicFieldCount": "{count, plural, =1{1 field to fill in} other{{count} fields to fill in}}",
+  "@signingPublicFieldCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicExpires": "Open until {date}",
+  "@signingPublicExpires": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "signingPublicConsentTitle": "Sign electronically",
+  "signingPublicConsentCheck": "I agree to sign this document electronically.",
+  "signingPublicNameLabel": "Your full name",
+  "signingPublicNameRequired": "Please enter your full name.",
+  "signingPublicConsentRequired": "Please agree to continue.",
+  "signingPublicProgress": "{current} of {total}",
+  "@signingPublicProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "signingPublicProgressLabel": "Field {current} of {total}: {name}",
+  "@signingPublicProgressLabel": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"},
+      "name": {"type": "String"}
+    }
+  },
+  "signingPublicNext": "Next",
+  "signingPublicBack": "Back",
+  "signingPublicSkip": "Skip",
+  "signingPublicReviewAction": "Review",
+  "signingPublicRequired": "Required",
+  "signingPublicOptional": "Optional",
+  "signingPublicAllFields": "All fields",
+  "signingPublicStateDone": "Done",
+  "signingPublicStateOpen": "To do",
+  "signingPublicStateEmpty": "Empty",
+  "signingPublicTypeHere": "Type here",
+  "signingPublicPickDate": "Pick a date",
+  "signingPublicDateFormat": "Format: {format}",
+  "@signingPublicDateFormat": {
+    "placeholders": {
+      "format": {"type": "String"}
+    }
+  },
+  "signingPublicCellsHint": "{count} characters",
+  "@signingPublicCellsHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicChoose": "Choose…",
+  "signingPublicAddSignature": "Add your signature",
+  "signingPublicAddInitials": "Add your initials",
+  "signingPublicChange": "Change",
+  "signingPublicRemove": "Remove",
+  "signingPublicChoosePicture": "Choose a picture",
+  "signingPublicChooseFile": "Choose a file",
+  "signingPublicReplaceFile": "Choose another",
+  "signingPublicPickFailed": "That couldn't be read. Please try another one.",
+  "signingPublicTooLarge": "That file is too large. Please choose one up to {size}.",
+  "@signingPublicTooLarge": {
+    "placeholders": {
+      "size": {"type": "String"}
+    }
+  },
+  "signingPublicUploaded": "Added",
+  "signingPublicSaving": "Saving…",
+  "signingPublicSavedAll": "All entries saved",
+  "signingPublicOfflineBanner": "No connection. Your entries are kept and will be saved as soon as you're back online.",
+  "signingPublicRetryNow": "Try now",
+  "signingPublicReviewTitle": "Review your entries",
+  "signingPublicReviewLead": "Check everything before you finish. You can't change your entries afterwards.",
+  "signingPublicMissing": "{count, plural, =1{1 required field is missing} other{{count} required fields are missing}}",
+  "@signingPublicMissing": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicFinish": "Finish",
+  "signingPublicFinishing": "Finishing…",
+  "signingPublicEdit": "Edit",
+  "signingPublicFinishFailed": "Couldn't finish. Please try again.",
+  "signingPublicFinishOffline": "Couldn't save your entries because there is no connection. They are kept, try again when you're online.",
+  "signingPublicChanged": "This document changed in the meantime. We reloaded it.",
+  "signingPublicLeaveTitle": "Leave this page?",
+  "signingPublicLeaveBody": "Some entries haven't been saved yet. If you leave now, they are lost.",
+  "signingPublicLeave": "Leave",
+  "signingPublicStay": "Stay",
+  "signingPublicDocumentPage": "Page {number}",
+  "@signingPublicDocumentPage": {
+    "placeholders": {
+      "number": {"type": "int"}
+    }
+  },
+  "signingPublicNoFields": "There is nothing to fill in for you. Review and finish.",
+  "signingPublicLoadingDocument": "Loading the document…",
+  "signingPublicSignatureSaved": "Signature added",
+  "signingProblemPrefRange": "One of the settings is outside its allowed range.",
+  "signingPaletteHint": "Drag onto the page, or tap and then tap the page",
+  "signingPartyEditTitle": "Edit party",
+  "signingColorNone": "Default",
+  "signingSave": "Save",
+  "signingTabSettings": "Settings"
 }

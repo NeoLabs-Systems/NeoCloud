@@ -174,6 +174,7 @@ class _RecentPanelState extends State<RecentPanel> {
               actionsFor: (node) => <_FileAction>[
                 _FileAction(Icons.folder_open_outlined, appStrings.showInFolder, () => controller.openFolder(node.parentId), quick: true),
                 _FileAction(Icons.download_rounded, appStrings.download, () => unawaited(controller.downloadFile(node)), quick: true),
+                if (node.signed) _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(controller.downloadSignedWithoutCertificate(node))),
               ],
             ),
           ),
@@ -281,6 +282,7 @@ class _FavoritesPanelState extends State<FavoritesPanel> {
               actionsFor: (node) => <_FileAction>[
                 _FileAction(Icons.folder_open_outlined, appStrings.showInFolder, () => _controller.openFolder(node.parentId), quick: true),
                 if (!node.isFolder) _FileAction(Icons.download_rounded, appStrings.download, () => unawaited(_controller.downloadFile(node)), quick: true),
+                if (node.signed) _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(_controller.downloadSignedWithoutCertificate(node))),
                 _FileAction(Icons.star_rounded, appStrings.filesUnstar, () => unawaited(_setFavorite(node, false)), quick: true),
               ],
             ),

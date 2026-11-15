@@ -37,6 +37,7 @@ import 'src/files/file_saver.dart';
 import 'src/files/folder_views.dart';
 import 'src/files/selection_model.dart';
 import 'src/files/undo.dart';
+import 'src/files/unload_guard.dart';
 import 'src/files/upload_journal.dart';
 import 'src/files/upload_queue.dart';
 import 'src/imports/import_progress.dart';
@@ -58,6 +59,8 @@ import 'src/photos/photo_library.dart';
 import 'src/photos/photo_models.dart';
 import 'src/photos/photo_thumbnails.dart';
 import 'src/photos/photo_timeline.dart';
+import 'src/signing/public_signing_http.dart';
+import 'src/signing/signing.dart';
 import 'src/pairing/scanned_code.dart';
 import 'src/search/snippet.dart';
 import 'src/security/password_strength.dart';
@@ -137,6 +140,17 @@ part 'main_settings_webdav.dart';
 part 'main_share_links.dart';
 part 'main_share_form.dart';
 part 'main_share_people.dart';
+part 'main_signing_editor.dart';
+part 'main_signing_editor_pages.dart';
+part 'main_signing_inspector.dart';
+part 'main_signing_list.dart';
+part 'main_signing_public.dart';
+part 'main_signing_public_fields.dart';
+part 'main_signing_public_states.dart';
+part 'main_signing_send.dart';
+part 'main_signing_status.dart';
+part 'main_signing_status_parts.dart';
+part 'main_signing_widgets.dart';
 part 'main_shared.dart';
 part 'main_shared_links_page.dart';
 part 'main_shared_with_me.dart';
@@ -163,6 +177,8 @@ Future<void> main() async {
   // Use the app root without a hash in the browser; a no-op off the web.
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+  // Geist ships in assets/fonts/geist; the signing page must not call out.
+  GoogleFonts.config.allowRuntimeFetching = false;
   await ensureAppLanguageLoaded();
   final preferences = await SharedPreferences.getInstance();
   final controller = NeoCloudController(
@@ -210,8 +226,8 @@ class _NeoCloudAppState extends State<NeoCloudApp> {
           title: 'NeoCloud',
           debugShowCheckedModeBanner: false,
           themeMode: controller.themeMode,
-          theme: _buildNeoCloudTheme(lightPalette, Brightness.light),
-          darkTheme: _buildNeoCloudTheme(darkPalette, Brightness.dark),
+          theme: neoCloudTheme(Brightness.light),
+          darkTheme: neoCloudTheme(Brightness.dark),
           locale: currentAppLanguage.locale,
           supportedLocales: AppLanguage.values.map((language) => language.locale),
           localizationsDelegates: appLocalizationsDelegates,
@@ -232,6 +248,8 @@ class NeoCloudRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final signing = controller.signingFlow;
+    if (signing != null) return SigningPublicPage(controller: controller, flow: signing);
     if (controller.isBooting) return const SplashView();
     if (controller.pendingPairCode != null && !controller.usesDeviceLogin) return PairLandingView(controller: controller);
     if (!controller.isAuthenticated) {

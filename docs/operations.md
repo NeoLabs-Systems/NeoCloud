@@ -271,6 +271,27 @@ database read-only, never runs migrations (it says how many are pending), and
 runs `quick_check`. `neocloud doctor --full` runs the slower `integrity_check`
 instead and prints how long it took. Both are safe while the server runs.
 
+## Signing seal
+
+Finished signing documents carry a digital seal (see [signing.md](signing.md)).
+Its key pair is a self-signed certificate that NeoCloud generates when the
+first document is finalized. It lives in the table `sign_seal_keys` of the
+database, encrypted with `NEOCLOUD_MASTER_KEY` like every other stored secret,
+and is never written to `.env` or to a file. Consequences:
+
+- It is part of the database and of every database backup. A restore brings it
+  back with the rest, so documents sealed before and after a restore verify
+  against the same certificate. With the master key in place, nothing else
+  has to be saved.
+- Without the master key the key cannot be read, exactly like the files.
+- Losing the database row (a fresh install, or a database without the table
+  contents) makes NeoCloud create a new certificate; files sealed earlier stay
+  intact and valid, they just name the earlier certificate.
+- `NEOCLOUD_SIGNING_SEAL=false` finishes documents without a seal. Existing
+  files keep theirs.
+- The seal shows that a file is unchanged since NeoCloud made it. Viewers list
+  the signer as unknown because the certificate is self-signed.
+
 ## Backups
 
 Configure targets in Admin › Backups: a local folder or mounted NAS, SFTP,

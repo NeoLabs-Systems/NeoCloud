@@ -16,7 +16,11 @@ class AppRoute {
   /// (`/device?code=…`, `/pair?code=…`).
   static const AppRoute none = AppRoute('');
 
-  static const Set<String> sections = <String>{'files', 'photos', 'review', 'shared', 'recent', 'favorites', 'trash', 'settings', 'admin'};
+  /// `sign/<token>`: a signer's link; works without an account and is not a
+  /// page the app remembers.
+  static const String signSection = 'sign';
+
+  static const Set<String> sections = <String>{'files', 'photos', 'review', 'shared', 'signing', 'recent', 'favorites', 'trash', 'settings', 'admin'};
 
   final String section;
 
@@ -32,6 +36,7 @@ class AppRoute {
     if (uri == null) return none;
     var segments = uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
     if (segments.isNotEmpty && segments.first == 'app') segments = segments.sublist(1);
+    if (segments.length > 1 && segments.first == signSection) return AppRoute(signSection, segments[1]);
     if (segments.isEmpty || !sections.contains(segments.first)) return none;
     final detail = segments.length > 1 ? segments[1] : null;
     return AppRoute(segments.first, detail);

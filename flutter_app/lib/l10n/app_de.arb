@@ -1585,7 +1585,7 @@
   "signingPrefOptions": "Auswahlmöglichkeiten",
   "signingPrefMultiline": "Mehrere Zeilen erlauben",
   "signingPrefDateFormat": "Datumsformat",
-  "signingPrefDefaultToday": "Mit dem heutigen Datum beginnen",
+  "signingPrefDefaultToday": "Standardmäßig das heutige Datum",
   "signingPrefMin": "Kleinster Wert",
   "signingPrefMax": "Größter Wert",
   "signingPrefDecimals": "Nachkommastellen",
@@ -1622,8 +1622,6 @@
   "signingPrefFontType": "Schriftstil",
   "signingPrefFontRegular": "Normal",
   "signingPrefFontBold": "Fett",
-  "signingPrefFontItalic": "Kursiv",
-  "signingPrefFontBoldItalic": "Fett kursiv",
   "signingPrefColor": "Textfarbe",
   "signingPrefBackground": "Hintergrundfarbe",
   "signingPrefValign": "Vertikale Ausrichtung",
@@ -1729,7 +1727,6 @@
   "signingReload": "Neu laden",
   "signingSendTitle": "Empfänger",
   "signingSendIntro": "Prüfe, wer unterschreibt und wie. Jede Person bekommt einen eigenen Link.",
-  "signingEmailNote": "Der Versand per E-Mail kommt später. Kopiere den Link und teile ihn selbst.",
   "signingOrderLabel": "Reihenfolge",
   "signingOrderPreserved": "Nacheinander",
   "signingOrderRandom": "Beliebig",
@@ -1798,7 +1795,7 @@
   "signingChainBroken": "Das Protokoll stimmt nicht überein (Eintrag {id}).",
   "@signingChainBroken": {"placeholders": {"id": {"type": "String"}}},
   "signingOpenSigned": "Signierte Datei öffnen",
-  "signingDownloadSigned": "Herunterladen",
+  "signingDownloadSigned": "Signiertes PDF herunterladen",
   "signingFinalizing": "Die signierte Datei wird erstellt…",
   "signingFinalizeFailed": "Die signierte Datei ist noch nicht fertig. NeoCloud versucht es weiter.",
   "signingRetryNow": "Jetzt versuchen",
@@ -1826,5 +1823,179 @@
   "signingPrefMinSelect": "Mindestens wählen",
   "signingPrefMaxSelect": "Höchstens wählen",
   "signingFinish": "Zurück zur Liste",
-  "signingSourceGone": "Die Originaldatei ist weg, das Dokument funktioniert aber weiter."
+  "signingSourceGone": "Die Originaldatei ist weg, das Dokument funktioniert aber weiter.",
+  "signingSubtitle": "Dokumente, die du zum Signieren verschickst, und wie weit sie sind.",
+  "signingLoadMore": "Mehr laden",
+  "signingNoResults": "Keine passenden Dokumente.",
+  "signingPublicLanguage": "Sprache",
+  "signingPublicMore": "Weitere Optionen",
+  "signingPublicDecline": "Nicht unterschreiben",
+  "signingPublicDeclineTitle": "Unterschrift ablehnen?",
+  "signingPublicDeclineBody": "Der Absender erfährt, dass du nicht unterschrieben hast. Danach kann niemand das Dokument mehr unterschreiben.",
+  "signingPublicDeclineReason": "Grund (optional)",
+  "signingPublicDeclineConfirm": "Ablehnen",
+  "signingPublicInvalidTitle": "Dieser Link ist nicht mehr gültig",
+  "signingPublicInvalidBody": "Er wurde vielleicht ersetzt oder abgeschaltet. Bitte den Absender um einen neuen Link.",
+  "signingPublicRateTitle": "Zu viele Anfragen",
+  "signingPublicRateBody": "Bitte warte einen Moment und versuche es dann erneut.",
+  "signingPublicOfflineTitle": "Server nicht erreichbar",
+  "signingPublicOfflineBody": "Prüfe deine Verbindung und versuche es erneut.",
+  "signingPublicServerTitle": "Etwas ist schiefgelaufen",
+  "signingPublicServerBody": "Die Seite konnte nicht geladen werden. Bitte versuche es gleich noch einmal.",
+  "signingPublicWaitingTitle": "Du bist noch nicht an der Reihe",
+  "signingPublicWaitingBody": "{count, plural, =1{Zuerst muss noch 1 weitere Person unterschreiben} other{Zuerst müssen noch {count} weitere Personen unterschreiben}}. Du kannst diese Seite offen lassen, sie aktualisiert sich von selbst.",
+  "@signingPublicWaitingBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicCheckNow": "Jetzt prüfen",
+  "signingPublicToday": "Heute",
+  "signingSavedTitle": "Auf diesem Gerät gespeichert",
+  "signingSavedUse": "Diese verwenden",
+  "signingSavedRemove": "Entfernen",
+  "signingSavedRemoveAll": "Alle entfernen",
+  "signingSaveOnDevice": "Auf diesem Gerät speichern",
+  "signingSaveOnDeviceNote": "Bleibt nur auf diesem Gerät. Niemand sonst kann es sehen.",
+  "signingDownloadWithCertificate": "Mit Signaturseiten herunterladen",
+  "signingDownloadWithoutCertificate": "Ohne Signaturseiten herunterladen",
+  "signingDownloadMore": "Weitere Download-Optionen",
+  "signingPublicPartDoneTitle": "Du hast das Dokument unterschrieben",
+  "signingPublicPartDoneBody": "Danke! {done} von {total} haben unterschrieben. Sobald alle unterschrieben haben, kannst du die signierte Kopie hier herunterladen.",
+  "@signingPublicPartDoneBody": {
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "signingPublicAllDoneTitle": "Dokument abgeschlossen",
+  "signingPublicAllDoneBody": "Alle haben unterschrieben. Lade deine Kopie des signierten Dokuments herunter.",
+  "signingPublicPreparing": "Alle haben unterschrieben. Die signierte Kopie wird vorbereitet, das dauert meist nur wenige Sekunden.",
+  "signingPublicDownload": "Signiertes Dokument herunterladen",
+  "signingPublicDownloadFailed": "Der Download hat nicht geklappt. Bitte versuche es erneut.",
+  "signingPublicClosedNote": "Du kannst diese Seite jetzt schließen.",
+  "signingPublicDeclinedTitle": "Dieses Dokument wurde abgelehnt",
+  "signingPublicDeclinedBody": "Jemand hat die Unterschrift abgelehnt, deshalb kann es nicht mehr unterschrieben werden. Frag beim Absender nach, falls du ein neues brauchst.",
+  "signingPublicExpiredTitle": "Diese Anfrage ist abgelaufen",
+  "signingPublicExpiredBody": "Die Zeit zum Unterschreiben ist abgelaufen. Bitte den Absender um einen neuen Link.",
+  "signingPublicCanceledTitle": "Der Absender hat diese Anfrage zurückgezogen",
+  "signingPublicCanceledBody": "Hier ist nichts mehr zu unterschreiben. Frag beim Absender nach, falls du das für einen Fehler hältst.",
+  "signingPublicLockedTitle": "Dieses Dokument kann gerade nicht unterschrieben werden",
+  "signingPublicLockedBody": "Bitte versuche es später noch einmal oder frag den Absender.",
+  "signingPublicIntroTitle": "„{title}“ unterschreiben",
+  "@signingPublicIntroTitle": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "signingPublicIntroLead": "Lies das Dokument, fülle deine Felder aus und unterschreibe. Das dauert nur wenige Minuten.",
+  "signingPublicFieldCount": "{count, plural, =1{1 Feld auszufüllen} other{{count} Felder auszufüllen}}",
+  "@signingPublicFieldCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicExpires": "Offen bis {date}",
+  "@signingPublicExpires": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "signingPublicConsentTitle": "Elektronisch unterschreiben",
+  "signingPublicConsentCheck": "Ich bin einverstanden, dieses Dokument elektronisch zu unterschreiben.",
+  "signingPublicNameLabel": "Dein vollständiger Name",
+  "signingPublicNameRequired": "Bitte gib deinen vollständigen Namen ein.",
+  "signingPublicConsentRequired": "Bitte stimme zu, um fortzufahren.",
+  "signingPublicProgress": "{current} von {total}",
+  "@signingPublicProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "signingPublicProgressLabel": "Feld {current} von {total}: {name}",
+  "@signingPublicProgressLabel": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"},
+      "name": {"type": "String"}
+    }
+  },
+  "signingPublicNext": "Weiter",
+  "signingPublicBack": "Zurück",
+  "signingPublicSkip": "Überspringen",
+  "signingPublicReviewAction": "Prüfen",
+  "signingPublicRequired": "Pflichtfeld",
+  "signingPublicOptional": "Optional",
+  "signingPublicAllFields": "Alle Felder",
+  "signingPublicStateDone": "Fertig",
+  "signingPublicStateOpen": "Offen",
+  "signingPublicStateEmpty": "Leer",
+  "signingPublicTypeHere": "Hier eingeben",
+  "signingPublicPickDate": "Datum wählen",
+  "signingPublicDateFormat": "Format: {format}",
+  "@signingPublicDateFormat": {
+    "placeholders": {
+      "format": {"type": "String"}
+    }
+  },
+  "signingPublicCellsHint": "{count} Zeichen",
+  "@signingPublicCellsHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicChoose": "Auswählen …",
+  "signingPublicAddSignature": "Unterschrift hinzufügen",
+  "signingPublicAddInitials": "Kürzel hinzufügen",
+  "signingPublicChange": "Ändern",
+  "signingPublicRemove": "Entfernen",
+  "signingPublicChoosePicture": "Bild auswählen",
+  "signingPublicChooseFile": "Datei auswählen",
+  "signingPublicReplaceFile": "Andere wählen",
+  "signingPublicPickFailed": "Das konnte nicht gelesen werden. Versuche eine andere Datei.",
+  "signingPublicTooLarge": "Die Datei ist zu groß. Wähle eine bis {size}.",
+  "@signingPublicTooLarge": {
+    "placeholders": {
+      "size": {"type": "String"}
+    }
+  },
+  "signingPublicUploaded": "Hinzugefügt",
+  "signingPublicSaving": "Wird gespeichert …",
+  "signingPublicSavedAll": "Alle Eingaben gespeichert",
+  "signingPublicOfflineBanner": "Keine Verbindung. Deine Eingaben bleiben erhalten und werden gespeichert, sobald du wieder online bist.",
+  "signingPublicRetryNow": "Jetzt versuchen",
+  "signingPublicReviewTitle": "Prüfe deine Eingaben",
+  "signingPublicReviewLead": "Prüfe alles, bevor du abschließt. Danach kannst du deine Eingaben nicht mehr ändern.",
+  "signingPublicMissing": "{count, plural, =1{1 Pflichtfeld fehlt} other{{count} Pflichtfelder fehlen}}",
+  "@signingPublicMissing": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "signingPublicFinish": "Abschließen",
+  "signingPublicFinishing": "Wird abgeschlossen …",
+  "signingPublicEdit": "Bearbeiten",
+  "signingPublicFinishFailed": "Abschließen hat nicht geklappt. Bitte versuche es erneut.",
+  "signingPublicFinishOffline": "Deine Eingaben konnten ohne Verbindung nicht gespeichert werden. Sie bleiben erhalten, versuche es erneut, sobald du online bist.",
+  "signingPublicChanged": "Das Dokument hat sich inzwischen geändert. Wir haben es neu geladen.",
+  "signingPublicLeaveTitle": "Seite verlassen?",
+  "signingPublicLeaveBody": "Einige Eingaben sind noch nicht gespeichert. Wenn du jetzt gehst, gehen sie verloren.",
+  "signingPublicLeave": "Verlassen",
+  "signingPublicStay": "Bleiben",
+  "signingPublicDocumentPage": "Seite {number}",
+  "@signingPublicDocumentPage": {
+    "placeholders": {
+      "number": {"type": "int"}
+    }
+  },
+  "signingPublicNoFields": "Für dich gibt es nichts auszufüllen. Prüfe und schließe ab.",
+  "signingPublicLoadingDocument": "Dokument wird geladen …",
+  "signingPublicSignatureSaved": "Unterschrift hinzugefügt",
+  "signingProblemPrefRange": "Eine Einstellung liegt außerhalb des erlaubten Bereichs.",
+  "signingPaletteHint": "Auf die Seite ziehen, oder antippen und dann auf die Seite tippen",
+  "signingPartyEditTitle": "Partei bearbeiten",
+  "signingColorNone": "Standard",
+  "signingSave": "Speichern",
+  "signingTabSettings": "Einstellungen"
 }

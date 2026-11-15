@@ -30,14 +30,18 @@ function streaming(action) {
   };
 }
 
-// At most `max` requests per address in 15 minutes.
-function rateLimiter(max) {
+// At most `max` requests per address in 15 minutes. `options` are
+// express-rate-limit options: a `keyGenerator` to count by something other
+// than the address, `skipSuccessfulRequests` with `requestWasSuccessful` to
+// count only some answers.
+function rateLimiter(max, options = {}) {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
     max,
     message: { error: 'Too many requests, try again later', code: 'RATE_LIMITED' },
     standardHeaders: true,
     legacyHeaders: false,
+    ...options,
   });
 }
 

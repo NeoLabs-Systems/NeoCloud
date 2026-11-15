@@ -43,6 +43,7 @@ const { startSearchIndexer } = require('./services/search_index/indexer');
 const { startAiWorker } = require('./services/ai/organize/worker');
 const { startPhotoIndexer } = require('./services/photos/indexer');
 const { startDuplicateHasher } = require('./services/ai/duplicates');
+const { startSigningWorker } = require('./services/signing/worker');
 const { setupConsoleInterceptor } = require('./utils/logger');
 const { DEFAULT_PORT } = require('../lib/setup/contract');
 
@@ -98,6 +99,7 @@ const stopSearchIndexer = startSearchIndexer();
 const stopAiWorker = startAiWorker();
 const stopPhotoIndexer = startPhotoIndexer();
 const stopDuplicateHasher = startDuplicateHasher();
+const stopSigningWorker = startSigningWorker();
 
 function removePidFile() {
   try {
@@ -125,6 +127,8 @@ function shutdown(signal) {
   stopPhotoIndexer();
   // Duplicates finishes the photo it is hashing; the next start continues.
   stopDuplicateHasher();
+  // Signing expires documents and retries final files; the next start continues.
+  stopSigningWorker();
 
   // Connections that finish their last request go right away.
   const idleSweep = setInterval(() => httpServer.closeIdleConnections(), 1000);

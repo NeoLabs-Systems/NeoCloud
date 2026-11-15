@@ -91,6 +91,7 @@ class FileNode {
     this.cipherName,
     this.favorite = false,
     this.shared = false,
+    this.signed = false,
     this.path,
     this.expiresAt,
     this.aiExcluded = false,
@@ -113,6 +114,7 @@ class FileNode {
     vaultId: json['vaultId'] as String?,
     favorite: json['favorite'] == true,
     shared: json['shared'] == true,
+    signed: json['signed'] == true,
     path: json['path'] is String ? json['path'] as String : null,
     expiresAt: _date(json['expiresAt']),
     aiExcluded: json['aiExcluded'] == true,
@@ -145,6 +147,9 @@ class FileNode {
   /// Shared by the account with other accounts on the server (the owner's
   /// view only; members never see it).
   final bool shared;
+
+  /// The result of a signing document (the signed file the server saved).
+  final bool signed;
 
   /// Search, recent, storage and favorites results: the folder the node is
   /// in, e.g. "/Photos/2026" ("/" for the root).
@@ -185,6 +190,7 @@ class FileNode {
     cipherName: name,
     favorite: favorite,
     shared: shared,
+    signed: signed,
     path: path,
     expiresAt: expiresAt,
     aiExcluded: aiExcluded,
@@ -210,6 +216,7 @@ class FileNode {
     cipherName: cipherName,
     favorite: favorite ?? this.favorite,
     shared: shared,
+    signed: signed,
     path: path,
     expiresAt: expiresAt,
     aiExcluded: aiExcluded ?? this.aiExcluded,

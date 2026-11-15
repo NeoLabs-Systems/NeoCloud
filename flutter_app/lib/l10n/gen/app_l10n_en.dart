@@ -5869,7 +5869,7 @@ class AppL10nEn extends AppL10n {
   String get signingPrefDateFormat => 'Date format';
 
   @override
-  String get signingPrefDefaultToday => 'Start with today\'s date';
+  String get signingPrefDefaultToday => 'Default to today\'s date';
 
   @override
   String get signingPrefMin => 'Smallest value';
@@ -5994,12 +5994,6 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get signingPrefFontBold => 'Bold';
-
-  @override
-  String get signingPrefFontItalic => 'Italic';
-
-  @override
-  String get signingPrefFontBoldItalic => 'Bold italic';
 
   @override
   String get signingPrefColor => 'Text color';
@@ -6326,10 +6320,6 @@ class AppL10nEn extends AppL10n {
       'Check who signs and how. Each person gets their own link.';
 
   @override
-  String get signingEmailNote =>
-      'Mail delivery comes later. Copy the link and share it yourself.';
-
-  @override
   String get signingOrderLabel => 'Signing order';
 
   @override
@@ -6524,7 +6514,7 @@ class AppL10nEn extends AppL10n {
   String get signingOpenSigned => 'Open signed file';
 
   @override
-  String get signingDownloadSigned => 'Download';
+  String get signingDownloadSigned => 'Download signed PDF';
 
   @override
   String get signingFinalizing => 'Creating the signed file…';
@@ -6610,4 +6600,401 @@ class AppL10nEn extends AppL10n {
   @override
   String get signingSourceGone =>
       'The original file is gone, but the document still works.';
+
+  @override
+  String get signingSubtitle =>
+      'Documents you send out for signature, and how far each one is.';
+
+  @override
+  String get signingLoadMore => 'Load more';
+
+  @override
+  String get signingNoResults => 'No documents match.';
+
+  @override
+  String get signingPublicLanguage => 'Language';
+
+  @override
+  String get signingPublicMore => 'More options';
+
+  @override
+  String get signingPublicDecline => 'Decline to sign';
+
+  @override
+  String get signingPublicDeclineTitle => 'Decline to sign?';
+
+  @override
+  String get signingPublicDeclineBody =>
+      'The sender will be told that you didn\'t sign. Nobody can sign this document afterwards.';
+
+  @override
+  String get signingPublicDeclineReason => 'Reason (optional)';
+
+  @override
+  String get signingPublicDeclineConfirm => 'Decline';
+
+  @override
+  String get signingPublicInvalidTitle => 'This link isn\'t valid anymore';
+
+  @override
+  String get signingPublicInvalidBody =>
+      'It may have been replaced or switched off. Ask the sender for a new link.';
+
+  @override
+  String get signingPublicRateTitle => 'Too many requests';
+
+  @override
+  String get signingPublicRateBody => 'Please wait a moment and try again.';
+
+  @override
+  String get signingPublicOfflineTitle => 'Can\'t reach the server';
+
+  @override
+  String get signingPublicOfflineBody => 'Check your connection and try again.';
+
+  @override
+  String get signingPublicServerTitle => 'Something went wrong';
+
+  @override
+  String get signingPublicServerBody =>
+      'This page couldn\'t be loaded. Please try again in a moment.';
+
+  @override
+  String get signingPublicWaitingTitle => 'It\'s not your turn yet';
+
+  @override
+  String signingPublicWaitingBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more people have to sign first',
+      one: '1 more person has to sign first',
+    );
+    return '$_temp0. You can keep this page open, it updates by itself.';
+  }
+
+  @override
+  String get signingPublicCheckNow => 'Check now';
+
+  @override
+  String get signingPublicToday => 'Today';
+
+  @override
+  String get signingSavedTitle => 'Saved on this device';
+
+  @override
+  String get signingSavedUse => 'Use this one';
+
+  @override
+  String get signingSavedRemove => 'Remove';
+
+  @override
+  String get signingSavedRemoveAll => 'Remove all';
+
+  @override
+  String get signingSaveOnDevice => 'Save on this device';
+
+  @override
+  String get signingSaveOnDeviceNote =>
+      'It stays on this device only. Nobody else can see it.';
+
+  @override
+  String get signingDownloadWithCertificate => 'Download with signature pages';
+
+  @override
+  String get signingDownloadWithoutCertificate =>
+      'Download without signature pages';
+
+  @override
+  String get signingDownloadMore => 'More download options';
+
+  @override
+  String get signingPublicPartDoneTitle => 'You\'ve signed this document';
+
+  @override
+  String signingPublicPartDoneBody(int done, int total) {
+    return 'Thanks! $done of $total have signed. Once everyone has signed, you can download the signed copy here.';
+  }
+
+  @override
+  String get signingPublicAllDoneTitle => 'Document completed';
+
+  @override
+  String get signingPublicAllDoneBody =>
+      'Everyone has signed. Download your copy of the signed document.';
+
+  @override
+  String get signingPublicPreparing =>
+      'Everyone has signed. The signed copy is being prepared, this usually takes a few seconds.';
+
+  @override
+  String get signingPublicDownload => 'Download signed document';
+
+  @override
+  String get signingPublicDownloadFailed =>
+      'The download didn\'t work. Please try again.';
+
+  @override
+  String get signingPublicClosedNote => 'You can close this page now.';
+
+  @override
+  String get signingPublicDeclinedTitle => 'This document was declined';
+
+  @override
+  String get signingPublicDeclinedBody =>
+      'Someone declined to sign, so it can no longer be signed. Ask the sender if you need a new one.';
+
+  @override
+  String get signingPublicExpiredTitle => 'This request has expired';
+
+  @override
+  String get signingPublicExpiredBody =>
+      'The time to sign has run out. Ask the sender for a new link.';
+
+  @override
+  String get signingPublicCanceledTitle => 'The sender canceled this request';
+
+  @override
+  String get signingPublicCanceledBody =>
+      'There\'s nothing to sign here anymore. Ask the sender if you think this is a mistake.';
+
+  @override
+  String get signingPublicLockedTitle =>
+      'This document can\'t be signed right now';
+
+  @override
+  String get signingPublicLockedBody =>
+      'Please try again later or ask the sender.';
+
+  @override
+  String signingPublicIntroTitle(String title) {
+    return 'Sign “$title”';
+  }
+
+  @override
+  String get signingPublicIntroLead =>
+      'Read the document, fill in your fields and sign. It only takes a few minutes.';
+
+  @override
+  String signingPublicFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fields to fill in',
+      one: '1 field to fill in',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String signingPublicExpires(String date) {
+    return 'Open until $date';
+  }
+
+  @override
+  String get signingPublicConsentTitle => 'Sign electronically';
+
+  @override
+  String get signingPublicConsentCheck =>
+      'I agree to sign this document electronically.';
+
+  @override
+  String get signingPublicNameLabel => 'Your full name';
+
+  @override
+  String get signingPublicNameRequired => 'Please enter your full name.';
+
+  @override
+  String get signingPublicConsentRequired => 'Please agree to continue.';
+
+  @override
+  String signingPublicProgress(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
+  String signingPublicProgressLabel(int current, int total, String name) {
+    return 'Field $current of $total: $name';
+  }
+
+  @override
+  String get signingPublicNext => 'Next';
+
+  @override
+  String get signingPublicBack => 'Back';
+
+  @override
+  String get signingPublicSkip => 'Skip';
+
+  @override
+  String get signingPublicReviewAction => 'Review';
+
+  @override
+  String get signingPublicRequired => 'Required';
+
+  @override
+  String get signingPublicOptional => 'Optional';
+
+  @override
+  String get signingPublicAllFields => 'All fields';
+
+  @override
+  String get signingPublicStateDone => 'Done';
+
+  @override
+  String get signingPublicStateOpen => 'To do';
+
+  @override
+  String get signingPublicStateEmpty => 'Empty';
+
+  @override
+  String get signingPublicTypeHere => 'Type here';
+
+  @override
+  String get signingPublicPickDate => 'Pick a date';
+
+  @override
+  String signingPublicDateFormat(String format) {
+    return 'Format: $format';
+  }
+
+  @override
+  String signingPublicCellsHint(int count) {
+    return '$count characters';
+  }
+
+  @override
+  String get signingPublicChoose => 'Choose…';
+
+  @override
+  String get signingPublicAddSignature => 'Add your signature';
+
+  @override
+  String get signingPublicAddInitials => 'Add your initials';
+
+  @override
+  String get signingPublicChange => 'Change';
+
+  @override
+  String get signingPublicRemove => 'Remove';
+
+  @override
+  String get signingPublicChoosePicture => 'Choose a picture';
+
+  @override
+  String get signingPublicChooseFile => 'Choose a file';
+
+  @override
+  String get signingPublicReplaceFile => 'Choose another';
+
+  @override
+  String get signingPublicPickFailed =>
+      'That couldn\'t be read. Please try another one.';
+
+  @override
+  String signingPublicTooLarge(String size) {
+    return 'That file is too large. Please choose one up to $size.';
+  }
+
+  @override
+  String get signingPublicUploaded => 'Added';
+
+  @override
+  String get signingPublicSaving => 'Saving…';
+
+  @override
+  String get signingPublicSavedAll => 'All entries saved';
+
+  @override
+  String get signingPublicOfflineBanner =>
+      'No connection. Your entries are kept and will be saved as soon as you\'re back online.';
+
+  @override
+  String get signingPublicRetryNow => 'Try now';
+
+  @override
+  String get signingPublicReviewTitle => 'Review your entries';
+
+  @override
+  String get signingPublicReviewLead =>
+      'Check everything before you finish. You can\'t change your entries afterwards.';
+
+  @override
+  String signingPublicMissing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count required fields are missing',
+      one: '1 required field is missing',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signingPublicFinish => 'Finish';
+
+  @override
+  String get signingPublicFinishing => 'Finishing…';
+
+  @override
+  String get signingPublicEdit => 'Edit';
+
+  @override
+  String get signingPublicFinishFailed => 'Couldn\'t finish. Please try again.';
+
+  @override
+  String get signingPublicFinishOffline =>
+      'Couldn\'t save your entries because there is no connection. They are kept, try again when you\'re online.';
+
+  @override
+  String get signingPublicChanged =>
+      'This document changed in the meantime. We reloaded it.';
+
+  @override
+  String get signingPublicLeaveTitle => 'Leave this page?';
+
+  @override
+  String get signingPublicLeaveBody =>
+      'Some entries haven\'t been saved yet. If you leave now, they are lost.';
+
+  @override
+  String get signingPublicLeave => 'Leave';
+
+  @override
+  String get signingPublicStay => 'Stay';
+
+  @override
+  String signingPublicDocumentPage(int number) {
+    return 'Page $number';
+  }
+
+  @override
+  String get signingPublicNoFields =>
+      'There is nothing to fill in for you. Review and finish.';
+
+  @override
+  String get signingPublicLoadingDocument => 'Loading the document…';
+
+  @override
+  String get signingPublicSignatureSaved => 'Signature added';
+
+  @override
+  String get signingProblemPrefRange =>
+      'One of the settings is outside its allowed range.';
+
+  @override
+  String get signingPaletteHint =>
+      'Drag onto the page, or tap and then tap the page';
+
+  @override
+  String get signingPartyEditTitle => 'Edit party';
+
+  @override
+  String get signingColorNone => 'Default';
+
+  @override
+  String get signingSave => 'Save';
+
+  @override
+  String get signingTabSettings => 'Settings';
 }

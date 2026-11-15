@@ -98,7 +98,7 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
     padding: const EdgeInsets.symmetric(horizontal: 4),
     minimumSize: const Size(0, 32),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+    textStyle: GoogleFonts.geist(fontSize: 13, fontWeight: FontWeight.w500),
   );
 
   Widget _passwordVisibilityToggle() {

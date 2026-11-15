@@ -2,7 +2,7 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, photos, review, shared, favorites, recent, trash, settings, admin }
+enum AppSection { files, photos, review, shared, signing, favorites, recent, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
 enum SidebarGroup { files, photos, admin, settings }
@@ -18,6 +18,8 @@ extension AppSectionInfo on AppSection {
         return appStrings.aiReviewNav;
       case AppSection.shared:
         return appStrings.navSharedWithMe;
+      case AppSection.signing:
+        return appStrings.signingNav;
       case AppSection.favorites:
         return appStrings.filesNavFavorites;
       case AppSection.recent:
@@ -41,6 +43,8 @@ extension AppSectionInfo on AppSection {
         return Icons.auto_awesome_outlined;
       case AppSection.shared:
         return Icons.folder_shared_outlined;
+      case AppSection.signing:
+        return Icons.draw_outlined;
       case AppSection.favorites:
         return Icons.star_outline_rounded;
       case AppSection.recent:
@@ -59,6 +63,7 @@ extension AppSectionInfo on AppSection {
       case AppSection.files:
       case AppSection.review:
       case AppSection.shared:
+      case AppSection.signing:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
@@ -109,6 +114,9 @@ List<AppSection> _mainSections(NeoCloudController controller) {
     // Duplicates tab needs no AI, so the page is always there.
     AppSection.review,
     AppSection.shared,
+    // Documents to sign and their progress; hidden for nobody (every account
+    // can sign its own files).
+    AppSection.signing,
     // Recent and Favorites are views of Files, not places: chips above the
     // file list (and the phone's section chips) open them, the sidebar
     // stays short.

@@ -190,3 +190,19 @@ spent by exactly one request even when two race.
 Request lines in the server log (and the admin log viewer) carry the path
 only: no query string, and WebDAV paths cut at the mount, so they hold ids
 but no file names or search terms.
+
+## Signing links
+
+A person who signs a document has no account; the link
+(`/app/sign/<token>`) is the only credential. Tokens are 256 random bits, only
+their SHA-256 is stored, and an unknown, replaced or turned-off link answers
+the same `404` as a malformed one, with limits per address, per link and for
+addresses that keep guessing. The link page and its API are `no-store`,
+`noindex`, `no-referrer`, set no cookie, are not framable and may only talk to
+this server (strict CSP; no fonts or scripts from other hosts), and the token
+is redacted from log lines. A signer writes only its own fields in its turn and
+after agreeing; everything is validated on the server, uploads are re-encoded,
+and PDFs are size-, page- and decompression-limited. The audit trail is
+hash-chained and the signed file carries a seal made with a key kept in the
+database under the master key (see docs/operations.md). The signature is a
+simple electronic one; see docs/signing.md.

@@ -14,7 +14,8 @@ const DEFAULT_PAGE_SIZE = 500;
 const MAX_PAGE_SIZE = 2000;
 
 // Every column of a node plus whether its owner marked it as a favorite and
-// shared it with other accounts.
+// shared it with other accounts, and the signing document it is the result of,
+// if any (partial index sign_documents_final).
 // AI tags and metadata (ai_node_meta): tags the owner accepted, and what the
 // extraction found in the current content (gone once the content changes).
 const NODE_COLUMNS = `nodes.*, EXISTS (
@@ -22,6 +23,8 @@ const NODE_COLUMNS = `nodes.*, EXISTS (
 ) AS favorite, EXISTS (
   SELECT 1 FROM user_shares s WHERE s.node_id = nodes.id
 ) AS shared, (
+  SELECT d.id FROM sign_documents d WHERE d.final_node_id = nodes.id LIMIT 1
+) AS signed_document_id, (
   SELECT m.tags_json FROM ai_node_meta m WHERE m.node_id = nodes.id
 ) AS ai_tags_json, (
   SELECT m.fields_json || char(31) || COALESCE(m.model, '') FROM ai_node_meta m
@@ -68,6 +71,7 @@ function serializeNode(row) {
     // Known for rows read with NODE_COLUMNS; the sync feeds don't carry it.
     ...(row.favorite === undefined ? {} : { favorite: row.favorite === 1 }),
     ...(row.shared === undefined ? {} : { shared: row.shared === 1 }),
+    ...(row.signed_document_id ? { signed: true, signedDocumentId: row.signed_document_id } : {}),
     ...(row.ai_tags_json === undefined ? {} : { aiTags: aiTagsOf(row.ai_tags_json), aiMeta: aiMetaOf(row.ai_meta_json) }),
     ...(row.trashed_at ? { trashedAt: row.trashed_at } : {}),
   };

@@ -76,6 +76,40 @@ function exportLinks(userId) {
   }));
 }
 
+// Signing documents with their parties and trail. No link tokens (only
+// their hashes exist), no uploaded signatures: those stay in the app.
+function exportSigning(userId) {
+  return rows('SELECT * FROM sign_documents WHERE owner_id = ? ORDER BY created_at', userId).map((row) => ({
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    signingOrder: row.signing_order,
+    pageCount: row.page_count,
+    sourceNodeId: row.source_node_id,
+    finalNodeId: row.final_node_id,
+    snapshotSha256: row.snapshot_sha256,
+    finalSha256: row.final_sha256,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    sentAt: row.sent_at,
+    completedAt: row.completed_at,
+    parties: rows('SELECT * FROM sign_parties WHERE document_id = ? ORDER BY position', row.id).map((party) => ({
+      name: party.name,
+      email: party.email,
+      status: party.status,
+      signerName: party.signer_name,
+      openedAt: party.opened_at,
+      consentedAt: party.consented_at,
+      completedAt: party.completed_at,
+      declinedAt: party.declined_at,
+      declineReason: party.decline_reason,
+      ip: party.ip,
+    })),
+    events: rows('SELECT type, at, party_id, ip, hash FROM sign_events WHERE document_id = ? ORDER BY id', row.id)
+      .map((event) => ({ type: event.type, at: event.at, partyId: event.party_id, ip: event.ip, hash: event.hash })),
+  }));
+}
+
 function exportMemberShares(userId) {
   const byMe = rows(`
     SELECT s.id, s.node_id, n.name AS node_name, s.permission, s.recipient, s.expires_at, s.created_at, u.display_name
@@ -174,6 +208,7 @@ function exportAccount(userId) {
       .map((row) => ({ nodeId: row.node_id, createdAt: row.created_at })),
     vaults: rows('SELECT id, folder_id, created_at, updated_at FROM vaults WHERE user_id = ? ORDER BY created_at', userId)
       .map((row) => ({ id: row.id, folderId: row.folder_id, createdAt: row.created_at, updatedAt: row.updated_at })),
+    signing: exportSigning(userId),
     imports: rows(`
       SELECT id, source, url, username, source_path, target_folder_id, status, created_at, started_at, finished_at
       FROM import_jobs WHERE user_id = ? ORDER BY created_at

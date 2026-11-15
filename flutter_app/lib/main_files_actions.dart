@@ -430,6 +430,8 @@ mixin _FilesActions on _FilesBase {
       if (searching) _FileAction(Icons.drive_folder_upload_outlined, appStrings.searchOpenFolder, () => openContainingFolder(node), quick: true),
       if (!vault || !node.isFolder)
         _FileAction(Icons.download_rounded, node.isFolder ? appStrings.downloadZip : appStrings.download, () => download(subjectFor(node)), quick: true),
+      if (node.signed && !node.isFolder && own)
+        _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(guard(() => controller.downloadSignedWithoutCertificate(node)))),
       if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
       if (own)
         _FileAction(
@@ -455,6 +457,8 @@ mixin _FilesActions on _FilesBase {
           vaultConversionPending(controller, node.id) ? appStrings.vaultConvertResumeAction : appStrings.vaultConvertAction,
           () => unawaited(convertToVault(node)),
         ),
+      if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
+        _FileAction(AppSection.signing.icon, appStrings.signingPrepare, () => unawaited(startSigningFromFile(context, controller, node))),
       if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
       ...aiActionsFor(node),
       if (canWrite) _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),

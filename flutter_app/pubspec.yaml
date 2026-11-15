@@ -15,6 +15,7 @@ dependencies:
     sdk: flutter
   intl: any
   http: ^1.5.0
+  http_parser: ^4.1.2
   google_fonts: ^8.1.0
   shared_preferences: ^2.5.3
   file_picker: ^10.3.10
@@ -55,4 +56,26 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/
+    # Geist and Geist Mono (SIL OFL, licences beside the files) for google_fonts,
+    # which finds them by file name; nothing is fetched at runtime.
+    - assets/fonts/geist/
+    - assets/fonts/signing/OFL-caveat.txt
+    - assets/fonts/signing/OFL-dancingscript.txt
+    - assets/fonts/signing/OFL-greatvibes.txt
+    - assets/fonts/signing/OFL-sacramento.txt
+  # Script fonts for typed signatures, all SIL Open Font License 1.1 (the
+  # licences sit beside the files).
+  fonts:
+    - family: DancingScript
+      fonts:
+        - asset: assets/fonts/signing/DancingScript.ttf
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/signing/Caveat.ttf
+    - family: GreatVibes
+      fonts:
+        - asset: assets/fonts/signing/GreatVibes-Regular.ttf
+    - family: Sacramento
+      fonts:
+        - asset: assets/fonts/signing/Sacramento-Regular.ttf
   generate: true

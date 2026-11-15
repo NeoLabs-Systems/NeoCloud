@@ -437,6 +437,8 @@ class _SectionBody extends StatelessWidget {
         return controller.openSharedFolderId == null
             ? SharedWithMePanel(controller: controller)
             : FilesPanel(key: const ValueKey<String>('shared-folder'), controller: controller);
+      case AppSection.signing:
+        return SigningPanel(controller: controller);
       case AppSection.favorites:
         return _ViewChips(controller: controller, child: FavoritesPanel(controller: controller));
       case AppSection.recent:

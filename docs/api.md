@@ -388,7 +388,8 @@ account itself reads (listings, node, search, recent, favorites, trash,
 storage, the result of rename/move/copy/upload/restore), `favorite: bool`
 and `shared: bool` (shared with at least one other account). The sync feeds
 (`/api/sync/*`) leave both out; members of a shared folder never see
-`shared`. Nodes read outside the sync feeds also carry `aiExcluded: bool`
+`shared`. A file that is the result of a signing document also carries
+`signed: true` and `signedDocumentId` (the document's id, for its progress page; both absent otherwise). Nodes read outside the sync feeds also carry `aiExcluded: bool`
 (the folder was excluded from AI by its owner, see
 [AI](#ai--apiai-session-or-phone); it applies to everything below it too). They also carry
 `aiTags` (the AI tags the owner accepted, `[]` when none) and `aiMeta` (what
@@ -695,7 +696,7 @@ creating, importing, sending and duplicating 200.
 | PUT | `/documents/:id/parties` | `{ parties: [{ id?, name, email?, color? }] }` (1–20), draft only; parties left out are removed with their fields → `{ document, parties, fields }`. `400 INVALID_PARTY` |
 | POST | `/documents/:id/import-fields` | draft only: the PDF's own form fields as new fields of the first party → `{ imported, fields }` |
 | POST | `/documents/:id/send` | → `{ document, parties, fields, links: [{ partyId, url }] }`. The only time the URLs exist (`<origin>/app/sign/<token>`). `400 PARTY_WITHOUT_FIELDS`, `EXPIRY_IN_PAST`; `409 ALREADY_SENT` |
-| POST | `/documents/:id/parties/:partyId/link` | new link, the old one stops working → `{ partyId, url }`. `409 INVALID_STATE`, `PARTY_FINISHED` |
+| POST | `/documents/:id/parties/:partyId/link` | new link, the old one stops working; the party must agree again (values filled in stay) → `{ partyId, url }`. `409 INVALID_STATE`, `PARTY_FINISHED` |
 | POST | `/documents/:id/parties/:partyId/revoke` | turns the link off → `{ party }` |
 | POST | `/documents/:id/cancel` | sent / in progress only; every link then shows `canceled` |
 | POST | `/documents/:id/duplicate` | new draft with the same pages, parties and fields → `201` |
@@ -705,7 +706,8 @@ creating, importing, sending and duplicating 200.
 | GET | `/documents/:id/values/:fieldId/image` | the entered image (PNG) |
 | GET | `/documents/:id/events` | `{ events: [{ id, type, partyId, at, ip, userAgent, data, prevHash, hash }], verify: { chainValid, count, head, brokenAt? } }` |
 | GET | `/documents/:id/audit.json` | the whole record as a download |
-| GET | `/documents/:id/final` | the signed PDF (a library file too); `404 FINAL_UNAVAILABLE` when moved to trash, replaced or not made yet |
+| GET | `/documents/:id/final?certificate=0\|1` | the signed PDF (a library file too); `404 FINAL_UNAVAILABLE` when moved to trash, replaced or not made yet. `certificate=0` gives the same file without the appended certificate pages (original page count, own digital seal; named `<name> (signed, no certificate).pdf`, `(signiert, ohne Protokoll)` in German), built on the first request and cached; `1` or absent is the full file; anything else `400 INVALID_REQUEST`. Range and HEAD work for both. Each download is logged (`final_downloaded`, `data.certificate: false` for the clean one), once per person, variant and minute |
+| GET | `/nodes/:nodeId/clean` | the clean variant (as above) through the signed file's library node: `404` unless the node is the live result of one of the caller's signing documents (another account's node, a normal file, trash or a replaced file all answer `404`) |
 
 Document status: `draft sent in_progress finalizing completed declined expired
 canceled`. Party status: `pending waiting opened completed declined`. Socket
@@ -723,7 +725,7 @@ then `429 RATE_LIMITED`. The page for people is `/app/sign/<token>`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/` | `{ state, document, party, parties, fields, myValues, turn, result? }`. `state`: `ready waiting completed declined expired canceled`. A closed state (`declined expired canceled`) answers only `{ state, document: { locale }, party }`. `document`: `title, pageCount, pages, locale, expiresAt, consentText, consentVersion`. `party`: `id, name, color, status, consentedAt, signerName`. `parties`: `[{ name, color, status }]`. `fields`: the party's own (`own: true`) plus other parties' filled or read-only ones (`own: false`, with `value`). `myValues`: stored value or the sender's default. `turn`: `{ canSign, waitingFor? }`. The first look at a ready turn records `opened` |
+| GET | `/` | `{ state, document, party, parties, fields, myValues, turn, result? }`. `state`: `ready waiting completed declined expired canceled`. A closed state (`declined expired canceled`) answers only `{ state, document: { locale }, party }`. `document`: `title, pageCount, pages, locale, expiresAt, consentText, consentVersion`. `party`: `id, name, color, status, consentedAt, signerName` (the caller's own). `progress`: `{ done, total }`, counts of completed and all parties: a signer never gets the names, emails or colours of the others. `fields`: the party's own (`own: true`) plus other parties' filled or read-only ones (`own: false`, with `value`). `myValues`: stored value or the sender's default. `turn`: `{ canSign, waitingCount? }` (`waitingCount`, only while waiting: how many parties must sign first). The first look at a ready turn records `opened` |
 | GET | `/pdf` | the frozen PDF (Range); not while `waiting` (`409 NOT_YOUR_TURN`) |
 | POST | `/consent` | `{ accepted: true, signerName, timezone?, tzOffsetMinutes? }` → `{ consentedAt, signerName }` |
 | PUT | `/fields/:fieldId` | `{ value }` (`null` clears); only the party's own, non-read-only fields while `ready` and after consent. `400 INVALID_VALUE` → `{ value }` as stored |
@@ -732,7 +734,7 @@ then `429 RATE_LIMITED`. The page for people is `/app/sign/<token>`.
 | POST | `/complete` | checks required fields and consent, finishes the party, opens the next turn or starts finalizing → `{ state: 'completed', finalAvailable }`. `400 FIELDS_INCOMPLETE` with `fieldIds`; repeating is harmless |
 | POST | `/decline` | `{ reason? }` (≤ 500 chars) → `{ state: 'declined' }`; the document ends declined |
 | GET | `/result` | `{ state, finalAvailable }` |
-| GET | `/final` | the signed PDF once the document is completed |
+| GET | `/final?certificate=0\|1` | the signed PDF once the whole document is completed (`404 FINAL_UNAVAILABLE` before); `certificate=0` the same without the certificate pages, as for the owner |
 
 Write errors: `409 NOT_YOUR_TURN`, `ALREADY_COMPLETED`, `DOCUMENT_CLOSED`,
 `CONSENT_REQUIRED`.
