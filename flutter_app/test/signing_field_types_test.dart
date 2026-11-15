@@ -281,7 +281,7 @@ void main() {
 
   group('display of other types', () {
     test('checkbox shows a tick, images show nothing', () {
-      expect(FieldTypes.of(FieldType.checkbox).display(field(FieldType.checkbox), true), '✓');
+      expect(FieldTypes.of(FieldType.checkbox).display(field(FieldType.checkbox), true), 'Yes');
       expect(FieldTypes.of(FieldType.checkbox).display(field(FieldType.checkbox), false), '');
       expect(FieldTypes.of(FieldType.signature).display(field(FieldType.signature), true), '');
       expect(FieldTypes.of(FieldType.text).display(field(FieldType.text), null), '');

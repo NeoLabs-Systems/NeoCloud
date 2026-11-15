@@ -290,6 +290,9 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
     }
     final shown = value?.value ?? (field.readonly || !spec.signerFillable ? field.defaultValue : null);
     if (shown == null) return null;
+    if (field.type == FieldType.checkbox) {
+      return shown == true ? const FittedBox(child: Icon(Icons.check_rounded, color: Colors.black87)) : null;
+    }
     final text = spec.signerFillable ? spec.display(field, shown, locale: currentAppLanguage.code) : '$shown';
     if (text.isEmpty) return null;
     return Align(

@@ -97,7 +97,7 @@ class _SendDialogState extends State<_SendDialog> {
         // The page reloads it anyway.
       }
       navigator.pop(detail);
-      widget.controller.openSigningLink(url);
+      unawaited(launchUrl(Uri.parse(url), webOnlyWindowName: '_blank'));
     } catch (error) {
       if (mounted) setState(() => _error = signingErrorText(_controller, error, appStrings.signingSignNowFailed));
     }
@@ -184,23 +184,32 @@ class _SendDialogState extends State<_SendDialog> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final links = _links;
-    if (links != null) return _linksView(links);
-    final check = _check;
-    final needsConfirm = check.hasWarnings;
-    return _AdaptiveDialog(
-      title: Text(appStrings.signingSendTitle),
-      content: SizedBox(
-        width: 520,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(appStrings.signingSendIntro, style: TextStyle(color: _textSecondary, height: 1.45)),
-            const SizedBox(height: 12),
-            for (final (index, party) in _state.parties.indexed) ...<Widget>[
+
+  /// One party as a card: its colour, name and email, and, when mail is on,
+  /// the "This is me" toggle right next to them (below them on narrow
+  /// screens), so it is clear whose toggle it is.
+  Widget _partyBlock(int index, SigningParty party) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final wide = box.maxWidth >= 540;
+        final me = _mail
+            ? FilterChip(
+                key: ValueKey<String>('send-self-$index'),
+                selected: _isSelf(party.id),
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                avatar: Icon(_isSelf(party.id) ? Icons.check_circle_rounded : Icons.person_outline_rounded, size: 18),
+                label: Text(_isSelf(party.id) ? appStrings.signingThisIsMeOn : appStrings.signingThisIsMe),
+                onSelected: (_) => _toggleSelf(party),
+              )
+            : null;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+          decoration: BoxDecoration(border: Border.all(color: _border), borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -209,6 +218,7 @@ class _SendDialogState extends State<_SendDialog> {
                     child: Container(width: 12, height: 12, decoration: BoxDecoration(color: _state.colorOf(party.id), shape: BoxShape.circle)),
                   ),
                   Expanded(
+                    flex: 2,
                     child: TextField(
                       key: ValueKey<String>('send-name-$index'),
                       controller: _names[party.id],
@@ -218,6 +228,7 @@ class _SendDialogState extends State<_SendDialog> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
+                    flex: 3,
                     child: TextField(
                       key: ValueKey<String>('send-email-$index'),
                       controller: _emails[party.id],
@@ -226,21 +237,37 @@ class _SendDialogState extends State<_SendDialog> {
                       decoration: InputDecoration(labelText: appStrings.signingPartyEmail, errorText: _emailError(party.id), helperText: _mail ? appStrings.signingMailInvitationHint : null, helperMaxLines: 2, isDense: true),
                     ),
                   ),
+                  if (me != null && wide) ...<Widget>[const SizedBox(width: 10), Padding(padding: const EdgeInsets.only(top: 6), child: me)],
                 ],
               ),
-              if (_mail)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    key: ValueKey<String>('send-self-$index'),
-                    onPressed: () => _toggleSelf(party),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 6)),
-                    icon: Icon(_isSelf(party.id) ? Icons.check_circle_rounded : Icons.person_outline_rounded, size: 18),
-                    label: Text(_isSelf(party.id) ? appStrings.signingThisIsMeOn : appStrings.signingThisIsMe),
-                  ),
-                ),
-              const SizedBox(height: 10),
+              if (me != null && !wide) Padding(padding: const EdgeInsets.only(left: 22, top: 4), child: me),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final links = _links;
+    if (links != null) return _linksView(links);
+    final check = _check;
+    final needsConfirm = check.hasWarnings;
+    return _AdaptiveDialog(
+      title: Text(appStrings.signingSendTitle),
+      // Many parties plus the mail options are taller than a laptop window:
+      // the content scrolls, the title and the buttons stay in place.
+      content: SizedBox(
+        width: 640,
+        child: SingleChildScrollView(
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(appStrings.signingSendIntro, style: TextStyle(color: _textSecondary, height: 1.45)),
+            const SizedBox(height: 12),
+            for (final (index, party) in _state.parties.indexed) _partyBlock(index, party),
             if (_mail) ...<Widget>[
               _SendMailOptions(
                 deliver: _deliver,
@@ -312,6 +339,7 @@ class _SendDialogState extends State<_SendDialog> {
               ),
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: _Notice(message: _error!, color: _danger, icon: Icons.error_outline_rounded)),
           ],
+        ),
         ),
       ),
       actions: <Widget>[

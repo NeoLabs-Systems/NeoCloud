@@ -129,8 +129,7 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(account.opened, <String>[party.id]);
-      expect(controller.signingToken, 'grant-${party.id}');
-      controller.finishSigning();
+      expect(controller.signingToken, isNull, reason: 'opens in a new tab, this page stays');
     });
   });
 

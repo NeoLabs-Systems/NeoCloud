@@ -276,7 +276,7 @@ class FieldTypeSpec {
         if (number == null) return '$value';
         return formatDecimal(number, decimals: prefs.decimals);
       case FieldType.checkbox:
-        return value == true ? '✓' : '';
+        return value == true ? (locale.startsWith('de') ? 'Ja' : 'Yes') : '';
       case FieldType.multiple:
         return value is List ? value.join(', ') : '$value';
       case FieldType.text:
