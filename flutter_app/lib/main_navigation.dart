@@ -109,8 +109,9 @@ List<AppSection> _mainSections(NeoCloudController controller) {
     // Duplicates tab needs no AI, so the page is always there.
     AppSection.review,
     AppSection.shared,
-    AppSection.favorites,
-    AppSection.recent,
+    // Recent and Favorites are views of Files, not places: chips above the
+    // file list (and the phone's section chips) open them, the sidebar
+    // stays short.
     AppSection.trash,
     // Its own sidebar entry and phone tab: the timeline of photos and videos.
     AppSection.photos,

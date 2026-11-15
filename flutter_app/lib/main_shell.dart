@@ -428,7 +428,7 @@ class _SectionBody extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (controller.selectedSection) {
       case AppSection.files:
-        return FilesPanel(controller: controller);
+        return _ViewChips(controller: controller, child: FilesPanel(controller: controller));
       case AppSection.photos:
         return PhotosPage(controller: controller);
       case AppSection.review:
@@ -438,9 +438,9 @@ class _SectionBody extends StatelessWidget {
             ? SharedWithMePanel(controller: controller)
             : FilesPanel(key: const ValueKey<String>('shared-folder'), controller: controller);
       case AppSection.favorites:
-        return FavoritesPanel(controller: controller);
+        return _ViewChips(controller: controller, child: FavoritesPanel(controller: controller));
       case AppSection.recent:
-        return RecentPanel(controller: controller);
+        return _ViewChips(controller: controller, child: RecentPanel(controller: controller));
       case AppSection.trash:
         return TrashPanel(controller: controller);
       case AppSection.settings:
@@ -448,5 +448,49 @@ class _SectionBody extends StatelessWidget {
       case AppSection.admin:
         return controller.isAdmin ? AdminPanel(controller: controller) : FilesPanel(controller: controller);
     }
+  }
+}
+
+/// All files · Recent · Favorites above the file list on wide screens,
+/// where they used to be sidebar entries. Phones have the section chips.
+class _ViewChips extends StatelessWidget {
+  const _ViewChips({required this.controller, required this.child});
+
+  final NeoCloudController controller;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < AppBreakpoints.mobile) return child;
+    final selected = controller.selectedSection;
+    Widget chip(AppSection section, String label, IconData icon) => Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        avatar: Icon(icon, size: 16),
+        label: Text(label),
+        selected: selected == section,
+        showCheckmark: false,
+        onSelected: (_) => controller.setSelectedSection(section),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                chip(AppSection.files, AppSection.files.label, Icons.folder_outlined),
+                chip(AppSection.recent, AppSection.recent.label, Icons.schedule_rounded),
+                chip(AppSection.favorites, AppSection.favorites.label, Icons.star_outline_rounded),
+              ],
+            ),
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    );
   }
 }
