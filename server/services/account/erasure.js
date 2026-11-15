@@ -69,8 +69,13 @@ function deleteRows(userId) {
   run('DELETE FROM sign_profile_images WHERE user_id = @id');
   run('DELETE FROM sign_profiles WHERE user_id = @id');
   run('DELETE FROM import_jobs WHERE user_id = @id');
+  run('DELETE FROM external_mounts WHERE user_id = @id');
   run('DELETE FROM upload_sessions WHERE user_id = @id OR created_by = @id');
   run('DELETE FROM favorites WHERE user_id = @id');
+  // Comments on the account's files go with the nodes below; its own
+  // comments on other accounts' files and its activity entries go here.
+  run('DELETE FROM node_comments WHERE user_id = @id');
+  run('DELETE FROM activity WHERE owner_id = @id OR actor_id = @id');
   run('DELETE FROM node_opens WHERE user_id = @id');
   run('DELETE FROM ai_jobs WHERE user_id = @id');
   run('DELETE FROM ai_suggestions WHERE user_id = @id');

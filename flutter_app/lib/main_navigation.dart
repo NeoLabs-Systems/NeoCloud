@@ -2,7 +2,7 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, photos, review, shared, signing, favorites, recent, trash, settings, admin }
+enum AppSection { files, photos, review, shared, signing, favorites, recent, activity, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
 enum SidebarGroup { files, photos, admin, settings }
@@ -24,6 +24,8 @@ extension AppSectionInfo on AppSection {
         return appStrings.filesNavFavorites;
       case AppSection.recent:
         return appStrings.navRecent;
+      case AppSection.activity:
+        return appStrings.activityNav;
       case AppSection.trash:
         return appStrings.navTrash;
       case AppSection.settings:
@@ -49,6 +51,8 @@ extension AppSectionInfo on AppSection {
         return Icons.star_outline_rounded;
       case AppSection.recent:
         return Icons.schedule_rounded;
+      case AppSection.activity:
+        return Icons.timeline_rounded;
       case AppSection.trash:
         return Icons.delete_outline_rounded;
       case AppSection.settings:
@@ -66,6 +70,7 @@ extension AppSectionInfo on AppSection {
       case AppSection.signing:
       case AppSection.favorites:
       case AppSection.recent:
+      case AppSection.activity:
       case AppSection.trash:
         return SidebarGroup.files;
       case AppSection.photos:
@@ -120,6 +125,7 @@ List<AppSection> _mainSections(NeoCloudController controller) {
     // Recent and Favorites are views of Files, not places: chips above the
     // file list (and the phone's section chips) open them, the sidebar
     // stays short.
+    AppSection.activity,
     AppSection.trash,
     // Its own sidebar entry and phone tab: the timeline of photos and videos.
     AppSection.photos,

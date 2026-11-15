@@ -8,6 +8,8 @@
 // stored import passwords.
 
 const db = require('../../db/database');
+const { exportActivity } = require('../activity/export');
+const { listMounts } = require('../external_storage/mounts');
 const { readProfile } = require('../signing/profile');
 const { readSettings } = require('../settings/store');
 const { getUsage } = require('../storage/quota');
@@ -219,6 +221,7 @@ function exportAccount(userId) {
       .map((row) => ({ nodeId: row.node_id, createdAt: row.created_at })),
     vaults: rows('SELECT id, folder_id, created_at, updated_at FROM vaults WHERE user_id = ? ORDER BY created_at', userId)
       .map((row) => ({ id: row.id, folderId: row.folder_id, createdAt: row.created_at, updatedAt: row.updated_at })),
+    activity: exportActivity(userId),
     signing: exportSigning(userId),
     signingProfile: exportSigningProfile(userId),
     imports: rows(`
@@ -236,6 +239,8 @@ function exportAccount(userId) {
       startedAt: row.started_at,
       finishedAt: row.finished_at,
     })),
+    // Connections to cloud storage, without their secrets.
+    externalStorage: listMounts(userId),
     audit: rows(`
       SELECT id, action, actor_user_id, subject_user_id, detail_json, created_at FROM access_audit_log
       WHERE actor_user_id = @id OR subject_user_id = @id ORDER BY id

@@ -33,7 +33,12 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
   Future<void> _load() async {
     try {
       final devices = await _controller.client.devices();
-      if (mounted) setState(() => _devices = devices);
+      if (!mounted) return;
+      final erased = devices.where((device) => device.wiped).toList();
+      setState(() {
+        _devices = devices;
+        if (erased.isNotEmpty && pageNotice == null) pageNotice = appStrings.deviceWipeDelivered(erased.first.name);
+      });
     } catch (error) {
       if (mounted) setState(() => pageError = _controller.friendlyError(error));
     }
@@ -81,6 +86,20 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     }),
   );
 
+  Future<void> _wipe(DeviceInfo device) async {
+    final eraseFiles = await _askWipeChoice(context, device);
+    if (eraseFiles == null || !mounted) return;
+    await runAction(_controller, () async {
+      await _controller.client.wipeDevice(device.id, eraseFiles: eraseFiles);
+      await _load();
+    }, notice: appStrings.deviceWipeRequested(device.name));
+  }
+
+  Future<void> _callOffWipe(DeviceInfo device) => runAction(_controller, () async {
+    await _controller.client.revokeDevice(device.id);
+    await _load();
+  });
+
   /// The system a client reported, written as people know it.
   static String _platformName(String platform) {
     const names = <String, String>{'android': 'Android', 'ios': 'iOS', 'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux', 'web': 'Web'};
@@ -96,12 +115,31 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     } else {
       tag = device.platform.isEmpty ? null : _platformName(device.platform);
     }
+    final String description;
+    if (device.wiped) {
+      description = appStrings.deviceErasedOn(formatDate(device.wipeDeliveredAt, locale));
+    } else if (device.wipePending) {
+      description = appStrings.deviceWipePending;
+    } else {
+      description = device.lastSeenAt == null ? appStrings.deviceNeverSeen : appStrings.deviceLastSeen(formatDate(device.lastSeenAt, locale));
+    }
     return _SettingsRow(
       label: device.name,
       tag: device.current ? appStrings.deviceCurrent : tag,
-      description: device.lastSeenAt == null ? appStrings.deviceNeverSeen : appStrings.deviceLastSeen(formatDate(device.lastSeenAt, locale)),
+      description: description,
       // This phone signs out with Disconnect (Profile, or the settings list).
-      control: device.current ? null : TextButton(onPressed: busy ? null : () => unawaited(_revoke(device)), child: Text(appStrings.deviceRevoke)),
+      control: device.current || device.wiped
+          ? null
+          : Wrap(
+              spacing: 4,
+              children: <Widget>[
+                if (!device.wipePending && !webDav) TextButton(onPressed: busy ? null : () => unawaited(_wipe(device)), child: Text(appStrings.deviceWipeAction)),
+                if (device.wipePending)
+                  TextButton(onPressed: busy ? null : () => unawaited(_callOffWipe(device)), child: Text(appStrings.deviceWipeCancel))
+                else
+                  TextButton(onPressed: busy ? null : () => unawaited(_revoke(device)), child: Text(appStrings.deviceRevoke)),
+              ],
+            ),
     );
   }
 

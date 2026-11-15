@@ -1764,7 +1764,7 @@ class AppL10nEn extends AppL10n {
   String get shareModeViewUpload => 'View + upload';
 
   @override
-  String get shareModeUploadOnly => 'File request';
+  String get shareModeUploadOnly => 'Request files';
 
   @override
   String get shareModeViewHint => 'See, preview and download what you share.';
@@ -1775,7 +1775,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get shareModeUploadOnlyHint =>
-      'Only add files. Visitors don’t see the folder’s contents, not even what others uploaded.';
+      'Anyone with the link can upload files into this folder, but can’t see what’s inside.';
 
   @override
   String get shareExpiryCustom => 'Custom…';
@@ -7743,4 +7743,550 @@ class AppL10nEn extends AppL10n {
   String signingClaimFillMore(int count) {
     return '+$count more';
   }
+
+  @override
+  String get deviceWipeAction => 'Erase…';
+
+  @override
+  String deviceWipeTitle(String name) {
+    return 'Sign out “$name” and erase its data?';
+  }
+
+  @override
+  String get deviceWipeMessage =>
+      'This device is signed out right away. The next time it connects to NeoCloud, it removes the NeoCloud data stored on it.';
+
+  @override
+  String get deviceWipeSignOutOnly => 'Sign out only';
+
+  @override
+  String get deviceWipeEraseFiles =>
+      'Sign out and erase NeoCloud files on that device';
+
+  @override
+  String get deviceWipeNeverConnects =>
+      'A device that never connects again can’t erase anything. It stays signed out either way.';
+
+  @override
+  String get deviceWipeConfirm => 'Sign out and erase';
+
+  @override
+  String deviceWipeRequested(String name) {
+    return '$name is signed out. It will erase its NeoCloud data the next time it connects.';
+  }
+
+  @override
+  String get deviceWipePending =>
+      'Signed out. Waiting to erase its data when it connects.';
+
+  @override
+  String get deviceWipeCancel => 'Call off';
+
+  @override
+  String deviceErasedOn(String date) {
+    return 'Erased $date';
+  }
+
+  @override
+  String deviceWipeDelivered(String name) {
+    return '$name has erased its NeoCloud data.';
+  }
+
+  @override
+  String get deviceWipedNotice =>
+      'This device was signed out remotely and its NeoCloud data was erased.';
+
+  @override
+  String get requestFiles => 'Request files';
+
+  @override
+  String get requestFilesHere => 'Request files into this folder';
+
+  @override
+  String requestFilesCopied(String name) {
+    return 'Link copied. Anyone with it can send files to “$name” without seeing what’s inside.';
+  }
+
+  @override
+  String get requestFilesOptions => 'Options';
+
+  @override
+  String get shareUploadCapTitle => 'Total upload size';
+
+  @override
+  String get shareUploadCapHint =>
+      'Visitors can send up to this much through the link in total.';
+
+  @override
+  String get officeEdit => 'Edit';
+
+  @override
+  String get officeViewOnly => 'View only';
+
+  @override
+  String get officeOpenInBrowser => 'Open in browser';
+
+  @override
+  String get officeOpenInBrowserHint => 'The document opens in your browser.';
+
+  @override
+  String get officeOpenedInBrowser =>
+      'The document is open in your browser. You can come back here when you are done.';
+
+  @override
+  String get officeAdminTitle => 'Document editor';
+
+  @override
+  String get officeAdminDescription =>
+      'Let people edit Word, Excel and PowerPoint files in the browser, together, with a Collabora Online you run yourself.';
+
+  @override
+  String get officeAdminUrl => 'Editor address';
+
+  @override
+  String get officeAdminUrlHelper =>
+      'Where Collabora Online can be reached, for example https://office.example.com.';
+
+  @override
+  String get officeAdminHostUrl => 'Address of NeoCloud for the editor';
+
+  @override
+  String get officeAdminHostUrlHelper =>
+      'Only if the editor reaches NeoCloud differently than people do, for example inside Docker. Leave empty otherwise.';
+
+  @override
+  String get officeAdminEnable => 'Edit documents in the browser';
+
+  @override
+  String get officeAdminEnableHelper =>
+      'Saving checks that the editor answers before this turns on.';
+
+  @override
+  String officeAdminFormats(String formats) {
+    return 'Opens: $formats';
+  }
+
+  @override
+  String get officeAdminSave => 'Save';
+
+  @override
+  String get officeAdminCheck => 'Check again';
+
+  @override
+  String get officeAdminSaved => 'Saved.';
+
+  @override
+  String get officeAdminChecked => 'The editor answered.';
+
+  @override
+  String get officeAdminStateOk => 'Working';
+
+  @override
+  String get officeAdminStateError => 'Not reachable';
+
+  @override
+  String get officeAdminStateOff => 'Off';
+
+  @override
+  String get officeAdminStateUnconfigured => 'Not set up';
+
+  @override
+  String get activityNav => 'Activity';
+
+  @override
+  String get activityTitle => 'Activity';
+
+  @override
+  String get activitySubtitle =>
+      'What happened to your files and to files shared with you.';
+
+  @override
+  String get activityScopeAll => 'Everything';
+
+  @override
+  String get activityScopeMine => 'My files';
+
+  @override
+  String get activityScopeShared => 'Shared with me';
+
+  @override
+  String get activityEmpty => 'No activity yet';
+
+  @override
+  String get activityEmptySubtitle =>
+      'Uploads, changes and comments show up here.';
+
+  @override
+  String get activityLoadMore => 'Show more';
+
+  @override
+  String activityIn(String folder) {
+    return 'in $folder';
+  }
+
+  @override
+  String activityUploaded(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You uploaded $name',
+      'other': '$who uploaded $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityUploadedMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You uploaded $count files',
+      'other': '$who uploaded $count files',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityFolder(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You created the folder $name',
+      'other': '$who created the folder $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityFolderMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You created $count folders',
+      'other': '$who created $count folders',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityCopied(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You copied $name',
+      'other': '$who copied $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityCopiedMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You copied $count items',
+      'other': '$who copied $count items',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityVersion(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You saved a new version of $name',
+      'other': '$who saved a new version of $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityRenamed(String actor, String who, String from, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You renamed $from to $name',
+      'other': '$who renamed $from to $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityMoved(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You moved $name',
+      'other': '$who moved $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityMovedMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You moved $count items',
+      'other': '$who moved $count items',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityDeleted(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You deleted $name',
+      'other': '$who deleted $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityDeletedMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You deleted $count items',
+      'other': '$who deleted $count items',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityRestored(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You restored $name',
+      'other': '$who restored $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityRestoredMany(String actor, String who, int count) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You restored $count items',
+      'other': '$who restored $count items',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activitySharedWith(
+    String actor,
+    String who,
+    String name,
+    String member,
+  ) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You shared $name with $member',
+      'other': '$who shared $name with $member',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activitySharedWithYou(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You shared $name',
+      'other': '$who shared $name with you',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String activityCommented(String actor, String who, String name) {
+    String _temp0 = intl.Intl.selectLogic(actor, {
+      'self': 'You commented on $name',
+      'other': '$who commented on $name',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get commentsTitle => 'Comments';
+
+  @override
+  String get commentsHint => 'Write a comment…';
+
+  @override
+  String get commentsPost => 'Post comment';
+
+  @override
+  String get commentsEmpty => 'No comments yet';
+
+  @override
+  String get commentsEmptySubtitle =>
+      'Everyone who can open this item can read and write comments here.';
+
+  @override
+  String get commentsEdited => 'edited';
+
+  @override
+  String get commentsLoadMore => 'Show older comments';
+
+  @override
+  String get commentsDeleteTitle => 'Delete this comment?';
+
+  @override
+  String get commentsDeleteMessage => 'This can’t be undone.';
+
+  @override
+  String get nodeDetailsAction => 'Comments and activity';
+
+  @override
+  String get pageCloudStorage => 'Cloud storage';
+
+  @override
+  String get pageCloudStorageDescription =>
+      'Connect your own cloud storage, like Amazon S3, a WebDAV server or another Nextcloud, and browse it next to your files.';
+
+  @override
+  String get cloudSectionTitle => 'Cloud storage';
+
+  @override
+  String get cloudConnect => 'Connect cloud storage';
+
+  @override
+  String get cloudConnectAction => 'Connect';
+
+  @override
+  String get cloudConnectedTitle => 'Connected storage';
+
+  @override
+  String get cloudConnectedDescription =>
+      'Your files stay where they are. NeoCloud only shows them here: they are not searched, synced or backed up by NeoCloud.';
+
+  @override
+  String get cloudNone => 'Nothing connected yet.';
+
+  @override
+  String get cloudEdit => 'Edit connection';
+
+  @override
+  String get cloudDisconnect => 'Disconnect';
+
+  @override
+  String cloudDisconnectTitle(String name) {
+    return 'Disconnect “$name”?';
+  }
+
+  @override
+  String get cloudDisconnectMessage =>
+      'NeoCloud forgets this connection and its saved password. Your files at the provider are not touched.';
+
+  @override
+  String get cloudProviderS3 => 'S3 (Amazon, Backblaze, Wasabi, MinIO …)';
+
+  @override
+  String get cloudProviderWebdav => 'WebDAV or Nextcloud';
+
+  @override
+  String get cloudProviderSftp => 'SFTP';
+
+  @override
+  String get cloudName => 'Name';
+
+  @override
+  String get cloudNameHint => 'Shown as the folder name';
+
+  @override
+  String get cloudEndpoint => 'Endpoint';
+
+  @override
+  String get cloudEndpointHint => 'Leave empty for Amazon S3';
+
+  @override
+  String get cloudRegion => 'Region';
+
+  @override
+  String get cloudBucket => 'Bucket';
+
+  @override
+  String get cloudPrefix => 'Folder in the bucket (optional)';
+
+  @override
+  String get cloudAccessKey => 'Access key ID';
+
+  @override
+  String get cloudSecretKey => 'Secret access key';
+
+  @override
+  String get cloudWebdavUrl => 'Address of the folder';
+
+  @override
+  String get cloudWebdavHelp =>
+      'For Nextcloud, use the WebDAV address from the Files settings and an app password.';
+
+  @override
+  String get cloudPassword => 'Password or app password';
+
+  @override
+  String get cloudHost => 'Server';
+
+  @override
+  String get cloudPort => 'Port';
+
+  @override
+  String get cloudPrivateKey => 'Private key (instead of a password)';
+
+  @override
+  String get cloudSftpFolder => 'Folder on the server';
+
+  @override
+  String get cloudKeepSecret => 'Leave empty to keep the saved one';
+
+  @override
+  String get cloudReadOnly => 'Read-only';
+
+  @override
+  String get cloudReadOnlyHint =>
+      'Nothing can be uploaded, changed or deleted through NeoCloud.';
+
+  @override
+  String get cloudTest => 'Test connection';
+
+  @override
+  String cloudTestOk(int count) {
+    return 'Connected. $count items found.';
+  }
+
+  @override
+  String get cloudTestFailed =>
+      'The connection did not work. Check the details and try again.';
+
+  @override
+  String get cloudHostBlocked =>
+      'NeoCloud is not allowed to connect to this address. Use an address that is reachable from the internet.';
+
+  @override
+  String get cloudReadOnlyError => 'This storage is read-only.';
+
+  @override
+  String get cloudLimitError => 'You can connect up to 10 cloud storages.';
+
+  @override
+  String get cloudNameExists => 'That name is already taken here.';
+
+  @override
+  String get cloudNotFound => 'This item no longer exists at the provider.';
+
+  @override
+  String get cloudFolderEmpty => 'This folder is empty.';
+
+  @override
+  String cloudTruncated(int count) {
+    return 'Only the first $count items are shown.';
+  }
+
+  @override
+  String get cloudUploaded => 'Uploaded.';
+
+  @override
+  String cloudUploadTooLarge(String size) {
+    return 'Files over $size can’t be uploaded here yet.';
+  }
+
+  @override
+  String cloudDeleteTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get cloudDeleteMessage =>
+      'It is deleted at the provider and can’t be recovered here.';
+
+  @override
+  String get cloudCopyToNeoCloud => 'Copy to NeoCloud';
+
+  @override
+  String get cloudCopyHere => 'Copy here';
+
+  @override
+  String get cloudCopyFromNeoCloud => 'Copy a file from NeoCloud';
+
+  @override
+  String get cloudPickFileTitle => 'Choose a file to copy';
+
+  @override
+  String get cloudCopied => 'Copied.';
 }

@@ -35,6 +35,7 @@ class NeoCloudController extends ChangeNotifier {
        cameraUploads = cameraUploads ?? createCameraUploads(),
        shareIntake = shareIntake ?? createShareIntake() {
     client.onSessionExpired = _handleSessionExpired;
+    client.onDeviceWiped = _handleDeviceWiped;
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
     uploadJournal = UploadJournal(preferences, uploads);
     folderViews = FolderViews(preferences: preferences, save: (patch) => client.updateSettings(<String, Object?>{'folder_views': patch}));
@@ -49,6 +50,7 @@ class NeoCloudController extends ChangeNotifier {
       onAiSuggestions: (counts) => aiReview.applyCounts(AiSuggestionCounts.fromJson(counts)),
       onPolled: _handlePolled,
       onSigningUpdated: () => signingRevision.value += 1,
+      onCommentsChanged: () => commentsRevision.value += 1,
     );
     fileChanges.addListener((_) => unawaited(refreshAccount()));
     signingRevision.addListener(() => unawaited(refreshSigningTodo()));
@@ -108,6 +110,9 @@ class NeoCloudController extends ChangeNotifier {
   final FileChangeFeed fileChanges = FileChangeFeed();
   late final LiveFileUpdates liveUpdates;
   late final VaultSessions vaults;
+
+  /// The document editor, when the admin set one up (docs/office-editing.md).
+  late final OfficeEditing office = OfficeEditing(client);
   final DeviceSessions deviceSessions;
   final CameraUploads cameraUploads;
   final ShareIntake shareIntake;
@@ -296,6 +301,9 @@ class NeoCloudController extends ChangeNotifier {
 
   /// Bumped whenever files change in a way open listings should reload for.
   final ValueNotifier<int> filesRevision = ValueNotifier<int>(0);
+
+  /// Bumped when a comment changed anywhere the account can see; comment lists and activity reload.
+  final ValueNotifier<int> commentsRevision = ValueNotifier<int>(0);
 
   /// The folder the Files page shows; the root when null.
   String? openFolderId;
@@ -533,6 +541,7 @@ class NeoCloudController extends ChangeNotifier {
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     unawaited(_loadSettings());
+    unawaited(office.load());
     unawaited(aiReview.refresh());
     unawaited(refreshSigningTodo());
     unawaited(_loadEmailStatus());
@@ -668,6 +677,7 @@ class NeoCloudController extends ChangeNotifier {
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     await _loadSettings();
+    unawaited(office.load());
     unawaited(aiReview.refresh());
     unawaited(refreshSigningTodo());
   }
@@ -992,32 +1002,21 @@ class NeoCloudController extends ChangeNotifier {
     return client.completeSecurityKeyLogin(assertion);
   });
 
+  /// Lets extensions in other files tell the UI that state changed.
+  void announceChange() => notifyListeners();
+
   Future<void> logout() async {
     await folderViews.flush();
-    folderViews.close();
-    if (usesDeviceLogin) {
-      // Disconnect: the phone forgets its token, which stays listed under
-      // Devices until it is revoked there. Camera upload goes off with it.
-      await cameraUploads.signOut().catchError((Object _) {});
-      await deviceSessions.clear();
-      client.bearerToken = null;
-    } else {
+    if (!usesDeviceLogin) {
       try {
         await client.logout();
       } catch (_) {
         // Signed out locally either way.
       }
     }
-    user = null;
-    openFolderId = null;
-    openSharedFolderId = null;
-    openSigningId = null;
-    sharedWithMe = const <SharedWithMe>[];
-    settingsPage = null;
-    vaults.lockAll();
-    aiReview.clear();
-    _stopLiveUpdates();
-    notifyListeners();
+    // Disconnecting a phone leaves its token listed under Devices until it
+    // is revoked there.
+    await wipeLocalData();
   }
 
   // Navigation
@@ -1048,6 +1047,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.recent:
       case AppSection.trash:
       case AppSection.review:
+      case AppSection.activity:
         return AppRoute(selectedSection.name);
     }
   }
@@ -1106,6 +1106,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.recent:
       case AppSection.trash:
       case AppSection.review:
+      case AppSection.activity:
         break;
     }
     selectedSection = section;

@@ -26,7 +26,16 @@ type Client struct {
 	// Up and Down throttle content bodies; nil means unlimited.
 	Up   *Limiter
 	Down *Limiter
+	// OnWipe is called once when the server answers DEVICE_WIPE_REQUESTED:
+	// the owner signed this device out remotely (see WipeRequestedCode).
+	// eraseFiles is the owner's choice to delete the synced files too. It
+	// runs on the request's goroutine, so it must not block on the request.
+	OnWipe func(eraseFiles bool)
 }
+
+// WipeRequestedCode is the code of the 401 a remotely signed-out device
+// gets once (docs/clients.md, "Remote wipe").
+const WipeRequestedCode = "DEVICE_WIPE_REQUESTED"
 
 // New returns a client with sane timeouts. Content transfers can take long,
 // so only the connection phases are bounded, not the whole request.
@@ -118,13 +127,17 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	payload, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 	apiErr := &Error{Status: res.StatusCode, Message: http.StatusText(res.StatusCode)}
 	var parsed struct {
-		Error string `json:"error"`
-		Code  string `json:"code"`
+		Error      string `json:"error"`
+		Code       string `json:"code"`
+		EraseFiles bool   `json:"eraseFiles"`
 	}
 	if json.Unmarshal(payload, &parsed) == nil {
 		apiErr.Code = parsed.Code
 		if parsed.Error != "" {
 			apiErr.Message = parsed.Error
+		}
+		if res.StatusCode == http.StatusUnauthorized && parsed.Code == WipeRequestedCode && c.OnWipe != nil {
+			c.OnWipe(parsed.EraseFiles)
 		}
 	}
 	return nil, apiErr

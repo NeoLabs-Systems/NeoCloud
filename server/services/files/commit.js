@@ -10,6 +10,7 @@ const { deleteBlobFiles, moveIntoPlace, removeQuietly } = require('../storage/bl
 const { recordBlob, retainBlob } = require('../storage/blob_refs');
 const { remainingBytes } = require('../storage/quota');
 const { announceChanges } = require('./changes');
+const { recordActivity } = require('../activity/record');
 const { freeName, insertNode, nameExists, touchFolder } = require('./operations');
 const { findLiveChildByName, getLiveNode, nodeById, serializeNode } = require('./tree');
 const { replaceContent } = require('./versions');
@@ -25,6 +26,8 @@ const { replaceContent } = require('./versions');
  * a file of that name with the very same content is the upload itself,
  * sent again after its answer was lost. It is returned as it is, so a
  * retry never leaves "name (1)" beside it.
+ * `authorId` (replace only): the account that wrote the new content (the
+ * document editor), kept with the version it replaces.
  */
 // Keeps the client's dates for this content, or forgets older ones.
 function saveClientDates(node, dates) {
@@ -39,7 +42,7 @@ function saveClientDates(node, dates) {
   }
 }
 
-async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null, keepIdentical = false, dates = null }, blob) {
+async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag = null, uploadId = null, keepIdentical = false, dates = null, authorId = null }, blob) {
   const cleanName = validateName(name);
   let finalPath = null;
   let result;
@@ -69,7 +72,7 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
         if (baseEtag && baseEtag !== existing.etag) {
           throw httpError(412, 'The file changed since you last saw it.', 'ETAG_MISMATCH');
         }
-        const orphaned = replaceContent(userId, existing, { blobId: blob.blobId, size: blob.size, etag: blob.sha256 });
+        const orphaned = replaceContent(userId, existing, { blobId: blob.blobId, size: blob.size, etag: blob.sha256, authorId });
         touchFolder(parent.id);
         const replaced = nodeById(existing.id);
         saveClientDates(replaced, dates);
@@ -88,6 +91,7 @@ async function commitUploadedBlob(userId, { parentId, name, conflict, baseEtag =
       retainBlob(blob.blobId);
       touchFolder(parent.id);
       saveClientDates(node, dates);
+      recordActivity(userId, 'upload', node);
       return { orphaned: [], node };
     })();
   } catch (err) {

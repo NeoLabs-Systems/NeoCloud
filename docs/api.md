@@ -139,7 +139,8 @@ password and 2FA code are asked for exactly as with a session.
 | POST | `/security-keys/register/options` | `{ currentPassword, code? }` → `{ options }` for `navigator.credentials.create`. A key signs in on its own and is kept through password changes and sign-out-everywhere, so this asks for the password again, and a code when 2FA is on (`401 WRONG_PASSWORD`, `TWO_FACTOR_REQUIRED`, `INVALID_CODE`). At most 20 keys (`400 SECURITY_KEY_LIMIT`). Browser only: `403 BROWSER_REQUIRED` for a phone token (also `/register/verify`) |
 | POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N". Recorded in the admin audit log (`account.security_key_added`; removing one, `account.security_key_removed`) |
 | PUT / DELETE | `/security-keys/:id` | `{ label }` to rename → `{ success, credentials }`; another account's key is `404` |
-| GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once. `GET` → `{ devices: [{ id, name, platform, createdAt, lastSeenAt, current }] }`; `DELETE` of the phone asking → `400 CURRENT_DEVICE` |
+| GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once. `GET` → `{ devices: [{ id, name, platform, createdAt, lastSeenAt, current }] }`; `DELETE` of the phone asking → `400 CURRENT_DEVICE` |; `devices[].wipe` is `null` or `{ requestedAt, eraseFiles, deliveredAt }` (devices asked to erase themselves stay listed until delivered, then for 30 days); `DELETE` of one still waiting to erase itself calls the wipe off |
+| POST | `/devices/:id/wipe` (10 / 15 min) | `{ eraseFiles?: boolean }` | Remote wipe of a lost client: revokes the token at once and stores a wipe marker. The next request that client makes with the dead token answers `401 { code: "DEVICE_WIPE_REQUESTED", eraseFiles }` exactly once (and emits `devices:wiped` to the owner's sockets), then the plain `401 UNAUTHORIZED`. → `{ device }`. Idempotent: asking again keeps the first request (a repeat after delivery changes nothing). `400 CURRENT_DEVICE` for the phone asking, `404` for another account's, WebDAV app-password or already signed-out device. Audit log: `device.wipe_requested`, `device.wipe_delivered`. A device that never reconnects never wipes |
 | GET | `/devices/authorize/:userCode` | → `{ name, platform, createdAt, expiresAt }` of a pending device login |
 | POST | `/devices/authorize/:userCode` | `{ approve: true\|false }` → `{ success: true }` |
 | POST | `/export` (5 / min) | `{ currentPassword, code? }` → the account's data as a JSON download (`Content-Disposition: attachment`, `Cache-Control: no-store`), see below |
@@ -661,7 +662,7 @@ the shared subtree, live and outside any vault; anything else is `404`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/` `?folderId=` | `{ share: { name, type, size, mode, allowUpload, expiresAt, hasPassword, sharedBy, host, note }, node, path, items }`. `path` runs from the shared folder down to `folderId`; `items` is empty for a file link and for `upload_only` |
+| GET | `/` `?folderId=` | `{ share: { name, type, size, mode, allowUpload, expiresAt, hasPassword, sharedBy, host, note, uploadBytesLeft }, node, path, items }` (`uploadBytesLeft`: room left under the link's `maxUploadBytes`, `null` without a cap; the public page uses it for a file request's limits line). `path` runs from the shared folder down to `folderId`; `items` is empty for a file link and for `upload_only` |
 | POST | `/unlock` | `{ password }` → `{ success: true }` and a 1-hour `nc_share_unlock` cookie scoped to the link's path. 20 / 15 min per address, plus the per-link throttle below |
 | GET | `/files/:nodeId/content` `?download=1` | Range, `If-None-Match`, `HEAD`, sandbox CSP as for owners. Counts as a download only with `download=1` |
 | GET | `/zip` `?folderId=` | the shared folder (or a folder inside it, or the shared file) as ZIP; vault folders are left out. Counts as a download (a `HEAD` does not) |
@@ -1213,3 +1214,138 @@ Item: `{ id, name, path, type: "file"|"folder", size, mimeType, modifiedAt }`.
 | POST | `/signing/requests/:id/remind` | signing:write | 202 `{ reminded }`. `409 EMAIL_NOT_CONFIGURED` without mail, `409 NO_EMAIL` (or the per-signer code) when nobody can be reminded. |
 | POST | `/signing/requests/:id/signers/:signerId/link` | signing:write | `{ url }`: a new link; the old one stops working. |
 | POST | `/signing/requests/:id/cancel` | signing:write | The item, `status: "cancelled"`. |
+
+## Activity — `/api/activity` (session or phone)
+
+What happened to the files the account can see: its own tree and folders
+shared with it. Built from a log written next to the change journal (not from
+it), kept for 90 days. Entries about vault contents are never written, and an
+entry shows only while its node still resolves for the viewer through a live
+grant; once a share ends or the node leaves the shared folder, it is gone
+from that viewer's feed.
+
+`GET /api/activity?scope=all|mine|shared&nodeId=&cursor=&limit=` →
+`{ items, nextCursor }`, newest first. `scope`: `mine` is the account's own
+tree (including what members did in it), `shared` what others' trees show it,
+default `all`. `nodeId` limits the feed to one file or folder and what is
+directly inside it (`scope` is then ignored); another account's id, a vault
+node or a missing id answers `404`. `limit` 1–100 (default 30). Pass
+`nextCursor` as `cursor` for the next page; `null` ends the feed. A page may
+hold fewer than `limit` items while `nextCursor` is set.
+
+Item: `{ id, kind, at, count, actor: { name, self }, owner: { name, self },
+node: { id, name, type }, folder?, names?, from?, member? }`. `kind`: `upload`,
+`folder`, `copy`, `version`, `rename`, `move`, `trash`, `restore`, `share`,
+`comment`. Bursts of `upload`, `folder`, `copy`, `move`, `trash` and `restore`
+by one account into one folder within 5 minutes are one item with `count` and
+the first three `names`. `from` is the old name of a rename. `member` (share
+only) is who it was shared with; shown to the owner and that member only.
+`node.name` is the name when it happened; `folder` is the name of the folder
+it happened in, left out where the viewer can't see that folder.
+
+Socket events (web): `files:changed`, `shares:changed` and `comments:changed`
+tell open pages to reload the feed.
+
+## Comments — `/api/files/:id/comments` (session or device token)
+
+Short plain-text comments on a file or folder (`:id` any node, not the root,
+not in a vault). Visible to everyone who can reach the node: its owner and
+accounts it is shared with, read-only members included. Share-link visitors
+cannot reach them. A node that is not the caller's and not shared with them,
+a missing one and a trashed one answer `404`. Comments follow the node
+through rename and move, and are deleted with it. Bodies are stored sealed.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/files/:id/comments?cursor=&limit=` | `{ comments, nextCursor }`, newest first, `limit` 1–100 (default 50). |
+| POST | `/api/files/:id/comments` | `{ body }` → 201 comment. Adds a `comment` activity entry. |
+| PATCH | `/api/files/:id/comments/:commentId` | `{ body }` → comment. Author only, else `403 COMMENT_NOT_YOURS`. |
+| DELETE | `/api/files/:id/comments/:commentId` | `{ success: true }`. The author, or the node's owner for any comment; else `403 COMMENT_NOT_YOURS`. |
+
+Comment: `{ id, author, mine, body, createdAt, editedAt, canDelete }`. `body`
+is plain text of 1–2000 characters after trimming (`400 COMMENT_EMPTY`,
+`COMMENT_TOO_LONG`, `COMMENT_INVALID` for control characters); it is never
+interpreted as HTML. Writes are limited to 120 per 15 minutes per account.
+Socket event `comments:changed` `{ nodeId }` goes to the owner and the
+members who can see the node.
+
+The account export carries `activity: { entries, comments }`.
+
+## Document editing — `/api/office`, `/api/files/:id/edit-session`, `/wopi`
+
+Office documents (`docx`, `xlsx`, `pptx`, `odt`, `ods`, `odp`) open in a
+self-hosted Collabora Online next to NeoCloud, which acts as the WOPI host
+(setup: [office-editing.md](office-editing.md)). Plain text and CSV stay with
+the built-in text editor.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/office/config` | Any signed-in account: `{ enabled, extensions }`. `enabled: false` (and no extensions) while the editor is off or unreachable. |
+| POST | `/api/files/:id/edit-session` | `{ editorUrl, accessToken, accessTokenTtl, canWrite }`. `editorUrl` is the editor page with `WOPISrc`; post `access_token` and `access_token_ttl` to it (a form in the editor's iframe). `accessTokenTtl` is the moment the token ends, in milliseconds since 1970 (WOPI). `canWrite` is false for a read-only share. 404 for files out of reach (other accounts, vaults, trash), 415 `NOT_EDITABLE`, 503 `EDITOR_UNAVAILABLE`. |
+| GET | `/api/admin/config/office` | Admin: `{ enabled, url, hostUrl, status }`; `status.state` is `unconfigured`, `off`, `unchecked`, `ok` (with `extensions`, `checkedAt`) or `error` (with a friendly `message`). |
+| PUT | `/api/admin/config/office` | Admin: `{ enabled?, url?, hostUrl? }`. Enabling first fetches the editor's `/hosting/discovery` (8 s timeout, 1 MB cap, no redirects); a failure is `422 EDITOR_UNREACHABLE` with the reason and nothing is saved. `hostUrl`: how the editor reaches this server, when that differs from how people do. |
+| POST | `/api/admin/config/office/check` | Admin: asks the editor again; same answer as GET, or 422. |
+
+WOPI host endpoints (called by the editor, not the apps). They take the
+access token as `access_token` (query) or a bearer header, never the session
+cookie. The token is signed, valid 10 hours, and bound to one account, one
+file and a write/read right; the account's access is checked again on every
+call, so a revoked share, a trashed file or a disabled editor answers `404`
+or `401` at once. A token for another file, a forged or an expired one is
+`401 INVALID_TOKEN`. At most 300 calls a minute per account and file.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/wopi/files/:id` | CheckFileInfo. `Version` is the file's NeoCloud version; `UserCanWrite` follows the account's current right. |
+| GET | `/wopi/files/:id/contents` | GetFile (ranges, `X-WOPI-ItemVersion`). |
+| POST | `/wopi/files/:id/contents` | PutFile (`X-WOPI-Override: PUT`, body = the file). Goes through the upload commit: quota, upload size cap, change journal, encryption, a new version with the editing account as its author. Needs the lock (`X-WOPI-Lock`); wrong or missing lock → `409` with `X-WOPI-Lock` set to the current lock (empty when none); only an empty file may be written unlocked. A stale `X-COOL-WOPI-Timestamp` → `409 {"COOL_STATUS_CODE":1010}`. Read-only → `403`. Identical content creates no version. |
+| POST | `/wopi/files/:id` | By `X-WOPI-Override`: `LOCK` (with `X-WOPI-OldLock`: UnlockAndRelock), `UNLOCK`, `REFRESH_LOCK`, `GET_LOCK` (answers `X-WOPI-Lock`). Locks last 30 minutes, are held in memory and mismatches are `409` with `X-WOPI-Lock`. Others → `501`. PutRelativeFile is not offered (`UserCanNotWriteRelative`). |
+
+The versions list (`GET /api/files/:id/versions`) now carries `modifiedBy`
+(username of whoever saved that content through the editor, else null).
+
+## Cloud storage — `/api/external-storage`
+
+Every account can connect its own cloud storage with its own credentials
+(S3-compatible, WebDAV including another Nextcloud, SFTP) and browse it next
+to its files. A browser session or the phone app only (desktop tokens and
+WebDAV app passwords get `401`/`403`). Another account's connection id is
+always `404`. Background and design: [external-storage.md](external-storage.md).
+
+A connection (`mount`) is `{ id, name, provider, readOnly, config, createdAt }`.
+`config` never holds a secret: secret fields come back as `<field>Set: true|false`
+(`passwordSet`, `secretAccessKeySet`, `privateKeySet`, `passphraseSet`).
+
+| Provider | `config` fields (secrets marked *) |
+| --- | --- |
+| `s3` | `endpoint` (empty = AWS), `region`, `bucket`, `prefix`, `accessKeyId`, `secretAccessKey`*, `forcePathStyle` |
+| `webdav` | `url` (the folder to attach, redirects are not followed), `username`, `password`* |
+| `sftp` | `host`, `port`, `username`, `password`*, `privateKey`*, `passphrase`*, `path` |
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/external-storage` | `{ items: [mount] }`. |
+| POST | `/api/external-storage/test` | `{ provider, config, id? }` (`id`: secrets left blank come from that connection). Connects and lists the root: `{ ok: true, items }` or `{ ok: false, error, code }` (also for a refused address, `EXTERNAL_HOST_BLOCKED`). 30 per 15 minutes. |
+| POST | `/api/external-storage` | `{ name, provider, config, readOnly? }` → `201 mount`. The connection is tested first; a failure is `422 EXTERNAL_TEST_FAILED` and nothing is saved. `409 NAME_EXISTS`, `409 EXTERNAL_MOUNT_LIMIT` (10 per account), `400 EXTERNAL_CONFIG_INVALID` / `EXTERNAL_PROVIDER_INVALID`. |
+| PATCH | `/api/external-storage/:id` | `{ name?, readOnly?, config? }`. A blank secret keeps the stored one; changed `config` is tested again (`422`). The provider cannot change. |
+| DELETE | `/api/external-storage/:id` | Removes the connection only; nothing at the provider is touched. |
+| GET | `/api/external-storage/:id/list?path=` | `{ mount, path, items: [{ name, path, type: file\|folder, size, mtime, mime? }], truncated }`. Folders first, at most 5000 entries. |
+| GET | `/api/external-storage/:id/file?path=&download=1` | The file, streamed from the provider, with `Range`. Always sandboxed; only raster images, audio and video may be `inline`. |
+| PUT | `/api/external-storage/:id/file?path=&conflict=fail\|rename\|replace` | Body = the file. `201` with the item; `409 NAME_EXISTS` (default `fail`); `413 FILE_TOO_LARGE` over `NEOCLOUD_EXTERNAL_MAX_UPLOAD_BYTES` (default 20 GiB). |
+| POST | `/api/external-storage/:id/folder` | `{ path }` → `201`. |
+| POST | `/api/external-storage/:id/move` | `{ from, to }` — rename or move inside the connection (S3: copy + delete). `409 NAME_EXISTS` if `to` exists. |
+| DELETE | `/api/external-storage/:id/entry?path=` | Deletes at the provider; not recoverable. Folders go with their contents (S3: at most 5000 objects). |
+| POST | `/api/external-storage/:id/copy-in` | `{ nodeId, folder, name? }` — copies a NeoCloud file into the mount (renamed if the name is taken) → `201 { path }`. Vault files are refused (`409 VAULT_BOUNDARY`). |
+| POST | `/api/external-storage/:id/copy-out` | `{ path, parentId }` — copies a mount file into a NeoCloud folder (counts against the quota) → `201` node. Folders are not copied (`400 NOT_A_FILE`). |
+
+Paths are relative to the connection's root, `/`-separated; `..`, `.`,
+backslashes and control characters are `400 INVALID_PATH`. A read-only
+connection answers every change with `403 EXTERNAL_READ_ONLY`. Provider
+failures are `502` (`EXTERNAL_AUTH_FAILED`, `EXTERNAL_FORBIDDEN`,
+`EXTERNAL_UNREACHABLE`, `EXTERNAL_REDIRECT`, `EXTERNAL_HOST_KEY`), a missing
+item `404 EXTERNAL_NOT_FOUND`. Addresses on private networks are
+`403 EXTERNAL_HOST_BLOCKED` unless the server sets
+`NEOCLOUD_EXTERNAL_ALLOW_PRIVATE=true` (admins may always use them); cloud
+metadata addresses are refused regardless. Connecting, editing and
+disconnecting are recorded in the access audit log (`external_storage.*`).
+The account export lists `externalStorage` without secrets.

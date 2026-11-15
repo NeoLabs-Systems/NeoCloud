@@ -10,6 +10,7 @@ const twoFactor = require('../services/account/two_factor');
 const webauthn = require('../services/account/webauthn');
 const { listSessions, ownSessionId, regenerateCurrentSession, revokeSession } = require('../services/account/sessions');
 const { createDeviceToken, listDeviceTokens, revokeDeviceToken } = require('../services/devices/tokens');
+const { requestDeviceWipe } = require('../services/devices/wipe');
 const { decideAuthorization, describeAuthorization } = require('../services/devices/authorizations');
 const { getPairingStatus, startPairing } = require('../services/devices/pairing');
 const qrLogin = require('../services/account/qr_login');
@@ -226,6 +227,18 @@ router.post('/devices/pairing', pairingLimiter, jsonHandler((req) => startPairin
 }, publicOrigin(req))));
 
 router.get('/devices/pairing/:code', jsonHandler((req) => getPairingStatus(req.userId, req.params.code)));
+
+// Signs a lost device out and asks it to erase its local data the next time it
+// connects (services/devices/wipe.js). `eraseFiles` also deletes the synced
+// files on a desktop client.
+const wipeLimiter = rateLimiter(10);
+
+router.post('/devices/:id/wipe', wipeLimiter, jsonHandler((req) => ({
+  device: requestDeviceWipe(req.userId, intParam(req.params.id, 'device id'), {
+    eraseFiles: req.body?.eraseFiles === true,
+    currentDeviceId: req.deviceId,
+  }),
+})));
 
 router.delete('/devices/:id', accountLimiter, jsonHandler((req) => {
   const id = intParam(req.params.id, 'device id');

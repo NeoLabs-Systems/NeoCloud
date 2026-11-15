@@ -6,7 +6,7 @@ part of 'main.dart';
 
 enum SettingsScope { account, preferences }
 
-enum SettingsPage { profile, signingProfile, security, devices, sharedLinks, storage, imports, ai, general, cameraUpload }
+enum SettingsPage { profile, signingProfile, security, devices, sharedLinks, storage, imports, cloudStorage, ai, general, cameraUpload }
 
 extension SettingsScopeInfo on SettingsScope {
   String get label => this == SettingsScope.account ? appStrings.settingsScopeAccount : appStrings.settingsScopeApp;
@@ -23,6 +23,7 @@ extension SettingsPageInfo on SettingsPage {
       case SettingsPage.security:
       case SettingsPage.devices:
       case SettingsPage.imports:
+      case SettingsPage.cloudStorage:
       case SettingsPage.ai:
         return true;
       case SettingsPage.cameraUpload:
@@ -50,6 +51,8 @@ extension SettingsPageInfo on SettingsPage {
         return appStrings.pageStorage;
       case SettingsPage.imports:
         return appStrings.pageImport;
+      case SettingsPage.cloudStorage:
+        return appStrings.pageCloudStorage;
       case SettingsPage.ai:
         return appStrings.aiPage;
       case SettingsPage.general:
@@ -75,6 +78,8 @@ extension SettingsPageInfo on SettingsPage {
         return appStrings.pageStorageDescription;
       case SettingsPage.imports:
         return appStrings.pageImportDescription;
+      case SettingsPage.cloudStorage:
+        return appStrings.pageCloudStorageDescription;
       case SettingsPage.ai:
         return appStrings.aiPageDescription;
       case SettingsPage.general:
@@ -100,6 +105,8 @@ extension SettingsPageInfo on SettingsPage {
         return Icons.cloud_outlined;
       case SettingsPage.imports:
         return Icons.move_to_inbox_outlined;
+      case SettingsPage.cloudStorage:
+        return Icons.cloud_sync_outlined;
       case SettingsPage.ai:
         return Icons.auto_awesome_outlined;
       case SettingsPage.general:
@@ -361,6 +368,8 @@ Widget _settingsPageBody(NeoCloudController controller, SettingsPage page) {
       return _StorageSettingsPage(controller: controller);
     case SettingsPage.imports:
       return _ImportSettingsPage(controller: controller);
+    case SettingsPage.cloudStorage:
+      return _CloudStorageSettingsPage(controller: controller);
     case SettingsPage.ai:
       return AiSettingsPage(controller: controller);
     case SettingsPage.general:

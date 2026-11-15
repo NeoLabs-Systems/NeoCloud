@@ -17,6 +17,7 @@ const { listProviders, updateProvider } = require('../services/admin/ai_provider
 const { getUserModelGrants, setUserModelGrants } = require('../services/admin/model_grants');
 const aiAdmin = require('../services/admin/ai');
 const adminEmail = require('../services/admin/email');
+const adminOffice = require('../services/admin/office');
 const { languageFor } = require('../services/account/account_email');
 const { getSupportedModels } = require('../services/ai/models');
 const modelVisibility = require('../services/ai/model_visibility');
@@ -104,6 +105,11 @@ router.post('/users/:id/email/verify', settingsLimiter, jsonHandler((req) => adm
   intParam(req.params.id, 'user id'),
   { actorUserId: req.userId },
 )));
+
+// Document editor (docs/office-editing.md).
+router.get('/config/office', jsonHandler(() => adminOffice.getOfficeSettings()));
+router.put('/config/office', settingsLimiter, jsonHandler((req) => adminOffice.updateOfficeSettings(req.body, { actorUserId: req.userId })));
+router.post('/config/office/check', settingsLimiter, jsonHandler(() => adminOffice.recheckOffice()));
 
 router.get('/access', jsonHandler(() => serverConfig.getAccessSettings()));
 router.put('/access/signup', settingsLimiter, jsonHandler((req) => serverConfig.setAllowSignup(req.body?.allowSignup)));

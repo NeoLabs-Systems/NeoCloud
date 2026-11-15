@@ -10,6 +10,7 @@ const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
 const uploads = require('../transfer/uploads');
 const downloads = require('../transfer/downloads');
+const { actingAsCaller } = require('../activity/actor');
 const { resolveAccess } = require('./access');
 
 function uploadNotFound() {
@@ -98,7 +99,7 @@ function sendZip(res, userId, rawIds) {
 
 module.exports = {
   cancelUpload,
-  completeUpload,
+  completeUpload: actingAsCaller(completeUpload),
   contentExists,
   createUpload,
   getUpload,
@@ -106,5 +107,5 @@ module.exports = {
   sendFile,
   sendPreview,
   sendZip,
-  uploadStream,
+  uploadStream: actingAsCaller(uploadStream),
 };

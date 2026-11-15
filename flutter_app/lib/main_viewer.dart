@@ -53,6 +53,8 @@ Future<void> showFileViewer(
   bool Function(FileNode file)? aiAllowed,
 }) {
   if (index < 0 || files.isEmpty) return Future<void>.value();
+  // Office documents open in the editor while there is one.
+  if (controller.office.canEdit(files[index])) return showOfficeEditor(context, controller, files[index]);
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.72),

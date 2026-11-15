@@ -12,6 +12,7 @@ const { mimeForName } = require('../../utils/mime');
 const { retainBlob } = require('../storage/blob_refs');
 const { assertNodeRoom, nodeLimits } = require('../storage/quota');
 const { announceChanges, recordChange } = require('./changes');
+const { recordActivity } = require('../activity/record');
 const {
   ancestry,
   findLiveChildByName,
@@ -100,6 +101,7 @@ function createFolderInTransaction(userId, parentId, rawName, conflict) {
     name = freeName(parent.id, name);
   }
   const node = insertNode(userId, { parentId: parent.id, type: 'folder', name });
+  recordActivity(userId, 'folder', node);
   touchFolder(parent.id);
   return { node, created: true };
 }
@@ -169,6 +171,7 @@ function updateNode(userId, nodeId, { name, parentId, conflict }) {
       WHERE id = ?
     `).run(targetParentId, targetName, mimeForName(targetName), node.id);
     recordChange(userId, node.id, moved ? 'move' : 'rename');
+    recordActivity(userId, moved ? 'move' : 'rename', nodeById(node.id), { detail: moved ? null : { from: node.name } });
     touchFolder(targetParentId);
     if (moved) touchFolder(node.parent_id);
     return {
@@ -251,6 +254,7 @@ function copyNode(userId, nodeId, { parentId, name, conflict }) {
       newIds.set(node.id, copy.id);
       if (isTop) first = copy;
     }
+    recordActivity(userId, 'copy', first);
     touchFolder(target.id);
     return first;
   })();

@@ -9,6 +9,7 @@
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
 const { emitToUser } = require('../events');
+const { recordActivity } = require('../activity/record');
 const { getLiveNode } = require('../files/tree');
 const { parseExpiry } = require('../shares/links');
 const { activeGrant, memberView, sharedAccess } = require('./access');
@@ -116,6 +117,7 @@ function addMember(ownerId, nodeId, { recipient, permission, expiresAt }) {
     }
     throw err;
   }
+  recordActivity(ownerId, 'share', node, { detail: { granteeId: grantee.id } });
   notifyShareChange(grantee.id);
   return serializeMember(getMemberRow(ownerId, node.id, id));
 }

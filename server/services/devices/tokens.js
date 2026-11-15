@@ -27,6 +27,11 @@ function serialize(row) {
     platform: row.platform,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
+    wipe: row.wipe_requested_at ? {
+      requestedAt: row.wipe_requested_at,
+      eraseFiles: row.wipe_erase_files === 1,
+      deliveredAt: row.wipe_delivered_at,
+    } : null,
   };
 }
 
@@ -58,10 +63,26 @@ function createDeviceToken(userId, info) {
   return { device: serialize(row), token };
 }
 
+// Signed-in devices, plus the ones asked to erase themselves: pending until
+// the device comes back, then for 30 days as "Erased".
 function listDeviceTokens(userId) {
   return db.prepare(`
-    SELECT * FROM device_tokens WHERE user_id = ? AND revoked_at IS NULL ORDER BY id DESC
+    SELECT * FROM device_tokens
+    WHERE user_id = ? AND (revoked_at IS NULL OR (
+      wipe_requested_at IS NOT NULL
+      AND (wipe_delivered_at IS NULL OR wipe_delivered_at > datetime('now', '-30 days'))))
+    ORDER BY id DESC
   `).all(userId).map(serialize);
+}
+
+// Deleting a device that is waiting to erase itself calls the wipe off.
+function cancelPendingWipe(userId, id) {
+  const result = db.prepare(`
+    UPDATE device_tokens SET wipe_requested_at = NULL, wipe_erase_files = 0
+    WHERE id = ? AND user_id = ? AND wipe_requested_at IS NOT NULL AND wipe_delivered_at IS NULL
+  `).run(id, userId);
+  if (result.changes === 0) throw httpError(404, 'Device not found', 'NOT_FOUND');
+  return { success: true };
 }
 
 function revokeDeviceToken(userId, id) {
@@ -69,7 +90,7 @@ function revokeDeviceToken(userId, id) {
     UPDATE device_tokens SET revoked_at = datetime('now')
     WHERE id = ? AND user_id = ? AND revoked_at IS NULL
   `).run(id, userId);
-  if (result.changes === 0) throw httpError(404, 'Device not found', 'NOT_FOUND');
+  if (result.changes === 0) return cancelPendingWipe(userId, id);
   return { success: true };
 }
 
@@ -130,7 +151,9 @@ module.exports = {
   cleanPlatform,
   createDeviceToken,
   getDeviceToken,
+  hashToken,
   listDeviceTokens,
+  serialize,
   resolveDeviceToken,
   revokeAllDeviceTokens,
   revokeDeviceToken,

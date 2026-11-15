@@ -19,6 +19,7 @@ const { redactErrorsForNonAdmins } = require('./errors');
 const { logRequestSummary } = require('../utils/logger');
 const { getSessionSecret } = require('../services/account/session_secret');
 const { readEnvBool } = require('../../runtime/env');
+const { editorOrigins } = require('../services/office/discovery');
 
 const SESSION_COOKIE_NAME = 'neocloud.sid';
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -30,6 +31,7 @@ const RAW_BODY_PATHS = [
   /^\/api\/uploads\/[^/]+\/parts\/\d+$/,
   /^\/api\/public\/shares\/[^/]+\/upload$/,
   /^\/api\/public\/sign\/[^/]+\/fields\/[^/]+\/upload$/,
+  /^\/wopi\/files\/[^/]+\/contents$/,
 ];
 
 // Requests that start writing a file. During shutdown these are turned away
@@ -42,6 +44,12 @@ function isUploadRequest(req) {
 
 function requestPath(req) {
   return `${req.originalUrl || req.url || ''}`.split('?')[0];
+}
+
+// The document editor (docs/office-editing.md) is framed from, and its page
+// is opened by a form post to, its own origin only, and only while it is on.
+function editorFrameSources() {
+  return editorOrigins().join(' ') || "'self'";
 }
 
 function buildHelmetOptions({ secureCookies }) {
@@ -71,8 +79,8 @@ function buildHelmetOptions({ secureCookies }) {
         connectSrc,
         fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
         workerSrc: ["'self'", 'blob:'],
-        frameSrc: ["'self'", 'blob:'],
-        formAction: ["'self'"],
+        frameSrc: ["'self'", 'blob:', editorFrameSources],
+        formAction: ["'self'", editorFrameSources],
         frameAncestors: ["'self'"],
         upgradeInsecureRequests: null,
       },

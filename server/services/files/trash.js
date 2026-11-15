@@ -10,6 +10,7 @@ const { httpError } = require('../../utils/http_error');
 const { deleteBlobFiles } = require('../storage/blob_store');
 const { releaseBlobs } = require('../storage/blob_refs');
 const { announceChanges, recordChange } = require('./changes');
+const { recordActivity } = require('../activity/record');
 const { freeName, touchFolder } = require('./operations');
 const { getStorageConfig } = require('../../config/storage');
 const {
@@ -31,6 +32,7 @@ function trashNode(userId, nodeId) {
     if (target.parent_id === null) throw httpError(400, 'The root folder can’t be deleted.', 'ROOT_IMMUTABLE');
     db.prepare("UPDATE nodes SET trashed_at = datetime('now') WHERE id = ?").run(target.id);
     recordChange(userId, target.id, 'trash');
+    recordActivity(userId, 'trash', target);
     touchFolder(target.parent_id);
     return target;
   })();
@@ -84,7 +86,9 @@ function restoreNode(userId, nodeId) {
     db.prepare('UPDATE nodes SET trashed_at = NULL, parent_id = ?, name = ? WHERE id = ?').run(parentId, name, target.id);
     recordChange(userId, target.id, 'restore');
     touchFolder(parentId);
-    return nodeById(target.id);
+    const restored = nodeById(target.id);
+    recordActivity(userId, 'restore', restored);
+    return restored;
   })();
   announceChanges(userId, [node.parent_id]);
   return serializeNode(node);

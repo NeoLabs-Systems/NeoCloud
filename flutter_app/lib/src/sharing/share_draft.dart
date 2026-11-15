@@ -23,6 +23,7 @@ class ShareDraft {
     this.password = '',
     this.limit = ShareLimitChoice.none,
     this.customLimit = 5,
+    this.maxUploadBytes,
     this.note = '',
   }) : original = null;
 
@@ -40,6 +41,7 @@ class ShareDraft {
         _ => ShareLimitChoice.custom,
       },
       customLimit = link.maxDownloads ?? 5,
+      maxUploadBytes = link.maxUploadBytes,
       note = link.note ?? '';
 
   /// The link being edited; null for a new one.
@@ -54,6 +56,10 @@ class ShareDraft {
   String password;
   ShareLimitChoice limit;
   int customLimit;
+
+  /// Most visitors may upload in total; null for no cap. Only for links
+  /// that take uploads.
+  int? maxUploadBytes;
   String note;
 
   bool get editing => original != null;
@@ -75,6 +81,9 @@ class ShareDraft {
       ShareLimitChoice.custom => customLimit,
     };
   }
+
+  /// The cap as sent: none for a link that takes no uploads.
+  int? get uploadCap => mode == ShareMode.view ? null : maxUploadBytes;
 
   String? get trimmedNote {
     final text = note.trim();
@@ -107,6 +116,7 @@ class ShareDraft {
       body['password'] = null;
     }
     if (maxDownloads != link.maxDownloads) body['maxDownloads'] = maxDownloads;
+    if (uploadCap != link.maxUploadBytes) body['maxUploadBytes'] = uploadCap;
     if (trimmedNote != link.note) body['note'] = trimmedNote;
     return body;
   }

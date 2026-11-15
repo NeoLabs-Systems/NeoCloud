@@ -196,6 +196,8 @@ function describeShare(context, folderId, host) {
     sharedBy: share.owner_username,
     host,
     note: share.note,
+    // Room left for visitors' uploads; null without a cap.
+    uploadBytesLeft: share.max_upload_bytes === null ? null : Math.max(0, share.max_upload_bytes - share.uploaded_bytes),
   };
   const rootOnly = { share: summary, node: publicNode(root), path: [{ id: root.id, name: root.name }], items: [] };
   if (share.mode === 'upload_only') {

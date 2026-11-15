@@ -14,6 +14,7 @@ const operations = require('../files/operations');
 const trash = require('../files/trash');
 const tree = require('../files/tree');
 const { copyAcrossAccounts } = require('../files/cross_copy');
+const { actingAsCaller } = require('../activity/actor');
 const { memberPath, memberView, resolveAccess, shareBoundary } = require('./access');
 
 function shareRootImmutable() {
@@ -136,4 +137,12 @@ function restoreNode(userId, nodeId) {
   return memberResult(userId, node.id);
 }
 
-module.exports = { copyNode, createFolder, getNode, listChildren, restoreNode, trashNode, updateNode };
+module.exports = {
+  copyNode: actingAsCaller(copyNode),
+  createFolder: actingAsCaller(createFolder),
+  getNode,
+  listChildren,
+  restoreNode: actingAsCaller(restoreNode),
+  trashNode: actingAsCaller(trashNode),
+  updateNode: actingAsCaller(updateNode),
+};

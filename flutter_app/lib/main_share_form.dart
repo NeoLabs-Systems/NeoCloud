@@ -39,6 +39,9 @@ String _shareDraftProblemText(ShareDraftProblem problem) => switch (problem) {
   ShareDraftProblem.dateInPast => appStrings.shareExpiryInPast,
 };
 
+/// Total upload sizes offered for a link that takes files.
+const List<int> _shareUploadCaps = <int>[100 * 1024 * 1024, 1024 * 1024 * 1024, 10 * 1024 * 1024 * 1024];
+
 class _ShareForm extends StatefulWidget {
   const _ShareForm({super.key, required this.draft, required this.isFolder, required this.enabled, required this.onChanged});
 
@@ -243,6 +246,31 @@ class _ShareFormState extends State<_ShareForm> {
     ];
   }
 
+  /// How much visitors may send in total, for links that take uploads.
+  List<Widget> _uploadCapSection() {
+    if (!widget.isFolder || _draft.mode == ShareMode.view) return const <Widget>[];
+    final current = _draft.maxUploadBytes;
+    final presets = <int?>[null, ..._shareUploadCaps, if (current != null && !_shareUploadCaps.contains(current)) current];
+    return <Widget>[
+      _label(appStrings.shareUploadCapTitle),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: <Widget>[
+          for (final bytes in presets)
+            ChoiceChip(
+              label: Text(bytes == null ? appStrings.shareLimitNone : formatBytes(bytes)),
+              selected: _draft.maxUploadBytes == bytes,
+              showCheckmark: false,
+              onSelected: widget.enabled ? (_) => _change(() => _draft.maxUploadBytes = bytes) : null,
+            ),
+        ],
+      ),
+      _hint(appStrings.shareUploadCapHint),
+      const SizedBox(height: AppSpacing.md),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -250,6 +278,7 @@ class _ShareFormState extends State<_ShareForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (widget.isFolder) ..._modeSection(),
+        ..._uploadCapSection(),
         ..._expirySection(),
         ..._passwordSection(),
         ..._limitSection(),

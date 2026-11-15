@@ -444,6 +444,8 @@ class _SectionBody extends StatelessWidget {
         return _ViewChips(controller: controller, child: FavoritesPanel(controller: controller));
       case AppSection.recent:
         return _ViewChips(controller: controller, child: RecentPanel(controller: controller));
+      case AppSection.activity:
+        return ActivityPanel(controller: controller);
       case AppSection.trash:
         return TrashPanel(controller: controller);
       case AppSection.settings:

@@ -681,6 +681,7 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
           ],
         ),
         _AdminEmailCard(controller: _controller),
+        _AdminOfficeCard(controller: _controller),
       ],
     );
   }

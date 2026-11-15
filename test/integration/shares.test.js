@@ -480,6 +480,18 @@ test('a link caps what visitors may upload through it', async () => {
   assert.equal(listed.uploadedBytes, 10);
 });
 
+test('a file request tells visitors how much room is left, and nothing about the folder', async () => {
+  const share = await createShare(alice.agent, { nodeId: sub.id, mode: 'upload_only', maxUploadBytes: 100 });
+  const base = `/api/public/shares/${share.token}`;
+  assert.equal((await request(app).get(base).expect(200)).body.share.uploadBytesLeft, 100);
+  await request(app).put(`${base}/upload?name=scan.bin`).set('Content-Type', 'application/octet-stream').send(Buffer.alloc(40, 1)).expect(201);
+  const after = await request(app).get(base).expect(200);
+  assert.equal(after.body.share.uploadBytesLeft, 60);
+  assert.deepEqual(after.body.items, []);
+  const open = await createShare(alice.agent, { nodeId: sub.id, mode: 'upload_only' });
+  assert.equal((await request(app).get(`/api/public/shares/${open.token}`).expect(200)).body.share.uploadBytesLeft, null);
+});
+
 // A raw request whose body is sent by hand, so a test can hold it half-sent.
 function openRawUpload(server, path, headers) {
   const http = require('http');

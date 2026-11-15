@@ -3,9 +3,25 @@
 const { isAdminUser } = require('../services/access/admin');
 const { isAccountActive } = require('../services/account/status');
 const { resolveDeviceToken } = require('../services/devices/tokens');
+const { takePendingWipe } = require('../services/devices/wipe');
 const { basicCredentials, resolveAppPassword } = require('../services/webdav/auth');
 
-function unauthorized(res) {
+function bearerToken(req) {
+  const match = String(req.get('authorization') || '').match(/^Bearer\s+(\S+)$/i);
+  return match ? match[1] : null;
+}
+
+// 401. A device the owner asked to erase itself is told so once (see
+// services/devices/wipe.js); every later request just gets the plain 401.
+function unauthorized(req, res) {
+  const wipe = takePendingWipe(bearerToken(req));
+  if (wipe) {
+    return res.status(401).json({
+      error: 'This device was signed out remotely. Its NeoCloud data has to be erased.',
+      code: 'DEVICE_WIPE_REQUESTED',
+      eraseFiles: wipe.eraseFiles,
+    });
+  }
   return res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' });
 }
 
@@ -20,9 +36,8 @@ function sessionUserId(req) {
 // here: they live in third-party WebDAV apps and reach WebDAV only, never
 // the API (links, shares with other accounts, vaults, sync).
 function deviceFromHeader(req) {
-  const header = String(req.get('authorization') || '');
-  const match = header.match(/^Bearer\s+(\S+)$/i);
-  const device = match ? resolveDeviceToken(match[1]) : null;
+  const token = bearerToken(req);
+  const device = token ? resolveDeviceToken(token) : null;
   return device && device.platform !== 'webdav' ? device : null;
 }
 
@@ -34,7 +49,7 @@ function requireAuthOrDevice(req, res, next) {
     return next();
   }
   const device = deviceFromHeader(req);
-  if (!device) return unauthorized(res);
+  if (!device) return unauthorized(req, res);
   req.userId = device.userId;
   req.deviceId = device.deviceId;
   next();
@@ -56,7 +71,7 @@ function requireSessionOrPhone(req, res, next) {
     return next();
   }
   const device = deviceFromHeader(req);
-  if (!device) return unauthorized(res);
+  if (!device) return unauthorized(req, res);
   if (!PHONE_PLATFORMS.has(device.platform)) return phoneRequired(res);
   req.userId = device.userId;
   req.deviceId = device.deviceId;
@@ -66,7 +81,7 @@ function requireSessionOrPhone(req, res, next) {
 // A device bearer token only.
 function requireDevice(req, res, next) {
   const device = deviceFromHeader(req);
-  if (!device) return unauthorized(res);
+  if (!device) return unauthorized(req, res);
   req.userId = device.userId;
   req.deviceId = device.deviceId;
   next();

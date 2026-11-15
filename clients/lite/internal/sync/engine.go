@@ -11,6 +11,7 @@ import (
 	"log"
 	"strings"
 	gosync "sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -93,6 +94,8 @@ type Engine struct {
 	watched  map[string]bool
 	// stopRun cancels the sync run in progress, if any.
 	stopRun context.CancelFunc
+	// wiping is set while a remote wipe runs (wipe.go).
+	wiping atomic.Bool
 	// conditions reports a metered network or battery saver (a seam
 	// for the tests).
 	conditions func() netstate.Conditions
@@ -206,6 +209,7 @@ func (e *Engine) Client() (*api.Client, error) {
 	e.down.SetRate(cfg.DownloadKiBps * 1024)
 	client := api.New(cfg.Server, cfg.Token)
 	client.Up, client.Down = e.up, e.down
+	client.OnWipe = e.onWipeRequested
 	return client, nil
 }
 

@@ -147,6 +147,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
           password: draft.protect ? draft.password : null,
           mode: widget.isFolder ? draft.mode : ShareMode.view,
           maxDownloads: draft.maxDownloads,
+          maxUploadBytes: draft.uploadCap,
           note: draft.trimmedNote,
         );
       }

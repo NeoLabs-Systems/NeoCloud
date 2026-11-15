@@ -7,6 +7,7 @@ const { hashPassword, validateNewPassword } = require('../account/credentials');
 const { revokeAllSessionsForUser } = require('../account/sessions');
 const { revokeAllDeviceTokens } = require('../devices/tokens');
 const { eraseAccount, isLastActiveAdmin } = require('../account/erasure');
+const { removeMountsOf } = require('../external_storage/mounts');
 const { UNLIMITED, effectiveQuota, recalculateUsage } = require('../storage/quota');
 const { httpError } = require('../../utils/http_error');
 const { parseByteSize } = require('../../utils/bytes');
@@ -143,7 +144,10 @@ function setUserDisabled(userId, disabled, { actorUserId }) {
       db.prepare("UPDATE users SET disabled_at = CASE WHEN ? THEN datetime('now') END WHERE id = ?").run(disabled ? 1 : 0, user.id);
       recordAccessEvent(disabled ? 'account.disable' : 'account.enable', { actorUserId, subjectUserId: user.id });
     })();
-    if (disabled) signOutEverywhere(user.id);
+    if (disabled) {
+      signOutEverywhere(user.id);
+      removeMountsOf(user.id);
+    }
   }
   return serializeUser(getUserRow(userId));
 }

@@ -3082,7 +3082,7 @@ abstract class AppL10n {
   /// No description provided for @shareModeUploadOnly.
   ///
   /// In en, this message translates to:
-  /// **'File request'**
+  /// **'Request files'**
   String get shareModeUploadOnly;
 
   /// No description provided for @shareModeViewHint.
@@ -3100,7 +3100,7 @@ abstract class AppL10n {
   /// No description provided for @shareModeUploadOnlyHint.
   ///
   /// In en, this message translates to:
-  /// **'Only add files. Visitors don’t see the folder’s contents, not even what others uploaded.'**
+  /// **'Anyone with the link can upload files into this folder, but can’t see what’s inside.'**
   String get shareModeUploadOnlyHint;
 
   /// No description provided for @shareExpiryCustom.
@@ -12780,6 +12780,797 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'+{count} more'**
   String signingClaimFillMore(int count);
+
+  /// No description provided for @deviceWipeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase…'**
+  String get deviceWipeAction;
+
+  /// No description provided for @deviceWipeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out “{name}” and erase its data?'**
+  String deviceWipeTitle(String name);
+
+  /// No description provided for @deviceWipeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This device is signed out right away. The next time it connects to NeoCloud, it removes the NeoCloud data stored on it.'**
+  String get deviceWipeMessage;
+
+  /// No description provided for @deviceWipeSignOutOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out only'**
+  String get deviceWipeSignOutOnly;
+
+  /// No description provided for @deviceWipeEraseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and erase NeoCloud files on that device'**
+  String get deviceWipeEraseFiles;
+
+  /// No description provided for @deviceWipeNeverConnects.
+  ///
+  /// In en, this message translates to:
+  /// **'A device that never connects again can’t erase anything. It stays signed out either way.'**
+  String get deviceWipeNeverConnects;
+
+  /// No description provided for @deviceWipeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and erase'**
+  String get deviceWipeConfirm;
+
+  /// No description provided for @deviceWipeRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is signed out. It will erase its NeoCloud data the next time it connects.'**
+  String deviceWipeRequested(String name);
+
+  /// No description provided for @deviceWipePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out. Waiting to erase its data when it connects.'**
+  String get deviceWipePending;
+
+  /// No description provided for @deviceWipeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Call off'**
+  String get deviceWipeCancel;
+
+  /// No description provided for @deviceErasedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Erased {date}'**
+  String deviceErasedOn(String date);
+
+  /// No description provided for @deviceWipeDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has erased its NeoCloud data.'**
+  String deviceWipeDelivered(String name);
+
+  /// No description provided for @deviceWipedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device was signed out remotely and its NeoCloud data was erased.'**
+  String get deviceWipedNotice;
+
+  /// No description provided for @requestFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Request files'**
+  String get requestFiles;
+
+  /// No description provided for @requestFilesHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Request files into this folder'**
+  String get requestFilesHere;
+
+  /// No description provided for @requestFilesCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied. Anyone with it can send files to “{name}” without seeing what’s inside.'**
+  String requestFilesCopied(String name);
+
+  /// No description provided for @requestFilesOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get requestFilesOptions;
+
+  /// No description provided for @shareUploadCapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Total upload size'**
+  String get shareUploadCapTitle;
+
+  /// No description provided for @shareUploadCapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Visitors can send up to this much through the link in total.'**
+  String get shareUploadCapHint;
+
+  /// No description provided for @officeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get officeEdit;
+
+  /// No description provided for @officeViewOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'View only'**
+  String get officeViewOnly;
+
+  /// No description provided for @officeOpenInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get officeOpenInBrowser;
+
+  /// No description provided for @officeOpenInBrowserHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The document opens in your browser.'**
+  String get officeOpenInBrowserHint;
+
+  /// No description provided for @officeOpenedInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'The document is open in your browser. You can come back here when you are done.'**
+  String get officeOpenedInBrowser;
+
+  /// No description provided for @officeAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Document editor'**
+  String get officeAdminTitle;
+
+  /// No description provided for @officeAdminDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Let people edit Word, Excel and PowerPoint files in the browser, together, with a Collabora Online you run yourself.'**
+  String get officeAdminDescription;
+
+  /// No description provided for @officeAdminUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor address'**
+  String get officeAdminUrl;
+
+  /// No description provided for @officeAdminUrlHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Where Collabora Online can be reached, for example https://office.example.com.'**
+  String get officeAdminUrlHelper;
+
+  /// No description provided for @officeAdminHostUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Address of NeoCloud for the editor'**
+  String get officeAdminHostUrl;
+
+  /// No description provided for @officeAdminHostUrlHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Only if the editor reaches NeoCloud differently than people do, for example inside Docker. Leave empty otherwise.'**
+  String get officeAdminHostUrlHelper;
+
+  /// No description provided for @officeAdminEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit documents in the browser'**
+  String get officeAdminEnable;
+
+  /// No description provided for @officeAdminEnableHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving checks that the editor answers before this turns on.'**
+  String get officeAdminEnableHelper;
+
+  /// No description provided for @officeAdminFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens: {formats}'**
+  String officeAdminFormats(String formats);
+
+  /// No description provided for @officeAdminSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get officeAdminSave;
+
+  /// No description provided for @officeAdminCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get officeAdminCheck;
+
+  /// No description provided for @officeAdminSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get officeAdminSaved;
+
+  /// No description provided for @officeAdminChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'The editor answered.'**
+  String get officeAdminChecked;
+
+  /// No description provided for @officeAdminStateOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get officeAdminStateOk;
+
+  /// No description provided for @officeAdminStateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Not reachable'**
+  String get officeAdminStateError;
+
+  /// No description provided for @officeAdminStateOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get officeAdminStateOff;
+
+  /// No description provided for @officeAdminStateUnconfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get officeAdminStateUnconfigured;
+
+  /// No description provided for @activityNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityNav;
+
+  /// No description provided for @activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityTitle;
+
+  /// No description provided for @activitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened to your files and to files shared with you.'**
+  String get activitySubtitle;
+
+  /// No description provided for @activityScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything'**
+  String get activityScopeAll;
+
+  /// No description provided for @activityScopeMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My files'**
+  String get activityScopeMine;
+
+  /// No description provided for @activityScopeShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with me'**
+  String get activityScopeShared;
+
+  /// No description provided for @activityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get activityEmpty;
+
+  /// No description provided for @activityEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploads, changes and comments show up here.'**
+  String get activityEmptySubtitle;
+
+  /// No description provided for @activityLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get activityLoadMore;
+
+  /// No description provided for @activityIn.
+  ///
+  /// In en, this message translates to:
+  /// **'in {folder}'**
+  String activityIn(String folder);
+
+  /// No description provided for @activityUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You uploaded {name}} other{{who} uploaded {name}}}'**
+  String activityUploaded(String actor, String who, String name);
+
+  /// No description provided for @activityUploadedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You uploaded {count} files} other{{who} uploaded {count} files}}'**
+  String activityUploadedMany(String actor, String who, int count);
+
+  /// No description provided for @activityFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You created the folder {name}} other{{who} created the folder {name}}}'**
+  String activityFolder(String actor, String who, String name);
+
+  /// No description provided for @activityFolderMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You created {count} folders} other{{who} created {count} folders}}'**
+  String activityFolderMany(String actor, String who, int count);
+
+  /// No description provided for @activityCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You copied {name}} other{{who} copied {name}}}'**
+  String activityCopied(String actor, String who, String name);
+
+  /// No description provided for @activityCopiedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You copied {count} items} other{{who} copied {count} items}}'**
+  String activityCopiedMany(String actor, String who, int count);
+
+  /// No description provided for @activityVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You saved a new version of {name}} other{{who} saved a new version of {name}}}'**
+  String activityVersion(String actor, String who, String name);
+
+  /// No description provided for @activityRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You renamed {from} to {name}} other{{who} renamed {from} to {name}}}'**
+  String activityRenamed(String actor, String who, String from, String name);
+
+  /// No description provided for @activityMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You moved {name}} other{{who} moved {name}}}'**
+  String activityMoved(String actor, String who, String name);
+
+  /// No description provided for @activityMovedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You moved {count} items} other{{who} moved {count} items}}'**
+  String activityMovedMany(String actor, String who, int count);
+
+  /// No description provided for @activityDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You deleted {name}} other{{who} deleted {name}}}'**
+  String activityDeleted(String actor, String who, String name);
+
+  /// No description provided for @activityDeletedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You deleted {count} items} other{{who} deleted {count} items}}'**
+  String activityDeletedMany(String actor, String who, int count);
+
+  /// No description provided for @activityRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You restored {name}} other{{who} restored {name}}}'**
+  String activityRestored(String actor, String who, String name);
+
+  /// No description provided for @activityRestoredMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You restored {count} items} other{{who} restored {count} items}}'**
+  String activityRestoredMany(String actor, String who, int count);
+
+  /// No description provided for @activitySharedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You shared {name} with {member}} other{{who} shared {name} with {member}}}'**
+  String activitySharedWith(
+    String actor,
+    String who,
+    String name,
+    String member,
+  );
+
+  /// No description provided for @activitySharedWithYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You shared {name}} other{{who} shared {name} with you}}'**
+  String activitySharedWithYou(String actor, String who, String name);
+
+  /// No description provided for @activityCommented.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor, select, self{You commented on {name}} other{{who} commented on {name}}}'**
+  String activityCommented(String actor, String who, String name);
+
+  /// No description provided for @commentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get commentsTitle;
+
+  /// No description provided for @commentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a comment…'**
+  String get commentsHint;
+
+  /// No description provided for @commentsPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Post comment'**
+  String get commentsPost;
+
+  /// No description provided for @commentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet'**
+  String get commentsEmpty;
+
+  /// No description provided for @commentsEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone who can open this item can read and write comments here.'**
+  String get commentsEmptySubtitle;
+
+  /// No description provided for @commentsEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get commentsEdited;
+
+  /// No description provided for @commentsLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show older comments'**
+  String get commentsLoadMore;
+
+  /// No description provided for @commentsDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this comment?'**
+  String get commentsDeleteTitle;
+
+  /// No description provided for @commentsDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This can’t be undone.'**
+  String get commentsDeleteMessage;
+
+  /// No description provided for @nodeDetailsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments and activity'**
+  String get nodeDetailsAction;
+
+  /// No description provided for @pageCloudStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud storage'**
+  String get pageCloudStorage;
+
+  /// No description provided for @pageCloudStorageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your own cloud storage, like Amazon S3, a WebDAV server or another Nextcloud, and browse it next to your files.'**
+  String get pageCloudStorageDescription;
+
+  /// No description provided for @cloudSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud storage'**
+  String get cloudSectionTitle;
+
+  /// No description provided for @cloudConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect cloud storage'**
+  String get cloudConnect;
+
+  /// No description provided for @cloudConnectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get cloudConnectAction;
+
+  /// No description provided for @cloudConnectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected storage'**
+  String get cloudConnectedTitle;
+
+  /// No description provided for @cloudConnectedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Your files stay where they are. NeoCloud only shows them here: they are not searched, synced or backed up by NeoCloud.'**
+  String get cloudConnectedDescription;
+
+  /// No description provided for @cloudNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing connected yet.'**
+  String get cloudNone;
+
+  /// No description provided for @cloudEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit connection'**
+  String get cloudEdit;
+
+  /// No description provided for @cloudDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get cloudDisconnect;
+
+  /// No description provided for @cloudDisconnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect “{name}”?'**
+  String cloudDisconnectTitle(String name);
+
+  /// No description provided for @cloudDisconnectMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud forgets this connection and its saved password. Your files at the provider are not touched.'**
+  String get cloudDisconnectMessage;
+
+  /// No description provided for @cloudProviderS3.
+  ///
+  /// In en, this message translates to:
+  /// **'S3 (Amazon, Backblaze, Wasabi, MinIO …)'**
+  String get cloudProviderS3;
+
+  /// No description provided for @cloudProviderWebdav.
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV or Nextcloud'**
+  String get cloudProviderWebdav;
+
+  /// No description provided for @cloudProviderSftp.
+  ///
+  /// In en, this message translates to:
+  /// **'SFTP'**
+  String get cloudProviderSftp;
+
+  /// No description provided for @cloudName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get cloudName;
+
+  /// No description provided for @cloudNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown as the folder name'**
+  String get cloudNameHint;
+
+  /// No description provided for @cloudEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint'**
+  String get cloudEndpoint;
+
+  /// No description provided for @cloudEndpointHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty for Amazon S3'**
+  String get cloudEndpointHint;
+
+  /// No description provided for @cloudRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get cloudRegion;
+
+  /// No description provided for @cloudBucket.
+  ///
+  /// In en, this message translates to:
+  /// **'Bucket'**
+  String get cloudBucket;
+
+  /// No description provided for @cloudPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder in the bucket (optional)'**
+  String get cloudPrefix;
+
+  /// No description provided for @cloudAccessKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Access key ID'**
+  String get cloudAccessKey;
+
+  /// No description provided for @cloudSecretKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret access key'**
+  String get cloudSecretKey;
+
+  /// No description provided for @cloudWebdavUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Address of the folder'**
+  String get cloudWebdavUrl;
+
+  /// No description provided for @cloudWebdavHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For Nextcloud, use the WebDAV address from the Files settings and an app password.'**
+  String get cloudWebdavHelp;
+
+  /// No description provided for @cloudPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password or app password'**
+  String get cloudPassword;
+
+  /// No description provided for @cloudHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get cloudHost;
+
+  /// No description provided for @cloudPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get cloudPort;
+
+  /// No description provided for @cloudPrivateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Private key (instead of a password)'**
+  String get cloudPrivateKey;
+
+  /// No description provided for @cloudSftpFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder on the server'**
+  String get cloudSftpFolder;
+
+  /// No description provided for @cloudKeepSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to keep the saved one'**
+  String get cloudKeepSecret;
+
+  /// No description provided for @cloudReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only'**
+  String get cloudReadOnly;
+
+  /// No description provided for @cloudReadOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing can be uploaded, changed or deleted through NeoCloud.'**
+  String get cloudReadOnlyHint;
+
+  /// No description provided for @cloudTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get cloudTest;
+
+  /// No description provided for @cloudTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected. {count} items found.'**
+  String cloudTestOk(int count);
+
+  /// No description provided for @cloudTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection did not work. Check the details and try again.'**
+  String get cloudTestFailed;
+
+  /// No description provided for @cloudHostBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud is not allowed to connect to this address. Use an address that is reachable from the internet.'**
+  String get cloudHostBlocked;
+
+  /// No description provided for @cloudReadOnlyError.
+  ///
+  /// In en, this message translates to:
+  /// **'This storage is read-only.'**
+  String get cloudReadOnlyError;
+
+  /// No description provided for @cloudLimitError.
+  ///
+  /// In en, this message translates to:
+  /// **'You can connect up to 10 cloud storages.'**
+  String get cloudLimitError;
+
+  /// No description provided for @cloudNameExists.
+  ///
+  /// In en, this message translates to:
+  /// **'That name is already taken here.'**
+  String get cloudNameExists;
+
+  /// No description provided for @cloudNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This item no longer exists at the provider.'**
+  String get cloudNotFound;
+
+  /// No description provided for @cloudFolderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is empty.'**
+  String get cloudFolderEmpty;
+
+  /// No description provided for @cloudTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the first {count} items are shown.'**
+  String cloudTruncated(int count);
+
+  /// No description provided for @cloudUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded.'**
+  String get cloudUploaded;
+
+  /// No description provided for @cloudUploadTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Files over {size} can’t be uploaded here yet.'**
+  String cloudUploadTooLarge(String size);
+
+  /// No description provided for @cloudDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String cloudDeleteTitle(String name);
+
+  /// No description provided for @cloudDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'It is deleted at the provider and can’t be recovered here.'**
+  String get cloudDeleteMessage;
+
+  /// No description provided for @cloudCopyToNeoCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to NeoCloud'**
+  String get cloudCopyToNeoCloud;
+
+  /// No description provided for @cloudCopyHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy here'**
+  String get cloudCopyHere;
+
+  /// No description provided for @cloudCopyFromNeoCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy a file from NeoCloud'**
+  String get cloudCopyFromNeoCloud;
+
+  /// No description provided for @cloudPickFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file to copy'**
+  String get cloudPickFileTitle;
+
+  /// No description provided for @cloudCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied.'**
+  String get cloudCopied;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

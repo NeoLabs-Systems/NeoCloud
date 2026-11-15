@@ -11,15 +11,26 @@ const { mimeForName } = require('../../utils/mime');
 const { deleteBlobFiles } = require('../storage/blob_store');
 const { releaseBlobs, retainBlob } = require('../storage/blob_refs');
 const { announceChanges, recordChange } = require('./changes');
+const { recordActivity } = require('../activity/record');
 const { getLiveNode, nodeById, serializeNode } = require('./tree');
 
 function serializeVersion(row) {
-  return { version: row.version, size: row.size, etag: row.etag, createdAt: row.created_at };
+  return {
+    version: row.version,
+    size: row.size,
+    etag: row.etag,
+    createdAt: row.created_at,
+    modifiedBy: row.author ?? null,
+  };
 }
 
 function listVersions(userId, fileId) {
   const node = getLiveNode(userId, fileId, { type: 'file' });
-  const rows = db.prepare('SELECT * FROM file_versions WHERE node_id = ? ORDER BY version DESC').all(node.id);
+  const rows = db.prepare(`
+    SELECT v.*, u.username AS author FROM file_versions v
+    LEFT JOIN users u ON u.id = v.modified_by
+    WHERE v.node_id = ? ORDER BY v.version DESC
+  `).all(node.id);
   return { current: serializeNode(node), versions: rows.map(serializeVersion) };
 }
 
@@ -45,20 +56,22 @@ function pruneVersions(nodeId) {
 /**
  * Inside a transaction: points `node` at new content, keeping the current
  * content as a version. The blob must already be recorded; this takes one
- * reference on it. Returns blob ids that became unreferenced.
+ * reference on it. `authorId`: the account that wrote the new content (the
+ * document editor); kept with the version it replaces. Returns blob ids that became unreferenced.
  */
-function replaceContent(userId, node, { blobId, size, etag }) {
+function replaceContent(userId, node, { blobId, size, etag, authorId = null }) {
   db.prepare(`
-    INSERT INTO file_versions (node_id, blob_id, version, size, etag, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(node.id, node.blob_id, node.version, node.size, node.etag, node.modified_at);
+    INSERT INTO file_versions (node_id, blob_id, version, size, etag, created_at, modified_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(node.id, node.blob_id, node.version, node.size, node.etag, node.modified_at, node.modified_by ?? null);
   retainBlob(blobId);
   db.prepare(`
     UPDATE nodes SET blob_id = ?, size = ?, etag = ?, version = version + 1,
-                     mime = ?, modified_at = datetime('now')
+                     mime = ?, modified_at = datetime('now'), modified_by = ?
     WHERE id = ?
-  `).run(blobId, size, etag, mimeForName(node.name), node.id);
+  `).run(blobId, size, etag, mimeForName(node.name), authorId, node.id);
   recordChange(userId, node.id, 'update');
+  recordActivity(userId, 'version', node, { actorId: authorId });
   // The current blob moved to file_versions and keeps its reference there.
   return pruneVersions(node.id);
 }

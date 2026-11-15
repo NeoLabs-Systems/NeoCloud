@@ -2,8 +2,10 @@
 /// app works with typed values. Field names follow docs/api.md.
 library;
 
+part 'models_activity.dart';
 part 'models_ai.dart';
 part 'models_features.dart';
+part 'models_external.dart';
 part 'models_members.dart';
 part 'models_qr_login.dart';
 
@@ -404,7 +406,15 @@ class SecurityKeyItem {
 }
 
 class DeviceInfo {
-  const DeviceInfo({required this.id, required this.name, required this.platform, required this.lastSeenAt, this.current = false});
+  const DeviceInfo({
+    required this.id,
+    required this.name,
+    required this.platform,
+    required this.lastSeenAt,
+    this.current = false,
+    this.wipeRequestedAt,
+    this.wipeDeliveredAt,
+  });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) => DeviceInfo(
     id: _int(json['id']),
@@ -412,12 +422,24 @@ class DeviceInfo {
     platform: _string(json['platform']),
     lastSeenAt: _date(json['lastSeenAt']),
     current: json['current'] == true,
+    wipeRequestedAt: json['wipe'] is Map ? _date((json['wipe'] as Map)['requestedAt']) : null,
+    wipeDeliveredAt: json['wipe'] is Map ? _date((json['wipe'] as Map)['deliveredAt']) : null,
   );
 
   final int id;
   final String name;
   final String platform;
   final DateTime? lastSeenAt;
+
+  /// Set when the owner asked this device to erase itself; it stays signed
+  /// out and waits for the device to come back.
+  final DateTime? wipeRequestedAt;
+
+  /// When the device came back and erased itself ("Erased").
+  final DateTime? wipeDeliveredAt;
+
+  bool get wipePending => wipeRequestedAt != null && wipeDeliveredAt == null;
+  bool get wiped => wipeDeliveredAt != null;
 
   /// The phone asking: it disconnects instead of revoking itself.
   final bool current;
@@ -514,6 +536,7 @@ class ShareLink {
     this.downloadCount = 0,
     this.note,
     this.uploadedBytes = 0,
+    this.maxUploadBytes,
     this.expiredFlag = false,
     this.exhaustedFlag = false,
   });
@@ -534,6 +557,7 @@ class ShareLink {
       downloadCount: _int(json['downloadCount']),
       note: note == null || note.trim().isEmpty ? null : note,
       uploadedBytes: _int(json['uploadedBytes']),
+      maxUploadBytes: json['maxUploadBytes'] == null ? null : _int(json['maxUploadBytes']),
       createdAt: _date(json['createdAt']),
       expiredFlag: json['expired'] == true,
       exhaustedFlag: json['exhausted'] == true,
@@ -559,6 +583,9 @@ class ShareLink {
 
   /// What visitors uploaded through the link so far.
   final int uploadedBytes;
+
+  /// Most visitors may upload through the link in total; null for no cap.
+  final int? maxUploadBytes;
   final bool expiredFlag;
   final bool exhaustedFlag;
 

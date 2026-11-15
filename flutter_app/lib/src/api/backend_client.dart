@@ -12,14 +12,20 @@ import '../signing/saved_signatures.dart';
 import '../signing/signing_api.dart';
 import 'models.dart';
 
+part 'backend_client_activity.dart';
 part 'backend_client_ai.dart';
 part 'backend_client_email.dart';
+part 'backend_client_external.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
+part 'backend_client_office.dart';
 part 'backend_client_photos.dart';
 part 'backend_client_signing.dart';
 part 'backend_client_signing_account.dart';
 part 'backend_client_vaults.dart';
+
+/// The code of the one 401 a remotely signed-out device gets.
+const String deviceWipeCode = 'DEVICE_WIPE_REQUESTED';
 
 /// An error the server answered with. [code] is the stable machine code from
 /// the API (e.g. NAME_EXISTS); [message] is readable text for the user.
@@ -59,6 +65,10 @@ class BackendClient {
 
   /// Called on any 401 so the app can return to the sign-in screen.
   void Function()? onSessionExpired;
+
+  /// Called once when the server says the owner signed this device out and
+  /// asked it to erase its local data (`401 DEVICE_WIPE_REQUESTED`).
+  void Function()? onDeviceWiped;
 
   Uri uri(String path, [Map<String, String>? query]) {
     final base = baseUrl.isEmpty ? Uri.base.origin : baseUrl;
@@ -101,6 +111,7 @@ class BackendClient {
     }
     if (response.statusCode >= 200 && response.statusCode < 300) return decoded;
     final body = decoded is Map ? decoded : const <String, dynamic>{};
+    if (response.statusCode == 401 && body['code'] == deviceWipeCode) onDeviceWiped?.call();
     if (response.statusCode == 401 && expireOn401) {
       if (path != _deviceMePath && await _bearerStillWorks()) {
         throw ApiException(403, body['error']?.toString() ?? 'HTTP 401', code: 'SERVER_UPDATE_NEEDED');
@@ -348,6 +359,7 @@ class BackendClient {
     } catch (_) {
       // Not JSON.
     }
+    if (response.statusCode == 401 && code == deviceWipeCode) onDeviceWiped?.call();
     throw ApiException(response.statusCode, message, code: code);
   }
 
@@ -539,6 +551,11 @@ class BackendClient {
 
   Future<void> revokeDevice(int id) => _request('DELETE', '/api/account/devices/$id');
 
+  /// Signs a lost device out and asks it to erase its local data the next
+  /// time it connects; [eraseFiles] also deletes the synced files (desktop).
+  Future<void> wipeDevice(int id, {required bool eraseFiles}) =>
+      _request('POST', '/api/account/devices/$id/wipe', json: {'eraseFiles': eraseFiles});
+
   /// The device waiting for approval under [userCode] (docs/clients.md §1).
   Future<DeviceAuthorizationRequest> deviceAuthorization(String userCode) async => DeviceAuthorizationRequest.fromJson(
     _map(await _approvalRequest('GET', '/api/account/devices/authorize/${Uri.encodeComponent(userCode)}')),
@@ -567,6 +584,7 @@ class BackendClient {
     String? password,
     ShareMode mode = ShareMode.view,
     int? maxDownloads,
+    int? maxUploadBytes,
     String? note,
   }) async {
     final body = _map(await _request('POST', '/api/shares', json: {
@@ -575,6 +593,7 @@ class BackendClient {
       'password': ?password,
       'mode': mode.apiName,
       'maxDownloads': ?maxDownloads,
+      'maxUploadBytes': ?maxUploadBytes,
       'note': ?note,
     }));
     return ShareLink.fromJson(body['share'] is Map ? _map(body['share']) : body);

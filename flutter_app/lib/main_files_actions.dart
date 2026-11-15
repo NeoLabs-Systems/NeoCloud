@@ -427,12 +427,15 @@ mixin _FilesActions on _FilesBase {
     final own = !inShare;
     return <_FileAction>[
       _FileAction(node.isFolder ? Icons.folder_open_outlined : Icons.open_in_new_rounded, appStrings.open, () => open(node), shortcut: '↵'),
+      if (canWrite && !vault && controller.office.canEdit(node)) _FileAction(Icons.edit_outlined, appStrings.officeEdit, () => unawaited(showOfficeEditor(context, controller, node))),
       if (searching) _FileAction(Icons.drive_folder_upload_outlined, appStrings.searchOpenFolder, () => openContainingFolder(node), quick: true),
       if (!vault || !node.isFolder)
         _FileAction(Icons.download_rounded, node.isFolder ? appStrings.downloadZip : appStrings.download, () => download(subjectFor(node)), quick: true),
       if (node.signed && !node.isFolder && own)
         _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(guard(() => controller.downloadSignedWithoutCertificate(node)))),
       if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
+      if (own && node.isFolder && !vault)
+        _FileAction(Icons.inbox_outlined, appStrings.requestFiles, () => unawaited(requestFilesInto(context, controller, node)), quick: true),
       if (own)
         _FileAction(
           node.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
@@ -460,6 +463,7 @@ mixin _FilesActions on _FilesBase {
       if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
         _FileAction(AppSection.signing.icon, appStrings.signingPrepare, () => unawaited(startSigningFromFile(context, controller, node))),
       if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
+      if (!vault) _FileAction(Icons.forum_outlined, appStrings.nodeDetailsAction, () => unawaited(showNodeDetails(context, controller, node))),
       ...aiActionsFor(node),
       if (canWrite) _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),
     ];

@@ -50,6 +50,11 @@
     .drop { margin: 0 20px 20px; padding: 22px; border: 1.5px dashed var(--line-strong); border-radius: 16px; text-align: center; color: var(--ink-2); transition: border-color .2s, background .2s; }
     .drop.over { border-color: var(--gold); background: var(--gold-muted); }
     .drop button { margin-top: 10px; }
+    .drop-title { font-size: 20px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    .drop .hint { margin-top: 12px; }
+    .thanks { margin: 14px 0 0; padding: 14px 16px; border-radius: 14px; background: var(--gold-muted); color: var(--ink); }
+    .thanks strong { display: block; font-size: 18px; }
+    .thanks span { display: block; margin: 4px 0 12px; color: var(--ink-2); }
     .uploads { list-style: none; margin: 10px 0 0; padding: 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); text-align: left; }
     .uploads li::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 999px; background: var(--ink-3); vertical-align: 1px; }
     .uploads li.ok::before { background: var(--success); }
@@ -102,9 +107,16 @@
       </div>
       <ul class="rows" data-rows></ul>
       <div class="drop" data-drop hidden>
+        <div class="drop-title" data-drop-title>Drop files here</div>
         <div data-drop-text>Drop files here to upload them into this folder.</div>
-        <button class="btn btn-secondary" type="button" data-pick>Choose files</button>
+        <button class="btn btn-primary" type="button" data-pick>Choose files</button>
         <input type="file" multiple hidden data-picker>
+        <p class="hint" data-limits hidden></p>
+        <div class="thanks" data-thanks role="status" hidden>
+          <strong>Thank you!</strong>
+          <span data-thanks-text></span>
+          <button class="btn btn-secondary" type="button" data-more>Send more files</button>
+        </div>
         <p class="receipt" data-receipt hidden></p>
         <ul class="uploads" data-uploads></ul>
       </div>

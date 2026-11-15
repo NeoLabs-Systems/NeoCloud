@@ -41,6 +41,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         _PaletteCommand(Icons.upload_rounded, appStrings.uploadFiles, () => unawaited(pickAndUpload())),
         _PaletteCommand(Icons.create_new_folder_outlined, appStrings.newFolder, () => unawaited(newFolder())),
       ],
+      if (_canRequestFilesHere) _PaletteCommand(Icons.inbox_outlined, appStrings.requestFilesHere, () => unawaited(requestFilesInto(context, controller, listing!.folder))),
       _PaletteCommand(Icons.search_rounded, appStrings.paletteSearchFiles, searchFocus.requestFocus, shortcut: '/'),
       _PaletteCommand(
         gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
@@ -79,12 +80,21 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
     onAiSuggestion: controller.aiReview.enabled && !inShare ? (node) => unawaited(showAiSuggestionsFor(context, controller, node)) : null,
   );
 
+  /// The open folder can take a file request (not the root, a vault or a share).
+  bool get _canRequestFilesHere => !inShare && vaultId == null && listing != null && listing!.folder.parentId != null && !listing!.folder.inVault;
+
   Widget _newMenu() {
     return MenuAnchor(
       alignmentOffset: const Offset(0, 6),
       menuChildren: <Widget>[
         MenuItemButton(leadingIcon: const Icon(Icons.create_new_folder_outlined, size: 18), onPressed: () => unawaited(newFolder()), child: Text(appStrings.newFolder)),
         MenuItemButton(leadingIcon: const Icon(Icons.upload_file_outlined, size: 18), onPressed: () => unawaited(pickAndUpload()), child: Text(appStrings.uploadFiles)),
+        if (_canRequestFilesHere)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.inbox_outlined, size: 18),
+            onPressed: () => unawaited(requestFilesInto(context, controller, listing!.folder)),
+            child: Text(appStrings.requestFilesHere),
+          ),
         if (vaultId == null && !inShare) ...<Widget>[
           const Divider(),
           MenuItemButton(leadingIcon: const Icon(Icons.lock_outline_rounded, size: 18), onPressed: () => unawaited(newVault()), child: Text(appStrings.newVault)),
@@ -354,6 +364,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
                                   controller: controller,
                                   onOpen: (node) => unawaited(showFileViewer(context, controller, recent, recent.indexOf(node))),
                                 )),
+                              if (atRoot && !searching && !inShare) box(_CloudStorageStrip(controller: controller)),
                               if (firstRun)
                                 box(_WelcomeBanner(controller: controller, onClose: () => setState(() {}))),
                               box(selecting && !compact ? _selectionBar(compact: false) : _toolbar(), gap: showChips ? 10 : 16),

@@ -23,11 +23,12 @@ test.after(cleanup);
 
 const REGISTRY = [
   ['/api/auth', 'auth'], ['/api/auth', 'auth_email'], ['/api/account', 'account'], ['/api/settings', 'settings'], ['/api/admin', 'admin'],
-  ['/api', 'files'], ['/api', 'transfers'], ['/api', 'members'], ['/api/sync', 'sync'], ['/api/devices', 'devices'],
+  ['/api', 'files'], ['/api', 'transfers'], ['/api', 'members'], ['/api', 'office'], ['/wopi', 'wopi'], ['/api/sync', 'sync'], ['/api/devices', 'devices'],
   ['/api/storage', 'storage'], ['/api/shares', 'shares'], ['/api/public/shares', 'public_shares'],
   ['/api/vaults', 'vaults'], ['/api/imports', 'imports'], ['/api/ai', 'ai'], ['/api/neorouter', 'neorouter'],
   ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
-  ['/api/photos', 'photos'],
+  ['/api/photos', 'photos'], ['/api/external-storage', 'external_storage'],
+  ['/api', 'comments'], ['/api/activity', 'activity'],
   ['/api/account', 'connected_apps'], ['/api/oauth', 'oauth_companion'], ['/oauth', 'oauth'], ['/api/v1', 'agent_api'],
 ];
 
@@ -97,6 +98,9 @@ test.before(async () => {
     INSERT INTO import_jobs (id, user_id, source, url, username, source_path, target_folder_id, status)
     VALUES (?, ?, 'webdav', 'https://dav.example.com', 'me', '/', ?, 'paused')
   `).run(v.import, owner.user.id, v.folder);
+  v.mount = require('../../server/services/external_storage/mounts').insertMount(owner.user.id, {
+    provider: 'webdav', name: 'NAS', readOnly: false, config: { url: 'https://dav.example.com/', username: 'u', password: 'p' },
+  }).id;
   v.otherFile = (await upload(other.agent, 'mine.txt', 'mine').expect(201)).body.id;
   const pdf = await upload(owner.agent, 'sign-me.pdf', await makePdf(1)).expect(201);
   const draft = await owner.agent.post('/api/signing/documents').send({ nodeId: pdf.body.id }).expect(201);
@@ -105,6 +109,7 @@ test.before(async () => {
   const field = await owner.agent.put(`/api/signing/documents/${v.sign}/fields`)
     .send({ fields: [{ partyId: v.signParty, type: 'text', areas: [{ page: 0, x: 0.1, y: 0.1, w: 0.3, h: 0.05 }] }] }).expect(200);
   v.signField = field.body.fields[0].id;
+  v.comment = (await owner.agent.post(`/api/files/${v.file}/comments`).send({ body: 'private note' }).expect(201)).body.id;
   v.signImage = (await owner.agent.post('/api/signing/profile/images?kind=signature&method=draw&label=Mine')
     .set('Content-Type', 'image/png').send(await makePng()).expect(201)).body.id;
 });
@@ -112,7 +117,7 @@ test.before(async () => {
 // How another account's ids go into each route. A string says why the route
 // has no id of someone else to try.
 const OWN = 'acts on the caller’s own account only';
-const PUBLIC = 'public by design; the secret in the URL is the credential';
+const PUBLIC = 'public by design; the secret in the URL (or the signed WOPI access token) is the credential';
 const ADMIN = 'admin only (tried below)';
 const CLASSIFIED = {
   'GET /api/auth/status': OWN,
@@ -160,6 +165,7 @@ const CLASSIFIED = {
   'POST /api/account/devices/pairing': OWN,
   'GET /api/account/devices/pairing/:code': () => ['GET', `/api/account/devices/pairing/${v.pairing}`],
   'DELETE /api/account/devices/:id': () => ['DELETE', `/api/account/devices/${v.device}`],
+  'POST /api/account/devices/:id/wipe': () => ['POST', `/api/account/devices/${v.device}/wipe`, { eraseFiles: true }],
   'POST /api/account/export': OWN,
   'POST /api/account/delete': OWN,
   'GET /api/settings': OWN,
@@ -177,6 +183,12 @@ const CLASSIFIED = {
   'PATCH /api/nodes/:id': () => ['PATCH', `/api/nodes/${v.file}`, { name: 'pwned.txt' }],
   'POST /api/nodes/:id/copy': () => ['POST', `/api/nodes/${v.file}/copy`, { parentId: 'root' }],
   'DELETE /api/nodes/:id': () => ['DELETE', `/api/nodes/${v.file}`],
+  'GET /api/office/config': OWN,
+  'POST /api/files/:id/edit-session': () => ['POST', `/api/files/${v.file}/edit-session`],
+  'GET /wopi/files/:id': PUBLIC,
+  'GET /wopi/files/:id/contents': PUBLIC,
+  'POST /wopi/files/:id/contents': PUBLIC,
+  'POST /wopi/files/:id': PUBLIC,
   'GET /api/files/:id/versions': () => ['GET', `/api/files/${v.file}/versions`],
   'POST /api/files/:id/versions/:version/restore': () => ['POST', `/api/files/${v.file}/versions/1/restore`],
   'PUT /api/nodes/:id/favorite': () => ['PUT', `/api/nodes/${v.file}/favorite`],
@@ -244,6 +256,19 @@ const CLASSIFIED = {
   'POST /api/imports/:id/resume': () => ['POST', `/api/imports/${v.import}/resume`, { password: 'y' }],
   'POST /api/imports/:id/cancel': () => ['POST', `/api/imports/${v.import}/cancel`],
   'DELETE /api/imports/:id': () => ['DELETE', `/api/imports/${v.import}`],
+  'GET /api/external-storage': OWN,
+  'POST /api/external-storage': OWN,
+  'POST /api/external-storage/test': () => ['POST', '/api/external-storage/test', { id: v.mount, provider: 'webdav', config: { url: 'https://dav.example.com/', username: 'u' } }],
+  'PATCH /api/external-storage/:id': () => ['PATCH', `/api/external-storage/${v.mount}`, { name: 'x' }],
+  'DELETE /api/external-storage/:id': () => ['DELETE', `/api/external-storage/${v.mount}`],
+  'GET /api/external-storage/:id/list': () => ['GET', `/api/external-storage/${v.mount}/list`],
+  'GET /api/external-storage/:id/file': () => ['GET', `/api/external-storage/${v.mount}/file?path=a.txt`],
+  'PUT /api/external-storage/:id/file': () => ['PUT', `/api/external-storage/${v.mount}/file?path=a.txt`, Buffer.from('x')],
+  'POST /api/external-storage/:id/folder': () => ['POST', `/api/external-storage/${v.mount}/folder`, { path: 'x' }],
+  'POST /api/external-storage/:id/move': () => ['POST', `/api/external-storage/${v.mount}/move`, { from: 'a', to: 'b' }],
+  'DELETE /api/external-storage/:id/entry': () => ['DELETE', `/api/external-storage/${v.mount}/entry?path=a.txt`],
+  'POST /api/external-storage/:id/copy-in': () => ['POST', `/api/external-storage/${v.mount}/copy-in`, { nodeId: v.otherFile, folder: '' }],
+  'POST /api/external-storage/:id/copy-out': () => ['POST', `/api/external-storage/${v.mount}/copy-out`, { path: 'a.txt', parentId: 'root' }],
   'GET /api/ai/status': OWN,
   'PUT /api/ai/folders/:id/excluded': () => ['PUT', `/api/ai/folders/${v.folder}/excluded`, { excluded: true }],
   'GET /api/ai/suggestions': () => ['GET', `/api/ai/suggestions?nodeId=${v.file}`],
@@ -312,6 +337,11 @@ const CLASSIFIED = {
   'POST /api/public/sign/:token/decline': PUBLIC,
   'GET /api/public/sign/:token/result': PUBLIC,
   'GET /api/public/sign/:token/final': PUBLIC,
+  'GET /api/files/:id/comments': () => ['GET', `/api/files/${v.file}/comments`],
+  'POST /api/files/:id/comments': () => ['POST', `/api/files/${v.file}/comments`, { body: 'x' }],
+  'PATCH /api/files/:id/comments/:commentId': () => ['PATCH', `/api/files/${v.file}/comments/${v.comment}`, { body: 'x' }],
+  'DELETE /api/files/:id/comments/:commentId': () => ['DELETE', `/api/files/${v.file}/comments/${v.comment}`],
+  'GET /api/activity': () => ['GET', `/api/activity?nodeId=${v.file}`],
   'GET /api/neorouter': OWN,
   'POST /api/neorouter/connect': OWN,
   'GET /api/neorouter/connect/:id': 'flows live in memory and are checked against the account (sign_in.status)',

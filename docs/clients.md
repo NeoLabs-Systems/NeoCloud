@@ -35,6 +35,18 @@ Clients send `Authorization: Bearer nc_…` from then on. `GET /api/devices/me`
 (bearer) → `{ device: { id, name, platform, createdAt, lastSeenAt }, user: { id, username }, quota: { used, limit } }`
 checks a stored token (`limit` -1 = unlimited). A revoked token gets `401`.
 
+**Remote wipe.** The owner can sign out a lost client from Settings → Devices
+(`POST /api/account/devices/:id/wipe { eraseFiles }`, see api.md). The token
+dies at once. The first request that client makes afterwards, with any bearer
+route, answers `401 { code: "DEVICE_WIPE_REQUESTED", eraseFiles }` exactly
+once; every later one is the plain `401 UNAUTHORIZED`. On that code a client
+erases its local NeoCloud data (tokens, state, caches) and shows itself as
+signed out. `eraseFiles: true` (the owner chose "Sign out and erase NeoCloud
+files on that device") additionally deletes the synced files; the lite client
+does that only inside the sync folders it manages, never follows symlinks out
+of them and never touches the folder itself or anything beyond it. A device
+that never reconnects never wipes.
+
 Unknown or already used device codes also answer `410 EXPIRED_TOKEN`. The
 web app's `GET`/`POST /api/account/devices/authorize/:userCode` answer `404
 NOT_FOUND` for an unknown, expired or already decided code.

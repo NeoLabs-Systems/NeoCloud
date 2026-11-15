@@ -20,7 +20,7 @@ class AppRoute {
   /// page the app remembers.
   static const String signSection = 'sign';
 
-  static const Set<String> sections = <String>{'files', 'photos', 'review', 'shared', 'signing', 'recent', 'favorites', 'trash', 'settings', 'admin'};
+  static const Set<String> sections = <String>{'files', 'photos', 'review', 'shared', 'signing', 'recent', 'favorites', 'activity', 'trash', 'settings', 'admin'};
 
   final String section;
 

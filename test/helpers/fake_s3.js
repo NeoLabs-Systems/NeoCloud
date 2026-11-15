@@ -74,16 +74,29 @@ function createFakeS3() {
       if (req.method === 'HEAD') return buckets.has(bucket) ? send(res, 200) : send(res, 404);
       if (req.method === 'GET' && q.get('list-type') === '2') {
         const prefix = q.get('prefix') || '';
-        const all = [...objects.keys()].filter((k) => k.startsWith(`${bucket}/${prefix}`)).sort();
+        let all = [...objects.keys()].filter((k) => k.startsWith(`${bucket}/${prefix}`)).sort();
+        // With a delimiter, deeper keys collapse into CommonPrefixes (folders).
+        const folders = new Set();
+        const delimiter = q.get('delimiter');
+        if (delimiter) {
+          all = all.filter((k) => {
+            const rest = k.slice(bucket.length + 1 + prefix.length);
+            const cut = rest.indexOf(delimiter);
+            if (cut < 0) return true;
+            folders.add(prefix + rest.slice(0, cut + 1));
+            return false;
+          });
+        }
+        const commonPrefixes = [...folders].map((p) => `<CommonPrefixes><Prefix>${escapeXml(p)}</Prefix></CommonPrefixes>`).join('');
         const start = Number(q.get('continuation-token') || 0);
         const max = 1000;
         const page = all.slice(start, start + max);
         const truncated = start + max < all.length;
         const contents = page.map((k) => {
           const o = objects.get(k);
-          return `<Contents><Key>${escapeXml(k.slice(bucket.length + 1))}</Key><Size>${o.body.length}</Size><StorageClass>${o.storageClass}</StorageClass></Contents>`;
+          return `<Contents><Key>${escapeXml(k.slice(bucket.length + 1))}</Key><Size>${o.body.length}</Size><LastModified>2026-01-02T03:04:05.000Z</LastModified><StorageClass>${o.storageClass}</StorageClass></Contents>`;
         }).join('');
-        return send(res, 200, `<ListBucketResult><Name>${bucket}</Name><Prefix>${escapeXml(prefix)}</Prefix><KeyCount>${page.length}</KeyCount><IsTruncated>${truncated}</IsTruncated>${truncated ? `<NextContinuationToken>${start + max}</NextContinuationToken>` : ''}${contents}</ListBucketResult>`);
+        return send(res, 200, `<ListBucketResult><Name>${bucket}</Name><Prefix>${escapeXml(prefix)}</Prefix><KeyCount>${page.length}</KeyCount><IsTruncated>${truncated}</IsTruncated>${truncated ? `<NextContinuationToken>${start + max}</NextContinuationToken>` : ''}${contents}${commonPrefixes}</ListBucketResult>`);
       }
       if (req.method === 'POST' && q.has('delete')) {
         for (const match of body.toString().matchAll(/<Key>([^<]*)<\/Key>/g)) objects.delete(`${bucket}/${match[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')}`);
@@ -155,7 +168,7 @@ function createFakeS3() {
     const object = objects.get(id);
     if (req.method === 'HEAD') {
       if (!object) return send(res, 404);
-      const headers = { 'content-length': object.body.length };
+      const headers = { 'content-length': object.body.length, 'last-modified': 'Fri, 02 Jan 2026 03:04:05 GMT' };
       if (object.storageClass !== 'STANDARD') headers['x-amz-storage-class'] = object.storageClass;
       if (object.restore === 'ongoing') headers['x-amz-restore'] = 'ongoing-request="true"';
       if (object.restore === 'available') headers['x-amz-restore'] = 'ongoing-request="false", expiry-date="Fri, 21 Dec 2040 00:00:00 GMT"';
@@ -165,6 +178,12 @@ function createFakeS3() {
     if (req.method === 'GET') {
       if (!object) return error(res, 404, 'NoSuchKey');
       if (!readable(object)) return error(res, 403, 'InvalidObjectState', "The operation is not valid for the object's storage class");
+      const asked = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
+      if (asked) {
+        const part = object.body.subarray(Number(asked[1]), Number(asked[2]) + 1);
+        res.writeHead(206, { 'content-type': 'application/octet-stream', 'content-length': part.length, 'content-range': `bytes ${asked[1]}-${asked[2]}/${object.body.length}` });
+        return res.end(part);
+      }
       res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': object.body.length });
       return res.end(object.body);
     }

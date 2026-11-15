@@ -20,6 +20,11 @@
 
   let currentFolderId = '';
   let received = 0;
+  // Bytes the link can still take (null: no limit), from the last answer.
+  let bytesLeft = null;
+  let sharedBy = '';
+  // True on an upload-only link: no listing to refresh after an upload.
+  let inbox = false;
 
   function formatBytes(bytes) {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -127,23 +132,43 @@
     return row;
   }
 
-  // Upload-only: no listing, just the drop zone and what arrived.
+  function limitsText(share) {
+    const parts = [];
+    if (share.uploadBytesLeft !== null && share.uploadBytesLeft !== undefined) {
+      parts.push(`Room for ${formatBytes(share.uploadBytesLeft)} more`);
+    }
+    if (share.expiresAt) parts.push(`This link works until ${localTime(share.expiresAt)}`);
+    return parts.join(' · ');
+  }
+
+  // Upload-only (a file request): no listing, just the drop zone and what
+  // arrived.
   function renderInbox(data) {
     show('folder');
+    inbox = true;
+    bytesLeft = data.share.uploadBytesLeft ?? null;
+    sharedBy = data.share.sharedBy || '';
     $('[data-eyebrow]').textContent = 'Send files';
     $('[data-title]').textContent = data.node.name;
-    renderShare(data.share, '');
+    renderShare({ ...data.share, expiresAt: null }, '');
     $('[data-folder-head]').hidden = true;
     $('[data-rows]').hidden = true;
-    $('[data-drop-text]').textContent = data.share.sharedBy
-      ? `Drop files here to send them to ${data.share.sharedBy}. You won’t see what is already in the folder.`
-      : 'Drop files here to send them. You won’t see what is already in the folder.';
+    $('[data-drop-title]').textContent = 'Drag files here';
+    $('[data-drop-text]').textContent = 'or choose them from your device. You can send as many as you like. You won’t see what is already in the folder.';
+    const limits = $('[data-limits]');
+    limits.textContent = limitsText(data.share);
+    limits.hidden = !limits.textContent;
     $('[data-drop]').hidden = false;
   }
 
   function renderFolder(data) {
     show('folder');
+    inbox = false;
+    bytesLeft = data.share.uploadBytesLeft ?? null;
     $('[data-folder-head]').hidden = false;
+    $('[data-limits]').hidden = true;
+    $('[data-drop-title]').textContent = 'Drop files here';
+    $('[data-drop-text]').textContent = 'Drop files here to upload them into this folder.';
     $('[data-rows]').hidden = false;
     const root = data.path[0];
     $('[data-title]').textContent = root ? root.name : data.node.name;
@@ -228,41 +253,83 @@
     return `${Math.ceil(value / 60)} minutes`;
   }
 
+  function showThanks(sent, failed) {
+    const thanks = $('[data-thanks]');
+    thanks.hidden = sent === 0;
+    if (sent === 0) return;
+    const files = `${sent} file${sent === 1 ? ' was' : 's were'}`;
+    const recipient = sharedBy ? ` to ${sharedBy}` : '';
+    $('[data-thanks-text]').textContent = `${files} sent${recipient}.${failed ? ` ${failed} could not be sent.` : ''}`;
+  }
+
+  async function uploadOne(file, line) {
+    if (bytesLeft !== null && file.size > bytesLeft) {
+      line.className = 'failed';
+      line.textContent = `${file.name} · too large, this link has room for ${formatBytes(bytesLeft)}`;
+      return false;
+    }
+    const query = new URLSearchParams({ name: file.name });
+    if (currentFolderId) query.set('folderId', currentFolderId);
+    const res = await fetch(`${api}/upload?${query}`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: file,
+    }).catch(() => null);
+    if (res && res.ok) {
+      const node = await res.json();
+      line.className = 'ok';
+      line.textContent = `${node.name} · ${formatBytes(node.size)} · sent`;
+      if (bytesLeft !== null) bytesLeft = Math.max(0, bytesLeft - node.size);
+      return true;
+    }
+    const data = res ? await res.json().catch(() => ({})) : {};
+    line.className = 'failed';
+    line.textContent = `${file.name} · ${data.error || 'upload failed'}`;
+    return false;
+  }
+
   async function uploadFiles(files) {
     const list = $('[data-uploads]');
+    $('[data-thanks]').hidden = true;
+    let sent = 0;
+    let failed = 0;
     for (const file of files) {
       const line = document.createElement('li');
-      line.textContent = `${file.name} · uploading…`;
+      line.textContent = `${file.name} · sending…`;
       list.append(line);
-      const query = new URLSearchParams({ name: file.name });
-      if (currentFolderId) query.set('folderId', currentFolderId);
-      const res = await fetch(`${api}/upload?${query}`, {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: file,
-      }).catch(() => null);
-      if (res && res.ok) {
-        const node = await res.json();
-        line.className = 'ok';
-        line.textContent = `${node.name} · ${formatBytes(node.size)} · uploaded`;
-        received += 1;
-        const receipt = $('[data-receipt]');
-        receipt.textContent = `${received} file${received === 1 ? '' : 's'} received`;
-        receipt.hidden = false;
-      } else {
-        const data = res ? await res.json().catch(() => ({})) : {};
-        line.className = 'failed';
-        line.textContent = `${file.name} · ${data.error || 'upload failed'}`;
-      }
+      if (await uploadOne(file, line)) sent += 1;
+      else failed += 1;
     }
-    load(currentFolderId);
+    received += sent;
+    const receipt = $('[data-receipt]');
+    receipt.textContent = `${received} file${received === 1 ? '' : 's'} received so far`;
+    receipt.hidden = received === 0;
+    showThanks(sent, failed);
+    if (inbox) refreshLimits();
+    else load(currentFolderId);
+  }
+
+  // The page's numbers (room left, expiry) after uploads; the visible
+  // result of the batch stays as it is.
+  async function refreshLimits() {
+    const res = await fetch(api, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).catch(() => null);
+    const data = res && res.ok ? await res.json().catch(() => null) : null;
+    if (!data) return;
+    bytesLeft = data.share.uploadBytesLeft ?? null;
+    const limits = $('[data-limits]');
+    limits.textContent = limitsText(data.share);
+    limits.hidden = !limits.textContent;
   }
 
   function wireUploads() {
     const drop = $('[data-drop]');
     const picker = $('[data-picker]');
     $('[data-pick]').addEventListener('click', () => picker.click());
+    $('[data-more]').addEventListener('click', () => {
+      $('[data-thanks]').hidden = true;
+      picker.click();
+    });
     picker.addEventListener('change', () => {
       uploadFiles([...picker.files]);
       picker.value = '';

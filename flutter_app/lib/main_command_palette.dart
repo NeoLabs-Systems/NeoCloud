@@ -147,6 +147,7 @@ class _CommandPaletteState extends State<_CommandPalette> {
       _PaletteCommand(AppSection.signing.icon, appStrings.signingNav, () => _go(AppSection.signing)),
       _PaletteCommand(Icons.star_outline_rounded, appStrings.filesNavFavorites, () => _go(AppSection.favorites)),
       _PaletteCommand(Icons.schedule_rounded, appStrings.navRecent, () => _go(AppSection.recent)),
+      _PaletteCommand(AppSection.activity.icon, appStrings.activityNav, () => _go(AppSection.activity)),
       _PaletteCommand(Icons.delete_outline_rounded, appStrings.navTrash, () => _go(AppSection.trash)),
       if (controller.isAdmin) _PaletteCommand(Icons.admin_panel_settings_outlined, appStrings.navAdmin, () => _go(AppSection.admin)),
       if (controller.isAdmin)
