@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
@@ -10,7 +11,7 @@ class _WebNotice implements BrowserNotice {
   const _WebNotice();
 
   @override
-  bool get supported => globalContext.hasProperty('Notification'.toJS).toDart;
+  bool get supported => globalContext.has('Notification');
 
   @override
   bool get granted => supported && web.Notification.permission == 'granted';
