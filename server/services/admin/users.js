@@ -18,6 +18,10 @@ function serializeUser(row) {
     username: row.username,
     displayName: row.display_name,
     email: row.email,
+    // Confirmed through a mail link, or vouched for by an admin; and still
+    // waiting for the sign-up link to be opened (can't sign in yet).
+    emailVerified: Boolean(row.email_verified_at),
+    emailConfirmationPending: Boolean(row.awaiting_confirmation),
     isAdmin: Number(row.is_admin) === 1,
     disabled: Boolean(row.disabled_at),
     disabledAt: row.disabled_at,
@@ -32,10 +36,17 @@ function serializeUser(row) {
   };
 }
 
+// Whether the account still owes its sign-up confirmation (a column of a users query).
+const AWAITING_CONFIRMATION = `EXISTS (
+  SELECT 1 FROM user_email_tokens t
+  WHERE t.user_id = u.id AND t.type = 'signup_confirmation' AND t.consumed_at IS NULL
+) AS awaiting_confirmation`;
+
 function listUsers(search) {
   const pattern = search ? `%${search}%` : null;
   const rows = db.prepare(`
-    SELECT u.*, (SELECT COUNT(*) FROM nodes n WHERE n.user_id = u.id AND n.type = 'file') AS file_count
+    SELECT u.*, (SELECT COUNT(*) FROM nodes n WHERE n.user_id = u.id AND n.type = 'file') AS file_count,
+           ${AWAITING_CONFIRMATION}
     FROM users u
     WHERE ? IS NULL OR u.username LIKE ? OR u.email LIKE ?
     ORDER BY u.created_at DESC
@@ -45,7 +56,7 @@ function listUsers(search) {
 }
 
 function getUserRow(userId) {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  const row = db.prepare(`SELECT u.*, ${AWAITING_CONFIRMATION} FROM users u WHERE u.id = ?`).get(userId);
   if (!row) throw httpError(404, 'User not found', 'NOT_FOUND');
   return row;
 }

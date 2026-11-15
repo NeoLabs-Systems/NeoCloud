@@ -11580,6 +11580,1206 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Settings'**
   String get signingTabSettings;
+
+  /// No description provided for @emailResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get emailResetTitle;
+
+  /// No description provided for @emailResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your username or account email. NeoCloud will send a reset link if it can match the account.'**
+  String get emailResetBody;
+
+  /// No description provided for @emailSendLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link'**
+  String get emailSendLink;
+
+  /// No description provided for @emailResetLinkSent.
+  ///
+  /// In en, this message translates to:
+  /// **'If that account has a confirmed email, NeoCloud will send a password reset link.'**
+  String get emailResetLinkSent;
+
+  /// No description provided for @emailCheckInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a confirmation link to {email}. Confirm your address, then sign in.'**
+  String emailCheckInbox(String email);
+
+  /// No description provided for @emailCheckInboxNoAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email to confirm your NeoCloud account before signing in.'**
+  String get emailCheckInboxNoAddress;
+
+  /// No description provided for @emailResendConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend confirmation email'**
+  String get emailResendConfirmation;
+
+  /// No description provided for @emailConfirmationResent.
+  ///
+  /// In en, this message translates to:
+  /// **'If that account is waiting for confirmation, we sent a new link.'**
+  String get emailConfirmationResent;
+
+  /// No description provided for @emailNotConfirmedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email address before signing in. We sent you a link when you registered.'**
+  String get emailNotConfirmedError;
+
+  /// No description provided for @emailSendFailedError.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t send the confirmation email. Please try again later.'**
+  String get emailSendFailedError;
+
+  /// No description provided for @emailVerifiedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get emailVerifiedLabel;
+
+  /// No description provided for @emailUnverifiedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get emailUnverifiedLabel;
+
+  /// No description provided for @emailCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current email: {email}'**
+  String emailCurrent(String email);
+
+  /// No description provided for @emailNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No email address yet.'**
+  String get emailNone;
+
+  /// No description provided for @emailPasswordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Required to add or change your account email.'**
+  String get emailPasswordHelper;
+
+  /// No description provided for @emailEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your current password to save email changes.'**
+  String get emailEnterPassword;
+
+  /// No description provided for @emailSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save email'**
+  String get emailSave;
+
+  /// No description provided for @emailSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Email saved.'**
+  String get emailSaved;
+
+  /// No description provided for @emailPending.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a confirmation link to {email}. Your current address stays in use until you confirm.'**
+  String emailPending(String email);
+
+  /// No description provided for @emailConfirmationSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation email sent.'**
+  String get emailConfirmationSent;
+
+  /// No description provided for @emailAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailAdminTitle;
+
+  /// No description provided for @emailAdminDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The mail account NeoCloud sends sign-up confirmations, password resets and account alerts from.'**
+  String get emailAdminDescription;
+
+  /// No description provided for @emailReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get emailReady;
+
+  /// No description provided for @emailNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get emailNotConfigured;
+
+  /// No description provided for @emailMissingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Account email is off until these are set: {fields}.'**
+  String emailMissingNote(String fields);
+
+  /// No description provided for @emailSenderAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Sender address'**
+  String get emailSenderAddress;
+
+  /// No description provided for @emailSenderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud <no-reply@example.com>'**
+  String get emailSenderHint;
+
+  /// No description provided for @emailSmtpHost.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP host'**
+  String get emailSmtpHost;
+
+  /// No description provided for @emailSmtpPort.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP port'**
+  String get emailSmtpPort;
+
+  /// No description provided for @emailSmtpUser.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP username'**
+  String get emailSmtpUser;
+
+  /// No description provided for @emailSmtpPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP password'**
+  String get emailSmtpPassword;
+
+  /// No description provided for @emailReplyTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply-To address'**
+  String get emailReplyTo;
+
+  /// No description provided for @emailBrandName.
+  ///
+  /// In en, this message translates to:
+  /// **'Brand name'**
+  String get emailBrandName;
+
+  /// No description provided for @emailPublicUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Public URL override'**
+  String get emailPublicUrl;
+
+  /// No description provided for @emailPublicUrlHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'For links in emails. Blank uses the server public URL.'**
+  String get emailPublicUrlHelper;
+
+  /// No description provided for @emailSupportUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Support URL'**
+  String get emailSupportUrl;
+
+  /// No description provided for @emailLinkLifetime.
+  ///
+  /// In en, this message translates to:
+  /// **'Link lifetime (hours)'**
+  String get emailLinkLifetime;
+
+  /// No description provided for @emailLinkLifetimeHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'How long confirmation links stay valid.'**
+  String get emailLinkLifetimeHelper;
+
+  /// No description provided for @emailValueStored.
+  ///
+  /// In en, this message translates to:
+  /// **'A value is stored.'**
+  String get emailValueStored;
+
+  /// No description provided for @emailNothingStored.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing stored yet.'**
+  String get emailNothingStored;
+
+  /// No description provided for @emailLeaveBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank to keep the stored value'**
+  String get emailLeaveBlank;
+
+  /// No description provided for @emailImplicitTls.
+  ///
+  /// In en, this message translates to:
+  /// **'Implicit TLS'**
+  String get emailImplicitTls;
+
+  /// No description provided for @emailImplicitTlsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Use TLS from the start of the connection, usually on port 465.'**
+  String get emailImplicitTlsHelper;
+
+  /// No description provided for @emailRequireStarttls.
+  ///
+  /// In en, this message translates to:
+  /// **'Require STARTTLS'**
+  String get emailRequireStarttls;
+
+  /// No description provided for @emailRequireStarttlsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuse to send unless the connection upgrades to TLS.'**
+  String get emailRequireStarttlsHelper;
+
+  /// No description provided for @emailRejectInvalidTls.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject invalid TLS certificates'**
+  String get emailRejectInvalidTls;
+
+  /// No description provided for @emailRejectInvalidTlsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off only for a mail server with a self-signed certificate.'**
+  String get emailRejectInvalidTlsHelper;
+
+  /// No description provided for @emailConfirmSignups.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new sign-ups'**
+  String get emailConfirmSignups;
+
+  /// No description provided for @emailConfirmSignupsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'New accounts confirm their email address before signing in.'**
+  String get emailConfirmSignupsHelper;
+
+  /// No description provided for @emailConfirmChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm email changes'**
+  String get emailConfirmChanges;
+
+  /// No description provided for @emailConfirmChangesHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'A changed email address is confirmed before it is used.'**
+  String get emailConfirmChangesHelper;
+
+  /// No description provided for @emailNotifyLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'New sign-in alerts'**
+  String get emailNotifyLogin;
+
+  /// No description provided for @emailNotifyLoginHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Email account owners about sign-ins from a new device.'**
+  String get emailNotifyLoginHelper;
+
+  /// No description provided for @emailNotifyChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Account change alerts'**
+  String get emailNotifyChanges;
+
+  /// No description provided for @emailNotifyChangesHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Email account owners when their account details change.'**
+  String get emailNotifyChangesHelper;
+
+  /// No description provided for @emailSaveSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Save email settings'**
+  String get emailSaveSettings;
+
+  /// No description provided for @emailSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Email settings saved.'**
+  String get emailSettingsSaved;
+
+  /// No description provided for @emailRemovePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove SMTP password'**
+  String get emailRemovePassword;
+
+  /// No description provided for @emailRemovePasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the SMTP password?'**
+  String get emailRemovePasswordTitle;
+
+  /// No description provided for @emailRemovePasswordBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mail servers that need a password will refuse to send until a new one is saved. Other changes in this form are saved too.'**
+  String get emailRemovePasswordBody;
+
+  /// No description provided for @emailRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get emailRemove;
+
+  /// No description provided for @emailPasswordRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP password removed.'**
+  String get emailPasswordRemoved;
+
+  /// No description provided for @emailPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'SMTP port must be a whole number from 1 to 65535.'**
+  String get emailPortInvalid;
+
+  /// No description provided for @emailLifetimeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Link lifetime must be from 1 to 8760 hours.'**
+  String get emailLifetimeInvalid;
+
+  /// No description provided for @emailUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be an http or https address.'**
+  String emailUrlInvalid(String field);
+
+  /// No description provided for @emailTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test email'**
+  String get emailTestTitle;
+
+  /// No description provided for @emailTestHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the saved settings. Save your changes first.'**
+  String get emailTestHelper;
+
+  /// No description provided for @emailTestTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get emailTestTo;
+
+  /// No description provided for @emailTestSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send test email'**
+  String get emailTestSend;
+
+  /// No description provided for @emailTestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test email sent to {to}.'**
+  String emailTestSent(String to);
+
+  /// No description provided for @emailTestSentGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Test email sent.'**
+  String get emailTestSentGeneric;
+
+  /// No description provided for @emailTestNeedsAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address to send the test to.'**
+  String get emailTestNeedsAddress;
+
+  /// No description provided for @emailUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Email unverified'**
+  String get emailUnverified;
+
+  /// No description provided for @emailMarkVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark email as verified'**
+  String get emailMarkVerified;
+
+  /// No description provided for @emailMarkedVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'{user}\'s email is marked as verified.'**
+  String emailMarkedVerified(String user);
+
+  /// No description provided for @signingTabMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My documents'**
+  String get signingTabMine;
+
+  /// No description provided for @signingTabTodo.
+  ///
+  /// In en, this message translates to:
+  /// **'To sign'**
+  String get signingTabTodo;
+
+  /// No description provided for @signingTabDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed by me'**
+  String get signingTabDone;
+
+  /// No description provided for @signingInboxEmptyTodoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to sign right now'**
+  String get signingInboxEmptyTodoTitle;
+
+  /// No description provided for @signingInboxEmptyTodoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When someone asks you to sign a document, it shows up here. This works for requests sent to your confirmed email address.'**
+  String get signingInboxEmptyTodoBody;
+
+  /// No description provided for @signingInboxEmptyDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing signed yet'**
+  String get signingInboxEmptyDoneTitle;
+
+  /// No description provided for @signingInboxEmptyDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents you sign with this account appear here.'**
+  String get signingInboxEmptyDoneBody;
+
+  /// No description provided for @signingInboxFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From {name}'**
+  String signingInboxFrom(String name);
+
+  /// No description provided for @signingInboxReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to sign'**
+  String get signingInboxReady;
+
+  /// No description provided for @signingInboxWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for others'**
+  String get signingInboxWaiting;
+
+  /// No description provided for @signingInboxOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get signingInboxOpen;
+
+  /// No description provided for @signingInboxSignedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed {date}'**
+  String signingInboxSignedOn(String date);
+
+  /// No description provided for @signingInboxOpenSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Open saved copy'**
+  String get signingInboxOpenSaved;
+
+  /// No description provided for @signingInboxOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this request. Please try again.'**
+  String get signingInboxOpenFailed;
+
+  /// No description provided for @signingMailInvitationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The invitation goes to this address'**
+  String get signingMailInvitationHint;
+
+  /// No description provided for @signingMailSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invitation emails'**
+  String get signingMailSend;
+
+  /// No description provided for @signingMailSendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone with an email address gets their link by mail.'**
+  String get signingMailSendHint;
+
+  /// No description provided for @signingMailSendNoAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an email address above to send the invitation by mail.'**
+  String get signingMailSendNoAddress;
+
+  /// No description provided for @signingMailMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal message (optional)'**
+  String get signingMailMessage;
+
+  /// No description provided for @signingMailMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown in the invitation email'**
+  String get signingMailMessageHint;
+
+  /// No description provided for @signingMailReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind automatically'**
+  String get signingMailReminders;
+
+  /// No description provided for @signingMailRemindOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get signingMailRemindOff;
+
+  /// No description provided for @signingMailRemindEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {days} days'**
+  String signingMailRemindEvery(int days);
+
+  /// No description provided for @signingThisIsMe.
+  ///
+  /// In en, this message translates to:
+  /// **'This is me'**
+  String get signingThisIsMe;
+
+  /// No description provided for @signingThisIsMeOn.
+  ///
+  /// In en, this message translates to:
+  /// **'This is you'**
+  String get signingThisIsMeOn;
+
+  /// No description provided for @signingAddMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Add me as a party'**
+  String get signingAddMe;
+
+  /// No description provided for @signingSignNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign yourself now'**
+  String get signingSignNow;
+
+  /// No description provided for @signingSignNowFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open your signing page. You can try again from the progress page.'**
+  String get signingSignNowFailed;
+
+  /// No description provided for @signingMailSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations are on their way'**
+  String get signingMailSentTitle;
+
+  /// No description provided for @signingMailSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 invitation email is on its way} other{{count} invitation emails are on their way}}'**
+  String signingMailSummary(int count);
+
+  /// No description provided for @signingMailSomeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Some emails couldn\'t be sent. Copy their link below and share it yourself.'**
+  String get signingMailSomeFailed;
+
+  /// No description provided for @signingDeliverySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sent'**
+  String get signingDeliverySent;
+
+  /// No description provided for @signingDeliveryQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get signingDeliveryQueued;
+
+  /// No description provided for @signingDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Email failed'**
+  String get signingDeliveryFailed;
+
+  /// No description provided for @signingDeliveryNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'No email address'**
+  String get signingDeliveryNoEmail;
+
+  /// No description provided for @signingDeliverySkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Not emailed'**
+  String get signingDeliverySkipped;
+
+  /// No description provided for @signingDeliveryFailedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The invitation could not be sent. Copy the link instead.'**
+  String get signingDeliveryFailedHelp;
+
+  /// No description provided for @signingDeliveryLastSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sent {date}'**
+  String signingDeliveryLastSent(String date);
+
+  /// No description provided for @signingRemindersSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders sent: {count}'**
+  String signingRemindersSent(int count);
+
+  /// No description provided for @signingNextReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Next automatic reminder {date}'**
+  String signingNextReminder(String date);
+
+  /// No description provided for @signingAutoRemind.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic reminders every {days} days'**
+  String signingAutoRemind(int days);
+
+  /// No description provided for @signingRemindSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reminder'**
+  String get signingRemindSend;
+
+  /// No description provided for @signingRemindSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder sent to {name}'**
+  String signingRemindSent(String name);
+
+  /// No description provided for @signingRemindWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Next reminder in {time}'**
+  String signingRemindWait(String time);
+
+  /// No description provided for @signingRemindNotActive.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can\'t sign right now, so there is nothing to remind.'**
+  String signingRemindNotActive(String name);
+
+  /// No description provided for @signingRemindNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no email address for {name}.'**
+  String signingRemindNoEmail(String name);
+
+  /// No description provided for @signingRemindNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'This server can\'t send email right now.'**
+  String get signingRemindNotConfigured;
+
+  /// No description provided for @signingRemindFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The reminder couldn\'t be sent. Please try again later.'**
+  String get signingRemindFailed;
+
+  /// No description provided for @signingRemindOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. The reminder wasn\'t sent.'**
+  String get signingRemindOffline;
+
+  /// No description provided for @signingRemindAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind everyone who hasn\'t signed'**
+  String get signingRemindAll;
+
+  /// No description provided for @signingRemindAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No reminders sent.} =1{1 reminder sent.} other{{count} reminders sent.}}'**
+  String signingRemindAllDone(int count);
+
+  /// No description provided for @signingRemindAllSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person could not be reminded yet.} other{{count} people could not be reminded yet.}}'**
+  String signingRemindAllSkipped(int count);
+
+  /// No description provided for @signingMailFailedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Mail delivery failed for 1 party} other{Mail delivery failed for {count} parties}}'**
+  String signingMailFailedBanner(int count);
+
+  /// No description provided for @signingMailResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again'**
+  String get signingMailResend;
+
+  /// No description provided for @signingMailResent.
+  ///
+  /// In en, this message translates to:
+  /// **'The invitation was sent again.'**
+  String get signingMailResent;
+
+  /// No description provided for @signingMailCopies.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed. Copies were emailed to {emails}.'**
+  String signingMailCopies(String emails);
+
+  /// No description provided for @signingClaimTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re signed in as {name}'**
+  String signingClaimTitle(String name);
+
+  /// No description provided for @signingClaimBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your saved details to sign faster.'**
+  String get signingClaimBody;
+
+  /// No description provided for @signingClaimUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my details'**
+  String get signingClaimUse;
+
+  /// No description provided for @signingClaimSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get signingClaimSkip;
+
+  /// No description provided for @signingClaimFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your saved details couldn\'t be loaded. You can fill in the form by hand.'**
+  String get signingClaimFailed;
+
+  /// No description provided for @signingClaimFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 field filled in from your profile. You can still change it.} other{{count} fields filled in from your profile. You can still change them.}}'**
+  String signingClaimFilled(int count);
+
+  /// No description provided for @signingClaimNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'There was nothing to fill in yet. Add details in Settings under Signing profile.'**
+  String get signingClaimNothing;
+
+  /// No description provided for @signingSignInHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Have an account? Sign in to fill this in faster'**
+  String get signingSignInHint;
+
+  /// No description provided for @signingFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'From your profile'**
+  String get signingFromProfile;
+
+  /// No description provided for @signingReviewFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is filled in. Review and finish.'**
+  String get signingReviewFromProfile;
+
+  /// No description provided for @signingSavedCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy was saved to Signed documents in your cloud.'**
+  String get signingSavedCopy;
+
+  /// No description provided for @signingSavedCopyOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get signingSavedCopyOpen;
+
+  /// No description provided for @signingOpenNeoCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Open NeoCloud'**
+  String get signingOpenNeoCloud;
+
+  /// No description provided for @signingProfilePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing profile'**
+  String get signingProfilePage;
+
+  /// No description provided for @signingProfilePageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Details and signatures NeoCloud fills in when you sign, and where signed copies go.'**
+  String get signingProfilePageDescription;
+
+  /// No description provided for @signingProfileDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details'**
+  String get signingProfileDetails;
+
+  /// No description provided for @signingProfileDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Used to fill in name, email and phone fields.'**
+  String get signingProfileDetailsHint;
+
+  /// No description provided for @signingProfilePhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get signingProfilePhone;
+
+  /// No description provided for @signingProfileSignatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Signatures'**
+  String get signingProfileSignatures;
+
+  /// No description provided for @signingProfileSignaturesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept encrypted on your server. The default one is used first.'**
+  String get signingProfileSignaturesHint;
+
+  /// No description provided for @signingProfileInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Initials'**
+  String get signingProfileInitials;
+
+  /// No description provided for @signingProfileInitialsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For fields that ask for your initials.'**
+  String get signingProfileInitialsHint;
+
+  /// No description provided for @signingProfileAddSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a signature'**
+  String get signingProfileAddSignature;
+
+  /// No description provided for @signingProfileAddInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Add initials'**
+  String get signingProfileAddInitials;
+
+  /// No description provided for @signingProfileLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep up to {count}.'**
+  String signingProfileLimit(int count);
+
+  /// No description provided for @signingProfileUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get signingProfileUnnamed;
+
+  /// No description provided for @signingProfileDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get signingProfileDefault;
+
+  /// No description provided for @signingProfileMakeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make default'**
+  String get signingProfileMakeDefault;
+
+  /// No description provided for @signingProfileRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get signingProfileRename;
+
+  /// No description provided for @signingProfileDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get signingProfileDelete;
+
+  /// No description provided for @signingProfileDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this picture?'**
+  String get signingProfileDeleteTitle;
+
+  /// No description provided for @signingProfileDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed from your profile. Documents you already signed keep theirs.'**
+  String get signingProfileDeleteBody;
+
+  /// No description provided for @signingProfileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get signingProfileLabel;
+
+  /// No description provided for @signingProfileValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get signingProfileValue;
+
+  /// No description provided for @signingProfilePresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved details'**
+  String get signingProfilePresets;
+
+  /// No description provided for @signingProfilePresetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text like your address or company, filled into matching fields.'**
+  String get signingProfilePresetsHint;
+
+  /// No description provided for @signingProfileAddDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a detail'**
+  String get signingProfileAddDetail;
+
+  /// No description provided for @signingProfileAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get signingProfileAddress;
+
+  /// No description provided for @signingProfileCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get signingProfileCompany;
+
+  /// No description provided for @signingProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get signingProfileTitle;
+
+  /// No description provided for @signingProfileBehavior.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens when you sign'**
+  String get signingProfileBehavior;
+
+  /// No description provided for @signingProfileAutoFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in my details automatically'**
+  String get signingProfileAutoFill;
+
+  /// No description provided for @signingProfileAutoFillHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still change everything before you finish.'**
+  String get signingProfileAutoFillHint;
+
+  /// No description provided for @signingProfileAutoSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save signed documents to my cloud'**
+  String get signingProfileAutoSave;
+
+  /// No description provided for @signingProfileAutoSaveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy of each finished document is filed for you.'**
+  String get signingProfileAutoSaveHint;
+
+  /// No description provided for @signingProfileFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder'**
+  String get signingProfileFolder;
+
+  /// No description provided for @signingProfileFolderDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed documents'**
+  String get signingProfileFolderDefault;
+
+  /// No description provided for @signingProfileFolderChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get signingProfileFolderChange;
+
+  /// No description provided for @signingProfileFolderPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder for signed documents'**
+  String get signingProfileFolderPick;
+
+  /// No description provided for @signingProfileFolderHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this folder'**
+  String get signingProfileFolderHere;
+
+  /// No description provided for @signingProfileNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'Email me when someone signs'**
+  String get signingProfileNotify;
+
+  /// No description provided for @signingProfileNotifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One mail for every signature on your documents.'**
+  String get signingProfileNotifyHint;
+
+  /// No description provided for @signingProfileUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes.'**
+  String get signingProfileUnsaved;
+
+  /// No description provided for @signingProfileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'All changes are saved.'**
+  String get signingProfileSaved;
+
+  /// No description provided for @signingRemindLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has already been reminded as often as possible.'**
+  String signingRemindLimit(String name);
+
+  /// No description provided for @signingDeliveryWaitsTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Email follows when it is their turn'**
+  String get signingDeliveryWaitsTurn;
+
+  /// No description provided for @signingMailNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email address in Settings before sending requests by email. You can still copy the links.'**
+  String get signingMailNotVerified;
+
+  /// No description provided for @signingMailQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached today\'s limit for signing emails, or this address has received enough for today. Try again tomorrow, or copy the links and send them yourself.'**
+  String get signingMailQuota;
+
+  /// No description provided for @signingDeliveryErrorUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The mail server could not be reached.'**
+  String get signingDeliveryErrorUnreachable;
+
+  /// No description provided for @signingDeliveryErrorRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The mail server refused the message.'**
+  String get signingDeliveryErrorRejected;
+
+  /// No description provided for @signingDeliveryErrorInvalidAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'The address was not accepted.'**
+  String get signingDeliveryErrorInvalidAddress;
+
+  /// No description provided for @signingDeliveryErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many emails were sent just now.'**
+  String get signingDeliveryErrorRateLimited;
+
+  /// No description provided for @signingDeliveryErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'The email could not be sent.'**
+  String get signingDeliveryErrorUnknown;
+
+  /// No description provided for @emailSigningMails.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing emails'**
+  String get emailSigningMails;
+
+  /// No description provided for @emailSigningMailsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations, reminders and completion emails for signing requests. Switch off to stop all of them at once.'**
+  String get emailSigningMailsHelper;
+
+  /// No description provided for @signingClaimWillFill.
+  ///
+  /// In en, this message translates to:
+  /// **'These saved details will be filled in:'**
+  String get signingClaimWillFill;
+
+  /// No description provided for @signingClaimFillLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{field}: {value}'**
+  String signingClaimFillLine(String field, String value);
+
+  /// No description provided for @signingClaimFillSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'{field}: your saved signature'**
+  String signingClaimFillSignature(String field);
+
+  /// No description provided for @signingClaimFillMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String signingClaimFillMore(int count);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

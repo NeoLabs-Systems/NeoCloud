@@ -7,6 +7,7 @@ const { checkHealth } = require('../services/health');
 // Mount point → router module. Each router applies its own auth guard.
 const ROUTE_REGISTRY = [
   { basePath: '/api/auth', modulePath: '../routes/auth' },
+  { basePath: '/api/auth', modulePath: '../routes/auth_email' },
   { basePath: '/api/account', modulePath: '../routes/account' },
   { basePath: '/api/settings', modulePath: '../routes/settings' },
   { basePath: '/api/admin', modulePath: '../routes/admin' },
@@ -25,6 +26,10 @@ const ROUTE_REGISTRY = [
   { basePath: '/api/neorouter', modulePath: '../routes/neorouter' },
   { basePath: '/api/signing', modulePath: '../routes/signing' },
   { basePath: '/api/public/sign', modulePath: '../routes/public_signing' },
+  { basePath: '/api/account', modulePath: '../routes/connected_apps' },
+  { basePath: '/api/oauth', modulePath: '../routes/oauth_companion' },
+  { basePath: '/oauth', modulePath: '../routes/oauth' },
+  { basePath: '/api/v1', modulePath: '../routes/agent_api' },
 ];
 
 function registerApiRoutes(app) {

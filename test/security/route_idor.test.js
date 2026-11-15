@@ -17,17 +17,18 @@ const path = require('path');
 const { app, cleanup, registerUser, request, upload } = require('../helpers/app');
 const db = require('../../server/db/database');
 const { createDeviceToken } = require('../../server/services/devices/tokens');
-const { makePdf } = require('../helpers/signing');
+const { makePdf, makePng } = require('../helpers/signing');
 
 test.after(cleanup);
 
 const REGISTRY = [
-  ['/api/auth', 'auth'], ['/api/account', 'account'], ['/api/settings', 'settings'], ['/api/admin', 'admin'],
+  ['/api/auth', 'auth'], ['/api/auth', 'auth_email'], ['/api/account', 'account'], ['/api/settings', 'settings'], ['/api/admin', 'admin'],
   ['/api', 'files'], ['/api', 'transfers'], ['/api', 'members'], ['/api/sync', 'sync'], ['/api/devices', 'devices'],
   ['/api/storage', 'storage'], ['/api/shares', 'shares'], ['/api/public/shares', 'public_shares'],
   ['/api/vaults', 'vaults'], ['/api/imports', 'imports'], ['/api/ai', 'ai'], ['/api/neorouter', 'neorouter'],
   ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
   ['/api/photos', 'photos'],
+  ['/api/account', 'connected_apps'], ['/api/oauth', 'oauth_companion'], ['/oauth', 'oauth'], ['/api/v1', 'agent_api'],
 ];
 
 function registeredRoutes() {
@@ -104,6 +105,8 @@ test.before(async () => {
   const field = await owner.agent.put(`/api/signing/documents/${v.sign}/fields`)
     .send({ fields: [{ partyId: v.signParty, type: 'text', areas: [{ page: 0, x: 0.1, y: 0.1, w: 0.3, h: 0.05 }] }] }).expect(200);
   v.signField = field.body.fields[0].id;
+  v.signImage = (await owner.agent.post('/api/signing/profile/images?kind=signature&method=draw&label=Mine')
+    .set('Content-Type', 'image/png').send(await makePng()).expect(201)).body.id;
 });
 
 // How another account's ids go into each route. A string says why the route
@@ -124,6 +127,12 @@ const CLASSIFIED = {
   'POST /api/auth/qr-login/challenge/:id/claim': PUBLIC,
   'POST /api/auth/logout': OWN,
   'GET /api/auth/me': OWN,
+  'POST /api/auth/email/resend': PUBLIC,
+  'POST /api/auth/password/forgot': PUBLIC,
+  'GET /api/auth/email/confirm': PUBLIC,
+  'POST /api/auth/email/confirm': PUBLIC,
+  'GET /api/auth/password/reset': PUBLIC,
+  'POST /api/auth/password/reset': PUBLIC,
   'GET /api/account/devices/authorize/:userCode': 'device codes are approved by whoever is signed in',
   'POST /api/account/devices/authorize/:userCode': 'device codes are approved by whoever is signed in',
   'POST /api/account/qr-login/resolve': PUBLIC,
@@ -133,6 +142,8 @@ const CLASSIFIED = {
   'GET /api/account/usage': OWN,
   'PUT /api/account/display-name': OWN,
   'PUT /api/account/password': OWN,
+  'PUT /api/account/email': OWN,
+  'POST /api/account/email/resend': OWN,
   'POST /api/account/2fa/setup': OWN,
   'POST /api/account/2fa/enable': OWN,
   'POST /api/account/2fa/disable': OWN,
@@ -277,6 +288,19 @@ const CLASSIFIED = {
   'GET /api/signing/documents/:id/events': () => ['GET', `/api/signing/documents/${v.sign}/events`],
   'GET /api/signing/documents/:id/audit.json': () => ['GET', `/api/signing/documents/${v.sign}/audit.json`],
   'GET /api/signing/documents/:id/final': () => ['GET', `/api/signing/documents/${v.sign}/final`],
+  'POST /api/signing/documents/:id/parties/:partyId/remind': () => ['POST', `/api/signing/documents/${v.sign}/parties/${v.signParty}/remind`, {}],
+  'POST /api/signing/documents/:id/remind-all': () => ['POST', `/api/signing/documents/${v.sign}/remind-all`, {}],
+  'POST /api/signing/documents/:id/parties/:partyId/open-as-owner': () => ['POST', `/api/signing/documents/${v.sign}/parties/${v.signParty}/open-as-owner`, {}],
+  'GET /api/signing/profile': OWN,
+  'PUT /api/signing/profile': OWN,
+  'POST /api/signing/profile/images': OWN,
+  'GET /api/signing/profile/images/:id': () => ['GET', `/api/signing/profile/images/${v.signImage}`],
+  'PUT /api/signing/profile/images/:id': () => ['PUT', `/api/signing/profile/images/${v.signImage}`, { label: 'x' }],
+  'DELETE /api/signing/profile/images/:id': () => ['DELETE', `/api/signing/profile/images/${v.signImage}`],
+  'POST /api/signing/claim': PUBLIC,
+  'GET /api/signing/inbox': OWN,
+  'POST /api/signing/inbox/:partyId/open': () => ['POST', `/api/signing/inbox/${v.signParty}/open`, {}],
+  'GET /api/signing/inbox/:partyId/final': () => ['GET', `/api/signing/inbox/${v.signParty}/final`],
   'GET /api/signing/nodes/:nodeId/clean': () => ['GET', `/api/signing/nodes/${v.file}/clean`],
   'GET /api/public/sign/:token': PUBLIC,
   'GET /api/public/sign/:token/pdf': PUBLIC,
@@ -293,7 +317,27 @@ const CLASSIFIED = {
   'GET /api/neorouter/connect/:id': 'flows live in memory and are checked against the account (sign_in.status)',
   'PUT /api/neorouter/:scope/roles': OWN,
   'DELETE /api/neorouter/:scope': OWN,
+  'GET /api/account/connected-apps': OWN,
+  'DELETE /api/account/connected-apps/:id': 'app ids are per install, not per account; another account gets 404 (neoagent_oauth.test.js)',
+  'POST /api/oauth/companion/neoagent/bootstrap': PUBLIC,
+  'GET /oauth/sign-in': PUBLIC,
+  'POST /oauth/sign-in': OWN,
+  'GET /oauth/authorize': OWN,
+  'POST /oauth/authorize': OWN,
+  'POST /oauth/token': PUBLIC,
+  'POST /oauth/revoke': PUBLIC,
+  'GET /oauth/userinfo': OWN,
 };
+// The agent API takes only a connected app's access token, never a session;
+// another account's ids are tried with tokens in neoagent_oauth.test.js.
+const AGENT = 'connected-app token only; ids tried in neoagent_oauth.test.js';
+for (const route of [
+  'GET /api/v1/files', 'GET /api/v1/files/search', 'GET /api/v1/files/:id', 'GET /api/v1/files/:id/content',
+  'POST /api/v1/files', 'PUT /api/v1/files/:id/content', 'PATCH /api/v1/files/:id', 'DELETE /api/v1/files/:id',
+  'POST /api/v1/folders', 'POST /api/v1/documents/pdf', 'POST /api/v1/signing/requests', 'GET /api/v1/signing/requests',
+  'GET /api/v1/signing/requests/:id', 'POST /api/v1/signing/requests/:id/remind',
+  'POST /api/v1/signing/requests/:id/signers/:signerId/link', 'POST /api/v1/signing/requests/:id/cancel',
+]) CLASSIFIED[route] = AGENT;
 
 // Requests that a route answers with the caller's own (empty) data rather
 // than an error: they must simply show nothing of the owner's.
@@ -365,6 +409,9 @@ test('the owner’s things are all still there and unchanged', async () => {
   assert.equal(db.prepare('SELECT status, title FROM sign_documents WHERE id = ?').get(v.sign).status, 'draft');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_documents WHERE owner_id = ?').get(other.user.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_fields WHERE document_id = ?').get(v.sign).n, 1);
+  assert.equal(db.prepare('SELECT label FROM sign_profile_images WHERE id = ?').get(v.signImage).label, 'Mine');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_party_grants').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_mail_outbox').get().n, 0);
   const owned = db.prepare('SELECT COUNT(*) AS count FROM nodes WHERE user_id = ?').get(other.user.id).count;
   const { body } = await other.agent.get('/api/sync/tree').expect(200);
   assert.ok(!JSON.stringify(body).includes('secret.txt'));

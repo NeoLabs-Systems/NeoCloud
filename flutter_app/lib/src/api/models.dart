@@ -53,6 +53,8 @@ class AccountUser {
     required this.email,
     required this.isAdmin,
     required this.storage,
+    this.emailVerifiedAt,
+    this.pendingEmail,
   });
 
   factory AccountUser.fromJson(Map<String, dynamic> json) => AccountUser(
@@ -62,6 +64,8 @@ class AccountUser {
     email: json['email'] as String?,
     isAdmin: json['isAdmin'] == true,
     storage: StorageUsage.fromJson((json['storage'] as Map?)?.cast<String, dynamic>() ?? const {}),
+    emailVerifiedAt: _date(json['emailVerifiedAt']),
+    pendingEmail: (json['pendingEmail'] as String?)?.trim().isEmpty ?? true ? null : json['pendingEmail'] as String,
   );
 
   final int id;
@@ -70,6 +74,12 @@ class AccountUser {
   final String? email;
   final bool isAdmin;
   final StorageUsage storage;
+
+  /// When the address was confirmed; null while it waits for that.
+  final DateTime? emailVerifiedAt;
+
+  /// A new address that has not confirmed yet (the old one stays in use).
+  final String? pendingEmail;
 
   String get label => (displayName?.trim().isNotEmpty ?? false) ? displayName!.trim() : username;
 }
@@ -426,6 +436,7 @@ class AdminUser {
     required this.fileCount,
     required this.lastLogin,
     this.aiMonthlyTokens,
+    this.emailVerified = true,
   });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
@@ -440,11 +451,15 @@ class AdminUser {
     fileCount: _int(json['fileCount']),
     lastLogin: _date(json['lastLogin']),
     aiMonthlyTokens: json['aiMonthlyTokens'] is num ? (json['aiMonthlyTokens'] as num).toInt() : null,
+    emailVerified: json['emailVerified'] != false,
   );
 
   final int id;
   final String username;
   final String? email;
+
+  /// False while the account's address waits for its confirmation link.
+  final bool emailVerified;
   final bool isAdmin;
   final bool disabled;
   final int usedBytes;

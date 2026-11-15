@@ -154,3 +154,14 @@ text style, it is not merged. Give every such style a Geist family
 (`GoogleFonts.geist(...)`); a style without one falls back to Roboto, which
 the web page's CSP stops the browser from fetching, and the label turns
 blank. `test/button_fonts_test.dart` guards this.
+
+## Wave 2: mail and accounts (Flutter)
+
+All mail UI is drawn only when `GET /api/signing/capabilities` says `email.configured`; otherwise the app is as before (copy-link flow).
+
+- **Models / API**: `src/signing/models_account.dart` (delivery, send options, profile, claim, inbox), `account_api.dart` (`SigningAccountApi`, reached as `controller.signingAccount`), `backend_client_signing_account.dart`, `fake_signing_account_api.dart`. `SigningApi.send(id, {SendOptions})` carries `message`, `deliverEmail`, `reminderDays`.
+- **Send dialog** (`main_signing_send.dart`, `main_signing_delivery.dart`): per-party "invitation goes to this address", "This is me" (marks `isSelf`), mail switch, message (1000 chars), automatic reminders. The result lists links as before plus a delivery chip per party (failed: "copy the link instead" with the server's reason) and "Sign yourself now" (`open-as-owner`).
+- **Progress page**: delivery chip, last sent, reminder counter, next automatic reminder, "Send reminder" (countdown on `REMINDER_TOO_SOON`, a sentence for `PARTY_NOT_ACTIVE`, `NO_EMAIL`, `EMAIL_NOT_CONFIGURED`, `REMINDER_LIMIT`), "Remind everyone", failed-mail banner with "Send again", completion note.
+- **Signer with an account** (`main_signing_claim.dart`): banner on the first step calls `POST /api/signing/claim {token, apply:true}`, reloads the view, marks values "From your profile"; the consent stays, and the flow jumps to review when everything is filled. After completion the saved copy is found through the inbox (`savedNodeId`). Signed-out visitors get one quiet sign-in line; the link is held only in memory (`controller.signingToken`).
+- **Settings > Signing profile** (`main_signing_profile.dart`): details, up to 5 signatures and 5 initials (immediate), saved details, switches and folder; one Save.
+- **Inbox** (`main_signing_inbox.dart`): tabs "My documents / To sign / Signed by me" on the Signing page (when mail is on), badge from `counts.todo` on the sidebar and phone chip, open through `POST /inbox/:partyId/open`.

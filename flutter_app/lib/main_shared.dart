@@ -440,7 +440,7 @@ class _StatusPill extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.message, required this.color, required this.icon, this.onDismiss});
+  const _Notice({super.key, required this.message, required this.color, required this.icon, this.onDismiss});
 
   final String message;
   final Color color;

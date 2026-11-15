@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neocloud/src/signing/fake_signing_account_api.dart';
 import 'package:neocloud/src/signing/fake_signing_api.dart';
 import 'package:neocloud/src/signing/signing.dart';
 
@@ -299,6 +300,30 @@ void main() {
       flow.dispose();
     });
 
+    test('a grant that ends with the signature still shows the success card and downloads through the account', () async {
+      final api = _GrantApi(view: viewOf(consentedAt: consented, fields: <SigningField>[field('t', FieldType.text)]));
+      final account = FakeSigningAccountApi(doneItems: <InboxItem>[const InboxItem(documentId: 'd', partyId: 'me', title: 'Lease', finalAvailable: true)])
+        ..inboxFinalBytes = Uint8List.fromList(<int>[9, 9]);
+      final flow = PublicSigningController(
+        api: api,
+        saveDelay: const Duration(milliseconds: 5),
+        resultPollInterval: const Duration(milliseconds: 30),
+        pollInterval: const Duration(milliseconds: 30),
+        accountFinal: AccountFinal(
+          available: (id) async => (await account.inbox(done: true)).items.any((item) => item.partyId == id && item.finalAvailable),
+          download: (id, {bool certificate = true}) => account.inboxFinal(id, certificate: certificate),
+        ),
+      );
+      await flow.start();
+      flow.setValue(flow.fields.single, 'x');
+      await flow.finish();
+      expect(flow.state, PublicSigningState.completed, reason: 'the answer of complete() stands when the link no longer answers');
+      await pause(120);
+      expect(flow.finalReady, isTrue);
+      expect(await flow.downloadFinal(), <int>[9, 9]);
+      flow.dispose();
+    });
+
     test('finish while offline keeps everything and says so', () async {
       final api = FakePublicSigningApi(view: viewOf(consentedAt: consented, fields: <SigningField>[field('t', FieldType.text)]));
       final flow = flowFor(api);
@@ -384,4 +409,30 @@ void main() {
       expect(api.calls.length, seen);
     });
   });
+}
+
+/// A public API whose link (a grant) stops answering once the party completed.
+class _GrantApi extends FakePublicSigningApi {
+  _GrantApi({required super.view});
+
+  bool _done = false;
+
+  @override
+  Future<PublicSigningState> complete() async {
+    final state = await super.complete();
+    _done = true;
+    return state;
+  }
+
+  @override
+  Future<PublicSigningView> view() async {
+    if (_done) throw const SigningException(SigningErrorKind.notFound, statusCode: 404);
+    return super.view();
+  }
+
+  @override
+  Future<bool> finalAvailable() async {
+    if (_done) throw const SigningException(SigningErrorKind.notFound, statusCode: 404);
+    return super.finalAvailable();
+  }
 }

@@ -103,4 +103,4 @@ async function uploadFieldValue(document, party, field, req) {
   }
 }
 
-module.exports = { uploadFieldValue };
+module.exports = { readBody, toPng, uploadFieldValue };

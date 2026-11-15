@@ -14,10 +14,11 @@ server/
   config/           Origins, HTTP flags, storage policy, sign-up policy
   db/database.js    The one SQLite handle
   http/             Middleware, route registry, socket, static, errors
+    pages/          Server-rendered HTML pages (email confirmation and password reset)
   middleware/       Auth guards (session, device token, admin)
   routes/           HTTP only, one file per domain
   services/
-    account/        Credentials, sessions, 2FA, security keys
+    account/        Credentials, sessions, 2FA, security keys, service email (service_email, account_email, email_tokens, email_templates, email_i18n; docs/email.md)
     access/         Admin flag, audit log
     admin/          Admin use cases
     crypto/         Key hierarchy and segmented AES-GCM
@@ -29,7 +30,7 @@ server/
     sync/           Snapshots for sync clients
     devices/        Bearer tokens and device-code sign-in for native clients
     shares/         Share links (owner side) and public access to them
-    signing/        E-signature documents, parties, fields, links, audit trail, finalization (pdf/ is the pure PDF engine)
+    signing/        E-signature documents, parties, fields, links, audit trail, finalization (pdf/ is the pure PDF engine; mail/ the signing mail: outbox, worker, templates, reminders; profile, claim/prefill, inbox, grants and autosave serve signers with an account)
     members/        Sharing with other accounts: grants, the access resolver, member file/transfer ops
     settings/       Per-account preferences
     import/         Imports from Nextcloud/WebDAV: read-only client, jobs, runner
@@ -90,7 +91,8 @@ docs/api.md         Endpoint reference — keep it in step with the routes
 - File routes resolve node ids through `services/members/access.js` (`resolveAccess`), so shared nodes are reached only through a live grant; keep owner-only features (versions, vaults, links, sync, WebDAV) on the account-scoped services.
 - Public share routes check every node id against the shared subtree (`services/shares/public.js`); never serve a share node through another path.
 - Import passwords (another server's credentials) are stored only with `encryptValue` and set to NULL when the job ends; imports take a session or the phone app, never a desktop token.
-- Public signing routes (`/api/public/sign/:token`) are reached by a 256-bit token only (stored as SHA-256, uniform `404`, no cookies, `no-store`/`noindex`/`no-referrer`, token path redacted in logs); a party writes only its own fields in its turn, and everything is validated on the server (`services/signing/public.js`, `field_types.js`).
+- Public signing routes (`/api/public/sign/:token`) are reached by a 256-bit token only (stored as SHA-256, uniform `404`, no cookies, `no-store`/`noindex`/`no-referrer`, token path redacted in logs); a party writes only its own fields in its turn, and everything is validated on the server (`services/signing/public.js`, `field_types.js`). A signed-in account reaches a party through a short-lived grant token (`grants.js`, SHA-256 only, 60 minutes), never through the party's token, which is shown once and kept encrypted only for parties with an email address.
+- Service mail (`services/account/service_email.js`): features send through `sendServiceEmail`/`sendBackground`, never nodemailer directly. Mail links are 256-bit tokens stored as SHA-256 (`email_tokens.js`), spent by one atomic write and acted on only by a POST; anonymous mail routes answer alike for every account; links come from `NEOCLOUD_EMAIL_PUBLIC_URL`/`PUBLIC_URL`, never the Host header.
 - Downloads always carry the sandbox CSP; active types are always attachments.
 - AI reads a file only through `assertAiAllowedForNode` (no vault, nothing excluded) and only the account's own nodes, never one shared with it. Models never write names: they return fields and NeoCloud renders the name. AI changes files only as suggestions applied through `files/operations.js`.
 

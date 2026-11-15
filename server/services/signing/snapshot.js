@@ -11,6 +11,7 @@ const { httpError } = require('../../utils/http_error');
 const { remainingBytes } = require('../storage/quota');
 const { LIMITS } = require('./constants');
 const { readBlobBuffer, storeBlob } = require('./blobs');
+const { isSigningMailEnabled } = require('../account/service_email');
 const engine = require('./pdf_engine');
 
 const OFFICE_MIME = /officedocument|msword|ms-excel|ms-powerpoint|opendocument|rtf$/i;
@@ -36,6 +37,7 @@ function signingCapabilities() {
     maxPages: LIMITS.maxPages,
     maxParties: LIMITS.maxParties,
     maxFields: LIMITS.maxFields,
+    email: { configured: isSigningMailEnabled() },
   };
 }
 

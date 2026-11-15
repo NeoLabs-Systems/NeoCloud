@@ -4,7 +4,8 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const db = require('../db/database');
 const { requireSessionOrPhone } = require('../middleware/auth');
-const { changePassword } = require('../services/account/credentials');
+const { changePassword, isValidEmail, normalizeEmail } = require('../services/account/credentials');
+const accountEmail = require('../services/account/account_email');
 const twoFactor = require('../services/account/two_factor');
 const webauthn = require('../services/account/webauthn');
 const { listSessions, ownSessionId, regenerateCurrentSession, revokeSession } = require('../services/account/sessions');
@@ -108,8 +109,28 @@ router.put('/password', accountLimiter, jsonHandler(async (req) => {
     newPassword: req.body?.newPassword,
   }, { keepSessionId: ownSessionId(req), keepDeviceId: req.deviceId || null });
   if (!req.deviceId) await regenerateCurrentSession(req);
+  accountEmail.noticePasswordChanged(currentUser(req), accountEmail.languageFor(req));
   return { success: true };
 }));
+
+// A new email address. It asks for the password (and the 2FA code when on).
+// With mail confirmation on, the address changes only when the link sent to
+// it is opened; until then `pendingEmail` shows it.
+router.put('/email', accountLimiter, jsonHandler(async (req) => {
+  await twoFactor.confirmIdentity(req.userId, identity(req));
+  const email = normalizeEmail(req.body?.email);
+  if (!isValidEmail(email)) throw httpError(400, 'A valid email is required', 'INVALID_EMAIL');
+  const { pendingEmail } = await accountEmail.requestEmailChange(currentUser(req), email, accountEmail.languageFor(req));
+  const user = toUserPayload(currentUser(req));
+  return pendingEmail ? { user, emailChangePending: true, pendingEmail } : { user };
+}));
+
+// Sends the confirmation again: to the pending address, else to the current
+// one when it was never confirmed.
+router.post('/email/resend', accountLimiter, jsonHandler(async (req) => ({
+  success: true,
+  ...(await accountEmail.resendOwnConfirmation(currentUser(req), accountEmail.languageFor(req))),
+})));
 
 // With 2FA already on, replacing the factor needs a current code (TOTP or
 // recovery code): `code` at setup, `currentCode` at enable.

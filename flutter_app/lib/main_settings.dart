@@ -6,7 +6,7 @@ part of 'main.dart';
 
 enum SettingsScope { account, preferences }
 
-enum SettingsPage { profile, security, devices, sharedLinks, storage, imports, ai, general, cameraUpload }
+enum SettingsPage { profile, signingProfile, security, devices, sharedLinks, storage, imports, ai, general, cameraUpload }
 
 extension SettingsScopeInfo on SettingsScope {
   String get label => this == SettingsScope.account ? appStrings.settingsScopeAccount : appStrings.settingsScopeApp;
@@ -19,6 +19,7 @@ extension SettingsPageInfo on SettingsPage {
   bool visibleFor(NeoCloudController controller) {
     switch (this) {
       case SettingsPage.profile:
+      case SettingsPage.signingProfile:
       case SettingsPage.security:
       case SettingsPage.devices:
       case SettingsPage.imports:
@@ -37,6 +38,8 @@ extension SettingsPageInfo on SettingsPage {
     switch (this) {
       case SettingsPage.profile:
         return appStrings.pageProfile;
+      case SettingsPage.signingProfile:
+        return appStrings.signingProfilePage;
       case SettingsPage.security:
         return appStrings.pageSecurity;
       case SettingsPage.devices:
@@ -60,6 +63,8 @@ extension SettingsPageInfo on SettingsPage {
     switch (this) {
       case SettingsPage.profile:
         return appStrings.pageProfileDescription;
+      case SettingsPage.signingProfile:
+        return appStrings.signingProfilePageDescription;
       case SettingsPage.security:
         return appStrings.pageSecurityDescription;
       case SettingsPage.devices:
@@ -83,6 +88,8 @@ extension SettingsPageInfo on SettingsPage {
     switch (this) {
       case SettingsPage.profile:
         return Icons.person_outline_rounded;
+      case SettingsPage.signingProfile:
+        return Icons.draw_outlined;
       case SettingsPage.security:
         return Icons.lock_outline_rounded;
       case SettingsPage.devices:
@@ -342,6 +349,8 @@ Widget _settingsPageBody(NeoCloudController controller, SettingsPage page) {
   switch (page) {
     case SettingsPage.profile:
       return _ProfileSettingsPage(controller: controller);
+    case SettingsPage.signingProfile:
+      return _SigningProfileSettingsPage(controller: controller);
     case SettingsPage.security:
       return _SecuritySettingsPage(controller: controller);
     case SettingsPage.devices:
@@ -693,7 +702,7 @@ class _SettingsRow extends StatelessWidget {
 
 /// Free-form content inside a group, for forms and lists.
 class _SettingsBlock extends StatelessWidget {
-  const _SettingsBlock({required this.child});
+  const _SettingsBlock({super.key, required this.child});
 
   final Widget child;
 

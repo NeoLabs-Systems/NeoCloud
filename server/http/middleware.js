@@ -186,11 +186,15 @@ function applyHttpMiddleware(app, { trustProxy, secureCookies, sessionMiddleware
   });
 
   const jsonBody = express.json({ limit: '1mb' });
+  // The agent API (routes/agent_api.js) takes whole files as JSON: up to
+  // 5 MB of content, base64 encoded.
+  const agentJsonBody = express.json({ limit: '8mb' });
   const formBody = express.urlencoded({ extended: false, limit: '64kb' });
   app.use((req, res, next) => {
     const path = requestPath(req);
     if (RAW_BODY_PATHS.some((pattern) => pattern.test(path))) return next();
-    return jsonBody(req, res, (err) => (err ? next(err) : formBody(req, res, next)));
+    const json = path.startsWith('/api/v1/') ? agentJsonBody : jsonBody;
+    return json(req, res, (err) => (err ? next(err) : formBody(req, res, next)));
   });
   app.use(sessionMiddleware);
   app.use(redactErrorsForNonAdmins);

@@ -79,7 +79,8 @@ class BackendSigningApi implements SigningApi {
   Future<int> importFields(String id) async => int.tryParse('${(await _json('POST', '${_doc(id)}/import-fields'))['imported']}') ?? 0;
 
   @override
-  Future<SigningSendResult> send(String id) async => SigningSendResult.fromJson(await _json('POST', '${_doc(id)}/send'));
+  Future<SigningSendResult> send(String id, {SendOptions? options}) async =>
+      SigningSendResult.fromJson(await _json('POST', '${_doc(id)}/send', body: options?.toJson()));
 
   @override
   Future<SigningLink> regenerateLink(String id, String partyId) async {

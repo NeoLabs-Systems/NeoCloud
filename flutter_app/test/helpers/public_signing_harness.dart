@@ -8,6 +8,8 @@ import 'package:neocloud/src/device/device_session_stub.dart';
 import 'package:neocloud/src/l10n/app_language.dart';
 import 'package:neocloud/src/mobile/camera_upload_stub.dart';
 import 'package:neocloud/src/mobile/share_intake_stub.dart';
+import 'package:neocloud/src/api/models.dart';
+import 'package:neocloud/src/signing/fake_signing_account_api.dart';
 import 'package:neocloud/src/signing/fake_signing_api.dart';
 import 'package:neocloud/src/signing/signing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,17 +91,31 @@ Widget fakePages(BuildContext context, SigningPageController pages, PageOverlayB
   );
 }
 
-Future<NeoCloudController> signingController(FakePublicSigningApi api, {Uri? launch}) async {
+Future<NeoCloudController> signingController(FakePublicSigningApi api, {Uri? launch, FakeSigningAccountApi? account, bool signedIn = false}) async {
   SharedPreferences.setMockInitialValues(const <String, Object>{});
-  return NeoCloudController(
+  final controller = NeoCloudController(
     client: BackendClient(baseUrl: 'http://localhost:1'),
     preferences: await SharedPreferences.getInstance(),
     deviceSessions: createDeviceSessions(),
     cameraUploads: NoCameraUploads(),
     shareIntake: NoShareIntake(),
     publicSigningFactory: (token) => api,
+    signingAccount: account,
     launchUri: launch ?? Uri.parse('https://cloud.example/app/sign/$testToken'),
   );
+  if (signedIn) {
+    controller.user = AccountUser(
+      id: 7,
+      username: 'ada',
+      displayName: 'Ada Lovelace',
+      email: 'ada@example.com',
+      isAdmin: false,
+      storage: const StorageUsage(usedBytes: 0, quotaBytes: -1, trashBytes: 0, versionBytes: 0),
+    );
+  } else {
+    controller.signingSessionChecked = true;
+  }
+  return controller;
 }
 
 /// Pumps the whole app on a signing link and lets the first load finish.
@@ -109,6 +125,8 @@ Future<NeoCloudController> pumpSigning(
   Size size = const Size(1440, 900),
   double textScale = 1,
   Brightness brightness = Brightness.light,
+  FakeSigningAccountApi? account,
+  bool signedIn = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -122,7 +140,7 @@ Future<NeoCloudController> pumpSigning(
   });
   debugPublicPagesBuilder = fakePages;
   currentAppLanguage = AppLanguage.english;
-  final controller = await signingController(api);
+  final controller = await signingController(api, account: account, signedIn: signedIn);
   _active = controller;
   await tester.pumpWidget(NeoCloudApp(controller: controller));
   await settle(tester);

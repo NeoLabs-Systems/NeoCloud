@@ -21,6 +21,8 @@ function documentView(row) {
     snapshotSha256: row.snapshot_sha256,
     finalSha256: row.final_sha256,
     consentVersion: row.consent_text_version,
+    message: row.message,
+    reminderDays: row.reminder_days,
     finalizeError: row.status === 'finalizing' ? row.finalize_error : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -35,13 +37,15 @@ function partySummary(row) {
   return { id: row.id, name: row.name, color: row.color, status: row.status };
 }
 
-function partyView(row) {
+// `delivery`: the party's mail (mail/status.js); the caller supplies it, it needs the outbox.
+function partyView(row, { delivery = null } = {}) {
   return {
     id: row.id,
     position: row.position,
     name: row.name,
     color: row.color,
     email: row.email,
+    isSelf: row.is_self === 1,
     status: row.status,
     hasLink: Boolean(row.token_hash),
     linkHint: row.token_hash ? row.token_hint : null,
@@ -52,6 +56,7 @@ function partyView(row) {
     declineReason: row.decline_reason,
     signerName: row.signer_name,
     createdAt: row.created_at,
+    ...(delivery ? { delivery } : {}),
   };
 }
 

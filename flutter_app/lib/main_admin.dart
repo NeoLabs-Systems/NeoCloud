@@ -77,6 +77,7 @@ List<_AdminSearchEntry> _adminSearchIndex() => <_AdminSearchEntry>[
   _AdminSearchEntry(appStrings.adminStorageTitle, _AdminTab.storage, 'quota kontingent upload size trash papierkorb versions versionen recalculate'),
   _AdminSearchEntry(appStrings.backupTargets, _AdminTab.backups, 'backup sicherung sftp s3 webdav local restore verify schedule'),
   _AdminSearchEntry(appStrings.adminAllowSignup, _AdminTab.access, 'signup sign-up registration registrierung register open close'),
+  _AdminSearchEntry(appStrings.emailAdminTitle, _AdminTab.access, 'email e-mail mail smtp password reset forgot confirmation verify passwort zurücksetzen bestätigung absender sender test'),
   _AdminSearchEntry(appStrings.aiAdminEnable, _AdminTab.models, 'ai ki llm suggestions vorschläge budget tokens usage nutzung'),
   _AdminSearchEntry(appStrings.aiProvidersTitle, _AdminTab.providers, 'ai ki providers anbieter keys schlüssel api openai anthropic google gemini openrouter ollama neorouter'),
   _AdminSearchEntry(appStrings.aiModelAvailability, _AdminTab.models, 'ai ki models modelle availability verfügbarkeit enable disable'),
@@ -338,6 +339,9 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
     await runAction(_controller, () => _controller.client.adminResetPassword(user.id, password), notice: appStrings.passwordChanged);
   }
 
+  /// Only where the server sends mail: without it nobody waits for a link.
+  bool _emailUnverified(AdminUser user) => _controller.emailConfigured && user.email != null && !user.emailVerified;
+
   String _quotaLabel(AdminUser user) {
     final used = formatBytes(user.usedBytes);
     if (user.quotaBytes < 0) return appStrings.storageUsedUnlimited(used);
@@ -354,6 +358,15 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
         unawaited(_act(() => _controller.client.adminSetAdmin(user.id, !user.isAdmin)));
       case 'password':
         unawaited(_resetPassword(user));
+      case 'verifyEmail':
+        unawaited(runAction(
+          _controller,
+          () async {
+            await _controller.client.adminVerifyUserEmail(user.id);
+            await _load();
+          },
+          notice: appStrings.emailMarkedVerified(user.username),
+        ));
       case 'disable':
         unawaited(_act(() => _controller.client.adminSetDisabled(user.id, !user.disabled)));
       case 'signOut':
@@ -420,6 +433,7 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
           const SizedBox(width: 8),
           // NeoRouter shows "Disabled" before the role; status is a dot and a word.
           if (user.disabled) ...<Widget>[_StatusPill(label: appStrings.adminUserDisabled, color: _danger), const SizedBox(width: 12)],
+          if (_emailUnverified(user)) ...<Widget>[_StatusPill(label: appStrings.emailUnverified, color: _warning), const SizedBox(width: 12)],
           _SettingsTag(label: user.isAdmin ? appStrings.roleAdmin : appStrings.roleUser),
           PopupMenuButton<String>(
             tooltip: appStrings.details,
@@ -432,6 +446,7 @@ class _AdminUsersTabState extends State<_AdminUsersTab> with _PageLoad {
               if (!self)
                 PopupMenuItem<String>(value: 'admin', child: Text(user.isAdmin ? appStrings.adminRemoveAdmin : appStrings.adminMakeAdmin)),
               PopupMenuItem<String>(value: 'password', child: Text(appStrings.adminResetPassword)),
+              if (_emailUnverified(user)) PopupMenuItem<String>(value: 'verifyEmail', child: Text(appStrings.emailMarkVerified)),
               if (!self) PopupMenuItem<String>(value: 'disable', child: Text(user.disabled ? appStrings.adminEnableUser : appStrings.adminDisableUser)),
               if (!self) PopupMenuItem<String>(value: 'signOut', child: Text(appStrings.adminSignOutEverywhere)),
               if (!user.isAdmin) PopupMenuItem<String>(value: 'delete', child: Text(appStrings.adminDeleteUser, style: TextStyle(color: _danger))),
@@ -665,6 +680,7 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
             ),
           ],
         ),
+        _AdminEmailCard(controller: _controller),
       ],
     );
   }

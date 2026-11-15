@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' show Size;
 
+import 'saved_signatures.dart' show SavedKind;
+
+part 'models_account.dart';
+
 /// Models of the signing feature, one-to-one with the API contract.
 ///
 /// Everything here is immutable and tolerant: extra keys are ignored, missing
@@ -555,6 +559,8 @@ class SigningParty {
     this.signUrl,
     this.hasLink = false,
     this.linkHint,
+    this.isSelf = false,
+    this.delivery = const PartyDelivery(),
   });
 
   factory SigningParty.fromJson(Map<String, dynamic> json) => SigningParty(
@@ -573,6 +579,8 @@ class SigningParty {
     signUrl: _stringOrNull(json['signUrl']),
     hasLink: _bool(json['hasLink']),
     linkHint: _stringOrNull(json['linkHint']),
+    isSelf: _bool(json['isSelf']),
+    delivery: PartyDelivery.fromJson(json['delivery']),
   );
 
   final String id;
@@ -598,25 +606,53 @@ class SigningParty {
 
   /// The last characters of the token, to tell links apart.
   final String? linkHint;
+
+  /// The creator signs this part themselves.
+  final bool isSelf;
+
+  /// How the invitation mail went (none when no mail was sent).
+  final PartyDelivery delivery;
+
+  SigningParty copyWith({String? name, String? email, PartyStatus? status, DateTime? completedAt, bool? hasLink, String? linkHint, bool? isSelf, PartyDelivery? delivery}) => SigningParty(
+    id: id,
+    name: name ?? this.name,
+    position: position,
+    color: color,
+    email: email ?? this.email,
+    status: status ?? this.status,
+    openedAt: openedAt,
+    consentedAt: consentedAt,
+    completedAt: completedAt ?? this.completedAt,
+    declinedAt: declinedAt,
+    declineReason: declineReason,
+    signerName: signerName,
+    signUrl: signUrl,
+    hasLink: hasLink ?? this.hasLink,
+    linkHint: linkHint ?? this.linkHint,
+    isSelf: isSelf ?? this.isSelf,
+    delivery: delivery ?? this.delivery,
+  );
 }
 
 /// A party as the creator edits it (`PUT /documents/:id/parties`).
 class PartyDraft {
-  const PartyDraft({this.id, required this.name, this.email, this.color});
+  const PartyDraft({this.id, required this.name, this.email, this.color, this.isSelf = false});
 
-  factory PartyDraft.of(SigningParty party) => PartyDraft(id: party.id, name: party.name, email: party.email, color: party.color);
+  factory PartyDraft.of(SigningParty party) => PartyDraft(id: party.id, name: party.name, email: party.email, color: party.color, isSelf: party.isSelf);
 
   /// Null for a new party.
   final String? id;
   final String name;
   final String? email;
   final String? color;
+  final bool isSelf;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'id': ?id,
     'name': name,
     if (email != null && email!.isNotEmpty) 'email': email,
     if (color != null && color!.isNotEmpty) 'color': color,
+    if (isSelf) 'isSelf': true,
   };
 }
 
@@ -642,6 +678,8 @@ class SigningDocument {
     this.sentAt,
     this.completedAt,
     this.canceledAt,
+    this.message,
+    this.reminderDays = 0,
   });
 
   factory SigningDocument.fromJson(Map<String, dynamic> json) => SigningDocument(
@@ -663,6 +701,8 @@ class SigningDocument {
     sentAt: parseSigningTime(json['sentAt']),
     completedAt: parseSigningTime(json['completedAt']),
     canceledAt: parseSigningTime(json['canceledAt']),
+    message: _stringOrNull(json['message']),
+    reminderDays: _int(json['reminderDays']),
   );
 
   final String id;
@@ -689,6 +729,12 @@ class SigningDocument {
   final DateTime? sentAt;
   final DateTime? completedAt;
   final DateTime? canceledAt;
+
+  /// The creator's note in the invitation mail.
+  final String? message;
+
+  /// Automatic reminders every this many days; 0 = off.
+  final int reminderDays;
 }
 
 /// `GET /documents/:id`.
@@ -723,15 +769,19 @@ class SigningLink {
 
 /// `POST /documents/:id/send`.
 class SigningSendResult {
-  const SigningSendResult({required this.document, required this.links});
+  const SigningSendResult({required this.document, required this.links, this.delivery = const <SendDelivery>[]});
 
   factory SigningSendResult.fromJson(Map<String, dynamic> json) => SigningSendResult(
     document: SigningDocument.fromJson(_map(json['document'])),
     links: _maps(json['links']).map(SigningLink.fromJson).toList(growable: false),
+    delivery: _maps(json['delivery']).map(SendDelivery.fromJson).toList(growable: false),
   );
 
   final SigningDocument document;
   final List<SigningLink> links;
+
+  /// Per party, how the invitation mails went (empty without mail).
+  final List<SendDelivery> delivery;
 }
 
 class SigningListParty {
@@ -962,6 +1012,7 @@ class PublicSigningView {
     this.fields = const <SigningField>[],
     this.myValues = const <SigningValue>[],
     this.turn = const PublicTurn(),
+    this.savedNodeId,
   });
 
   factory PublicSigningView.fromJson(Map<String, dynamic> json) => PublicSigningView(
@@ -972,6 +1023,7 @@ class PublicSigningView {
     fields: _maps(json['fields']).map(SigningField.fromJson).toList(growable: false),
     myValues: _values(json['myValues']),
     turn: PublicTurn.fromJson(_map(json['turn'])),
+    savedNodeId: _stringOrNull(json['savedNodeId'] ?? (json['autosaved'] is String ? json['autosaved'] : null)),
   );
 
   /// `myValues` is a `fieldId → value` map (a list of value objects is read too).
@@ -994,6 +1046,10 @@ class PublicSigningView {
   final List<SigningField> fields;
   final List<SigningValue> myValues;
   final PublicTurn turn;
+
+  /// The signed copy the server filed into the signer's own cloud (only for
+  /// a signed-in signer whose profile asks for it), when the payload says so.
+  final String? savedNodeId;
 
   /// The fields this party fills in, in reading order (page, top, left).
   List<SigningField> get ownFields => fields.where((field) => field.partyId == party.id).toList(growable: false);

@@ -206,3 +206,30 @@ and PDFs are size-, page- and decompression-limited. The audit trail is
 hash-chained and the signed file carries a seal made with a key kept in the
 database under the master key (see docs/operations.md). The signature is a
 simple electronic one; see docs/signing.md.
+
+A signed-in account that holds or is entitled to a request opens it with a
+grant token instead of the link: 256 random bits, only the SHA-256 stored, valid
+60 minutes, bound to one party and account, accepted by the public routes with
+the party's own rights, audited and deleted when the party signs or the document
+ends; the party's token never leaves the server. For a party with an email
+address the token is also stored encrypted under the master key so later mails
+can link to its page (docs/signing.md, Mail).
+
+## Service email
+
+Mail (docs/email.md) exists only when an admin configured SMTP. Links in mails
+carry 256 random bits and only their SHA-256 is stored; a link is spent by one
+atomic write, expires, and a newer one of its kind replaces the older. The
+pages a link opens act only on a POST from their own button (a mail scanner or
+prefetch that opens the link spends nothing), are `no-store`, `noindex`, not
+framable, allow one inline script by hash and nothing from other hosts, and
+their tokens are redacted from log lines. "Forgot password" and "resend" answer
+identically and in the same time for every account, send in the background and
+are limited per address and per account; a sign-in reports an unconfirmed
+account only after the right password. A password reset ends every session,
+device token and app password of the account, lifts its sign-in lock and
+confirms the address. Links are built from configuration, never from the
+request's Host header; subjects and addresses are held to one line and plain
+addresses; mails never load remote content; the SMTP password is write-only
+in the admin page and removed from every error shown or logged.
+

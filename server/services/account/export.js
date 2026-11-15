@@ -8,6 +8,7 @@
 // stored import passwords.
 
 const db = require('../../db/database');
+const { readProfile } = require('../signing/profile');
 const { readSettings } = require('../settings/store');
 const { getUsage } = require('../storage/quota');
 const { httpError } = require('../../utils/http_error');
@@ -110,6 +111,16 @@ function exportSigning(userId) {
   }));
 }
 
+// The account's signing profile: details, presets, switches and which images are saved (not the images).
+function exportSigningProfile(userId) {
+  const profile = readProfile(userId);
+  const received = rows(`
+    SELECT d.id AS document_id, d.title, p.id AS party_id, p.status, p.completed_at
+    FROM sign_parties p JOIN sign_documents d ON d.id = p.document_id WHERE p.user_id = ? ORDER BY d.created_at
+  `, userId).map((row) => ({ documentId: row.document_id, title: row.title, partyId: row.party_id, status: row.status, completedAt: row.completed_at }));
+  return { ...profile, signed: received };
+}
+
 function exportMemberShares(userId) {
   const byMe = rows(`
     SELECT s.id, s.node_id, n.name AS node_name, s.permission, s.recipient, s.expires_at, s.created_at, u.display_name
@@ -209,6 +220,7 @@ function exportAccount(userId) {
     vaults: rows('SELECT id, folder_id, created_at, updated_at FROM vaults WHERE user_id = ? ORDER BY created_at', userId)
       .map((row) => ({ id: row.id, folderId: row.folder_id, createdAt: row.created_at, updatedAt: row.updated_at })),
     signing: exportSigning(userId),
+    signingProfile: exportSigningProfile(userId),
     imports: rows(`
       SELECT id, source, url, username, source_path, target_folder_id, status, created_at, started_at, finished_at
       FROM import_jobs WHERE user_id = ? ORDER BY created_at

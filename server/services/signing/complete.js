@@ -14,6 +14,8 @@ const {
 } = require('./constants');
 const { appendEvent, clientOf } = require('./events');
 const { isFilled, typeOf } = require('./field_types');
+const { revokeForDocument, revokeForParty } = require('./grants');
+const { onPartyCompleted, onPartyDeclined } = require('./mail/triggers');
 const { scheduleFinalize } = require('./finalize');
 const { notifyOwner } = require('./notify');
 const { withoutInvisible } = require('./plain_text');
@@ -61,6 +63,7 @@ function finish(document, party, req) {
   const at = nowIso();
   const client = clientOf(req);
   let finalizing = false;
+  let unlockedPartyId = null;
   db.transaction(() => {
     assertWritable(document.id, party.id);
     const rows = ownFields(document.id, party.id).map((row) => (
@@ -75,6 +78,8 @@ function finish(document, party, req) {
     appendEvent(document.id, {
       type: EVENT.PARTY_COMPLETED, partyId: party.id, at, ...client, data: { fields: rows.length },
     });
+    // A signed party's account links stop working; its inbox opens a new one to read the result.
+    revokeForParty(party.id);
 
     const parties = listParties(document.id);
     if (allCompleted(parties)) {
@@ -86,10 +91,11 @@ function finish(document, party, req) {
     const next = nextToUnlock(parties);
     if (document.signing_order === 'preserved' && next) {
       db.prepare('UPDATE sign_parties SET status = ? WHERE id = ?').run(PARTY_STATUS.PENDING, next.id);
+      unlockedPartyId = next.id;
     }
     updateDocument(document.id, {}, at);
   })();
-  return finalizing;
+  return { finalizing, unlockedPartyId };
 }
 
 /** The signer finishes. Resolves with the state the page shows next. */
@@ -99,7 +105,8 @@ function completeParty(context, req) {
   }
   assertReady(context);
   const { document, party } = context;
-  const finalizing = finish(document, party, req);
+  const { finalizing, unlockedPartyId } = finish(document, party, req);
+  onPartyCompleted(document.id, party.id, { unlockedPartyId, finalizing });
   notifyOwner(document.owner_id, document.id, finalizing ? DOCUMENT_STATUS.FINALIZING : getDocumentById(document.id).status);
   if (finalizing) scheduleFinalize(document.id);
   return { state: 'completed', finalAvailable: false };
@@ -123,7 +130,9 @@ function declineParty(context, reason, req) {
     appendEvent(document.id, {
       type: EVENT.PARTY_DECLINED, partyId: party.id, at, ...clientOf(req), data: { reason: text || null },
     });
+    revokeForDocument(document.id);
   })();
+  onPartyDeclined(document.id, party.id, text);
   notifyOwner(document.owner_id, document.id, DOCUMENT_STATUS.DECLINED);
   return { state: 'declined' };
 }

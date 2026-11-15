@@ -16,6 +16,7 @@ const { httpError } = require('../../utils/http_error');
 const webauthn = require('../account/webauthn');
 const { getTwoFactorStatus, verifySignInCode } = require('../account/two_factor');
 const throttle = require('../account/login_throttle');
+const { assertEmailConfirmed } = require('../account/status');
 const { cleanDeviceInfo, createDeviceToken } = require('./tokens');
 
 const TWO_FACTOR_WINDOW_MS = 10 * 60 * 1000;
@@ -84,6 +85,7 @@ async function finishSecurityKeySignIn(serverOrigin, { challengeId, response, na
   });
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(result.userId);
   if (!user) throw httpError(401, 'User not found', 'UNAUTHORIZED');
+  assertEmailConfirmed(user.id);
   if (!result.userVerified && getTwoFactorStatus(user.id).enabled) {
     pending.set(challengeId, {
       stage: 'second_factor',

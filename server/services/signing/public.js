@@ -7,11 +7,12 @@
 
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
-const { nodeById } = require('../files/tree');
 const { DOCUMENT_STATUS, EVENT, LIMITS, PARTY_STATUS } = require('./constants');
 const { CONSENT_VERSION, consentText } = require('./consent');
 const { appendEvent, clientOf } = require('./events');
 const { expireIfDue } = require('./expiry');
+const { liveFinalNode } = require('./final_node');
+const { resolveGrant } = require('./grants');
 const { typeOf } = require('./field_types');
 const { notifyOwner } = require('./notify');
 const { singleLine } = require('./plain_text');
@@ -28,17 +29,20 @@ const CLOSED_STATES = new Set(['canceled', 'expired', 'declined']);
 
 const notFound = () => httpError(404, 'This link does not exist.', 'NOT_FOUND');
 
-/** The party behind a token, or the uniform 404. */
-function partyByToken(token) {
+/** The party behind a link's token or a grant token (grants.js), or the uniform 404. */
+function partyByToken(token, req) {
   if (!isWellFormed(token)) throw notFound();
-  const party = db.prepare('SELECT * FROM sign_parties WHERE token_hash = ?').get(hashToken(token));
-  if (!party || !matchesHash(token, party.token_hash)) throw notFound();
-  return party;
+  const tokenHash = hashToken(token);
+  const party = db.prepare('SELECT * FROM sign_parties WHERE token_hash = ?').get(tokenHash);
+  if (party && matchesHash(token, party.token_hash)) return party;
+  const granted = resolveGrant(tokenHash, req);
+  if (!granted) throw notFound();
+  return granted;
 }
 
 /** { document, party, parties, state } for a token. Expires the document first when its time is up. */
-function openContext(token) {
-  const party = partyByToken(token);
+function openContext(token, req) {
+  const party = partyByToken(token, req);
   let document = getDocumentById(party.document_id);
   const owner = db.prepare('SELECT disabled_at FROM users WHERE id = ?').get(document?.owner_id);
   if (!document || !owner || owner.disabled_at || document.status === DOCUMENT_STATUS.DRAFT) throw notFound();
@@ -113,13 +117,6 @@ function fieldsFor({ document, party, parties }) {
     }
   }
   return { fields, myValues };
-}
-
-/** The final file while it is still the one that was made: moved or renamed is fine, replaced, trashed or removed is not. */
-function liveFinalNode(document) {
-  if (document.status !== DOCUMENT_STATUS.COMPLETED || !document.final_node_id) return null;
-  const node = nodeById(document.final_node_id);
-  return node && !node.trashed_at && node.etag === document.final_sha256 ? node : null;
 }
 
 function finalAvailable(document) {

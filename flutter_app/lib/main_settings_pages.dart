@@ -115,13 +115,7 @@ class _ProfileSettingsPageState extends State<_ProfileSettingsPage>
                 style: TextStyle(color: _textSecondary),
               ),
             ),
-            _SettingsRow(
-              label: appStrings.accountEmail,
-              control: Text(
-                user?.email ?? '—',
-                style: TextStyle(color: _textSecondary),
-              ),
-            ),
+            ..._emailSettingsRows(widget.controller),
             _SettingsRow(
               label: appStrings.accountRole,
               control: _StatusPill(

@@ -51,6 +51,14 @@ const EVENT = Object.freeze({
   CANCELED: 'canceled',
   EXPIRED: 'expired',
   FINAL_DOWNLOADED: 'final_downloaded',
+  CLAIMED: 'claimed',
+  GRANT_USED: 'grant_used',
+  MAIL_QUEUED: 'mail_queued',
+  MAIL_SENT: 'mail_sent',
+  MAIL_FAILED: 'mail_failed',
+  REMINDER_SENT: 'reminder_sent',
+  AUTOSAVED: 'autosaved',
+  AUTOSAVE_FAILED: 'autosave_failed',
 });
 
 const LIMITS = Object.freeze({
@@ -63,6 +71,7 @@ const LIMITS = Object.freeze({
   maxNameLength: 100,
   maxEmailLength: 254,
   maxDeclineReason: 500,
+  maxMailMessage: 1000,
   maxSignerName: 120,
   // Uploads by signers.
   maxImageBytes: 8 * 1024 * 1024,
@@ -75,6 +84,8 @@ const MAX_VALIDITY_DAYS = 365;
 
 // The web app's page for a signer; the token is its last path segment.
 const SIGN_PAGE_PATH = '/app/sign/';
+// The web app's page for a document's owner; the document id is its last path segment.
+const OWNER_PAGE_PATH = '/app/signing/';
 
 const PARTY_COLORS = [
   '#D4A017', '#2E86AB', '#C0392B', '#27AE60', '#8E44AD',
@@ -91,6 +102,7 @@ module.exports = {
   LIVE_STATUSES,
   LOCALES,
   MAX_VALIDITY_DAYS,
+  OWNER_PAGE_PATH,
   PARTY_COLORS,
   PARTY_STATUS,
   SIGNING_ORDERS,

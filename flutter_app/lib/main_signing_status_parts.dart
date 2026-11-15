@@ -96,13 +96,35 @@ class _StatusHeader extends StatelessWidget {
 }
 
 class _PartyCard extends StatelessWidget {
-  const _PartyCard({required this.party, required this.index, required this.live, required this.onRegenerate, required this.onRevoke});
+  const _PartyCard({
+    required this.party,
+    required this.index,
+    required this.live,
+    required this.onRegenerate,
+    required this.onRevoke,
+    this.mail = false,
+    this.autoDays = 0,
+    this.remind,
+    this.onReminded,
+    this.onSignNow,
+  });
 
   final SigningParty party;
   final int index;
   final bool live;
   final VoidCallback onRegenerate;
   final VoidCallback onRevoke;
+
+  /// The server sends mail: delivery state and reminders are shown.
+  final bool mail;
+  final int autoDays;
+
+  /// Sends a reminder; null when this party can't be reminded.
+  final Future<void> Function()? remind;
+  final VoidCallback? onReminded;
+
+  /// The creator's own part, to sign here and now.
+  final VoidCallback? onSignNow;
 
   String _when(DateTime? time) => time == null ? '' : formatDate(time.toLocal(), currentAppLanguage.code);
 
@@ -139,6 +161,7 @@ class _PartyCard extends StatelessWidget {
               ),
             ],
           ),
+          if ((mail || party.delivery.status != DeliveryStatus.none) && !party.isSelf) _PartyDeliveryInfo(party: party, autoDays: autoDays),
           if (party.status == PartyStatus.declined && party.declineReason != null)
             Padding(padding: const EdgeInsets.only(top: 8), child: Text(appStrings.signingDeclineReason(party.declineReason!), style: TextStyle(color: _textSecondary, fontSize: 13))),
           if (!finished)
@@ -154,6 +177,20 @@ class _PartyCard extends StatelessWidget {
                     TextButton(key: ValueKey<String>('regen-${party.id}'), onPressed: onRegenerate, child: Text(appStrings.signingRegenerate)),
                     if (party.hasLink) TextButton(key: ValueKey<String>('revoke-${party.id}'), onPressed: onRevoke, child: Text(appStrings.signingRevoke)),
                   ],
+                ],
+              ),
+            ),
+          if (!finished && (remind != null || onSignNow != null || (mail && live && party.status != PartyStatus.waiting && (party.email ?? '').isEmpty && party.delivery.status != DeliveryStatus.noEmail)))
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[
+                  if (remind != null) _ReminderButton(key: ValueKey<String>('reminder-${party.id}'), party: party, remind: remind!, onSent: onReminded ?? () {}),
+                  if (remind == null && onSignNow == null) Text(appStrings.signingDeliveryNoEmail, style: TextStyle(color: _textMuted, fontSize: 12.5)),
+                  if (onSignNow != null) OutlinedButton.icon(key: ValueKey<String>('sign-now-${party.id}'), onPressed: onSignNow, icon: const Icon(Icons.draw_outlined, size: 18), label: Text(appStrings.signingSignNow)),
                 ],
               ),
             ),

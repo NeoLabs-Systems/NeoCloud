@@ -117,6 +117,7 @@ class _PartiesSection extends StatelessWidget {
                   children: <Widget>[
                     Container(width: 14, height: 14, decoration: BoxDecoration(color: state.colorOf(party.id), shape: BoxShape.circle)),
                     const SizedBox(width: 10),
+                    if (party.isSelf) Padding(padding: const EdgeInsets.only(right: 6), child: Icon(Icons.person_rounded, size: 15, color: _textMuted)),
                     Expanded(
                       child: Text(
                         party.name,
@@ -145,14 +146,22 @@ class _PartiesSection extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 4),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            key: const ValueKey<String>('signing-add-party'),
-            onPressed: state.canAddParty ? state.addParty : null,
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: Text(appStrings.signingAddParty),
-          ),
+        Wrap(
+          children: <Widget>[
+            TextButton.icon(
+              key: const ValueKey<String>('signing-add-party'),
+              onPressed: state.canAddParty ? state.addParty : null,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(appStrings.signingAddParty),
+            ),
+            if (state.canAddSelf)
+              TextButton.icon(
+                key: const ValueKey<String>('signing-add-me'),
+                onPressed: state.addSelfParty,
+                icon: const Icon(Icons.person_add_alt_rounded, size: 18),
+                label: Text(appStrings.signingAddMe),
+              ),
+          ],
         ),
       ],
     );

@@ -81,14 +81,24 @@ class _AuthViewState extends State<AuthView> {
 
   bool get _bootstrap => !widget.controller.hasUser;
 
-  Future<void> _submit() => _submitCredentials(
-    widget.controller,
-    register: _registerMode || _bootstrap,
-    username: _usernameController.text,
-    email: _emailController.text,
-    password: _passwordController.text,
-    confirmPassword: _confirmPasswordController.text,
-  );
+  Future<void> _submit() async {
+    final register = _registerMode || _bootstrap;
+    if (register) widget.controller.authInfoMessage = null;
+    await _submitCredentials(
+      widget.controller,
+      register: register,
+      username: _usernameController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
+    );
+    // Created, waiting for its confirmation link: back to sign-in.
+    if (mounted && register && _registrationAwaitsEmail(widget.controller)) {
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+      setState(() => _registerMode = false);
+    }
+  }
 
   Future<void> _submitCode() async {
     final code = _codeController.text.trim();
@@ -159,6 +169,7 @@ class _AuthViewState extends State<AuthView> {
 
     final strength = _registerPasswordStrength;
     final showSecurityKeySignIn = !register && controller.supportsSecurityKeys;
+    final showForgotLink = controller.hasUser && controller.emailConfigured;
     return <Widget>[
       if (_offersQrLogin) ...<Widget>[
         _QrLoginBlock(controller: controller, onDialogOpen: _setQrDialogOpen),
@@ -206,6 +217,21 @@ class _AuthViewState extends State<AuthView> {
         onSubmitted: (_) => register ? null : _submit(),
         decoration: InputDecoration(labelText: appStrings.password),
       ),
+      // NeoAgent's link on the password row; mail is on, so it sends a link.
+      if (!register && showForgotLink)
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: controller.isAuthenticating ? null : () => unawaited(_showForgotPasswordDialog(context, controller, initialAccount: _usernameController.text)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: GoogleFonts.geist(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+            child: Text(appStrings.forgotPassword),
+          ),
+        ),
       if (register) ...<Widget>[
         const SizedBox(height: 10),
         _PasswordStrengthIndicator(info: strength),
@@ -225,6 +251,7 @@ class _AuthViewState extends State<AuthView> {
         const SizedBox(height: AppSpacing.sm),
         _InlineError(message: controller.errorMessage!),
       ],
+      if (controller.emailConfigured) _AuthEmailNotices(controller: controller),
       const SizedBox(height: AppSpacing.lg),
       FilledButton(
         onPressed:
@@ -273,11 +300,10 @@ class _AuthViewState extends State<AuthView> {
                       : appStrings.needANewAccount,
                 ),
               ),
-            if (!_registerMode)
+            // With mail the link sits under the password field instead.
+            if (!_registerMode && !showForgotLink)
               TextButton(
-                onPressed: controller.isAuthenticating
-                    ? null
-                    : () => unawaited(_showForgotPasswordDialog(context)),
+                onPressed: controller.isAuthenticating ? null : () => unawaited(_showAskAdminDialog(context)),
                 child: Text(appStrings.forgotPassword),
               ),
           ],
@@ -405,23 +431,6 @@ Future<void> _submitCredentials(
     await controller.login(username: username.trim(), password: password);
   }
   if (controller.isAuthenticated) TextInput.finishAutofillContext();
-}
-
-/// NeoCloud sends no email: an administrator sets a new password.
-Future<void> _showForgotPasswordDialog(BuildContext context) async {
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(appStrings.forgotPasswordTitle),
-      content: SizedBox(
-        width: 420,
-        child: SelectableText(appStrings.forgotPasswordAskAdmin, style: TextStyle(color: _textSecondary, height: 1.45)),
-      ),
-      actions: <Widget>[
-        FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.close)),
-      ],
-    ),
-  );
 }
 
 /// A hairline either side of a short word ("or use your password").

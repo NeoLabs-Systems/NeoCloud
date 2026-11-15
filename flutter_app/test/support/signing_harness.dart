@@ -9,12 +9,13 @@ import 'package:neocloud/src/api/models.dart';
 import 'package:neocloud/src/device/device_session_stub.dart';
 import 'package:neocloud/src/mobile/camera_upload_stub.dart';
 import 'package:neocloud/src/mobile/share_intake_stub.dart';
+import 'package:neocloud/src/signing/fake_signing_account_api.dart';
 import 'package:neocloud/src/signing/fake_signing_api.dart';
 import 'package:neocloud/src/signing/signing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A signed-in controller whose signing calls go to [api].
-Future<NeoCloudController> signingController(FakeSigningApi api) async {
+Future<NeoCloudController> signingController(FakeSigningApi api, {FakeSigningAccountApi? account, bool emailConfigured = false}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final controller = NeoCloudController(
     client: BackendClient(baseUrl: 'http://localhost:1'),
@@ -23,7 +24,9 @@ Future<NeoCloudController> signingController(FakeSigningApi api) async {
     cameraUploads: NoCameraUploads(),
     shareIntake: NoShareIntake(),
     signing: api,
+    signingAccount: account,
   );
+  controller.emailConfigured = emailConfigured;
   controller
     ..isBooting = false
     ..user = AccountUser(

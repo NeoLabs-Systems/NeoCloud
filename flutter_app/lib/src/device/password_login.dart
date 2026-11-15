@@ -1,17 +1,31 @@
 import '../api/backend_client.dart';
 import 'device_session.dart';
 
-/// Where a password sign-in stands: done with a device token, or waiting
-/// for the second factor.
+/// Where a password sign-in stands: done with a device token, waiting for
+/// the second factor, or (a new account) waiting for its email confirmation.
 class PasswordLoginResult {
-  const PasswordLoginResult.connected(DeviceConnection this.connection) : requiresTwoFactor = false;
+  const PasswordLoginResult.connected(DeviceConnection this.connection)
+    : requiresTwoFactor = false,
+      requiresEmailConfirmation = false,
+      confirmationEmail = null;
 
   const PasswordLoginResult.twoFactor()
     : connection = null,
-      requiresTwoFactor = true;
+      requiresTwoFactor = true,
+      requiresEmailConfirmation = false,
+      confirmationEmail = null;
+
+  const PasswordLoginResult.emailConfirmation(this.confirmationEmail)
+    : connection = null,
+      requiresTwoFactor = false,
+      requiresEmailConfirmation = true;
 
   final DeviceConnection? connection;
   final bool requiresTwoFactor;
+  final bool requiresEmailConfirmation;
+
+  /// The address the confirmation link went to.
+  final String? confirmationEmail;
 }
 
 /// The phone app's sign-in with the web's login form: username or email and
@@ -34,11 +48,17 @@ class PasswordDeviceLogin {
   /// `android` or `ios`.
   final String platform;
 
-  /// Whether the server has an account yet and takes sign-ups
-  /// (GET /api/auth/status); also proves it is a NeoCloud server.
-  Future<({bool hasUser, bool registrationOpen})> status() async {
+  /// Whether the server has an account yet, takes sign-ups and can send
+  /// email (GET /api/auth/status); also proves it is a NeoCloud server.
+  Future<({bool hasUser, bool registrationOpen, bool emailConfigured, bool signupConfirmationRequired})> status() async {
     final status = await client.authStatus();
-    return (hasUser: status['hasUser'] == true, registrationOpen: status['registrationOpen'] != false);
+    final email = status['email'];
+    return (
+      hasUser: status['hasUser'] == true,
+      registrationOpen: status['registrationOpen'] != false,
+      emailConfigured: email is Map && email['configured'] == true,
+      signupConfirmationRequired: email is Map && email['signupConfirmationRequired'] == true,
+    );
   }
 
   Future<PasswordLoginResult> signIn(String username, String password) async => _finish(await client.login(username, password));
@@ -50,6 +70,7 @@ class PasswordDeviceLogin {
 
   Future<PasswordLoginResult> _finish(Map<String, dynamic> result) async {
     if (result['requiresTwoFactor'] == true) return const PasswordLoginResult.twoFactor();
+    if (result['requiresEmailConfirmation'] == true) return PasswordLoginResult.emailConfirmation(result['email'] as String?);
     final user = (result['user'] as Map?)?.cast<String, dynamic>();
     if (user == null) throw const ApiException(500, '', code: 'UNEXPECTED_RESPONSE');
     return PasswordLoginResult.connected(await _exchange(user));

@@ -38,7 +38,7 @@ const guessLimiter = rateLimiter(60, { skipSuccessfulRequests: true, requestWasS
 const reading = [guessLimiter, readLimiter, tokenLimiter];
 const writing = [guessLimiter, writeLimiter, tokenLimiter];
 
-const context = (req) => publicSigning.openContext(req.params.token);
+const context = (req) => publicSigning.openContext(req.params.token, req);
 
 router.get('/:token', ...reading, jsonHandler((req) => publicSigning.describe(context(req), req)));
 

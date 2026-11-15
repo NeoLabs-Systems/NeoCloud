@@ -87,6 +87,18 @@ class _FieldPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _FieldInput(key: ValueKey<String>('input-${field.id}'), flow: flow, field: field),
+                  if (flow.profileFilled.contains(field.id))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        key: const ValueKey<String>('from-profile'),
+                        children: <Widget>[
+                          Icon(Icons.account_circle_outlined, size: 15, color: _textMuted),
+                          const SizedBox(width: 6),
+                          Text(strings.signingFromProfile, style: TextStyle(color: _textMuted, fontSize: 12.5)),
+                        ],
+                      ),
+                    ),
                   if (problem != null) ...<Widget>[
                     const SizedBox(height: AppSpacing.xs),
                     Semantics(

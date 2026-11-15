@@ -53,6 +53,10 @@ class _SigningEditorPageState extends State<SigningEditorPage> {
       detail: widget.detail,
       partyName: (number) => appStrings.signingPartyDefaultName('$number'),
     );
+    final me = _controller.user;
+    if (_controller.emailConfigured && me != null && (me.email ?? '').isNotEmpty) {
+      _state.me = (name: (me.displayName ?? '').trim().isEmpty ? me.username : me.displayName!.trim(), email: me.email!);
+    }
     _title = TextEditingController(text: widget.detail.document.title);
     _titleFocus.addListener(() {
       if (!_titleFocus.hasFocus) _commitTitle();

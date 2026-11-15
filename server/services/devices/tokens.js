@@ -8,7 +8,8 @@
 const crypto = require('crypto');
 const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
-const { assertAccountActive } = require('../account/status');
+const { assertAccountActive, assertEmailConfirmed } = require('../account/status');
+const { revokeAllGrants } = require('../oauth/connected_apps');
 
 const TOKEN_PREFIX = 'nc_';
 const MAX_NAME_LENGTH = 80;
@@ -43,9 +44,11 @@ function cleanDeviceInfo({ name, platform = '' } = {}) {
 }
 
 // Every route that hands out a token (device code, QR pairing, security key,
-// app passwords) comes through here, so a disabled account gets none.
+// app passwords) comes through here, so a disabled account, or one that has not
+// confirmed its email yet, gets none.
 function createDeviceToken(userId, info) {
   assertAccountActive(userId);
+  assertEmailConfirmed(userId);
   const { name, platform } = cleanDeviceInfo(info);
   const token = TOKEN_PREFIX + crypto.randomBytes(32).toString('base64url');
   const result = db.prepare(`
@@ -74,7 +77,8 @@ function revokeDeviceToken(userId, id) {
  * Signs every client of the account out: all bearer tokens and WebDAV app
  * passwords, plus approved device-code sign-ins, QR sign-ins and QR pairing
  * codes not yet redeemed, which would otherwise still turn into a token or a
- * session. Used when the password changes or an admin resets it. With
+ * session, and every connected app (OAuth grants such as NeoAgent's).
+ * Used when the password changes or an admin resets it. With
  * `exceptDeviceId` the phone that asked stays signed in.
  */
 function revokeAllDeviceTokens(userId, { exceptDeviceId = null } = {}) {
@@ -92,6 +96,7 @@ function revokeAllDeviceTokens(userId, { exceptDeviceId = null } = {}) {
     db.prepare(`
       UPDATE device_pairings SET expires_at = datetime('now', '-1 second') WHERE user_id = ? AND status = 'pending'
     `).run(userId);
+    revokeAllGrants(userId);
     return changes;
   })();
 }

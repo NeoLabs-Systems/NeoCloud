@@ -21,12 +21,14 @@ class NeoCloudController extends ChangeNotifier {
     ShareIntake? shareIntake,
     AiApi? ai,
     SigningApi? signing,
+    SigningAccountApi? signingAccount,
     PublicSigningApi Function(String token)? publicSigningFactory,
     PhotoLibrary? photoLibrary,
     Uri? launchUri,
   }) : _preferences = preferences,
        ai = ai ?? AiApi(client),
        signing = signing ?? BackendSigningApi(client),
+       signingAccount = signingAccount ?? BackendSigningAccountApi(client),
        _publicSigningFactory = publicSigningFactory,
        photoLibrary = photoLibrary ?? PhotoLibrary(client),
        deviceSessions = deviceSessions ?? createDeviceSessions(),
@@ -49,6 +51,7 @@ class NeoCloudController extends ChangeNotifier {
       onSigningUpdated: () => signingRevision.value += 1,
     );
     fileChanges.addListener((_) => unawaited(refreshAccount()));
+    signingRevision.addListener(() => unawaited(refreshSigningTodo()));
     _themeMode = _themeModeFromName(_preferences.getString(_themePreferenceKey));
     pendingDeviceCode = _deviceCodeFrom(launchUri);
     pendingPairCode = _pairCodeFrom(launchUri);
@@ -70,6 +73,10 @@ class NeoCloudController extends ChangeNotifier {
   /// The creator's signing calls (documents, fields, parties, links); a fake
   /// in tests.
   final SigningApi signing;
+
+  /// Reminders, the signing profile, claiming a link and the inbox; a fake
+  /// in tests.
+  final SigningAccountApi signingAccount;
   final PublicSigningApi Function(String token)? _publicSigningFactory;
 
   /// The signer's calls for the link [token]: no account, no session. Works
@@ -137,6 +144,28 @@ class NeoCloudController extends ChangeNotifier {
   /// kept here so a language change (which rebuilds the app) doesn't lose
   /// what the signer has entered.
   PublicSigningController? signingFlow;
+
+  /// The token (or grant) of the open signing page, only in memory: it lets
+  /// "use my saved details" and "sign in" refer to the link without it ever
+  /// being stored or logged.
+  String? signingToken;
+
+  /// The account signed in on this instance while a signing page is open
+  /// (found once per page); null when signed out.
+  AccountUser? signingSession;
+  bool signingSessionChecked = false;
+
+  /// Requests waiting for the signed-in account (the badge on Signing).
+  int signingTodo = 0;
+
+  void setSigningTodo(int count) {
+    if (count == signingTodo) return;
+    signingTodo = count;
+    notifyListeners();
+  }
+
+  /// Whether the server sends signing mail; found once (null: not asked).
+  bool? _signingMail;
   bool _bootSkipped = false;
 
   static String? _signTokenFrom(Uri? uri) {
@@ -152,7 +181,18 @@ class NeoCloudController extends ChangeNotifier {
     final token = text.contains('/') ? _signTokenFrom(Uri.tryParse(text)) : text;
     if (token == null || token.isEmpty) return;
     signingFlow?.dispose();
-    signingFlow = PublicSigningController(api: publicSigning(token));
+    signingToken = token;
+    signingSessionChecked = false;
+    signingFlow = PublicSigningController(
+      api: publicSigning(token),
+      accountFinal: AccountFinal(
+        available: (partyId) async {
+          if (user == null) return false;
+          return (await signingAccount.inbox(done: true)).items.any((item) => item.partyId == partyId && item.finalAvailable);
+        },
+        download: (partyId, {bool certificate = true}) => signingAccount.inboxFinal(partyId, certificate: certificate),
+      ),
+    );
     unawaited(signingFlow!.start());
     notifyListeners();
   }
@@ -168,6 +208,9 @@ class NeoCloudController extends ChangeNotifier {
   void finishSigning() {
     signingFlow?.dispose();
     signingFlow = null;
+    signingToken = null;
+    signingSession = null;
+    signingSessionChecked = false;
     final segments = Uri.base.pathSegments.where((segment) => segment.isNotEmpty).toList();
     final at = segments.indexOf(AppRoute.signSection);
     if (at >= 0) replaceBrowserPath('/${segments.sublist(0, at).map((segment) => '$segment/').join()}');
@@ -203,6 +246,23 @@ class NeoCloudController extends ChangeNotifier {
   bool hasUser = true;
   /// False once the server has an account and sign-up is turned off.
   bool registrationOpen = true;
+
+  /// Whether the admin set up outgoing mail (`email.configured` of
+  /// GET /api/auth/status). Every mail feature in the UI hangs on this; off,
+  /// the app is exactly what it is without mail.
+  bool emailConfigured = false;
+
+  /// New accounts must confirm their address before signing in.
+  bool signupConfirmationRequired = false;
+
+  /// A notice above the sign-in form: the reset link is on its way, or the
+  /// account waits for its confirmation link.
+  String? authInfoMessage;
+
+  /// The username or email an unconfirmed account signs in with, so the card
+  /// can offer to send the confirmation again. Set after registering and
+  /// when sign-in is refused with `EMAIL_NOT_CONFIRMED`.
+  String? confirmationAccount;
 
   /// The QR code on the web sign-in card, which a signed-in phone approves.
   late final QrLoginFlow qrLogin = QrLoginFlow(
@@ -335,6 +395,8 @@ class NeoCloudController extends ChangeNotifier {
       if (error.code == 'NETWORK') return appStrings.connectionError;
       final signIn = _signInError(error);
       if (signIn != null) return signIn;
+      if (error.code == 'EMAIL_NOT_CONFIRMED') return appStrings.emailNotConfirmedError;
+      if (error.code == 'EMAIL_SEND_FAILED') return appStrings.emailSendFailedError;
       if (error.code == 'APPROVAL_NEEDS_SESSION') return appStrings.approvalNeedsServerUpdate;
       if (error.code == 'SERVER_UPDATE_NEEDED') return appStrings.serverUpdateNeeded;
       if (error.code == 'PHONE_REQUIRED') return appStrings.approvalNeedsPhone;
@@ -406,6 +468,7 @@ class NeoCloudController extends ChangeNotifier {
       final status = await client.authStatus();
       hasUser = status['hasUser'] == true;
       registrationOpen = status['registrationOpen'] != false;
+      _applyEmailStatus(status['email']);
       if (status['authenticated'] == true && status['user'] is Map) {
         await _enterSession(AccountUser.fromJson((status['user'] as Map).cast<String, dynamic>()));
       }
@@ -471,6 +534,8 @@ class NeoCloudController extends ChangeNotifier {
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     unawaited(_loadSettings());
     unawaited(aiReview.refresh());
+    unawaited(refreshSigningTodo());
+    unawaited(_loadEmailStatus());
     unawaited(_startNativeServices(known).then((_) {
       if (!firstSignIn || !cameraUploads.supported || user == null) return;
       offerCameraUpload = true;
@@ -604,6 +669,7 @@ class NeoCloudController extends ChangeNotifier {
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     await _loadSettings();
     unawaited(aiReview.refresh());
+    unawaited(refreshSigningTodo());
   }
 
   /// The account's settings, on the web and the phone alike.
@@ -680,22 +746,29 @@ class NeoCloudController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _authenticate(Future<Map<String, dynamic>> Function() call) async {
+  /// [account] is what the person typed, kept so an unconfirmed account can
+  /// ask for its confirmation link again.
+  Future<void> _authenticate(Future<Map<String, dynamic>> Function() call, {String? account}) async {
     isAuthenticating = true;
     errorMessage = null;
     authErrorCode = null;
+    authInfoMessage = null;
     notifyListeners();
     try {
       final result = await call();
       if (result['requiresTwoFactor'] == true) {
         isAwaitingTwoFactor = true;
+      } else if (result['requiresEmailConfirmation'] == true) {
+        _awaitConfirmation(account, result['email'] as String?);
       } else if (result['user'] is Map) {
         hasUser = true;
+        confirmationAccount = null;
         await _enterSession(AccountUser.fromJson((result['user'] as Map).cast<String, dynamic>()));
       }
     } catch (error) {
       errorMessage = friendlyError(error);
       authErrorCode = error is ApiException ? error.code : null;
+      if (authErrorCode == 'EMAIL_NOT_CONFIRMED') confirmationAccount = account;
     } finally {
       isAuthenticating = false;
       notifyListeners();
@@ -703,8 +776,8 @@ class NeoCloudController extends ChangeNotifier {
   }
 
   Future<void> login({required String username, required String password}) => usesDeviceLogin
-      ? _authenticateDevice((login) => login.signIn(username, password))
-      : _authenticate(() => client.login(username, password));
+      ? _authenticateDevice((login) => login.signIn(username, password), account: username)
+      : _authenticate(() => client.login(username, password), account: username);
 
   Future<void> completeTwoFactorLogin({required String code}) => usesDeviceLogin
       ? _authenticateDevice((login) => login.verifyCode(code))
@@ -723,8 +796,94 @@ class NeoCloudController extends ChangeNotifier {
     required String email,
     required String password,
   }) => usesDeviceLogin
-      ? _authenticateDevice((login) => login.register(username: username, email: email, password: password))
-      : _authenticate(() => client.register(username: username, email: email, password: password));
+      ? _authenticateDevice((login) => login.register(username: username, email: email, password: password), account: username)
+      : _authenticate(() => client.register(username: username, email: email, password: password), account: username);
+
+  // E-mail: password reset and confirmation. All of it is offered only when
+  // [emailConfigured]; the server answers every request alike, so nothing
+  // here says whether an account exists.
+
+  /// The client that reaches the server before anyone signed in: the
+  /// phone's sign-in client while its card is up.
+  BackendClient get _authClient => passwordLogin?.client ?? client;
+
+  void _applyEmailStatus(Object? email) {
+    final map = email is Map ? email : const <String, dynamic>{};
+    emailConfigured = map['configured'] == true;
+    signupConfirmationRequired = map['signupConfirmationRequired'] == true;
+  }
+
+  /// The admin just saved the mail settings: the cards follow at once.
+  void applyEmailConfigured({required bool configured, required bool confirmSignups}) {
+    if (emailConfigured == configured && signupConfirmationRequired == (configured && confirmSignups)) return;
+    emailConfigured = configured;
+    signupConfirmationRequired = configured && confirmSignups;
+    // The card is mid-build when it loads; tell listeners after the frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
+  }
+
+  /// The signed-in app learns whether mail is on from the same status call
+  /// (the phone never made it after pairing).
+  Future<void> _loadEmailStatus() async {
+    try {
+      _applyEmailStatus((await client.authStatus())['email']);
+      notifyListeners();
+    } catch (_) {
+      // Mail features stay off until the next successful load.
+    }
+  }
+
+  void _awaitConfirmation(String? account, String? email) {
+    hasUser = true;
+    isAwaitingTwoFactor = false;
+    confirmationAccount = account;
+    authInfoMessage = email == null || email.isEmpty ? appStrings.emailCheckInboxNoAddress : appStrings.emailCheckInbox(email);
+  }
+
+  /// Asks for a reset link. Returns null once asked (the notice above the
+  /// form is the server's one answer), else the error to show in the dialog.
+  Future<String?> requestPasswordReset(String account) async {
+    authInfoMessage = null;
+    try {
+      final response = await _authClient.requestPasswordReset(account.trim());
+      authInfoMessage = (response['message'] as String?)?.trim().isNotEmpty ?? false
+          ? response['message'] as String
+          : appStrings.emailResetLinkSent;
+      notifyListeners();
+      return null;
+    } catch (error) {
+      return friendlyError(error);
+    }
+  }
+
+  /// Sends the confirmation link again for [confirmationAccount]. Returns the
+  /// error to show, or null.
+  Future<String?> resendConfirmation() async {
+    final account = confirmationAccount;
+    if (account == null || account.isEmpty) return null;
+    errorMessage = null;
+    authErrorCode = null;
+    try {
+      final response = await _authClient.resendConfirmation(account);
+      authInfoMessage = (response['message'] as String?)?.trim().isNotEmpty ?? false
+          ? response['message'] as String
+          : appStrings.emailConfirmationResent;
+      notifyListeners();
+      return null;
+    } catch (error) {
+      return friendlyError(error);
+    }
+  }
+
+  /// Settings › account email. True when the new address is saved or waits
+  /// for its confirmation; the page reads [AccountUser.pendingEmail] after.
+  Future<Map<String, dynamic>> updateAccountEmail({required String email, required String currentPassword}) async {
+    final answer = await client.updateAccountEmail(email: email, currentPassword: currentPassword);
+    await refreshAccount();
+    return answer;
+  }
+
+  Future<void> resendAccountEmailConfirmation() => client.resendAccountEmailConfirmation();
 
   // The phone's sign-in with the login form (src/device/password_login.dart).
 
@@ -756,6 +915,10 @@ class NeoCloudController extends ChangeNotifier {
       final status = await login.status();
       hasUser = status.hasUser;
       registrationOpen = status.registrationOpen;
+      emailConfigured = status.emailConfigured;
+      signupConfirmationRequired = status.signupConfirmationRequired;
+      authInfoMessage = null;
+      confirmationAccount = null;
       isAwaitingTwoFactor = false;
       passwordLogin = login;
     } catch (error) {
@@ -777,21 +940,27 @@ class NeoCloudController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _authenticateDevice(Future<PasswordLoginResult> Function(PasswordDeviceLogin login) step) async {
+  Future<void> _authenticateDevice(Future<PasswordLoginResult> Function(PasswordDeviceLogin login) step, {String? account}) async {
     final login = passwordLogin;
     if (login == null || isAuthenticating) return;
     isAuthenticating = true;
     errorMessage = null;
     authErrorCode = null;
+    authInfoMessage = null;
     notifyListeners();
     try {
       final result = await step(login);
       final connection = result.connection;
       if (connection == null) {
-        isAwaitingTwoFactor = result.requiresTwoFactor;
+        if (result.requiresEmailConfirmation) {
+          _awaitConfirmation(account, result.confirmationEmail);
+        } else {
+          isAwaitingTwoFactor = result.requiresTwoFactor;
+        }
         return;
       }
       passwordLogin = null;
+      confirmationAccount = null;
       isAwaitingTwoFactor = false;
       await deviceSessions.write(connection);
       await _rememberServer(this, connection.server);
@@ -799,6 +968,7 @@ class NeoCloudController extends ChangeNotifier {
     } catch (error) {
       errorMessage = friendlyError(error);
       authErrorCode = error is ApiException ? error.code : null;
+      if (authErrorCode == 'EMAIL_NOT_CONFIRMED') confirmationAccount = account;
     } finally {
       isAuthenticating = false;
       notifyListeners();
@@ -906,6 +1076,12 @@ class NeoCloudController extends ChangeNotifier {
   void _enterRoute() {
     final requested = _requestedRoute;
     _requestedRoute = null;
+    if (requested != null && requested.section == AppRoute.signSection && requested.detail != null) {
+      // Signed in from a signing link: back to that link.
+      _applyRoute(AppRoute(AppSection.files.name));
+      openSigningLink(requested.detail!);
+      return;
+    }
     _applyRoute(requested ?? AppRoute.parse(_preferences.getString(_routePreferenceKey) ?? ''));
     _storeRoute();
   }

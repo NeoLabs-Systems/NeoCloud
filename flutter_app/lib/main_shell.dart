@@ -163,6 +163,7 @@ class _HomeViewState extends State<HomeView> {
 /// The count beside a section in the sidebar and the phone's chips: the
 /// suggestions waiting in Review.
 Widget? _sectionBadge(NeoCloudController controller, AppSection section) {
+  if (section == AppSection.signing) return controller.signingTodo > 0 ? _CountBadge(count: controller.signingTodo) : null;
   if (section != AppSection.review) return null;
   final count = controller.aiReview.counts.total;
   return count > 0 ? _CountBadge(count: count) : null;

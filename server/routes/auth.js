@@ -27,9 +27,14 @@ const { sendJsonError } = require('../http/errors');
 const { jsonHandler, publicOrigin } = require('./_helpers/http');
 const { httpError } = require('../utils/http_error');
 const qrLogin = require('../services/account/qr_login');
-const { accountDisabled } = require('../services/account/status');
+const { createServiceLogger } = require('../utils/logger');
+const { accountDisabled, assertEmailConfirmed } = require('../services/account/status');
+const { describeSendError, requireSignupEmailConfirmation } = require('../services/account/service_email');
+const accountEmail = require('../services/account/account_email');
+const { SIGNUP, createEmailToken, pendingEmailFor } = require('../services/account/email_tokens');
 
 const router = express.Router();
+const log = createServiceLogger('Auth');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -95,6 +100,10 @@ function toUserPayload(user) {
     username: user.username,
     displayName: user.display_name || null,
     email: user.email || null,
+    // When the address was confirmed (null: never), and the new address an
+    // email change is still waiting for.
+    emailVerifiedAt: user.email_verified_at || null,
+    pendingEmail: pendingEmailFor(user.id),
     createdAt: user.created_at,
     lastLogin: user.last_login,
     isAdmin: isAdminUser(user.id),
@@ -114,16 +123,23 @@ function readAuthenticatedUser(req) {
 
 // Every sign-in route ends in establishSession or
 // establishPendingTwoFactorSession once the credential checked out, so a
-// disabled account is refused here, and only someone holding its credential
-// learns that it is disabled.
+// disabled account, or one that has not confirmed its email yet, is refused
+// here, and only someone holding its credential learns that.
 function establishSession(req, res, user) {
-  if (user.disabled_at) return sendJsonError(res, accountDisabled());
+  try {
+    if (user.disabled_at) throw accountDisabled();
+    assertEmailConfirmed(user.id);
+  } catch (err) {
+    return sendJsonError(res, err);
+  }
   req.session.regenerate((regenerateError) => {
     if (regenerateError) return sendJsonError(res, regenerateError);
     req.session.userId = user.id;
     req.session.username = user.username;
     return req.session.save((saveError) => {
       if (saveError) return sendJsonError(res, saveError);
+      // Before the new session is recorded, so it is compared with the old ones.
+      accountEmail.noticeIfNewSignIn(req, user);
       recordCurrentSession(req, user.id);
       db.prepare("UPDATE users SET last_login = datetime('now') WHERE id = ?").run(user.id);
       return res.json({ success: true, redirect: '/app', user: toUserPayload(user) });
@@ -132,7 +148,12 @@ function establishSession(req, res, user) {
 }
 
 function establishPendingTwoFactorSession(req, res, user) {
-  if (user.disabled_at) return sendJsonError(res, accountDisabled());
+  try {
+    if (user.disabled_at) throw accountDisabled();
+    assertEmailConfirmed(user.id);
+  } catch (err) {
+    return sendJsonError(res, err);
+  }
   req.session.regenerate((regenerateError) => {
     if (regenerateError) return sendJsonError(res, regenerateError);
     req.session.pendingTwoFactorUserId = user.id;
@@ -166,8 +187,30 @@ router.get('/status', (req, res) => {
     registrationOpen: isRegistrationOpen(),
     authenticated: Boolean(user),
     user: user ? toUserPayload(user) : null,
+    // Whether the server sends mail, which switches on "forgot password" and
+    // email confirmation in the apps.
+    email: accountEmail.emailStatus(),
   });
 });
+
+// Sends the confirmation link of a new account and answers 202, or takes the
+// account back (nothing was promised yet) when the mail can't be sent.
+async function finishPendingRegistration(req, res, { id, confirmationToken }, { username, email }) {
+  const lang = accountEmail.languageFor(req);
+  try {
+    await accountEmail.sendSignupConfirmation({ id, username, email }, confirmationToken, lang);
+  } catch (err) {
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    log.error('Sign-up confirmation mail failed:', describeSendError(err));
+    return sendJsonError(res, accountEmail.sendFailed());
+  }
+  return res.status(202).json({
+    success: false,
+    requiresEmailConfirmation: true,
+    email,
+    message: accountEmail.pendingMessage(lang),
+  });
+}
 
 router.post('/register', authLimiter, requireSessionTransport, async (req, res) => {
   try {
@@ -184,17 +227,26 @@ router.post('/register', authLimiter, requireSessionTransport, async (req, res) 
     validateNewPassword(password, { username, email });
 
     const hash = await hashPassword(password);
-    const userId = db.transaction(() => {
+    const created = db.transaction(() => {
       // Checked again inside the transaction: hashing takes long enough for
       // a concurrent sign-up to claim either name, or the first account.
       assertRegistrationOpen();
       validateNewUsername(username);
       assertEmailAvailable(email);
+      const firstAccount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count === 0;
       const inserted = db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)')
         .run(username, email, hash);
-      return Number(inserted.lastInsertRowid);
+      const id = Number(inserted.lastInsertRowid);
+      // The account that sets up the server never has to confirm. Any other
+      // waits for its link; the token is written with the account, so there
+      // is no moment where it could sign in unconfirmed.
+      const confirmation = !firstAccount && requireSignupEmailConfirmation()
+        ? createEmailToken(id, SIGNUP, email).token
+        : null;
+      return { id, confirmationToken: confirmation };
     })();
-    establishSession(req, res, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
+    if (created.confirmationToken) return await finishPendingRegistration(req, res, created, { username, email });
+    return establishSession(req, res, db.prepare('SELECT * FROM users WHERE id = ?').get(created.id));
   } catch (err) {
     if (String(err?.code || '').startsWith('SQLITE_CONSTRAINT')) {
       const emailClash = String(err.message || '').toLowerCase().includes('email');

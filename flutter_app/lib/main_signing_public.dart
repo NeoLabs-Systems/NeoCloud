@@ -154,7 +154,7 @@ class _SigningPublicPageState extends State<SigningPublicPage> {
       case PublicSigningState.ready:
         switch (flow.step) {
           case SigningStep.intro:
-            return _IntroView(flow: flow, onClose: widget.controller.finishSigning);
+            return _IntroView(flow: flow, controller: widget.controller, onClose: widget.controller.finishSigning);
           case SigningStep.fill:
             return _FillView(flow: flow, pages: _pages, overlay: _overlay);
           case SigningStep.review:

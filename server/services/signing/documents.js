@@ -18,9 +18,12 @@ const {
 } = require('./constants');
 const { appendEvent, clientOf } = require('./events');
 const { replaceFields, importFields } = require('./fields');
+const { revokeForDocument } = require('./grants');
+const { onDocumentEnded } = require('./mail/triggers');
 const { notifyOwner } = require('./notify');
 const { singleLine } = require('./plain_text');
 const { applyInitialStatuses, colorFor, defaultPartyName, insertParty, replaceParties } = require('./parties');
+const { deliveryByParty } = require('./mail/status');
 const { prepareSnapshot } = require('./snapshot');
 const { readBlobBuffer } = require('./blobs');
 const { documentView, fieldView, partySummary, partyView } = require('./serialize');
@@ -75,9 +78,11 @@ function assertEditable(document) {
 }
 
 function describe(document) {
+  const parties = listParties(document.id);
+  const delivery = deliveryByParty(document, parties);
   return {
     document: documentView(document),
-    parties: listParties(document.id).map(partyView),
+    parties: parties.map((party) => partyView(party, { delivery: delivery.get(party.id) })),
     fields: listFields(document.id).map(fieldView),
   };
 }
@@ -206,7 +211,7 @@ function updateSettings(userId, documentId, body, req) {
 function saveParties(userId, documentId, parties) {
   const document = getOwnedDocument(userId, documentId);
   if (document.status !== DOCUMENT_STATUS.DRAFT) throw lockedError();
-  replaceParties(document.id, parties);
+  replaceParties(document.id, parties, document.owner_id);
   updateDocument(document.id, {});
   notifyOwner(userId, document.id, document.status);
   return describeDocument(userId, document.id);
@@ -277,7 +282,9 @@ function cancelDocument(userId, documentId, req) {
   db.transaction(() => {
     updateDocument(document.id, { status: DOCUMENT_STATUS.CANCELED, canceled_at: at }, at);
     appendEvent(document.id, { type: EVENT.CANCELED, at, ...clientOf(req) });
+    revokeForDocument(document.id);
   })();
+  onDocumentEnded(document.id, 'canceled');
   notifyOwner(userId, document.id, DOCUMENT_STATUS.CANCELED);
   return describeDocument(userId, document.id);
 }

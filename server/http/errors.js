@@ -45,6 +45,8 @@ function sendJsonError(res, err, fallbackStatus = 500) {
     error: err?.message || 'Request failed.',
     ...(code ? { code } : {}),
     ...(retryAfter ? { retryAfter } : {}),
+    // EMAIL_NOT_CONFIRMED: the sign-in screen offers to resend the mail.
+    ...(err?.requiresEmailConfirmation === true ? { requiresEmailConfirmation: true } : {}),
   });
 }
 

@@ -6,15 +6,19 @@ import 'package:flutter/foundation.dart' show compute;
 import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
 import '../photos/photo_models.dart';
+import '../signing/account_api.dart';
 import '../signing/models.dart';
+import '../signing/saved_signatures.dart';
 import '../signing/signing_api.dart';
 import 'models.dart';
 
 part 'backend_client_ai.dart';
+part 'backend_client_email.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
 part 'backend_client_photos.dart';
 part 'backend_client_signing.dart';
+part 'backend_client_signing_account.dart';
 part 'backend_client_vaults.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
@@ -36,7 +40,8 @@ class ApiException implements Exception {
 /// Every call NeoCloud's UI makes, in one place. Paths and bodies follow
 /// docs/api.md in the repository root.
 class BackendClient {
-  BackendClient({required this.baseUrl}) : _http = createAppHttpClient();
+  /// [http] replaces the platform transport (tests).
+  BackendClient({required this.baseUrl, AppHttpClient? http}) : _http = http ?? createAppHttpClient();
 
   /// Empty means "same origin as the page" (the web app under /app). The
   /// mobile apps set it to the server they are connected to.

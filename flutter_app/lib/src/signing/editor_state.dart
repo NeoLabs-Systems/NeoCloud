@@ -87,6 +87,14 @@ class SigningEditorState extends ChangeNotifier {
   bool get canRedo => _redo.isNotEmpty && !locked;
   bool get hasClipboard => _clipboard != null && _clipboard!.isNotEmpty;
   bool get canAddParty => !locked && _parties.length < maxParties;
+
+  /// The signed-in person's name and address, set when mail is on, so the
+  /// creator can add themselves as a signer in one tap.
+  ({String name, String email})? me;
+
+  bool get hasSelfParty => _parties.any((party) => party.isSelf);
+
+  bool get canAddSelf => me != null && canAddParty && !hasSelfParty;
   bool get canAddField => !locked && _fields.length < maxFields;
   bool get hasUnsavedChanges => !locked && (_fieldsDirty || _partiesDirty || _settingsDirty || _saving);
 
@@ -352,6 +360,19 @@ class SigningEditorState extends ChangeNotifier {
     return party;
   }
 
+  /// Adds the creator as a party (their name and address, marked `isSelf`).
+  SigningParty? addSelfParty() {
+    final who = me;
+    if (who == null || !canAddSelf) return null;
+    final party = addParty();
+    if (party == null) return null;
+    _editParty(party.id, (current) => _partyWith(current, name: who.name, email: who.email, isSelf: true));
+    return partyById(party.id);
+  }
+
+  /// Marks (or unmarks) [id] as the creator's own part.
+  void setPartySelf(String id, bool isSelf) => _editParty(id, (party) => _partyWith(party, isSelf: isSelf));
+
   void renameParty(String id, String name) => _editParty(id, (party) => _partyWith(party, name: name.trim().isEmpty ? party.name : name.trim()));
 
   void setPartyEmail(String id, String? email) => _editParty(id, (party) => _partyWith(party, email: email ?? '', clearEmail: email == null || email.isEmpty));
@@ -362,13 +383,14 @@ class SigningEditorState extends ChangeNotifier {
     _partiesChanged();
   }
 
-  SigningParty _partyWith(SigningParty party, {String? name, String? email, bool clearEmail = false}) => SigningParty(
+  SigningParty _partyWith(SigningParty party, {String? name, String? email, bool clearEmail = false, bool? isSelf}) => SigningParty(
     id: party.id,
     name: name ?? party.name,
     position: party.position,
     color: party.color,
     email: clearEmail ? null : (email ?? party.email),
     status: party.status,
+    isSelf: isSelf ?? party.isSelf,
   );
 
   /// Removes a party and its fields. The last party stays.
@@ -492,7 +514,7 @@ class SigningEditorState extends ChangeNotifier {
     _partiesDirty = false;
     final sent = List<SigningParty>.of(_parties);
     final stored = await api.saveParties(_document.id, <PartyDraft>[
-      for (final party in sent) PartyDraft(id: party.id.startsWith('local_') ? null : party.id, name: party.name, email: party.email, color: party.color),
+      for (final party in sent) PartyDraft(id: party.id.startsWith('local_') ? null : party.id, name: party.name, email: party.email, color: party.color, isSelf: party.isSelf),
     ]);
     if (stored.length != sent.length) return;
     final renamed = <String, String>{for (final (index, party) in sent.indexed) party.id: stored[index].id};
@@ -520,6 +542,7 @@ class SigningEditorState extends ChangeNotifier {
     color: server.color.isEmpty ? mine.color : server.color,
     email: mine.email,
     status: server.status,
+    isSelf: mine.isSelf,
   );
 
   Future<void> _saveSettings() async {

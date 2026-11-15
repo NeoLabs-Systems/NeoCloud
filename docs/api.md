@@ -41,14 +41,20 @@ While the server shuts down (up to 30 s), new uploads get
 
 | Method | Path | Body | Notes |
 | --- | --- | --- | --- |
-| GET | `/status` | | `hasUser`, `registrationOpen`, `authenticated`, `user` |
-| POST | `/register` | `{ username, email, password }` | First account becomes admin. `403 SIGNUP_DISABLED` while sign-up is off (`NEOCLOUD_ALLOW_SIGNUP=false`); the first account can always register |
-| POST | `/login` | `{ username, password }` | `username` also takes the email. May answer `{ requiresTwoFactor: true }` |
+| GET | `/status` | | `hasUser`, `registrationOpen`, `authenticated`, `user`, `email: { enabled, configured, signupConfirmationRequired, emailChangeConfirmationRequired }` (`enabled` = `configured` = an admin set up service mail, see [docs/email.md](email.md); everything mail related shows only then) |
+| POST | `/register` | `{ username, email, password }` | First account becomes admin. `403 SIGNUP_DISABLED` while sign-up is off (`NEOCLOUD_ALLOW_SIGNUP=false`); the first account can always register. With service mail on and sign-up confirmation required (the default), every account but the first is created unconfirmed and the answer is `202 { success: false, requiresEmailConfirmation: true, email, message }` with no session; the link goes to `email`. If the mail can't be sent the account is removed again: `503 EMAIL_SEND_FAILED` |
+| POST | `/login` | `{ username, password }` | `username` also takes the email. May answer `{ requiresTwoFactor: true }`. An account still waiting for its sign-up confirmation answers `403 EMAIL_NOT_CONFIRMED` with `requiresEmailConfirmation: true`, only after the right password (a wrong one is the usual `401`) |
 | POST | `/login/2fa` | `{ code }` | TOTP or recovery code, within 10 minutes and at most 5 codes per password sign-in (then `401 TWO_FACTOR_ATTEMPTS_EXCEEDED` or `TWO_FACTOR_EXPIRED`: sign in with the password again) |
 | POST | `/webauthn/login/options` | `{ username? }` | → `{ options }` for `navigator.credentials.get`. Without a username the browser offers any discoverable key (passkey). `409 NO_SECURITY_KEYS` while no key is registered on this host |
 | POST | `/webauthn/login/verify` | `{ response }` | The assertion as JSON (base64url fields). Answers like `/login`, `{ requiresTwoFactor: true }` included: a key that verified the user (PIN or biometric) stands in for the second factor, a presence-only key does not |
 | POST | `/logout` | | Ends the session and closes its socket.io connections |
 | GET | `/me` | | |
+| POST | `/email/resend` (10 / 15 min) | `{ account }` | Username or email. Always `200 { success: true, message }`, whatever `account` is, and no faster for one that exists. Mails a new confirmation link only to an account waiting for its sign-up confirmation, at most 3 per account per 15 minutes |
+| POST | `/password/forgot` (10 / 15 min) | `{ account }` | Username or email. Always `200 { success: true, message }` (no faster for one that exists; mail off answers the same). Mails a reset link to an enabled account that has an email and is not waiting for its sign-up confirmation, at most 3 per account per 15 minutes |
+| GET | `/email/confirm?token=` (60 / 15 min) | | HTML page with a "Confirm email" button. Spends nothing: mail scanners open links |
+| POST | `/email/confirm` (8 / 15 min) | form `token` | Spends the link and answers an HTML page. Sign-up link: the address is confirmed. Email change link: the address is replaced (`409`, page "already used", if another account took it meanwhile; the link stays unspent). `400` page for an unknown, used or expired link |
+| GET | `/password/reset?token=` (60 / 15 min) | | HTML page with the new-password form (`400` page for a link that is not live) |
+| POST | `/password/reset` (8 / 15 min) | form `token`, `password`, `confirmPassword?` | Sets the password (same rules as sign-up; a password refused by them shows the form again with the reason and keeps the link). Spends the link, ends every session, device token and WebDAV app password of the account, clears its sign-in throttle, marks the address confirmed and mails a "password changed" notice. `429` page after 8 posts per 15 minutes per address |
 | POST | `/qr-login/challenge` (60 / 15 min) | `{ requestMetadata? }` | QR sign-in, see below → `{ challengeId, pollToken, expiresAt, status: "pending", qrPayload, backendUrl }` |
 | POST | `/qr-login/challenge/:id/status` (400 / 15 min) | `{ token, knownStatus? }` | → `{ challengeId, status, expiresAt, approvedAt, claimedAt }`. With `knownStatus` the request is held open (up to 25 s) until the status differs, and the answer carries `longPoll: true` |
 | POST | `/qr-login/challenge/:id/cancel` (400 / 15 min) | `{ token }` | → `{ success: true }`; a pending or scanned code becomes `declined` |
@@ -102,7 +108,9 @@ Passwords need at least 8 characters and a strength score of 3 of 4, and may
 not contain the username or email, common words, repeated characters or
 obvious sequences: `400 PASSWORD_TOO_SHORT` / `PASSWORD_WEAK` with the reason.
 
-The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited), `trashBytes`, `versionBytes`.
+The `user` payload includes `storage`: `usedBytes`, `quotaBytes` (-1 = unlimited), `trashBytes`, `versionBytes`, `emailVerifiedAt` (when the address was confirmed through a mail link or by an admin, else `null`) and `pendingEmail` (the new address an email change is waiting for, else `null`).
+
+Sign-in routes that finish a sign-in (`/login`, `/login/2fa`, `/webauthn/login/verify`, QR claim, and the device and security key logins of `/api/devices`) refuse an account waiting for its sign-up confirmation with `403 EMAIL_NOT_CONFIRMED`; the JSON body carries `requiresEmailConfirmation: true`. Mail links and pages are described in [docs/email.md](email.md); the pages are `no-store`, `noindex`, framing is refused and no token is logged.
 
 ## Account — `/api/account` (session or phone)
 
@@ -120,7 +128,9 @@ password and 2FA code are asked for exactly as with a session.
 | GET | `/` | |
 | GET | `/usage` | |
 | PUT | `/display-name` | `{ displayName }` |
-| PUT | `/password` | `{ currentPassword, newPassword }` — signs out every other session (and closes their sockets), revokes every device token and WebDAV app password, and voids approved device logins and open pairing codes not yet redeemed. This session stays under a new id (a new `neocloud.sid` cookie); from a phone, the phone's token stays |
+| PUT | `/email` | `{ email, currentPassword, code? }` — asks for the password (and the code with 2FA on). With email-change confirmation on (service mail configured) → `{ user, emailChangePending: true, pendingEmail }`: a link goes to the new address, the old one gets a notice, and the address changes only when the link is opened. Otherwise → `{ user }` at once, the new address unconfirmed (`emailVerifiedAt: null`). `400 INVALID_EMAIL`, `409 EMAIL_TAKEN`, `401 WRONG_PASSWORD`, `429 RATE_LIMITED` (3 mails per 15 minutes), `503 EMAIL_SEND_FAILED` (nothing changed) |
+| POST | `/email/resend` | | Sends the confirmation again: to `pendingEmail` when a change is waiting, else to the current address when it was never confirmed → `{ success: true, pendingEmail }`. `409 EMAIL_NOT_CONFIGURED`, `409 NOTHING_TO_CONFIRM`, `429`, `503 EMAIL_SEND_FAILED` |
+| PUT | `/password` | `{ currentPassword, newPassword }` — signs out every other session (and closes their sockets), revokes every device token and WebDAV app password, and voids approved device logins and open pairing codes not yet redeemed. This session stays under a new id (a new `neocloud.sid` cookie); from a phone, the phone's token stays. With service mail on, a "password changed" notice goes to the account's address |
 | POST | `/2fa/setup` | `{ currentPassword, code? }` → `{ otpauthUrl, manualKey, status }`. With 2FA already on, `code` (current TOTP or a recovery code) is required: `401 TWO_FACTOR_REQUIRED` / `INVALID_CODE` |
 | POST | `/2fa/enable` | `{ code, currentCode? }` — `code` from the new secret; with 2FA already on, `currentCode` from the factor being replaced is required as well → `{ recoveryCodes, status }` |
 | POST | `/2fa/disable` · `/2fa/recovery-codes` | `{ currentPassword, code }` |
@@ -686,17 +696,20 @@ creating, importing, sending and duplicating 200.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/capabilities` | `{ formats: { pdf, image, office }, maxSourceBytes, maxPages, maxParties, maxFields }`; `office` is true only when LibreOffice is available |
+| GET | `/capabilities` | `{ formats: { pdf, image, office }, maxSourceBytes, maxPages, maxParties, maxFields, email: { configured } }`; `office` is true only when LibreOffice is available, `email.configured` when an admin set up service mail (see [email.md](email.md)): without it signing stays link-only |
 | POST | `/documents` | `{ nodeId, title?, locale? }` → `201 { document, parties, fields, warnings }`. Freezes the file (PDF, image or, when possible, office document) and adds one party. `warnings` has `FORM_FIELDS_FLATTENED` when the PDF has form fields (the final file flattens them; an existing digital signature in the source is lost). Errors: `404` (not yours, trashed), `400 VAULT_FILE`, `NOT_A_FILE`, `PDF_ENCRYPTED`, `INVALID_PDF`, `TOO_MANY_PAGES` (over 300), `CONVERSION_UNAVAILABLE`, `CONVERSION_FAILED`, `INVALID_IMAGE`, `413 DOCUMENT_TOO_LARGE` (over 50 MB), `QUOTA_EXCEEDED`, `415 UNSUPPORTED_TYPE` |
 | GET | `/documents` `?status=&limit=&cursor=` | `{ items: [{ id, title, status, parties: [{ id, name, color, status }], pageCount, expiresAt, createdAt, updatedAt, completedAt, finalNodeId, sourceNodeId }], nextCursor }`, newest activity first, `limit` 1–100 (50) |
-| GET | `/documents/:id` | `{ document, parties, fields }`. `document`: `id, title, status, signingOrder, locale, expiresAt, pageCount, pages, sourceNodeId, sourceName, finalNodeId, snapshotSha256, finalSha256, consentVersion, finalizeError, createdAt, updatedAt, sentAt, completedAt, canceledAt`. Party: `id, position, name, color, email, status, hasLink, linkHint, openedAt, consentedAt, completedAt, declinedAt, declineReason, signerName`. Field: `id, partyId, type, name, required, readonly, defaultValue, prefs, areas, position`. Link URLs are never returned here |
+| GET | `/documents/:id` | `{ document, parties, fields }`. `document`: `id, title, status, signingOrder, locale, expiresAt, pageCount, pages, sourceNodeId, sourceName, finalNodeId, snapshotSha256, finalSha256, consentVersion, message, reminderDays, finalizeError, createdAt, updatedAt, sentAt, completedAt, canceledAt`. Party: `id, position, name, color, email, isSelf, status, hasLink, linkHint, openedAt, consentedAt, completedAt, declinedAt, declineReason, signerName, delivery` (`delivery`: `{ status: queued\|sent\|skipped\|no_email\|failed, lastSentAt, attempts, errorCode, lastError, remindersSent, nextReminderAt }`, worked out from the outbox; `errorCode`: `SMTP_UNREACHABLE\|SMTP_REJECTED\|INVALID_ADDRESS\|RATE_LIMITED\|UNKNOWN`, `lastError` a short sentence for it in the document's language, never the mail server's text). Sending and reminding answer `403 EMAIL_NOT_VERIFIED` or `429 MAIL_QUOTA_EXCEEDED` (docs/email.md). Field: `id, partyId, type, name, required, readonly, defaultValue, prefs, areas, position`. Link URLs are never returned here |
 | PUT | `/documents/:id` | `{ title?, signingOrder? (preserved\|random), expiresAt? (future, ≤ 365 days, or null), locale? (en\|de) }`; draft, or sent and still unopened (`409 DOCUMENT_LOCKED`) |
 | DELETE | `/documents/:id` | draft, completed, declined, expired or canceled (`409 INVALID_STATE` otherwise). Deletes values and the frozen copy; the signed file stays in the library |
 | PUT | `/documents/:id/fields` | `{ fields: [{ id?, partyId, type, name?, required?, readonly?, defaultValue?, prefs?, areas }] }` replaces the list (max 500; ids of existing fields are kept, others get new ones) → `{ fields }`. Types: `text number date phone checkbox radio select multiple cells signature initials stamp image file heading`. `400 INVALID_FIELD` |
-| PUT | `/documents/:id/parties` | `{ parties: [{ id?, name, email?, color? }] }` (1–20), draft only; parties left out are removed with their fields → `{ document, parties, fields }`. `400 INVALID_PARTY` |
+| PUT | `/documents/:id/parties` | `{ parties: [{ id?, name, email?, color?, isSelf? }] }` (1–20), draft only; parties left out are removed with their fields → `{ document, parties, fields }`. `isSelf`: the owner signs this party (at most one; its email defaults to the owner's; bound to the owner's account; never mailed). `400 INVALID_PARTY` |
 | POST | `/documents/:id/import-fields` | draft only: the PDF's own form fields as new fields of the first party → `{ imported, fields }` |
-| POST | `/documents/:id/send` | → `{ document, parties, fields, links: [{ partyId, url }] }`. The only time the URLs exist (`<origin>/app/sign/<token>`). `400 PARTY_WITHOUT_FIELDS`, `EXPIRY_IN_PAST`; `409 ALREADY_SENT` |
-| POST | `/documents/:id/parties/:partyId/link` | new link, the old one stops working; the party must agree again (values filled in stay) → `{ partyId, url }`. `409 INVALID_STATE`, `PARTY_FINISHED` |
+| POST | `/documents/:id/send` | body (all optional) `{ message? (plain text, ≤ 1000), deliverEmail? (default true), reminderDays? (0 off, 2, 3, 5, 7, 14) }` → `{ document, parties, fields, links: [{ partyId, url }], delivery: [{ partyId, status }] }`. The only time the URLs exist (`<origin>/app/sign/<token>`). With service mail configured and `deliverEmail` not false, parties with an address are mailed: everybody at once for `random`, only the first for `preserved` (the next gets "your turn" when its predecessor signs); `delivery.status`: `queued` (in the outbox), `skipped` (waiting its turn, the owner, mail off or not configured), `no_email`. `400 PARTY_WITHOUT_FIELDS`, `EXPIRY_IN_PAST`, `INVALID_REQUEST`; `409 ALREADY_SENT` |
+| POST | `/documents/:id/parties/:partyId/remind` | `{ message? }` (≤ 1000) → `202 { delivery: { partyId, status: 'queued' } }`. At least 24 hours between two reminders to a party, at most 5 (automatic ones count). `409 PARTY_NOT_ACTIVE` (finished, declined, waiting for its turn, the owner, link off, document not out for signing), `400 NO_EMAIL`, `503 EMAIL_NOT_CONFIGURED`, `429 REMINDER_TOO_SOON` (`retryAfter` seconds, also the `Retry-After` header), `429 REMINDER_LIMIT` |
+| POST | `/documents/:id/remind-all` | `{ message? }` → `202 { results: [{ partyId, status: 'queued' }\|{ partyId, status: 'skipped', code, retryAfter? }] }`, one entry per waiting party that has an address; `503 EMAIL_NOT_CONFIGURED` |
+| POST | `/documents/:id/parties/:partyId/open-as-owner` | the owner signs this party themselves: marks it `isSelf`, binds it to the account, no mail → `{ url }` (`/app/sign/<grant>`, a [grant](#signing-for-account-holders)). `409 INVALID_STATE` (not sent yet), `LINK_REVOKED`, `SELF_PARTY_EXISTS`, `ALREADY_CLAIMED` |
+| POST | `/documents/:id/parties/:partyId/link` | new link, the old one stops working (and the party's account grants end); the party must agree again (values filled in stay) → `{ partyId, url, delivery? }` (`delivery` when mail is on: the invitation goes out again with the new link). `409 INVALID_STATE`, `PARTY_FINISHED` |
 | POST | `/documents/:id/parties/:partyId/revoke` | turns the link off → `{ party }` |
 | POST | `/documents/:id/cancel` | sent / in progress only; every link then shows `canceled` |
 | POST | `/documents/:id/duplicate` | new draft with the same pages, parties and fields → `201` |
@@ -714,9 +727,40 @@ canceled`. Party status: `pending waiting opened completed declined`. Socket
 event `signing:updated { documentId, status }` goes to the owner's sessions on
 every change (`status: "deleted"` after a delete); phones poll.
 
+### Signing for account holders
+
+A signer who has an account on the instance gets a profile, a prefill, an
+inbox and a copy of the signed file in their cloud (docs/signing.md). The
+routes below take a browser session or the phone app (not a desktop token) and
+act on the caller's own account; another account's party or image id answers
+`404`.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/profile` | `{ displayName, email, phone, presets: [{ id, label, value }], autoFill, autoSave, saveFolderId, notifyOnEachSignature, signatures: [{ id, kind, method, label, isDefault, createdAt }] }`. Until saved, name and email come from the account; `autoFill` and `autoSave` are true, `notifyOnEachSignature` false, `saveFolderId` null (the automatic "Signed documents" folder in the root, made on demand, never in a vault) |
+| PUT | `/profile` | the fields named in the body are replaced, the rest stays (`signatures` is read-only here): `displayName` ≤ 120, `email`, `phone` ≤ 40, `presets` (≤ 30, `label` ≤ 60 and different, `value` ≤ 500, an unknown `id` is replaced), the three switches, `saveFolderId` (a live folder of the caller that is not in a vault, or null) → the profile. `400 INVALID_PROFILE`, `INVALID_FOLDER` |
+| POST | `/profile/images` `?kind=signature\|initials&method=draw\|type\|upload&label=&default=0\|1&text=` | raw PNG body (re-encoded with sharp, ≤ 8 MB in; `text` for `method=type`) → `201` the image as listed above. At most 5 per kind (`409 IMAGE_LIMIT`); the first of a kind is its default. `400 INVALID_IMAGE`, `413 UPLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
+| GET | `/profile/images/:id` | the picture (PNG), owner only |
+| PUT | `/profile/images/:id` | `{ label?, isDefault? }` → the image; one default per kind |
+| DELETE | `/profile/images/:id` | removes it and its storage; the newest of its kind becomes the default when it was one |
+| POST | `/claim` | `{ token, apply?, preview?, today? }` (`preview: true` only lists what would be filled and binds and writes nothing; the party's link token; a grant token works too; 60 per 15 min per account) binds the party to the account → `{ partyId, documentTitle, prefill: [{ fieldId, name, type, source: 'profile', value? \| imageId? }], canPrefill, applied: [fieldId] }`. `prefill` covers the party's own empty, writable fields without a sender default, only while the party is `ready` and `autoFill` is on: signature and initials from the default saved image (that suits the field's allowed methods), a date field set to fill itself with `today` (`YYYY-MM-DD`, else today in UTC), text-like fields by their name against name, first/last name, email, phone and the presets' labels (case, accents and punctuation ignored, English and German synonyms such as Adresse/Address, Firma/Company, Titel/Title), each checked like a typed value. `apply: true` writes them (before consent; finishing still needs it) and never overwrites; calling again changes nothing. `409 ALREADY_CLAIMED`; an unknown token `404 NOT_FOUND` |
+| GET | `/inbox` `?status=todo\|done` | `{ items: [{ documentId, partyId, title, creatorName, status, expiresAt, sentAt, completedAt, finalAvailable, savedNodeId? }], counts: { todo } }` for the parties bound to the caller or whose email is the caller's **verified** email. `status`: `ready waiting completed declined expired canceled`; `todo` lists `ready` and `waiting`, `done` the rest; `counts.todo` counts `ready`. `savedNodeId` is the copy in the caller's cloud |
+| POST | `/inbox/:partyId/open` | → `{ url }` = `/app/sign/<grant>` for a party the caller is entitled to (`404` otherwise; 60 per 15 min). The party's own token is never returned |
+| GET | `/inbox/:partyId/final` `?certificate=0\|1` | The signed PDF for a party the caller holds (bound to the account, or its address is the caller's **verified** email), once the whole document is `completed` (`404 FINAL_UNAVAILABLE` before, `404` for any other party, likewise when another account holds it). Same `Content-Disposition` names, `Range` and `ETag` as the public `/final`; the download is audited (`final_downloaded`). Grants die when their party signs, so the signer's success card uses this route after a grant session |
+
+Grants: the public routes below accept a grant token wherever they accept the
+party's token, with the same permissions. A grant is 256 random bits (only the
+SHA-256 is stored), lives 60 minutes, binds the party to its account on first
+use (`claimed`, `grant_used` in the trail) and is deleted when the party
+completes, the document is declined, canceled or expires, or the link is
+replaced or turned off; the inbox opens a new one to see the result. Socket
+events to the account: `signing:inbox { documentId, status, counts: { todo } }`
+whenever a request it is entitled to changes, and `signing:saved { documentId,
+nodeId }` when the signed file was copied into its cloud.
+
 ## Public signing — `/api/public/sign/:token` (no account)
 
-The token (256 bits) is the only credential. No cookie is read or set; answers
+The token (256 bits; or a [grant token](#signing-for-account-holders)) is the only credential. No cookie is read or set; answers
 carry `Cache-Control: no-store`, `X-Robots-Tag: noindex` and
 `Referrer-Policy: no-referrer`. An unknown, malformed, revoked or replaced
 token is one and the same `404 NOT_FOUND`. Limits per 15 min: 600 reads and
@@ -961,7 +1005,7 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 | Method | Path | Body |
 | --- | --- | --- |
 | GET | `/health` · `/logs` · `/audit` · `/version` | `/health`: counts, disks, `database` (`ok`\|`damaged`\|`pending`, the last daily `quick_check`), `databaseCheckedAt`, `damagedBlobs` (weekly blob scrub), `blobScrubCycleAt`, `minFreeDiskBytes` |
-| GET | `/users?q=` | `{ users: [{ id, username, displayName, email, isAdmin, disabled, disabledAt, usedBytes, quotaBytes, quotaMode, fileCount, aiMonthlyTokens, createdAt, lastLogin }] }`. `aiMonthlyTokens`: the account's own AI token budget (`null` follows the server default, `0` is no limit) |
+| GET | `/users?q=` | `{ users: [{ id, username, displayName, email, emailVerified, emailConfirmationPending, isAdmin, disabled, disabledAt, usedBytes, quotaBytes, quotaMode, fileCount, aiMonthlyTokens, createdAt, lastLogin }] }`. `aiMonthlyTokens`: the account's own AI token budget (`null` follows the server default, `0` is no limit) |
 | PUT | `/users/:id/quota` | `{ mode: "default"\|"unlimited"\|"custom", bytes? }` (`"50GB"` works) |
 | PUT | `/users/:id/admin` | `{ isAdmin }`: a boolean; anything else `400 INVALID_VALUE` |
 | POST | `/users/:id/password` | `{ password }` — signs the account out everywhere: browser sessions (and their sockets), device tokens, WebDAV app passwords, approved device logins and open pairing codes |
@@ -969,6 +1013,10 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 | PUT | `/users/:id/disabled` | `{ disabled }`: a boolean (else `400 INVALID_VALUE`) → the user. Disabling ends the account's sessions and device tokens at once (they stay ended after enabling); while disabled every sign-in (password, 2FA, passkey, QR sign-in, device login, pairing, device security key, WebDAV) answers `403 ACCOUNT_DISABLED` once the credential is right, any session or token still held answers `401`, and its share links answer `404`. `400 CANNOT_DISABLE_SELF`, `409 LAST_ADMIN` |
 | DELETE | `/users/:id/sessions` | Sign out everywhere: ends every browser session (and socket) and revokes every device token and WebDAV app password → `{ success, sessions, devices }` (counts). For your own account the session or phone asking stays |
 | DELETE | `/users/:id` | Not for admins; deletes the account like `POST /api/account/delete` |
+| POST | `/users/:id/email/verify` (60 / 15 min) | → `{ success: true }`. Marks the address confirmed and lifts a pending sign-up confirmation, so the account can sign in. `404`, `409 EMAIL_REQUIRED` (no address). Audit `account.email_verify` |
+| GET | `/config/email` | → `{ configured, missing: ["Sender address", "SMTP host"], settings: { from, smtpHost, smtpPort, smtpUser, smtpPasswordConfigured, smtpSecure, smtpRequireTls, smtpRejectUnauthorized, replyTo, brandName, supportUrl, publicUrl, tokenTtlHours, requireSignupConfirmation, requireEmailChangeConfirmation, notifyNewLogin, notifyAccountChanges } }`. The SMTP password is never returned |
+| PUT | `/config/email` (60 / 15 min) | The `settings` fields, each optional (absent keeps its value) → the same shape as GET. Strings are one line, `from`/`replyTo` an address or `Name <address>`, `smtpHost` a host name, `supportUrl`/`publicUrl` http(s) URLs, `smtpPort` 1–65535, `tokenTtlHours` 1–8760, the flags real booleans, else `400 INVALID_VALUE` and nothing is written. `smtpPassword` is written only when non-empty; `clearSmtpPassword: true` removes it. Applies at once, audit `email.config` |
+| POST | `/config/email/test` (5 / 15 min) | `{ to? }` → `{ ok: true, message }`. Sends a test message to `to`, default the admin's own address. `409 EMAIL_NOT_CONFIGURED`, `400 EMAIL_REQUIRED` (no `to`, and the admin has no address), `400 INVALID_EMAIL`, `422 EMAIL_TEST_FAILED` with the transport's error text (one line, never the password). Audit `email.test` records only whether it worked |
 | GET / PUT | `/config/storage` | `defaultQuotaBytes`, `maxUploadBytes`, `trashRetentionDays`, `versionRetention` |
 | POST | `/storage/recalculate` | |
 | GET | `/access` · PUT `/access/signup` | `{ allowSignup }` — off refuses every registration but the first account's |
@@ -1110,3 +1158,58 @@ the change journal (trash, rename and move drop what must go;
 deleting a file removes its entry with it) and reads every live file that
 has no entry for its current content, so it resumes after a restart and
 catches up after being paused.
+
+## Connected apps — NeoAgent companion OAuth
+
+NeoAgent connects with OAuth 2 (authorization code, PKCE S256, public client).
+`GET /api/version` carries `product: "neocloud"` so NeoAgent can recognise the server.
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/oauth/companion/neoagent/bootstrap` | none (rate limited) | `{ redirectUri, appName? }` → `{ companion: "neoagent", created, clientId, redirectUri, scopes, authorizationEndpoint, tokenEndpoint, userinfoEndpoint, revocationEndpoint }`. Same client back for the same `redirectUri`, which must be https (http only on loopback/private hosts) and end in `/api/integrations/oauth/callback`. |
+| GET | `/oauth/authorize` | browser | `response_type=code&client_id&redirect_uri&state&code_challenge&code_challenge_method=S256&scope`. Without a NeoCloud browser session, redirects to `/oauth/sign-in` (password, then the 2FA code when enabled; disabled or unconfirmed accounts refused). Shows the consent page (en/de by Accept-Language). |
+| GET/POST | `/oauth/sign-in` | browser | The connection's own sign-in; it does not sign the browser in to NeoCloud. |
+| POST | `/oauth/authorize` | browser | Consent form: `files=read|write`, `signing=on`, `decision=approve|deny`, plus a one-time `consent` token from the page. Redirects to `redirect_uri` with `code` + `state`, or `error=access_denied`. |
+| POST | `/oauth/token` | form | `grant_type=authorization_code` (`client_id, code, redirect_uri, code_verifier`) or `refresh_token` (`client_id, refresh_token`) → `{ access_token, token_type: "Bearer", expires_in: 3600, refresh_token, scope }`. `scope` lists the granted scopes. Refresh tokens last 90 days and rotate on every use. Errors: `{ error: invalid_grant|invalid_client|invalid_request|unsupported_grant_type, error_description }`. |
+| POST | `/oauth/revoke` | form | `client_id, token` (access or refresh) → 200. |
+| GET | `/oauth/userinfo` | Bearer | `{ sub, preferred_username, email, scope }`. |
+| GET | `/api/account/connected-apps` | session or phone | `{ apps: [{ id, name, host, scopes, connectedAt, lastUsedAt }] }`. |
+| DELETE | `/api/account/connected-apps/:id` | session or phone | Disconnects the app (all its tokens). |
+
+Scopes: `files:read`, `files:write`, `signing:read`, `signing:write`. The
+consent page grants `files:read` (Read only, the default) or also
+`files:write` (Read & write); the signatures toggle grants `signing:read` +
+`signing:write`, and when off `signing:read` is still granted if requested.
+Codes and tokens are stored as SHA-256 only. Every grant of an account is
+revoked by "sign out everywhere", an admin disabling the account, a password
+change or reset, and account deletion.
+
+## Agent API — `/api/v1` (connected-app Bearer token)
+
+Only connected-app access tokens are accepted (not sessions or device
+tokens). A route whose scope was not granted answers `403 INSUFFICIENT_SCOPE`.
+Errors are `{ error, code }`. Paths are user-visible (`/Contracts/Lease.md`);
+only the account's own files are reachable, never files in a vault (they
+don't show, their ids answer 404, writes into a vault are `403 VAULT_NOT_ALLOWED`).
+Bodies may be up to 8 MB of JSON.
+
+Item: `{ id, name, path, type: "file"|"folder", size, mimeType, modifiedAt }`.
+
+| Method | Path | Scope | Notes |
+| --- | --- | --- | --- |
+| GET | `/files?path=/Folder` | files:read | `{ path, items }` (default `/`). |
+| GET | `/files/search?q=&limit=` | files:read | `{ items }`, matching file and folder names. |
+| GET | `/files/:id` | files:read | item + `revision`. |
+| GET | `/files/:id/content` | files:read | `{ id, name, mimeType, encoding: "utf8"|"base64", content, revision }`: UTF-8 text up to 1 MB as `utf8`, other files up to 5 MB as `base64`, larger `413 FILE_TOO_LARGE`. |
+| POST | `/files` | files:write | `{ path, content | contentBase64, overwrite?: false }` → 201 item. Creates missing folders; existing file without `overwrite` → `409 ALREADY_EXISTS`; with it, a new version. |
+| PUT | `/files/:id/content` | files:write | `{ content | contentBase64, baseRevision? }` → item + `revision` (new version). Stale `baseRevision` → `409 CONFLICT`. |
+| POST | `/folders` | files:write | `{ path }` → 201 item, or 200 when it existed. |
+| PATCH | `/files/:id` | files:write | `{ name?, parentPath? }` → item. Name taken → `409 ALREADY_EXISTS`. |
+| DELETE | `/files/:id` | files:write | Moves to the trash → `{ trashed: true }`. |
+| POST | `/documents/pdf` | files:write | `{ path, title?, markdown, overwrite?: false }` → 201 item. Headings, paragraphs, bold/italic, lists, horizontal rules; A4. |
+| POST | `/signing/requests` | signing:write (+ files:write with `document`) | `{ fileId? \| document?: { path, title, markdown }, title?, signers: [{ name, email? }], message?, sendEmail?: false, expiresInDays?, signingOrder?: "parallel"|"sequential" }`. Each signer gets a signature, printed name and date field on a signature block (end of the rendered document; for `fileId`, a PDF, a signature page is appended and saved beside it as `<name> (for signature).pdf`). Sent at once → 201 `{ id, title, status, signers: [{ id, name, email, status, url }] }`; `url` is the private signing link, returned only here. |
+| GET | `/signing/requests?status=&limit=` | signing:read | `{ items: [{ id, title, status, createdAt, signers: [{ id, name, email, status, signedAt }] }] }`. `status`: `pending` (out for signing), `completed`, `cancelled`, `expired` (also `declined`, `draft`). |
+| GET | `/signing/requests/:id` | signing:read | Same item, plus `finalFileId` once completed. |
+| POST | `/signing/requests/:id/remind` | signing:write | 202 `{ reminded }`. `409 EMAIL_NOT_CONFIGURED` without mail, `409 NO_EMAIL` (or the per-signer code) when nobody can be reminded. |
+| POST | `/signing/requests/:id/signers/:signerId/link` | signing:write | `{ url }`: a new link; the old one stops working. |
+| POST | `/signing/requests/:id/cancel` | signing:write | The item, `status: "cancelled"`. |

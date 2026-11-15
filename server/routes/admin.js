@@ -16,6 +16,8 @@ const { ownSessionId } = require('../services/account/sessions');
 const { listProviders, updateProvider } = require('../services/admin/ai_providers');
 const { getUserModelGrants, setUserModelGrants } = require('../services/admin/model_grants');
 const aiAdmin = require('../services/admin/ai');
+const adminEmail = require('../services/admin/email');
+const { languageFor } = require('../services/account/account_email');
 const { getSupportedModels } = require('../services/ai/models');
 const modelVisibility = require('../services/ai/model_visibility');
 const { usageSummary } = require('../services/ai/usage');
@@ -37,6 +39,15 @@ const keyExportLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'Too many attempts, try again later', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Every test message is a real SMTP login: a few per quarter hour.
+const emailTestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many test emails, try again later', code: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -80,6 +91,19 @@ router.delete('/users/:id', settingsLimiter, jsonHandler((req) => users.deleteUs
 router.get('/config/storage', jsonHandler(() => serverConfig.getStorageSettings()));
 router.put('/config/storage', settingsLimiter, jsonHandler((req) => serverConfig.updateStorageSettings(req.body)));
 router.post('/storage/recalculate', settingsLimiter, jsonHandler(() => serverConfig.recalculateAllUsage()));
+
+// Service mail (docs/email.md). The SMTP password is write-only.
+router.get('/config/email', jsonHandler(() => adminEmail.getEmailSettings()));
+router.put('/config/email', settingsLimiter, jsonHandler((req) => adminEmail.updateEmailSettings(req.body, { actorUserId: req.userId })));
+router.post('/config/email/test', emailTestLimiter, jsonHandler((req) => adminEmail.sendTestEmail({
+  actorUserId: req.userId,
+  to: req.body?.to,
+  lang: languageFor(req),
+})));
+router.post('/users/:id/email/verify', settingsLimiter, jsonHandler((req) => adminEmail.verifyUserEmail(
+  intParam(req.params.id, 'user id'),
+  { actorUserId: req.userId },
+)));
 
 router.get('/access', jsonHandler(() => serverConfig.getAccessSettings()));
 router.put('/access/signup', settingsLimiter, jsonHandler((req) => serverConfig.setAllowSignup(req.body?.allowSignup)));

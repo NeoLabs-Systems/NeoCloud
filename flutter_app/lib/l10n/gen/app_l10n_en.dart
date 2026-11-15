@@ -6997,4 +6997,750 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get signingTabSettings => 'Settings';
+
+  @override
+  String get emailResetTitle => 'Reset password';
+
+  @override
+  String get emailResetBody =>
+      'Enter your username or account email. NeoCloud will send a reset link if it can match the account.';
+
+  @override
+  String get emailSendLink => 'Send link';
+
+  @override
+  String get emailResetLinkSent =>
+      'If that account has a confirmed email, NeoCloud will send a password reset link.';
+
+  @override
+  String emailCheckInbox(String email) {
+    return 'We sent a confirmation link to $email. Confirm your address, then sign in.';
+  }
+
+  @override
+  String get emailCheckInboxNoAddress =>
+      'Check your email to confirm your NeoCloud account before signing in.';
+
+  @override
+  String get emailResendConfirmation => 'Resend confirmation email';
+
+  @override
+  String get emailConfirmationResent =>
+      'If that account is waiting for confirmation, we sent a new link.';
+
+  @override
+  String get emailNotConfirmedError =>
+      'Confirm your email address before signing in. We sent you a link when you registered.';
+
+  @override
+  String get emailSendFailedError =>
+      'We couldn\'t send the confirmation email. Please try again later.';
+
+  @override
+  String get emailVerifiedLabel => 'Verified';
+
+  @override
+  String get emailUnverifiedLabel => 'Not confirmed';
+
+  @override
+  String emailCurrent(String email) {
+    return 'Current email: $email';
+  }
+
+  @override
+  String get emailNone => 'No email address yet.';
+
+  @override
+  String get emailPasswordHelper =>
+      'Required to add or change your account email.';
+
+  @override
+  String get emailEnterPassword =>
+      'Enter your current password to save email changes.';
+
+  @override
+  String get emailSave => 'Save email';
+
+  @override
+  String get emailSaved => 'Email saved.';
+
+  @override
+  String emailPending(String email) {
+    return 'We sent a confirmation link to $email. Your current address stays in use until you confirm.';
+  }
+
+  @override
+  String get emailConfirmationSent => 'Confirmation email sent.';
+
+  @override
+  String get emailAdminTitle => 'Email';
+
+  @override
+  String get emailAdminDescription =>
+      'The mail account NeoCloud sends sign-up confirmations, password resets and account alerts from.';
+
+  @override
+  String get emailReady => 'Ready';
+
+  @override
+  String get emailNotConfigured => 'Not configured';
+
+  @override
+  String emailMissingNote(String fields) {
+    return 'Account email is off until these are set: $fields.';
+  }
+
+  @override
+  String get emailSenderAddress => 'Sender address';
+
+  @override
+  String get emailSenderHint => 'NeoCloud <no-reply@example.com>';
+
+  @override
+  String get emailSmtpHost => 'SMTP host';
+
+  @override
+  String get emailSmtpPort => 'SMTP port';
+
+  @override
+  String get emailSmtpUser => 'SMTP username';
+
+  @override
+  String get emailSmtpPassword => 'SMTP password';
+
+  @override
+  String get emailReplyTo => 'Reply-To address';
+
+  @override
+  String get emailBrandName => 'Brand name';
+
+  @override
+  String get emailPublicUrl => 'Public URL override';
+
+  @override
+  String get emailPublicUrlHelper =>
+      'For links in emails. Blank uses the server public URL.';
+
+  @override
+  String get emailSupportUrl => 'Support URL';
+
+  @override
+  String get emailLinkLifetime => 'Link lifetime (hours)';
+
+  @override
+  String get emailLinkLifetimeHelper =>
+      'How long confirmation links stay valid.';
+
+  @override
+  String get emailValueStored => 'A value is stored.';
+
+  @override
+  String get emailNothingStored => 'Nothing stored yet.';
+
+  @override
+  String get emailLeaveBlank => 'Leave blank to keep the stored value';
+
+  @override
+  String get emailImplicitTls => 'Implicit TLS';
+
+  @override
+  String get emailImplicitTlsHelper =>
+      'Use TLS from the start of the connection, usually on port 465.';
+
+  @override
+  String get emailRequireStarttls => 'Require STARTTLS';
+
+  @override
+  String get emailRequireStarttlsHelper =>
+      'Refuse to send unless the connection upgrades to TLS.';
+
+  @override
+  String get emailRejectInvalidTls => 'Reject invalid TLS certificates';
+
+  @override
+  String get emailRejectInvalidTlsHelper =>
+      'Turn off only for a mail server with a self-signed certificate.';
+
+  @override
+  String get emailConfirmSignups => 'Confirm new sign-ups';
+
+  @override
+  String get emailConfirmSignupsHelper =>
+      'New accounts confirm their email address before signing in.';
+
+  @override
+  String get emailConfirmChanges => 'Confirm email changes';
+
+  @override
+  String get emailConfirmChangesHelper =>
+      'A changed email address is confirmed before it is used.';
+
+  @override
+  String get emailNotifyLogin => 'New sign-in alerts';
+
+  @override
+  String get emailNotifyLoginHelper =>
+      'Email account owners about sign-ins from a new device.';
+
+  @override
+  String get emailNotifyChanges => 'Account change alerts';
+
+  @override
+  String get emailNotifyChangesHelper =>
+      'Email account owners when their account details change.';
+
+  @override
+  String get emailSaveSettings => 'Save email settings';
+
+  @override
+  String get emailSettingsSaved => 'Email settings saved.';
+
+  @override
+  String get emailRemovePassword => 'Remove SMTP password';
+
+  @override
+  String get emailRemovePasswordTitle => 'Remove the SMTP password?';
+
+  @override
+  String get emailRemovePasswordBody =>
+      'Mail servers that need a password will refuse to send until a new one is saved. Other changes in this form are saved too.';
+
+  @override
+  String get emailRemove => 'Remove';
+
+  @override
+  String get emailPasswordRemoved => 'SMTP password removed.';
+
+  @override
+  String get emailPortInvalid =>
+      'SMTP port must be a whole number from 1 to 65535.';
+
+  @override
+  String get emailLifetimeInvalid =>
+      'Link lifetime must be from 1 to 8760 hours.';
+
+  @override
+  String emailUrlInvalid(String field) {
+    return '$field must be an http or https address.';
+  }
+
+  @override
+  String get emailTestTitle => 'Send a test email';
+
+  @override
+  String get emailTestHelper =>
+      'Uses the saved settings. Save your changes first.';
+
+  @override
+  String get emailTestTo => 'Send to';
+
+  @override
+  String get emailTestSend => 'Send test email';
+
+  @override
+  String emailTestSent(String to) {
+    return 'Test email sent to $to.';
+  }
+
+  @override
+  String get emailTestSentGeneric => 'Test email sent.';
+
+  @override
+  String get emailTestNeedsAddress => 'Enter an address to send the test to.';
+
+  @override
+  String get emailUnverified => 'Email unverified';
+
+  @override
+  String get emailMarkVerified => 'Mark email as verified';
+
+  @override
+  String emailMarkedVerified(String user) {
+    return '$user\'s email is marked as verified.';
+  }
+
+  @override
+  String get signingTabMine => 'My documents';
+
+  @override
+  String get signingTabTodo => 'To sign';
+
+  @override
+  String get signingTabDone => 'Signed by me';
+
+  @override
+  String get signingInboxEmptyTodoTitle => 'Nothing to sign right now';
+
+  @override
+  String get signingInboxEmptyTodoBody =>
+      'When someone asks you to sign a document, it shows up here. This works for requests sent to your confirmed email address.';
+
+  @override
+  String get signingInboxEmptyDoneTitle => 'Nothing signed yet';
+
+  @override
+  String get signingInboxEmptyDoneBody =>
+      'Documents you sign with this account appear here.';
+
+  @override
+  String signingInboxFrom(String name) {
+    return 'From $name';
+  }
+
+  @override
+  String get signingInboxReady => 'Ready to sign';
+
+  @override
+  String get signingInboxWaiting => 'Waiting for others';
+
+  @override
+  String get signingInboxOpen => 'Open';
+
+  @override
+  String signingInboxSignedOn(String date) {
+    return 'Signed $date';
+  }
+
+  @override
+  String get signingInboxOpenSaved => 'Open saved copy';
+
+  @override
+  String get signingInboxOpenFailed =>
+      'Couldn\'t open this request. Please try again.';
+
+  @override
+  String get signingMailInvitationHint => 'The invitation goes to this address';
+
+  @override
+  String get signingMailSend => 'Send invitation emails';
+
+  @override
+  String get signingMailSendHint =>
+      'Everyone with an email address gets their link by mail.';
+
+  @override
+  String get signingMailSendNoAddress =>
+      'Add an email address above to send the invitation by mail.';
+
+  @override
+  String get signingMailMessage => 'Personal message (optional)';
+
+  @override
+  String get signingMailMessageHint => 'Shown in the invitation email';
+
+  @override
+  String get signingMailReminders => 'Remind automatically';
+
+  @override
+  String get signingMailRemindOff => 'Off';
+
+  @override
+  String signingMailRemindEvery(int days) {
+    return 'Every $days days';
+  }
+
+  @override
+  String get signingThisIsMe => 'This is me';
+
+  @override
+  String get signingThisIsMeOn => 'This is you';
+
+  @override
+  String get signingAddMe => 'Add me as a party';
+
+  @override
+  String get signingSignNow => 'Sign yourself now';
+
+  @override
+  String get signingSignNowFailed =>
+      'Couldn\'t open your signing page. You can try again from the progress page.';
+
+  @override
+  String get signingMailSentTitle => 'Invitations are on their way';
+
+  @override
+  String signingMailSummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count invitation emails are on their way',
+      one: '1 invitation email is on its way',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signingMailSomeFailed =>
+      'Some emails couldn\'t be sent. Copy their link below and share it yourself.';
+
+  @override
+  String get signingDeliverySent => 'Email sent';
+
+  @override
+  String get signingDeliveryQueued => 'Sending…';
+
+  @override
+  String get signingDeliveryFailed => 'Email failed';
+
+  @override
+  String get signingDeliveryNoEmail => 'No email address';
+
+  @override
+  String get signingDeliverySkipped => 'Not emailed';
+
+  @override
+  String get signingDeliveryFailedHelp =>
+      'The invitation could not be sent. Copy the link instead.';
+
+  @override
+  String signingDeliveryLastSent(String date) {
+    return 'Last sent $date';
+  }
+
+  @override
+  String signingRemindersSent(int count) {
+    return 'Reminders sent: $count';
+  }
+
+  @override
+  String signingNextReminder(String date) {
+    return 'Next automatic reminder $date';
+  }
+
+  @override
+  String signingAutoRemind(int days) {
+    return 'Automatic reminders every $days days';
+  }
+
+  @override
+  String get signingRemindSend => 'Send reminder';
+
+  @override
+  String signingRemindSent(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String signingRemindWait(String time) {
+    return 'Next reminder in $time';
+  }
+
+  @override
+  String signingRemindNotActive(String name) {
+    return '$name can\'t sign right now, so there is nothing to remind.';
+  }
+
+  @override
+  String signingRemindNoEmail(String name) {
+    return 'There is no email address for $name.';
+  }
+
+  @override
+  String get signingRemindNotConfigured =>
+      'This server can\'t send email right now.';
+
+  @override
+  String get signingRemindFailed =>
+      'The reminder couldn\'t be sent. Please try again later.';
+
+  @override
+  String get signingRemindOffline =>
+      'No connection. The reminder wasn\'t sent.';
+
+  @override
+  String get signingRemindAll => 'Remind everyone who hasn\'t signed';
+
+  @override
+  String signingRemindAllDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reminders sent.',
+      one: '1 reminder sent.',
+      zero: 'No reminders sent.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String signingRemindAllSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people could not be reminded yet.',
+      one: '1 person could not be reminded yet.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String signingMailFailedBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mail delivery failed for $count parties',
+      one: 'Mail delivery failed for 1 party',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signingMailResend => 'Send again';
+
+  @override
+  String get signingMailResent => 'The invitation was sent again.';
+
+  @override
+  String signingMailCopies(String emails) {
+    return 'Completed. Copies were emailed to $emails.';
+  }
+
+  @override
+  String signingClaimTitle(String name) {
+    return 'You\'re signed in as $name';
+  }
+
+  @override
+  String get signingClaimBody => 'Use your saved details to sign faster.';
+
+  @override
+  String get signingClaimUse => 'Use my details';
+
+  @override
+  String get signingClaimSkip => 'Not now';
+
+  @override
+  String get signingClaimFailed =>
+      'Your saved details couldn\'t be loaded. You can fill in the form by hand.';
+
+  @override
+  String signingClaimFilled(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count fields filled in from your profile. You can still change them.',
+      one: '1 field filled in from your profile. You can still change it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signingClaimNothing =>
+      'There was nothing to fill in yet. Add details in Settings under Signing profile.';
+
+  @override
+  String get signingSignInHint =>
+      'Have an account? Sign in to fill this in faster';
+
+  @override
+  String get signingFromProfile => 'From your profile';
+
+  @override
+  String get signingReviewFromProfile =>
+      'Everything is filled in. Review and finish.';
+
+  @override
+  String get signingSavedCopy =>
+      'A copy was saved to Signed documents in your cloud.';
+
+  @override
+  String get signingSavedCopyOpen => 'Open';
+
+  @override
+  String get signingOpenNeoCloud => 'Open NeoCloud';
+
+  @override
+  String get signingProfilePage => 'Signing profile';
+
+  @override
+  String get signingProfilePageDescription =>
+      'Details and signatures NeoCloud fills in when you sign, and where signed copies go.';
+
+  @override
+  String get signingProfileDetails => 'Your details';
+
+  @override
+  String get signingProfileDetailsHint =>
+      'Used to fill in name, email and phone fields.';
+
+  @override
+  String get signingProfilePhone => 'Phone';
+
+  @override
+  String get signingProfileSignatures => 'Signatures';
+
+  @override
+  String get signingProfileSignaturesHint =>
+      'Kept encrypted on your server. The default one is used first.';
+
+  @override
+  String get signingProfileInitials => 'Initials';
+
+  @override
+  String get signingProfileInitialsHint =>
+      'For fields that ask for your initials.';
+
+  @override
+  String get signingProfileAddSignature => 'Add a signature';
+
+  @override
+  String get signingProfileAddInitials => 'Add initials';
+
+  @override
+  String signingProfileLimit(int count) {
+    return 'You can keep up to $count.';
+  }
+
+  @override
+  String get signingProfileUnnamed => 'Unnamed';
+
+  @override
+  String get signingProfileDefault => 'Default';
+
+  @override
+  String get signingProfileMakeDefault => 'Make default';
+
+  @override
+  String get signingProfileRename => 'Rename';
+
+  @override
+  String get signingProfileDelete => 'Delete';
+
+  @override
+  String get signingProfileDeleteTitle => 'Delete this picture?';
+
+  @override
+  String get signingProfileDeleteBody =>
+      'It is removed from your profile. Documents you already signed keep theirs.';
+
+  @override
+  String get signingProfileLabel => 'Name';
+
+  @override
+  String get signingProfileValue => 'Text';
+
+  @override
+  String get signingProfilePresets => 'Saved details';
+
+  @override
+  String get signingProfilePresetsHint =>
+      'Text like your address or company, filled into matching fields.';
+
+  @override
+  String get signingProfileAddDetail => 'Add a detail';
+
+  @override
+  String get signingProfileAddress => 'Address';
+
+  @override
+  String get signingProfileCompany => 'Company';
+
+  @override
+  String get signingProfileTitle => 'Title';
+
+  @override
+  String get signingProfileBehavior => 'What happens when you sign';
+
+  @override
+  String get signingProfileAutoFill => 'Fill in my details automatically';
+
+  @override
+  String get signingProfileAutoFillHint =>
+      'You can still change everything before you finish.';
+
+  @override
+  String get signingProfileAutoSave => 'Save signed documents to my cloud';
+
+  @override
+  String get signingProfileAutoSaveHint =>
+      'A copy of each finished document is filed for you.';
+
+  @override
+  String get signingProfileFolder => 'Folder';
+
+  @override
+  String get signingProfileFolderDefault => 'Signed documents';
+
+  @override
+  String get signingProfileFolderChange => 'Choose folder';
+
+  @override
+  String get signingProfileFolderPick => 'Folder for signed documents';
+
+  @override
+  String get signingProfileFolderHere => 'Use this folder';
+
+  @override
+  String get signingProfileNotify => 'Email me when someone signs';
+
+  @override
+  String get signingProfileNotifyHint =>
+      'One mail for every signature on your documents.';
+
+  @override
+  String get signingProfileUnsaved => 'You have unsaved changes.';
+
+  @override
+  String get signingProfileSaved => 'All changes are saved.';
+
+  @override
+  String signingRemindLimit(String name) {
+    return '$name has already been reminded as often as possible.';
+  }
+
+  @override
+  String get signingDeliveryWaitsTurn => 'Email follows when it is their turn';
+
+  @override
+  String get signingMailNotVerified =>
+      'Confirm your email address in Settings before sending requests by email. You can still copy the links.';
+
+  @override
+  String get signingMailQuota =>
+      'You\'ve reached today\'s limit for signing emails, or this address has received enough for today. Try again tomorrow, or copy the links and send them yourself.';
+
+  @override
+  String get signingDeliveryErrorUnreachable =>
+      'The mail server could not be reached.';
+
+  @override
+  String get signingDeliveryErrorRejected =>
+      'The mail server refused the message.';
+
+  @override
+  String get signingDeliveryErrorInvalidAddress =>
+      'The address was not accepted.';
+
+  @override
+  String get signingDeliveryErrorRateLimited =>
+      'Too many emails were sent just now.';
+
+  @override
+  String get signingDeliveryErrorUnknown => 'The email could not be sent.';
+
+  @override
+  String get emailSigningMails => 'Signing emails';
+
+  @override
+  String get emailSigningMailsHelper =>
+      'Invitations, reminders and completion emails for signing requests. Switch off to stop all of them at once.';
+
+  @override
+  String get signingClaimWillFill => 'These saved details will be filled in:';
+
+  @override
+  String signingClaimFillLine(String field, String value) {
+    return '$field: $value';
+  }
+
+  @override
+  String signingClaimFillSignature(String field) {
+    return '$field: your saved signature';
+  }
+
+  @override
+  String signingClaimFillMore(int count) {
+    return '+$count more';
+  }
 }

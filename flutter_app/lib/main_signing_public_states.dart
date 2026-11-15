@@ -161,9 +161,10 @@ class _WaitingView extends StatelessWidget {
 // Consent
 
 class _IntroView extends StatefulWidget {
-  const _IntroView({required this.flow, required this.onClose});
+  const _IntroView({required this.flow, required this.controller, required this.onClose});
 
   final PublicSigningController flow;
+  final NeoCloudController controller;
   final VoidCallback onClose;
 
   @override
@@ -223,7 +224,15 @@ class _IntroViewState extends State<_IntroView> {
                       if (expires != null) _IntroFact(icon: Icons.schedule_rounded, text: strings.signingPublicExpires(MaterialLocalizations.of(context).formatMediumDate(expires.toLocal()))),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.sm),
+                  _ClaimBanner(
+                    controller: widget.controller,
+                    flow: flow,
+                    onUsed: (name) {
+                      if (_name.text.trim().isEmpty) setState(() => _name.text = name);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(strings.signingPublicConsentTitle, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                   const SizedBox(height: 6),
                   Container(
@@ -346,7 +355,7 @@ class _ReviewView extends StatelessWidget {
               children: <Widget>[
                 Semantics(header: true, liveRegion: true, child: Text(strings.signingPublicReviewTitle, style: _displayTitleStyle(22))),
                 const SizedBox(height: AppSpacing.xs),
-                Text(flow.fields.isEmpty ? strings.signingPublicNoFields : strings.signingPublicReviewLead, style: TextStyle(color: _textSecondary, height: 1.45)),
+                Text(flow.fields.isEmpty ? strings.signingPublicNoFields : (flow.reviewFromProfile ? strings.signingReviewFromProfile : strings.signingPublicReviewLead), style: TextStyle(color: _textSecondary, height: 1.45)),
                 if (showMissing && flow.missingIds.isNotEmpty) ...<Widget>[
                   const SizedBox(height: AppSpacing.sm),
                   Semantics(
@@ -430,7 +439,7 @@ class _ReviewRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textSecondary, fontSize: 12.5)),
+                    Text(flow.profileFilled.contains(field.id) ? '$title · ${strings.signingFromProfile}' : title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textSecondary, fontSize: 12.5)),
                     const SizedBox(height: 2),
                     if (value is UploadedValue && value.isImage)
                       Align(
@@ -528,7 +537,7 @@ class _CompletedViewState extends State<_CompletedView> {
       body: body,
       extra: _failed
           ? _InlineError(message: strings.signingPublicDownloadFailed)
-          : (!others && !ready ? const LinearProgressIndicator(minHeight: 3) : null),
+          : (!others && !ready ? const LinearProgressIndicator(minHeight: 3) : _SavedCopyNote(controller: widget.controller, flow: flow)),
       actions: <Widget>[
         if (ready) ...<Widget>[
           FilledButton.icon(

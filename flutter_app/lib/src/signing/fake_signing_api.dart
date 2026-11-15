@@ -87,7 +87,7 @@ class FakeSigningApi implements SigningApi {
     (_events[id] ??= <SigningEvent>[]).add(SigningEvent(id: _id('e'), type: type, rawType: type.name, partyId: partyId, at: DateTime.now()));
   }
 
-  SigningDocument _copy(SigningDocument d, {String? title, SigningStatus? status, SigningOrder? order, DateTime? expiresAt, String? locale, bool clearExpiry = false, String? finalNodeId}) =>
+  SigningDocument _copy(SigningDocument d, {String? title, SigningStatus? status, SigningOrder? order, DateTime? expiresAt, String? locale, bool clearExpiry = false, String? finalNodeId, String? message, int? reminderDays}) =>
       SigningDocument(
         id: d.id,
         title: title ?? d.title,
@@ -98,6 +98,8 @@ class FakeSigningApi implements SigningApi {
         pageCount: d.pageCount,
         sourceNodeId: d.sourceNodeId,
         finalNodeId: finalNodeId ?? d.finalNodeId,
+        message: message ?? d.message,
+        reminderDays: reminderDays ?? d.reminderDays,
         pageSizes: d.pageSizes,
         createdAt: d.createdAt,
         updatedAt: DateTime.now(),
@@ -111,7 +113,7 @@ class FakeSigningApi implements SigningApi {
     _parties[documentId] = <SigningParty>[
       for (final party in parties)
         party.id == partyId
-            ? SigningParty(id: party.id, name: party.name, position: party.position, color: party.color, email: party.email, status: status, completedAt: status == PartyStatus.completed ? DateTime.now() : null, hasLink: party.hasLink, linkHint: party.linkHint)
+            ? party.copyWith(status: status, completedAt: status == PartyStatus.completed ? DateTime.now() : null)
             : party,
     ];
     final all = _parties[documentId]!;
@@ -132,10 +134,25 @@ class FakeSigningApi implements SigningApi {
   /// Whether office documents count as convertible.
   bool officeConversion = false;
 
+  /// Whether the fake server "can send mail".
+  bool emailConfigured = false;
+
+  /// What the last send carried.
+  SendOptions? lastSendOptions;
+
+  /// Test hook: how a party's invitation goes when sent (default: sent when
+  /// it has an address, else no_email).
+  final Map<String, DeliveryStatus> deliveryOverrides = <String, DeliveryStatus>{};
+
+  /// Test hook: sets a party's delivery as the progress page shows it.
+  void setPartyDelivery(String documentId, String partyId, PartyDelivery delivery) {
+    _parties[documentId] = <SigningParty>[for (final party in _parties[documentId] ?? const <SigningParty>[]) party.id == partyId ? party.copyWith(delivery: delivery) : party];
+  }
+
   @override
   Future<SigningCapabilities> capabilities() async {
     _maybeFail();
-    return SigningCapabilities(office: officeConversion);
+    return SigningCapabilities(office: officeConversion, emailConfigured: emailConfigured);
   }
 
   @override
@@ -226,6 +243,7 @@ class FakeSigningApi implements SigningApi {
           position: index,
           color: draft.color ?? '',
           email: draft.email,
+          isSelf: draft.isSelf,
         ),
     ];
     _parties[id] = stored;
@@ -242,27 +260,32 @@ class FakeSigningApi implements SigningApi {
   }
 
   @override
-  Future<SigningSendResult> send(String id) async {
+  Future<SigningSendResult> send(String id, {SendOptions? options}) async {
     _maybeFail();
     _requireEditable(id);
+    lastSendOptions = options;
     final parties = _parties[id] ?? const <SigningParty>[];
     final links = <SigningLink>[for (final party in parties) SigningLink(partyId: party.id, url: 'https://cloud.example/app/sign/fake-${party.id}-${_counter++}')];
+    final mail = options?.deliverEmail == true;
+    final delivery = <SendDelivery>[];
     _parties[id] = <SigningParty>[
       for (final (index, party) in parties.indexed)
-        SigningParty(
-          id: party.id,
-          name: party.name,
-          position: party.position,
-          color: party.color,
-          email: party.email,
+        party.copyWith(
           status: _document(id).signingOrder == SigningOrder.preserved && index > 0 ? PartyStatus.waiting : PartyStatus.pending,
           hasLink: true,
           linkHint: 'a1b2',
+          delivery: () {
+            if (!mail) return const PartyDelivery();
+            final hasMail = party.email != null && party.email!.isNotEmpty;
+            final status = deliveryOverrides[party.id] ?? (hasMail ? DeliveryStatus.sent : DeliveryStatus.noEmail);
+            delivery.add(SendDelivery(partyId: party.id, status: status, error: status == DeliveryStatus.failed ? 'Mailbox unavailable' : null));
+            return PartyDelivery(status: status, lastSentAt: status == DeliveryStatus.sent ? DateTime.now() : null, attempts: 1, lastError: status == DeliveryStatus.failed ? 'Mailbox unavailable' : null);
+          }(),
         ),
     ];
-    _documents[id] = _copy(_document(id), status: SigningStatus.sent);
+    _documents[id] = _copy(_document(id), status: SigningStatus.sent, message: options?.message, reminderDays: options?.reminderDays);
     _log(id, SigningEventType.sent);
-    return SigningSendResult(document: _document(id), links: links);
+    return SigningSendResult(document: _document(id), links: links, delivery: delivery);
   }
 
   @override
@@ -410,6 +433,13 @@ class FakePublicSigningApi implements PublicSigningApi {
     _failures
       ..clear()
       ..addAll(List<SigningException>.filled(times, error));
+  }
+
+  /// Test hook: the server filled these values in (a claim with the profile).
+  void prefill(Map<String, Object?> values) {
+    for (final entry in values.entries) {
+      _values[entry.key] = SigningValue(fieldId: entry.key, partyId: _view.party.id, value: entry.value);
+    }
   }
 
   /// The server moved on (the turn came, the sender canceled, …).

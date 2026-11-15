@@ -113,7 +113,7 @@ class SigningSettingsPatch {
 
 /// `GET /api/signing/capabilities`.
 class SigningCapabilities {
-  const SigningCapabilities({this.office = false, this.maxParties = 20, this.maxFields = 500});
+  const SigningCapabilities({this.office = false, this.maxParties = 20, this.maxFields = 500, this.emailConfigured = false});
 
   factory SigningCapabilities.fromJson(Map<String, dynamic> json) {
     final formats = json['formats'] is Map ? (json['formats'] as Map) : const <String, dynamic>{};
@@ -121,6 +121,7 @@ class SigningCapabilities {
       office: formats['office'] == true,
       maxParties: json['maxParties'] is int ? json['maxParties'] as int : 20,
       maxFields: json['maxFields'] is int ? json['maxFields'] as int : 500,
+      emailConfigured: json['email'] is Map && (json['email'] as Map)['configured'] == true,
     );
   }
 
@@ -128,6 +129,9 @@ class SigningCapabilities {
   final bool office;
   final int maxParties;
   final int maxFields;
+
+  /// The server can send mail; every email option of signing hangs on it.
+  final bool emailConfigured;
 }
 
 abstract class SigningApi {
@@ -163,7 +167,10 @@ abstract class SigningApi {
   /// Freezes the PDF and makes the links. This is the only time the links
   /// are returned (besides [regenerateLink]). The server refuses a party
   /// without anything to fill in (`PARTY_WITHOUT_FIELDS`).
-  Future<SigningSendResult> send(String id);
+  ///
+  /// [options] carry the mail settings (message, whether to mail the
+  /// invitations, automatic reminders); null sends as before.
+  Future<SigningSendResult> send(String id, {SendOptions? options});
 
   /// A new link for [partyId]; the old one stops working.
   Future<SigningLink> regenerateLink(String id, String partyId);

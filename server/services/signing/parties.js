@@ -45,22 +45,35 @@ function cleanColor(value, position) {
   return value.toLowerCase();
 }
 
-/** Adds one party at the end (or at `position`). Call inside a transaction. */
-function insertParty(documentId, { name, email = null, color, position }, at = nowIso()) {
+/** Adds one party at the end (or at `position`). Call inside a transaction. `userId` binds a party the owner signs themselves. */
+function insertParty(documentId, {
+  name, email = null, color, position, isSelf = false, userId = null,
+}, at = nowIso()) {
   const id = crypto.randomUUID();
   db.prepare(`
-    INSERT INTO sign_parties (id, document_id, position, name, color, email, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
-  `).run(id, documentId, position, name, color ?? colorFor(position), email, at);
+    INSERT INTO sign_parties (id, document_id, position, name, color, email, status, is_self, user_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+  `).run(id, documentId, position, name, color ?? colorFor(position), email, isSelf ? 1 : 0, userId, at);
   return id;
 }
+
+function cleanSelf(value) {
+  if (value === undefined || value === null) return false;
+  if (typeof value !== 'boolean') throw invalid('isSelf must be true or false.');
+  return value;
+}
+
+// The owner's own address, for the party they sign as themselves.
+const ownerEmail = (ownerId) => db.prepare('SELECT email FROM users WHERE id = ?').get(ownerId)?.email || null;
 
 /**
  * Replaces the party list. Entries with the id of an existing party keep it
  * (and its fields); new entries are added; parties left out are removed with
- * their fields. At least one party stays.
+ * their fields. At least one party stays. One party may be `isSelf`: the
+ * owner signs it, it is bound to the owner's account and its email defaults
+ * to the owner's.
  */
-function replaceParties(documentId, input) {
+function replaceParties(documentId, input, ownerId) {
   if (!Array.isArray(input) || input.length < 1 || input.length > LIMITS.maxParties) {
     throw invalid(`A document has 1 to ${LIMITS.maxParties} parties.`);
   }
@@ -71,16 +84,24 @@ function replaceParties(documentId, input) {
     const keepId = typeof entry.id === 'string' && existing.has(entry.id) ? entry.id : null;
     if (keepId && seen.has(keepId)) throw invalid('A party is listed twice.');
     if (keepId) seen.add(keepId);
-    return { id: keepId, name: cleanName(entry.name), email: cleanEmail(entry.email), color: cleanColor(entry.color, position), position };
+    const isSelf = cleanSelf(entry.isSelf);
+    const email = cleanEmail(entry.email) || (isSelf ? ownerEmail(ownerId) : null);
+    return {
+      id: keepId, name: cleanName(entry.name), email, color: cleanColor(entry.color, position), position, isSelf, userId: isSelf ? ownerId : null,
+    };
   });
+  if (entries.filter((entry) => entry.isSelf).length > 1) throw invalid('Only one party can be you.');
   db.transaction(() => {
     for (const id of existing.keys()) {
       if (!seen.has(id)) db.prepare('DELETE FROM sign_parties WHERE id = ?').run(id);
     }
     for (const entry of entries) {
       if (entry.id) {
-        db.prepare('UPDATE sign_parties SET name = ?, email = ?, color = ?, position = ? WHERE id = ?')
-          .run(entry.name, entry.email, entry.color, entry.position, entry.id);
+        // A party that stops being "you" is unbound again; one bound by someone's claim is never touched.
+        db.prepare(`
+          UPDATE sign_parties SET name = ?, email = ?, color = ?, position = ?, is_self = ?,
+            user_id = CASE WHEN ? = 1 THEN ? WHEN is_self = 1 THEN NULL ELSE user_id END WHERE id = ?
+        `).run(entry.name, entry.email, entry.color, entry.position, entry.isSelf ? 1 : 0, entry.isSelf ? 1 : 0, entry.userId, entry.id);
       } else {
         insertParty(documentId, entry);
       }

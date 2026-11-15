@@ -7,6 +7,8 @@
 const db = require('../../db/database');
 const { DOCUMENT_STATUS, EVENT, LIVE_STATUSES } = require('./constants');
 const { appendEvent } = require('./events');
+const { revokeForDocument } = require('./grants');
+const { onDocumentEnded } = require('./mail/triggers');
 const { notifyOwner } = require('./notify');
 const { nowIso, updateDocument } = require('./store');
 
@@ -23,9 +25,13 @@ function expireIfDue(document) {
     if (!current || !LIVE_STATUSES.includes(current.status)) return false;
     updateDocument(document.id, { status: DOCUMENT_STATUS.EXPIRED }, at);
     appendEvent(document.id, { type: EVENT.EXPIRED, at });
+    revokeForDocument(document.id);
     return true;
   })();
-  if (changed) notifyOwner(document.owner_id, document.id, DOCUMENT_STATUS.EXPIRED);
+  if (changed) {
+    onDocumentEnded(document.id, 'expired');
+    notifyOwner(document.owner_id, document.id, DOCUMENT_STATUS.EXPIRED);
+  }
   return changed;
 }
 

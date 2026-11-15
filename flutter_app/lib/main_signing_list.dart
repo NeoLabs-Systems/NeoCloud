@@ -23,6 +23,8 @@ class SigningPanel extends StatelessWidget {
 String signingErrorText(NeoCloudController controller, Object error, String fallback) {
   if (error is SigningException) {
     if (error.isNetwork) return controller.friendlyError(error);
+    if (error.code == 'EMAIL_NOT_VERIFIED') return appStrings.signingMailNotVerified;
+    if (error.code == 'MAIL_QUOTA_EXCEEDED') return appStrings.signingMailQuota;
     final refusal = error.kind == SigningErrorKind.invalid || error.kind == SigningErrorKind.conflict;
     if (refusal && error.message.trim().isNotEmpty) return error.message;
     return fallback;
@@ -210,6 +212,7 @@ class _SigningListScreenState extends State<SigningListScreen> {
   List<SigningListItem> _items = const <SigningListItem>[];
   String? _cursor;
   SigningStatus? _status;
+  _SigningTab _tab = _SigningTab.mine;
   bool _loading = true;
   bool _loadingMore = false;
   String? _error;
@@ -354,61 +357,66 @@ class _SigningListScreenState extends State<SigningListScreen> {
       onRefresh: _load,
       children: <Widget>[
         _PageTitle(title: appStrings.signingNav, subtitle: appStrings.signingSubtitle, trailing: _items.isEmpty && _status == null ? null : chooseFile),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            ChoiceChip(
-              label: Text(appStrings.signingFilterAll),
-              selected: _status == null,
-              showCheckmark: false,
-              onSelected: (_) => _filter(null),
-            ),
-            for (final status in _filters)
+        if (_controller.emailConfigured) _SigningTabs(tab: _tab, todo: _controller.signingTodo, onSelect: (tab) => setState(() => _tab = tab)),
+        if (_controller.emailConfigured && _tab != _SigningTab.mine)
+          _SigningInboxView(key: ValueKey<String>('signing-inbox-${_tab.name}'), controller: _controller, done: _tab == _SigningTab.done)
+        else ...<Widget>[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
               ChoiceChip(
-                key: ValueKey<String>('signing-filter-${status.name}'),
-                label: Text(_statusLabel(status)),
-                selected: _status == status,
+                label: Text(appStrings.signingFilterAll),
+                selected: _status == null,
                 showCheckmark: false,
-                onSelected: (_) => _filter(status),
+                onSelected: (_) => _filter(null),
               ),
-          ],
-        ),
-        TextField(
-          controller: _search,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded, size: 20), hintText: appStrings.signingSearchHint, isDense: true),
-        ),
-        if (_error != null) _LoadError(message: _error!, onRetry: () => unawaited(_load())),
-        if (_loading && _items.isEmpty && _error == null) const _LoadingPlaceholder(),
-        if (!_loading && _items.isEmpty && _error == null && _status == null)
-          _EmptyCard(icon: AppSection.signing.icon, title: appStrings.signingEmptyTitle, subtitle: appStrings.signingEmptyBody, action: chooseFile),
-        if (!_loading && _error == null && items.isEmpty && (_items.isNotEmpty || _status != null))
-          _EmptyCard(icon: Icons.search_off_rounded, title: appStrings.signingNoResults, subtitle: ''),
-        if (items.isNotEmpty)
-          _EntranceMotion(
-            child: _AppCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: <Widget>[
-                  for (var i = 0; i < items.length; i++) ...<Widget>[
-                    if (i > 0) Divider(height: 1, color: _border),
-                    _SigningRow(
-                      key: ValueKey<String>('signing-row-${items[i].id}'),
-                      item: items[i],
-                      actions: _actions(items[i]),
-                      onOpen: () => _controller.openSigning(items[i].id),
-                    ),
+              for (final status in _filters)
+                ChoiceChip(
+                  key: ValueKey<String>('signing-filter-${status.name}'),
+                  label: Text(_statusLabel(status)),
+                  selected: _status == status,
+                  showCheckmark: false,
+                  onSelected: (_) => _filter(status),
+                ),
+            ],
+          ),
+          TextField(
+            controller: _search,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded, size: 20), hintText: appStrings.signingSearchHint, isDense: true),
+          ),
+          if (_error != null) _LoadError(message: _error!, onRetry: () => unawaited(_load())),
+          if (_loading && _items.isEmpty && _error == null) const _LoadingPlaceholder(),
+          if (!_loading && _items.isEmpty && _error == null && _status == null)
+            _EmptyCard(icon: AppSection.signing.icon, title: appStrings.signingEmptyTitle, subtitle: appStrings.signingEmptyBody, action: chooseFile),
+          if (!_loading && _error == null && items.isEmpty && (_items.isNotEmpty || _status != null))
+            _EmptyCard(icon: Icons.search_off_rounded, title: appStrings.signingNoResults, subtitle: ''),
+          if (items.isNotEmpty)
+            _EntranceMotion(
+              child: _AppCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: <Widget>[
+                    for (var i = 0; i < items.length; i++) ...<Widget>[
+                      if (i > 0) Divider(height: 1, color: _border),
+                      _SigningRow(
+                        key: ValueKey<String>('signing-row-${items[i].id}'),
+                        item: items[i],
+                        actions: _actions(items[i]),
+                        onOpen: () => _controller.openSigning(items[i].id),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        if (_cursor != null)
-          Center(
-            child: OutlinedButton(onPressed: _loadingMore ? null : () => unawaited(_loadMore()), child: Text(_loadingMore ? appStrings.signingSaving : appStrings.signingLoadMore)),
-          ),
+          if (_cursor != null)
+            Center(
+              child: OutlinedButton(onPressed: _loadingMore ? null : () => unawaited(_loadMore()), child: Text(_loadingMore ? appStrings.signingSaving : appStrings.signingLoadMore)),
+            ),
+        ],
       ],
     );
   }

@@ -27,6 +27,16 @@ class UploadedValue {
   final bool isImage;
 }
 
+/// How a signer who came through the inbox (a grant, which ends with their
+/// signature) still gets the signed file: through their account.
+class AccountFinal {
+  const AccountFinal({required this.available, required this.download});
+
+  /// Whether the signed file of this party is ready in the account's inbox.
+  final Future<bool> Function(String partyId) available;
+  final Future<Uint8List> Function(String partyId, {bool certificate}) download;
+}
+
 /// Everything the public signing page does, apart from drawing: loading the
 /// link, whose turn it is, the current field, values and their autosave
 /// (with retries), consent, finishing and declining.
@@ -38,6 +48,7 @@ class PublicSigningController extends ChangeNotifier {
     required this.api,
     this.pollInterval = const Duration(seconds: 20),
     this.resultPollInterval = const Duration(seconds: 4),
+    this.accountFinal,
     this.saveDelay = const Duration(milliseconds: 600),
     this.retryBase = const Duration(seconds: 1),
     this.retryMax = const Duration(seconds: 30),
@@ -45,6 +56,9 @@ class PublicSigningController extends ChangeNotifier {
   }) : _now = now ?? DateTime.now;
 
   final PublicSigningApi api;
+
+  /// The fallback for the signed file when the link itself no longer answers.
+  final AccountFinal? accountFinal;
 
   /// How often a waiting page asks whether its turn has come.
   final Duration pollInterval;
@@ -98,6 +112,8 @@ class PublicSigningController extends ChangeNotifier {
     } on SigningException catch (error) {
       if (_disposed) return;
       if (!quiet || view == null) loadError = error;
+      // A grant dies with the party's signature: the page stays on what it knows.
+      if (view != null && error.kind == SigningErrorKind.notFound) _linkEnded = true;
       _offline = error.isNetwork;
     } finally {
       if (!_disposed) {
@@ -106,6 +122,8 @@ class PublicSigningController extends ChangeNotifier {
       }
     }
   }
+
+  bool _linkEnded = false;
 
   /// True after a refresh that could not reach the server.
   bool get isOffline => _offline || saveState == SaveState.offline;
@@ -226,6 +244,7 @@ class PublicSigningController extends ChangeNotifier {
 
   void backToFields() {
     if (fields.isEmpty) return;
+    reviewFromProfile = false;
     step = SigningStep.fill;
     _notify();
   }
@@ -240,6 +259,25 @@ class PublicSigningController extends ChangeNotifier {
   }
 
   // Values
+
+  /// Fields filled in from the signer's profile; the mark goes when they
+  /// change the value.
+  final Set<String> profileFilled = <String>{};
+
+  /// The review step was reached straight after the consent because the
+  /// profile filled everything in.
+  bool reviewFromProfile = false;
+
+  /// Reloads the view after the server filled [fieldIds] from the profile, so
+  /// the values show up, and marks them.
+  Future<void> applyProfileFill(List<String> fieldIds) async {
+    await load(quiet: true);
+    if (_disposed) return;
+    profileFilled
+      ..clear()
+      ..addAll(fieldIds.where((id) => fields.any((field) => field.id == id)));
+    _notify();
+  }
 
   final Map<String, Object?> values = <String, Object?>{};
   final Set<String> _touched = <String>{};
@@ -302,6 +340,7 @@ class PublicSigningController extends ChangeNotifier {
   void setValue(SigningField field, Object? raw, {bool immediate = false}) {
     final spec = FieldTypes.of(field.type);
     final value = raw == null ? null : spec.normalize(field.prefs, raw);
+    profileFilled.remove(field.id);
     if (spec.isEmpty(value)) {
       values.remove(field.id);
     } else {
@@ -331,6 +370,7 @@ class PublicSigningController extends ChangeNotifier {
     String? typedText,
   }) {
     final spec = FieldTypes.of(field.type);
+    profileFilled.remove(field.id);
     values[field.id] = UploadedValue(preview: bytes, fileName: fileName, method: method, isImage: spec.needsPad || spec.imageAccept);
     _images.remove(field.id);
     fieldErrors.remove(field.id);
@@ -506,6 +546,10 @@ class PublicSigningController extends ChangeNotifier {
       if (current == null || current.party.consentedAt == null) return false;
       step = fields.isEmpty ? SigningStep.review : SigningStep.fill;
       activeIndex = _firstOpen();
+      if (profileFilled.isNotEmpty && fields.isNotEmpty && _firstOpenOrNull() == null) {
+        step = SigningStep.review;
+        reviewFromProfile = true;
+      }
       _queueTodayDefaults(current);
       return true;
     } on SigningException catch (error) {
@@ -541,8 +585,21 @@ class PublicSigningController extends ChangeNotifier {
         actionError = const SigningException(SigningErrorKind.network);
         return;
       }
-      await api.complete();
+      final after = await api.complete();
       await load(quiet: true);
+      // A grant ends with the signature, so the reload above can find nothing; the answer of complete() stands.
+      final current = view;
+      if (after == PublicSigningState.completed && current != null && current.state != PublicSigningState.completed) {
+        _ingest(PublicSigningView(
+          state: PublicSigningState.completed,
+          document: current.document,
+          party: current.party,
+          progress: PublicProgress(done: math.min(current.progress.total, current.progress.done + 1), total: current.progress.total),
+          fields: current.fields,
+          myValues: current.myValues,
+          savedNodeId: current.savedNodeId,
+        ));
+      }
     } on SigningException catch (error) {
       if (error.fieldIds.isNotEmpty) {
         missingIds = error.fieldIds.toSet();
@@ -607,9 +664,17 @@ class PublicSigningController extends ChangeNotifier {
     if (_resultPending || finalReady) return;
     _resultPending = true;
     try {
-      finalReady = await api.finalAvailable();
-    } on SigningException {
+      if (_linkEnded && accountFinal != null) {
+        finalReady = await _accountAvailable();
+      } else {
+        finalReady = await api.finalAvailable();
+      }
+    } on SigningException catch (error) {
       finalReady = false;
+      if (error.kind == SigningErrorKind.notFound && accountFinal != null) {
+        _linkEnded = true;
+        finalReady = await _accountAvailable();
+      }
     } finally {
       _resultPending = false;
     }
@@ -617,9 +682,23 @@ class PublicSigningController extends ChangeNotifier {
     _notify();
   }
 
+  Future<bool> _accountAvailable() async {
+    final partyId = view?.party.id;
+    if (partyId == null || partyId.isEmpty) return false;
+    try {
+      return await accountFinal!.available(partyId);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// The signed file; with [certificate] false the appended signature pages
   /// (certificate and audit trail) are left out.
-  Future<Uint8List> downloadFinal({bool certificate = true}) => api.finalPdf(certificate: certificate);
+  Future<Uint8List> downloadFinal({bool certificate = true}) {
+    final partyId = view?.party.id;
+    if (_linkEnded && accountFinal != null && partyId != null) return accountFinal!.download(partyId, certificate: certificate);
+    return api.finalPdf(certificate: certificate);
+  }
 
   /// How many other signers go first (a number, never their names).
   int get waitingCount => view?.turn.waitingCount ?? 0;
@@ -675,6 +754,10 @@ class PublicSigningController extends ChangeNotifier {
 
   Future<void> _refresh() async {
     if (_disposed) return;
+    if (_linkEnded && view?.state == PublicSigningState.completed) {
+      await _afterCompleted();
+      return;
+    }
     await load(quiet: true);
   }
 

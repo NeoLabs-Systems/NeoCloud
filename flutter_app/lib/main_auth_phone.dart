@@ -55,14 +55,22 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
       if (_controller.isAwaitingTwoFactor) _codeController.clear();
       return;
     }
+    final register = _register;
+    if (register) _controller.authInfoMessage = null;
     await _submitCredentials(
       _controller,
-      register: _register,
+      register: register,
       username: _usernameController.text,
       email: _emailController.text,
       password: _passwordController.text,
       confirmPassword: _confirmPasswordController.text,
     );
+    // Created, waiting for its confirmation link: back to sign-in.
+    if (mounted && register && _registrationAwaitsEmail(_controller)) {
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+      setState(() => _registerMode = false);
+    }
   }
 
   void _edited(String _) {
@@ -81,12 +89,19 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
       InputDecoration(filled: true, fillColor: _bgPrimary, suffixIcon: suffixIcon);
 
   /// A field with its label above it; the label is its accessible name.
-  Widget _labeledField(String label, Widget field) {
+  Widget _labeledField(String label, Widget field, {Widget? trailing}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        ExcludeSemantics(
-          child: Text(label, style: TextStyle(color: _textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: ExcludeSemantics(
+                child: Text(label, style: TextStyle(color: _textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              ),
+            ),
+            ?trailing,
+          ],
         ),
         const SizedBox(height: 6),
         Semantics(label: label, child: field),
@@ -135,10 +150,20 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
       decoration: _inputDecoration(suffixIcon: _passwordVisibilityToggle()),
     );
     if (!register) {
+      // NeoAgent's link on the password label row, only when mail is on.
+      final forgotPassword = _controller.hasUser && _controller.emailConfigured
+          ? TextButton(
+              onPressed: _controller.isAuthenticating
+                  ? null
+                  : () => unawaited(_showForgotPasswordDialog(context, _controller, initialAccount: _usernameController.text)),
+              style: _inlineLinkStyle,
+              child: Text(appStrings.forgotPassword),
+            )
+          : null;
       return <Widget>[
         _labeledField(appStrings.usernameOrEmail, usernameField),
         const SizedBox(height: 14),
-        _labeledField(appStrings.password, passwordField),
+        _labeledField(appStrings.password, passwordField, trailing: forgotPassword),
       ];
     }
     return <Widget>[
@@ -228,6 +253,7 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
           const SizedBox(height: 20),
           _InlineError(message: controller.errorMessage!, onDismiss: controller.clearInlineError),
         ],
+        if (controller.emailConfigured && !awaitingTwoFactor) _AuthEmailNotices(controller: controller),
         if (showScanToPair) ...<Widget>[
           const SizedBox(height: 26),
           _ScanToPairButton(controller: controller),
@@ -293,13 +319,15 @@ class _PhoneAuthViewState extends State<PhoneAuthView> {
             icon: const Icon(Icons.open_in_browser_rounded, size: 18),
             label: Text(appStrings.connectWithBrowser),
           ),
-          // NeoCloud sends no email, so NeoAgent's line for that case.
-          const SizedBox(height: 14),
-          Text(
-            appStrings.authForgotPasswordAskAdmin,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _textMuted, fontSize: 12, height: 1.45),
-          ),
+          // Without mail, NeoAgent's line for that case.
+          if (!controller.emailConfigured) ...<Widget>[
+            const SizedBox(height: 14),
+            Text(
+              appStrings.authForgotPasswordAskAdmin,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _textMuted, fontSize: 12, height: 1.45),
+            ),
+          ],
         ],
       ],
     );

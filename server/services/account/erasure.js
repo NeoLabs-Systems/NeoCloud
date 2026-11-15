@@ -65,6 +65,9 @@ function deleteRows(userId) {
   // Signing documents reference blobs and nodes; their parties, fields,
   // values and events go with them.
   run('DELETE FROM sign_documents WHERE owner_id = @id');
+  // The account's own signing profile and saved signatures (their blobs go with the account's blobs below).
+  run('DELETE FROM sign_profile_images WHERE user_id = @id');
+  run('DELETE FROM sign_profiles WHERE user_id = @id');
   run('DELETE FROM import_jobs WHERE user_id = @id');
   run('DELETE FROM upload_sessions WHERE user_id = @id OR created_by = @id');
   run('DELETE FROM favorites WHERE user_id = @id');
@@ -85,6 +88,9 @@ function deleteRows(userId) {
   run('DELETE FROM device_authorizations WHERE user_id = @id');
   run('DELETE FROM user_qr_login_challenges WHERE approved_by_user_id = @id');
   run('DELETE FROM device_tokens WHERE user_id = @id');
+  run('DELETE FROM oauth_refresh_tokens WHERE user_id = @id');
+  run('DELETE FROM oauth_access_tokens WHERE user_id = @id');
+  run('DELETE FROM oauth_codes WHERE user_id = @id');
   run('DELETE FROM user_sessions WHERE user_id = @id');
   run('DELETE FROM user_webauthn_credentials WHERE user_id = @id');
   run('DELETE FROM user_recovery_codes WHERE user_id = @id');

@@ -44,14 +44,17 @@ function removeRow(row) {
 
 const rowFor = (fieldId) => db.prepare('SELECT * FROM sign_values WHERE field_id = ?').get(fieldId);
 
-/** Saves a typed value (null or an empty one clears the field). Returns the value as stored. */
-function saveTypedValue(document, party, field, rawValue) {
+/**
+ * Saves a typed value (null or an empty one clears the field). Returns the value as stored.
+ * `needConsent: false` lets a prefill write before the signer has agreed; finishing still needs consent.
+ */
+function saveTypedValue(document, party, field, rawValue, { needConsent = true } = {}) {
   if (typeOf(field.type).storage !== 'inline') {
     throw httpError(400, 'This field takes an upload, not a typed value.', 'INVALID_VALUE');
   }
   const value = normalizeValue(field, rawValue);
   db.transaction(() => {
-    assertWritable(document.id, party.id);
+    assertWritable(document.id, party.id, { needConsent });
     const existing = rowFor(field.id);
     if (isEmptyValue(value)) {
       if (existing) removeRow(existing);
@@ -84,9 +87,9 @@ function assertRoomForUpload(documentId, fieldId, size) {
  * earlier upload). `meta` describes it for clients. On any failure the caller
  * discards the blob file; the replaced blob's file is removed here, after commit.
  */
-async function saveBlobValue(document, party, field, { blob, meta }) {
+async function saveBlobValue(document, party, field, { blob, meta }, { needConsent = true } = {}) {
   const orphaned = db.transaction(() => {
-    assertWritable(document.id, party.id);
+    assertWritable(document.id, party.id, { needConsent });
     assertRoomForUpload(document.id, field.id, blob.size);
     const existing = rowFor(field.id);
     adoptBlob(document.owner_id, blob);

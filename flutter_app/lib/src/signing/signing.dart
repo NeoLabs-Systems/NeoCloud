@@ -3,6 +3,7 @@
 /// (`public_signing_http.dart`) are imported on their own.
 library;
 
+export 'account_api.dart';
 export 'editor_state.dart';
 export 'field_problems.dart';
 export 'field_types.dart';

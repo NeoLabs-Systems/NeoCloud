@@ -126,7 +126,7 @@ class LiveFileUpdates {
         onEvent: (event, data) {
           if (event == 'shares:changed') onSharesChanged?.call();
           if (event == 'ai:suggestions' && data is Map) onAiSuggestions?.call(data);
-          if (event == 'signing:updated') onSigningUpdated?.call();
+          if (event == 'signing:updated' || event == 'signing:inbox') onSigningUpdated?.call();
           if (event != 'files:changed' || data is! Map) return;
           final ids = data['folderIds'];
           if (ids is List) feed.addFolders(ids.whereType<String>());

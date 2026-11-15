@@ -9,7 +9,6 @@
 
 const { Readable } = require('stream');
 const db = require('../../db/database');
-const { splitExtension } = require('../../utils/file_names');
 const { createServiceLogger } = require('../../utils/logger');
 const { commitUploadedBlob } = require('../files/commit');
 const { getLiveNode } = require('../files/tree');
@@ -17,7 +16,11 @@ const { writeTemporaryBlob } = require('../storage/blob_store');
 const { readBlobBuffer } = require('./blobs');
 const { DOCUMENT_STATUS, EVENT } = require('./constants');
 const { appendEvent, listEvents } = require('./events');
+const { scheduleAutosave } = require('./autosave');
+const { queueCompletionMails } = require('./mail/triggers');
 const { notifyOwner } = require('./notify');
+const { finalFileName } = require('./final_name');
+const { usableFolder } = require('./folders');
 const engine = require('./pdf_engine');
 const { getSealSigner } = require('./seal');
 const { documentView, fieldView } = require('./serialize');
@@ -29,32 +32,10 @@ const logger = createServiceLogger('Signing');
 
 const FIRST_RETRY_MS = 30 * 1000;
 const MAX_RETRY_MS = 60 * 60 * 1000;
-const FINAL_SUFFIX = { en: 'signed', de: 'signiert' };
-const MAX_BASE_NAME = 200;
 
 // Documents being finalized right now in this process.
 const running = new Set();
 let queue = Promise.resolve();
-
-// "<base> (signed).pdf", or "<base> (signed, no certificate).pdf" for the variant without audit pages.
-function finalFileName(document, { certificate = true } = {}) {
-  const base = splitExtension(document.source_name)[0] || document.title;
-  const german = document.locale === 'de';
-  const word = FINAL_SUFFIX[german ? 'de' : 'en'];
-  const extra = certificate ? '' : `, ${german ? 'ohne Protokoll' : 'no certificate'}`;
-  return `${base.slice(0, MAX_BASE_NAME)} (${word}${extra}).pdf`;
-}
-
-function usableFolder(userId, folderId) {
-  if (!folderId) return null;
-  try {
-    const folder = getLiveNode(userId, folderId, { type: 'folder' });
-    const isVault = folder.vault_id || db.prepare('SELECT 1 FROM vaults WHERE folder_id = ?').get(folder.id);
-    return isVault ? null : folder;
-  } catch {
-    return null;
-  }
-}
 
 // The folder of the source file; if that is gone, the folder it was in when
 // the document was made; else the root.
@@ -146,7 +127,11 @@ function markCompleted(document, node, sha256) {
       UPDATE sign_documents SET status = 'completed', final_node_id = ?, final_sha256 = ?, completed_at = ?,
         finalize_error = NULL, finalize_next_at = NULL, updated_at = ? WHERE id = ? AND status = 'finalizing'
     `).run(node.id, sha256, at, at, document.id).changes;
-    if (changed === 1) appendEvent(document.id, { type: EVENT.FINALIZED, at, data: { nodeId: node.id, sha256 } });
+    if (changed === 1) {
+      appendEvent(document.id, { type: EVENT.FINALIZED, at, data: { nodeId: node.id, sha256 } });
+      // In the same transaction: a stop right here cannot lose the completion mails.
+      queueCompletionMails(document.id);
+    }
   })();
 }
 
@@ -192,6 +177,7 @@ async function runFinalization(documentId) {
     const { bytes, sha256 } = await buildFinal(document);
     const node = await saveFinalFile(document, bytes);
     markCompleted(document, node, sha256);
+    scheduleAutosave(document.id);
     notifyOwner(document.owner_id, document.id, DOCUMENT_STATUS.COMPLETED);
   } catch (err) {
     if (getDocumentById(documentId)) markFailed(document, err);

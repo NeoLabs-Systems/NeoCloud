@@ -23,6 +23,8 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
   String? _error;
   String? _verifyMessage;
   bool _verifyOk = true;
+  bool _mail = false;
+  bool _remindingAll = false;
   final SigningPageController _pages = SigningPageController();
   final Map<String, Future<Uint8List>> _images = <String, Future<Uint8List>>{};
 
@@ -34,6 +36,11 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
   void initState() {
     super.initState();
     _controller.signingRevision.addListener(_changedElsewhere);
+    unawaited(
+      _controller.signingMailAvailable().then((available) {
+        if (mounted && available) setState(() => _mail = true);
+      }),
+    );
     unawaited(_loadPdf());
     unawaited(_reload());
   }
@@ -194,6 +201,53 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
     }),
   );
 
+  // Mail
+
+  bool _isActive(SigningParty party) =>
+      (_document.status == SigningStatus.sent || _document.status == SigningStatus.inProgress) && (party.status == PartyStatus.pending || party.status == PartyStatus.opened);
+
+  /// Reminders go to parties the creator is waiting for, never to themselves.
+  bool _remindable(SigningParty party) => _isActive(party) && !party.isSelf;
+
+  Future<void> _remind(SigningParty party) async {
+    await _controller.signingAccount.remind(_document.id, party.id);
+  }
+
+  Future<void> _remindAll() async {
+    setState(() => _remindingAll = true);
+    try {
+      final results = await _controller.signingAccount.remindAll(_document.id);
+      final sent = results.where((result) => result.ok).length;
+      final refused = results.length - sent;
+      if (mounted) _toast(refused > 0 ? '${appStrings.signingRemindAllDone(sent)} ${appStrings.signingRemindAllSkipped(refused)}' : appStrings.signingRemindAllDone(sent));
+      await _reload();
+    } on SigningException catch (error) {
+      if (mounted) _toast(_reminderErrorText(error, ''));
+    } finally {
+      if (mounted) setState(() => _remindingAll = false);
+    }
+  }
+
+  /// Sends the invitation again to everyone whose mail failed.
+  Future<void> _resendFailed() async {
+    var failed = 0;
+    for (final party in _detail.parties.where((party) => party.delivery.status == DeliveryStatus.failed)) {
+      try {
+        await _controller.signingAccount.remind(_document.id, party.id);
+      } on SigningException catch (error) {
+        failed++;
+        if (mounted) _toast(_reminderErrorText(error, party.name));
+      }
+    }
+    if (mounted && failed == 0) _toast(appStrings.signingMailResent);
+    await _reload();
+  }
+
+  Future<void> _signNow(SigningParty party) => _guard(() async {
+    final url = await _controller.signingAccount.openAsOwner(_document.id, party.id);
+    _controller.openSigningLink(url);
+  });
+
   // Preview
 
   Future<Uint8List> _imageOf(String fieldId) => _images.putIfAbsent(fieldId, () => _api.valueImage(_document.id, fieldId));
@@ -246,6 +300,54 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
 
   // Layout
 
+  /// Failed mails, the "remind everyone" button, the automatic reminders and,
+  /// at the end, who got the signed copies.
+  List<Widget> _mailBanners() {
+    final failed = _detail.parties.where((party) => party.delivery.status == DeliveryStatus.failed).toList();
+    final active = _detail.parties.where((party) => _remindable(party) && (party.email ?? '').isNotEmpty).toList();
+    final completedTo = _document.status == SigningStatus.completed
+        ? _detail.parties.where((party) => party.delivery.status == DeliveryStatus.sent && (party.email ?? '').isNotEmpty).map((party) => party.email!).toList()
+        : const <String>[];
+    return <Widget>[
+      if (failed.isNotEmpty)
+        Column(
+          key: const ValueKey<String>('signing-mail-failed'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _Notice(message: appStrings.signingMailFailedBanner(failed.length), color: _danger, icon: Icons.error_outline_rounded),
+            const SizedBox(height: 6),
+            TextButton.icon(
+              key: const ValueKey<String>('signing-mail-resend'),
+              onPressed: () => unawaited(_resendFailed()),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(appStrings.signingMailResend),
+            ),
+          ],
+        ),
+      if (active.length > 1 || (active.isNotEmpty && _document.reminderDays > 0))
+        Wrap(
+          spacing: 12,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            if (active.isNotEmpty)
+              OutlinedButton.icon(
+                key: const ValueKey<String>('signing-remind-all'),
+                onPressed: _remindingAll ? null : () => unawaited(_remindAll()),
+                icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                label: Text(appStrings.signingRemindAll),
+              ),
+            if (_document.reminderDays > 0) Text(appStrings.signingAutoRemind(_document.reminderDays), style: TextStyle(color: _textMuted, fontSize: 12.5)),
+          ],
+        ),
+      if (completedTo.isNotEmpty)
+        KeyedSubtree(
+          key: const ValueKey<String>('signing-mail-copies'),
+          child: _Notice(message: appStrings.signingMailCopies(completedTo.join(', ')), color: _success, icon: Icons.mark_email_read_outlined),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 1100;
@@ -269,6 +371,11 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
               party: party,
               index: index,
               live: _document.status == SigningStatus.sent || _document.status == SigningStatus.inProgress,
+              mail: _mail,
+              autoDays: _document.reminderDays,
+              remind: _mail && _remindable(party) && (party.email ?? '').isNotEmpty ? () => _remind(party) : null,
+              onReminded: () => unawaited(_reload()),
+              onSignNow: party.isSelf && _isActive(party) ? () => unawaited(_signNow(party)) : null,
               onRegenerate: () => unawaited(_regenerate(party)),
               onRevoke: () => unawaited(_revoke(party)),
             ),
@@ -306,6 +413,7 @@ class _SigningStatusPageState extends State<SigningStatusPage> {
       onRefresh: _reload,
       children: <Widget>[
         header,
+        if (_mail) ..._mailBanners(),
         if (_error != null) _LoadError(message: _error!, onRetry: () => unawaited(_reload())),
         if (wide)
           Row(
