@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { Readable } = require('stream');
 const db = require('../../db/database');
-const { BLOB_DIR, UPLOAD_TMP_DIR, ensurePrivateDirectory } = require('../../../runtime/paths');
+const { BLOB_DIR, LOCAL_BACKUP_DIR, UPLOAD_TMP_DIR, ensurePrivateDirectory } = require('../../../runtime/paths');
 const { getBackupKey } = require('../crypto/keys');
 const { createEncryptStream } = require('../crypto/stream_cipher');
 const { blobPath, removeQuietly } = require('../storage/blob_store');
@@ -152,15 +152,65 @@ async function uploadSnapshotBlobs(adapter, blobs, run) {
   return missing;
 }
 
-async function prune(adapter, retention) {
+// A copy of each manifest this server wrote, kept next to the data: pruning
+// reads the kept snapshots' blob lists, and on S3 a lifecycle rule may have
+// moved the remote manifests to an archive class (Glacier, Deep Archive),
+// where reading them fails until they are restored.
+function manifestCachePath(targetId, name) {
+  assertSnapshotName(name);
+  return path.join(LOCAL_BACKUP_DIR, 'manifests', String(Number(targetId)), `${name}.json`);
+}
+
+function cacheManifest(targetId, name, manifest) {
+  try {
+    const file = manifestCachePath(targetId, name);
+    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(file, JSON.stringify(manifest), { mode: 0o600 });
+  } catch (err) {
+    logger.warn(`Could not keep a local copy of manifest ${name}: ${err.message}`);
+  }
+}
+
+function cachedManifest(targetId, name) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestCachePath(targetId, name), 'utf8'));
+    return manifest && Array.isArray(manifest.blobs) ? manifest : null;
+  } catch {
+    return null;
+  }
+}
+
+/** S3 refuses to read objects in an archive storage class. */
+function isArchivedObject(err) {
+  return err?.name === 'InvalidObjectState' || err?.Code === 'InvalidObjectState'
+    || /not valid for the object's storage class/i.test(String(err?.message || ''));
+}
+
+async function prune(adapter, retention, targetId) {
   const snapshots = await listSnapshots(adapter);
   for (const stale of snapshots.slice(retention)) {
     // The slash keeps an S3 prefix delete from matching a longer name.
     await adapter.deletePrefix(`snapshots/${stale}/`);
+    try {
+      fs.rmSync(manifestCachePath(targetId, stale), { force: true });
+    } catch {
+      // Only a cache.
+    }
   }
   const needed = new Set();
   for (const name of snapshots.slice(0, retention)) {
-    const manifest = await readManifest(adapter, name);
+    let manifest = cachedManifest(targetId, name);
+    if (!manifest) {
+      try {
+        manifest = await readManifest(adapter, name);
+        cacheManifest(targetId, name, manifest);
+      } catch (err) {
+        // A kept snapshot whose blob list can't be read: deleting blobs now
+        // could break it. The backup itself is complete; leave blobs alone.
+        logger.warn(`Kept old blobs: manifest of ${name} is unreadable (${isArchivedObject(err) ? 'archived by a storage class rule' : err.message}).`);
+        return;
+      }
+    }
     for (const blob of manifest.blobs) needed.add(`blobs/${blob}`);
   }
   for (const key of await adapter.list('blobs/')) {
@@ -241,7 +291,8 @@ async function runBackup(targetId) {
       missingBlobs,
     };
     await adapter.put(`snapshots/${name}/${MANIFEST}`, () => Readable.from([JSON.stringify(manifest, null, 2)]));
-    await prune(adapter, opened.row.retention);
+    cacheManifest(targetId, name, manifest);
+    await prune(adapter, opened.row.retention, targetId);
     db.prepare("UPDATE backup_runs SET status = 'ok', finished_at = datetime('now'), blobs_uploaded = ?, bytes_uploaded = ? WHERE id = ?")
       .run(run.blobs, run.bytes, run.id);
     logger.info(`Backup ${name} to target ${targetId} finished: ${run.blobs} new blob(s).`);

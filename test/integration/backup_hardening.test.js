@@ -116,14 +116,17 @@ test('restore, verify and prune refuse manifest entries that are not <user id>/<
   assert.equal(fs.readdirSync(path.join(home, 'data')).some((name) => name.includes('canary')), false);
   assert.equal(fs.existsSync(path.join(home, 'data', 'storage', 'canary')), false);
 
-  // Prune reads every kept manifest; a bad one fails the run instead of
-  // deleting blobs it cannot account for.
+  // Prune takes the kept snapshots' blob lists from the copies this server
+  // wrote, not from the target: a tampered (or archived) manifest there
+  // neither fails the run nor makes it delete blobs.
   const blobsBefore = fs.readdirSync(path.join(folder, 'blobs'), { recursive: true }).length;
   await new Promise((resolve) => setTimeout(resolve, 1100));
   const second = await runner.runBackup(id);
-  assert.equal(second.status, 'failed');
-  assert.match(second.error, /manifest is not valid/);
-  assert.equal(fs.readdirSync(path.join(folder, 'blobs'), { recursive: true }).length, blobsBefore);
+  assert.equal(second.status, 'ok', second.error);
+  assert.ok(blobsBefore > 0);
+  // Every blob the real snapshot holds is still there; only stray files
+  // planted on the target were cleaned up.
+  for (const blob of original.blobs) assert.ok(fs.existsSync(path.join(folder, 'blobs', ...blob.split('/'))), blob);
 
   // Snapshot names come from the target too; restore takes only plain ones.
   await assert.rejects(restoreSnapshot(id, '../traversal'), /not a snapshot name/);
