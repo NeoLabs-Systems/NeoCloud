@@ -5,7 +5,7 @@ const CACHE_NAME = 'flutter-app-cache';
 
 const RESOURCES = {"index.html": "d4b61d2cb46d18bfb01a377e19d16327",
 "/": "d4b61d2cb46d18bfb01a377e19d16327",
-"flutter_bootstrap.js": "74f3dc7c15331b4826ec33b95144180d",
+"flutter_bootstrap.js": "237390191e2f913d015d076c208239f9",
 "favicon.svg": "aa616b69b886aac78d4a94ba8d92bfd8",
 "canvaskit/skwasm_heavy.js.symbols": "3c01ec03b5de6d62c34e17014d1decd3",
 "canvaskit/skwasm_heavy.js": "413f5b2b2d9345f37de148e2544f584f",
@@ -22,7 +22,7 @@ const RESOURCES = {"index.html": "d4b61d2cb46d18bfb01a377e19d16327",
 "favicon.png": "976ad7a2a4b693d23dc4e40861baeee9",
 "assets/FontManifest.json": "a8ed195afeedb6e60fa23243d90cdd3d",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
-"assets/fonts/MaterialIcons-Regular.otf": "2331bcd66c9b7d6420281ec20d3308f7",
+"assets/fonts/MaterialIcons-Regular.otf": "9077ba56956d639d79000e43842b2c2f",
 "assets/NOTICES": "ed25f9016bb6f372998877b319224c7e",
 "assets/assets/fonts/signing/OFL-dancingscript.txt": "311b662ed9014157c506041e46f68865",
 "assets/assets/fonts/signing/OFL-sacramento.txt": "da638a63ec18b23dd769e1b50cd3437b",
@@ -58,7 +58,7 @@ const RESOURCES = {"index.html": "d4b61d2cb46d18bfb01a377e19d16327",
 "icons/Icon-maskable-192.png": "0d219832739e2bd61392be8180e77a40",
 "manifest.json": "b67c7a2f75bc71a809d3918bdb308145",
 "version.json": "274625624466aab09bab70a4121fe810",
-"main.dart.js": "45f070d7758586da2082d9a899722d97"};
+"main.dart.js": "66ba873cd18d97a0949fc8179838dad4"};
 // The application shell files that are downloaded before a service worker can
 // start.
 const CORE = ["main.dart.js",
