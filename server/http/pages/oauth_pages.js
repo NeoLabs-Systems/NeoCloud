@@ -163,7 +163,9 @@ function sendPage(res, html, { redirectUri = '' } = {}) {
   res.set({
     'Cache-Control': 'no-store, max-age=0',
     'Content-Security-Policy': `default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; form-action ${formAction(redirectUri)}; base-uri 'none'; frame-ancestors 'none'`,
-    'Referrer-Policy': 'no-referrer',
+    // Not no-referrer: browsers then send `Origin: null` on form posts, which the
+    // origin check rightly refuses. same-origin keeps the URL from other sites.
+    'Referrer-Policy': 'same-origin',
     'X-Robots-Tag': 'noindex, nofollow',
   });
   return res.type('html').send(html);

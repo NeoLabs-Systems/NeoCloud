@@ -46,6 +46,8 @@ async function connect(username, consent = {}, { scope = ALL_SCOPES } = {}) {
   const page = await browser.get(authorizePath).set('Accept-Language', 'de-DE,de;q=0.9').expect(200);
   assert.match(page.text, /NeoAgent verbinden\?/);
   assert.match(page.headers['content-security-policy'], /form-action 'self' https:\/\/agent\.example\.test/);
+  // With no-referrer, browsers post the consent form with `Origin: null`, which the origin check refuses.
+  assert.equal(page.headers['referrer-policy'], 'same-origin');
   const consentToken = /name="consent" value="([^"]+)"/.exec(page.text)[1];
   const approval = await browser.post('/oauth/authorize').type('form')
     .send({ ...params, consent: consentToken, decision: 'approve', ...consent }).expect(302);
