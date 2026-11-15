@@ -5,6 +5,8 @@ All endpoints live under `/api` and speak JSON unless noted. Errors look like
 A body that isn't valid JSON answers `400 INVALID_JSON`, one over 1 MB
 `413 BODY_TOO_LARGE`, any other unreadable body `INVALID_BODY`; an unknown
 `/api` path `404 NOT_FOUND`.
+JSON answers are gzip- or brotli-compressed when the request's `Accept-Encoding`
+allows it; file content, thumbnails and previews are always sent as stored.
 
 ## Authentication
 

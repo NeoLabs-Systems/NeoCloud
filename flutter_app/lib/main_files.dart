@@ -29,6 +29,20 @@ class _FilesError {
 /// A folder page holds this many items per request; scrolling loads more.
 const int _folderPageSize = 500;
 
+/// The folders opened last, as they were shown: opening one again shows it
+/// at once while it loads fresh (vault folders are never kept).
+class _ListingSnapshot {
+  const _ListingSnapshot(this.listing, this.items, this.nextCursor, this.recent);
+
+  final FolderListing listing;
+  final List<FileNode> items;
+  final String? nextCursor;
+  final List<FileNode> recent;
+}
+
+final LinkedHashMap<String, _ListingSnapshot> _listingSnapshots = LinkedHashMap<String, _ListingSnapshot>();
+const int _maxListingSnapshots = 24;
+
 /// Items cut with Ctrl/⌘+X, waiting for Ctrl/⌘+V in another folder.
 List<FileNode> _cutNodes = const <FileNode>[];
 
@@ -269,12 +283,44 @@ abstract class _FilesBase extends State<FilesPanel> {
 
   void syncSelection() => selection.setItems(visibleItems.map((node) => node.id).toList());
 
+  String _snapshotKey(String target, FolderView view) =>
+      '${controller.photoCacheOwner}|${inShare ? 'shared' : 'own'}|$target|${view.sort}|${view.dir}';
+
+  void _keepSnapshot(String key) {
+    final current = listing;
+    if (current == null || current.folder.vaultId != null) {
+      _listingSnapshots.remove(key);
+      return;
+    }
+    _listingSnapshots.remove(key);
+    _listingSnapshots[key] = _ListingSnapshot(current, items, nextCursor, recent);
+    while (_listingSnapshots.length > _maxListingSnapshots) {
+      _listingSnapshots.remove(_listingSnapshots.keys.first);
+    }
+  }
+
   /// Loads the open folder. A quiet reload (after a change) keeps what is on
-  /// screen and fetches as many items as were loaded, so nothing jumps.
+  /// screen and fetches as many items as were loaded, so nothing jumps. A
+  /// folder opened before shows as it was right away, then quietly refreshes.
   Future<void> load({bool quiet = false}) async {
     final target = folderId;
     final generation = ++_loadGeneration;
     _loadedFolderId = target;
+    final snapshot = quiet ? null : _listingSnapshots[_snapshotKey(target, listingView)];
+    if (snapshot != null) {
+      _skeletonTimer?.cancel();
+      setState(() {
+        listing = snapshot.listing;
+        items = snapshot.items;
+        nextCursor = snapshot.nextCursor;
+        recent = snapshot.recent;
+        loading = false;
+        showSkeleton = false;
+        syncSelection();
+      });
+      if (scroll.hasClients) scroll.jumpTo(0);
+      quiet = true;
+    }
     if (!quiet) {
       _skeletonTimer?.cancel();
       setState(() {
@@ -318,6 +364,7 @@ abstract class _FilesBase extends State<FilesPanel> {
         showSkeleton = false;
         syncSelection();
       });
+      _keepSnapshot(_snapshotKey(target, view));
       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
     } catch (failure) {
       if (!mounted || generation != _loadGeneration) return;

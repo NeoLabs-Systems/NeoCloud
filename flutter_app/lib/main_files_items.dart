@@ -355,33 +355,88 @@ class _FileTile extends StatelessWidget {
 }
 
 /// An image's thumbnail, decoded at the size it is shown, or its type icon
-/// for everything else (and while the thumbnail loads).
-class _FilePreviewTile extends StatelessWidget {
+/// for everything else (and while the thumbnail loads). A thumbnail already
+/// in memory shows in the first frame; one that scrolls away before its
+/// download starts is dropped.
+class _FilePreviewTile extends StatefulWidget {
   const _FilePreviewTile({required this.node, required this.controller});
 
   final FileNode node;
   final NeoCloudController controller;
 
   @override
+  State<_FilePreviewTile> createState() => _FilePreviewTileState();
+}
+
+class _FilePreviewTileState extends State<_FilePreviewTile> {
+  Uint8List? _bytes;
+  PhotoThumbnailCache? _cache;
+  String? _id;
+  String? _etag;
+
+  bool get _wanted => fileKindOf(widget.node) == FileKind.image && !widget.node.inVault;
+
+  @override
+  void initState() {
+    super.initState();
+    _request();
+  }
+
+  @override
+  void didUpdateWidget(_FilePreviewTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.node.id != widget.node.id || oldWidget.node.etag != widget.node.etag) {
+      _release();
+      _bytes = null;
+      _request();
+    }
+  }
+
+  @override
+  void dispose() {
+    _release();
+    super.dispose();
+  }
+
+  void _request() {
+    if (!_wanted) return;
+    final cache = widget.controller.thumbnails;
+    final id = widget.node.id;
+    final etag = widget.node.etag;
+    _bytes = cache.peek(id, etag);
+    if (_bytes != null || cache.hasNone(id, etag)) return;
+    _cache = cache;
+    _id = id;
+    _etag = etag;
+    unawaited(cache.load(id, etag).then((bytes) {
+      if (!mounted || _id != id || _etag != etag) return;
+      _cache = null;
+      if (bytes != null) setState(() => _bytes = bytes);
+    }));
+  }
+
+  void _release() {
+    final cache = _cache;
+    if (cache != null) cache.release(_id!, _etag!);
+    _cache = null;
+    _id = null;
+    _etag = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final icon = Center(child: _FileIcon(node: node, size: 56));
-    if (fileKindOf(node) != FileKind.image) return icon;
+    final icon = Center(child: _FileIcon(node: widget.node, size: 56));
+    final bytes = _bytes;
+    if (bytes == null) return icon;
     return LayoutBuilder(
       builder: (context, constraints) {
         final ratio = MediaQuery.devicePixelRatioOf(context);
         final width = constraints.maxWidth.isFinite ? (constraints.maxWidth * ratio).round() : null;
-        return FutureBuilder<Uint8List?>(
-          future: controller.thumbnailFor(node),
-          builder: (context, snapshot) {
-            final bytes = snapshot.data;
-            if (bytes == null) return icon;
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.control),
-              child: SizedBox.expand(
-                child: Image.memory(bytes, fit: BoxFit.cover, cacheWidth: width, gaplessPlayback: true, errorBuilder: (_, _, _) => icon),
-              ),
-            );
-          },
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: SizedBox.expand(
+            child: Image.memory(bytes, fit: BoxFit.cover, cacheWidth: width, gaplessPlayback: true, errorBuilder: (_, _, _) => icon),
+          ),
         );
       },
     );

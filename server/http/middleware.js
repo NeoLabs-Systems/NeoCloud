@@ -11,6 +11,7 @@ class SQLiteStore extends BaseSQLiteStore {
     setInterval(() => this.clearExpiredSessions(), this.expired.intervalMs).unref();
   }
 }
+const compression = require('compression');
 const helmet = require('helmet');
 const cors = require('cors');
 const db = require('../db/database');
@@ -100,6 +101,12 @@ function createSessionMiddleware({ secureCookies, trustProxy }) {
   });
 }
 
+// Only JSON is compressed: file bodies keep their exact length and byte
+// ranges, and images and media are compressed already.
+function isJsonResponse(req, res) {
+  return /^application\/json\b/i.test(String(res.getHeader('Content-Type') || ''));
+}
+
 function isStateChangingMethod(method = '') {
   return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method).toUpperCase());
 }
@@ -118,6 +125,7 @@ function applyHttpMiddleware(app, { trustProxy, secureCookies, sessionMiddleware
   if (trustProxy !== false) app.set('trust proxy', trustProxy);
 
   app.use(helmet(buildHelmetOptions({ secureCookies })));
+  app.use(compression({ filter: isJsonResponse }));
   // Routes match any letter case, but the origin check and auth look for a
   // lowercase /api/, so /API/ must not reach the handlers.
   app.use((req, res, next) => {

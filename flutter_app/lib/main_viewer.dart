@@ -3,6 +3,10 @@ part of 'main.dart';
 /// Files up to this size are fetched whole for an in-app preview.
 const int _previewLimitBytes = 100 * 1024 * 1024;
 
+/// Images beside the open one up to this size load ahead, so stepping
+/// through a folder shows the next one at once.
+const int _preloadLimitBytes = 25 * 1024 * 1024;
+
 /// How the viewer shows a file. New kinds plug in at [_viewerKindOf] and
 /// [_FileViewerState._previewBody].
 enum _ViewerKind { image, text, pdf, office, video, audio, none }
@@ -113,6 +117,22 @@ class _FileViewerState extends State<_FileViewer> {
   void initState() {
     super.initState();
     _controller.markOpened(_file);
+    _preloadNeighbours();
+  }
+
+  /// Loads the images before and after the open file, and forgets the
+  /// content of files further away so a long walk doesn't pile up memory.
+  void _preloadNeighbours() {
+    final keep = <String>{'${_file.etag}-false', '${_file.etag}-true'};
+    for (final offset in const <int>[1, -1]) {
+      final at = _index + offset;
+      if (at < 0 || at >= _files.length) continue;
+      final file = _files[at];
+      if (_viewerKindOf(file) != _ViewerKind.image || file.size > _preloadLimitBytes) continue;
+      keep.add('${file.etag}-false');
+      unawaited(_bytesOf(file).then<void>((_) {}, onError: (Object _) {}));
+    }
+    _cache.removeWhere((key, _) => !keep.contains(key));
   }
 
   @override
@@ -128,6 +148,7 @@ class _FileViewerState extends State<_FileViewer> {
     if (!await _leaveEditor() || !mounted) return;
     setState(() => _index = next);
     _controller.markOpened(_file);
+    _preloadNeighbours();
   }
 
   Future<Uint8List> _bytesOf(FileNode file, {bool rendition = false}) {
@@ -214,7 +235,15 @@ class _FileViewerState extends State<_FileViewer> {
     }
   }
 
-  Widget _withBytes(Future<Uint8List> future, Widget Function(Uint8List data) builder) {
+  /// The grid thumbnail, when it is in memory: shown while the image loads.
+  Widget? _thumbnailOf(FileNode file) {
+    if (file.inVault) return null;
+    final bytes = _controller.thumbnails.peek(file.id, file.etag);
+    if (bytes == null) return null;
+    return Center(child: Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true));
+  }
+
+  Widget _withBytes(Future<Uint8List> future, Widget Function(Uint8List data) builder, {Widget? placeholder}) {
     return FutureBuilder<Uint8List>(
       future: future,
       builder: (context, snapshot) {
@@ -226,7 +255,7 @@ class _FileViewerState extends State<_FileViewer> {
           return Center(child: Padding(padding: const EdgeInsets.all(24), child: _InlineError(message: _controller.friendlyError(error!))));
         }
         final data = snapshot.data;
-        if (data == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        if (data == null) return placeholder ?? const Center(child: CircularProgressIndicator(strokeWidth: 2));
         return builder(data);
       },
     );
@@ -266,6 +295,7 @@ class _FileViewerState extends State<_FileViewer> {
         if (tooLarge) break;
         return _withBytes(
           _bytesOf(file),
+          placeholder: _thumbnailOf(file),
           (data) => InteractiveViewer(
             maxScale: 8,
             child: Center(

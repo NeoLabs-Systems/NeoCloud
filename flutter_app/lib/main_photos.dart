@@ -70,7 +70,7 @@ class _PhotosPageState extends State<PhotosPage> {
   @override
   void initState() {
     super.initState();
-    library.attach('${controller.client.baseUrl}|${controller.user?.id}');
+    library.attach(controller.photoCacheOwner);
     timeline.addListener(_changed);
     controller.filesRevision.addListener(_filesChanged);
     unawaited(timeline.refresh());

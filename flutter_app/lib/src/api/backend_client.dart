@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute;
+
 import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
 import '../photos/photo_models.dart';
@@ -84,7 +86,7 @@ class BackendClient {
     dynamic decoded;
     if (response.body.isNotEmpty) {
       try {
-        decoded = jsonDecode(response.body);
+        decoded = await _decodeJson(response.body);
       } catch (_) {
         decoded = null;
       }
@@ -105,6 +107,13 @@ class BackendClient {
       retryAfter: retrySeconds == null ? null : Duration(seconds: retrySeconds),
     );
   }
+
+  /// Large bodies (a page of hundreds of items) are decoded on another
+  /// isolate on phones, so the frame being drawn doesn't wait for them.
+  static const int _isolateDecodeBytes = 48 * 1024;
+
+  static Future<dynamic> _decodeJson(String body) =>
+      body.length < _isolateDecodeBytes ? Future<dynamic>.value(jsonDecode(body)) : compute(jsonDecode, body);
 
   Map<String, dynamic> _map(dynamic value) => (value as Map).cast<String, dynamic>();
 
@@ -333,15 +342,6 @@ class BackendClient {
 
   Future<Uint8List> fileBytes(String fileId) => _bytes('/api/files/$fileId/content');
 
-  /// A small WebP thumbnail of an image, or null when the server can't make one.
-  Future<Uint8List?> thumbnailBytes(String fileId, {int size = 256}) async {
-    try {
-      return await _bytes('/api/files/$fileId/thumbnail', {'size': '$size'});
-    } on ApiException catch (error) {
-      if (error.code == 'PREVIEW_UNAVAILABLE') return null;
-      rethrow;
-    }
-  }
 
   /// The PDF rendition of an Office document.
   Future<Uint8List> previewPdfBytes(String fileId) => _bytes('/api/files/$fileId/preview');

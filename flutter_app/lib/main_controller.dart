@@ -225,16 +225,15 @@ class NeoCloudController extends ChangeNotifier {
     fullTextSearch = caps['fullTextSearch'] == true;
   }
 
-  /// Thumbnails by file etag, so scrolling back doesn't fetch them again.
-  final Map<String, Future<Uint8List?>> _thumbnails = <String, Future<Uint8List?>>{};
+  /// Whose thumbnails the Photos cache holds: this account on this server.
+  String get photoCacheOwner => '${client.baseUrl}|${user?.id}';
 
-  Future<Uint8List?> thumbnailFor(FileNode node) {
-    if (node.inVault) return Future<Uint8List?>.value();
-    if (_thumbnails.length > 400) _thumbnails.remove(_thumbnails.keys.first);
-    return _thumbnails.putIfAbsent(
-      node.etag,
-      () => client.thumbnailBytes(node.id).catchError((Object _) => null),
-    );
+  /// File thumbnails share the Photos cache: the square rendition (which the
+  /// Photos indexer renders ahead), cached for good by etag, on disk on
+  /// phones, with what is on screen fetched first.
+  PhotoThumbnailCache get thumbnails {
+    photoLibrary.attach(photoCacheOwner);
+    return photoLibrary.thumbnails;
   }
 
   ThemeMode _themeMode = ThemeMode.system;

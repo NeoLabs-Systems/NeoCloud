@@ -203,7 +203,8 @@ function listChildren(userId, folderId, { sort = 'name', order = 'asc', limit, o
 const LIVE_NODES_CTE = `
   WITH RECURSIVE hidden(id) AS (
     SELECT id FROM nodes WHERE user_id = @userId AND trashed_at IS NOT NULL
-    UNION SELECT n.id FROM nodes n JOIN hidden h ON n.parent_id = h.id
+    -- CROSS JOIN and user_id: each step is a nodes_user_parent lookup, not a scan.
+    UNION SELECT n.id FROM hidden h CROSS JOIN nodes n ON n.user_id = @userId AND n.parent_id = h.id
   )
 `;
 
@@ -216,8 +217,10 @@ function withFolderPaths(userId, items) {
   if (parentIds.length === 0) return items.map((item) => ({ ...item, path: '/' }));
   const rows = db.prepare(`
     WITH RECURSIVE up(start, id, parent_id, name, depth) AS (
+      -- CROSS JOIN keeps json_each outermost: one primary-key lookup per
+      -- id instead of a walk over every node of the account.
       SELECT n.id, n.id, n.parent_id, n.name, 0
-      FROM json_each(?) j JOIN nodes n ON n.id = j.value AND n.user_id = ?
+      FROM json_each(?) j CROSS JOIN nodes n ON n.id = j.value AND n.user_id = ?
       UNION ALL
       SELECT up.start, p.id, p.parent_id, p.name, up.depth + 1
       FROM nodes p JOIN up ON p.id = up.parent_id

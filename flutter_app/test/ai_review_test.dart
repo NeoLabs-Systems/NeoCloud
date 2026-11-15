@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,9 +211,6 @@ class _FakeClient extends BackendClient {
 
   @override
   Future<List<FileNode>> recent({String? by}) async => const <FileNode>[];
-
-  @override
-  Future<Uint8List?> thumbnailBytes(String fileId, {int size = 256}) async => null;
 }
 
 Future<NeoCloudController> _controller(_FakeAi ai, {FolderListing? listing}) async {

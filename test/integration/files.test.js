@@ -334,3 +334,15 @@ test('settings validate keys and values', async () => {
   await owner.agent.put('/api/settings').send({ theme: 'neon' }).expect(400);
   await owner.agent.put('/api/settings').send({ evil: true }).expect(400);
 });
+
+test('JSON is compressed, file content is sent as stored', async () => {
+  for (let i = 0; i < 40; i += 1) await upload(owner.agent, `bulk-${i}.txt`, 'x'.repeat(50)).expect(201);
+  const listing = await owner.agent.get('/api/folders/root/children').set('Accept-Encoding', 'gzip').expect(200);
+  assert.equal(listing.headers['content-encoding'], 'gzip');
+  assert.ok(listing.body.items.length >= 40);
+
+  const file = await upload(owner.agent, 'plain.txt', 'y'.repeat(4096)).expect(201);
+  const content = await owner.agent.get(`/api/files/${file.body.id}/content`).set('Accept-Encoding', 'gzip').expect(200);
+  assert.equal(content.headers['content-encoding'], undefined);
+  assert.equal(content.headers['content-length'], '4096');
+});
