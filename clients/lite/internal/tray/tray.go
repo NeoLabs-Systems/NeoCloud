@@ -36,6 +36,9 @@ type Options struct {
 	OpenSettings func()
 	OnReady      func()
 	OnQuit       func()
+	// SetReceive turns "Receive from my devices" (Send to device) on or off;
+	// the menu item reflects Config.
+	SetReceive func(bool)
 }
 
 // Run shows the icon and blocks until the user quits.
@@ -66,6 +69,7 @@ func onReady(opts Options) {
 		folders[i].Hide()
 	}
 	systray.AddSeparator()
+	receive := systray.AddMenuItemCheckbox("Receive from my devices", "Let your other devices send files to this computer", opts.Config.Get().ReceiveEnabled())
 	settings := systray.AddMenuItem("Settings…", "")
 	quit := systray.AddMenuItem("Quit NeoCloud", "")
 
@@ -131,6 +135,14 @@ func onReady(opts Options) {
 			case <-web.ClickedCh:
 				if server := opts.Config.Get().Server; server != "" {
 					browser.Open(server + "/app")
+				}
+			case <-receive.ClickedCh:
+				on := !opts.Config.Get().ReceiveEnabled()
+				opts.SetReceive(on)
+				if on {
+					receive.Check()
+				} else {
+					receive.Uncheck()
 				}
 			case <-settings.ClickedCh:
 				opts.OpenSettings()

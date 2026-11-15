@@ -11,13 +11,14 @@ const db = require('../../db/database');
 const { emitToUser } = require('../events');
 const { httpError } = require('../../utils/http_error');
 const { recordAccessEvent } = require('../access/audit');
+const { deviceRevoked } = require('../handoff/revoke');
 const { hashToken, serialize } = require('./tokens');
 
 // Marks the device to erase itself and revokes its token. Asking again keeps
 // the first request (idempotent); only the erase-files choice can be widened.
 function requestDeviceWipe(userId, id, { eraseFiles = false, currentDeviceId = null } = {}) {
   if (id === currentDeviceId) throw httpError(400, 'Use Disconnect to sign this phone out', 'CURRENT_DEVICE');
-  return db.transaction(() => {
+  const result = db.transaction(() => {
     const row = db.prepare('SELECT * FROM device_tokens WHERE id = ? AND user_id = ?').get(id, userId);
     if (!row || (row.revoked_at && !row.wipe_requested_at) || row.platform === 'webdav') {
       throw httpError(404, 'Device not found', 'NOT_FOUND');
@@ -38,6 +39,8 @@ function requestDeviceWipe(userId, id, { eraseFiles = false, currentDeviceId = n
     }
     return serialize(db.prepare('SELECT * FROM device_tokens WHERE id = ?').get(id));
   })();
+  deviceRevoked(userId, id);
+  return result;
 }
 
 // Called for a request whose bearer token is dead. Returns { eraseFiles } the

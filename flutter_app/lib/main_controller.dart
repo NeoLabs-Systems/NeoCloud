@@ -34,6 +34,7 @@ class NeoCloudController extends ChangeNotifier {
        deviceSessions = deviceSessions ?? createDeviceSessions(),
        cameraUploads = cameraUploads ?? createCameraUploads(),
        shareIntake = shareIntake ?? createShareIntake() {
+    handoff = HandoffController(client, preferences: preferences);
     client.onSessionExpired = _handleSessionExpired;
     client.onDeviceWiped = _handleDeviceWiped;
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
@@ -51,6 +52,7 @@ class NeoCloudController extends ChangeNotifier {
       onPolled: _handlePolled,
       onSigningUpdated: () => signingRevision.value += 1,
       onCommentsChanged: () => commentsRevision.value += 1,
+      onHandoffEvent: (event, data) => handoff.handleLive(event, data),
     );
     fileChanges.addListener((_) => unawaited(refreshAccount()));
     signingRevision.addListener(() => unawaited(refreshSigningTodo()));
@@ -109,6 +111,9 @@ class NeoCloudController extends ChangeNotifier {
   /// client), batched; pages refresh what they show from it.
   final FileChangeFeed fileChanges = FileChangeFeed();
   late final LiveFileUpdates liveUpdates;
+
+  /// Send to device: online devices, sends and offers (src/handoff).
+  late final HandoffController handoff;
   late final VaultSessions vaults;
 
   /// The document editor, when the admin set one up (docs/office-editing.md).
@@ -538,6 +543,7 @@ class NeoCloudController extends ChangeNotifier {
     }
     _enterRoute();
     liveUpdates.start();
+    handoff.start();
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     unawaited(_loadSettings());
@@ -674,6 +680,7 @@ class NeoCloudController extends ChangeNotifier {
     authErrorCode = null;
     _enterRoute();
     liveUpdates.start();
+    handoff.start();
     unawaited(refreshSharedWithMe());
     unawaited(client.capabilities().then(_applyCapabilities).catchError((Object _) {}));
     await _loadSettings();
@@ -699,6 +706,7 @@ class NeoCloudController extends ChangeNotifier {
 
   void _stopLiveUpdates() {
     liveUpdates.stop();
+    handoff.stop();
     fileChanges.clear();
   }
 

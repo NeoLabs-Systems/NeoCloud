@@ -3,6 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show compute;
 
+import '../files/upload_queue.dart';
+import '../handoff/handoff_models.dart';
+import '../handoff/handoff_upload.dart';
 import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
 import '../photos/photo_models.dart';
@@ -17,6 +20,7 @@ part 'backend_client_ai.dart';
 part 'backend_client_email.dart';
 part 'backend_client_external.dart';
 part 'backend_client_features.dart';
+part 'backend_client_handoff.dart';
 part 'backend_client_members.dart';
 part 'backend_client_office.dart';
 part 'backend_client_photos.dart';
@@ -548,6 +552,9 @@ class BackendClient {
   /// `android`, `ios` … (empty for a generic client).
   Future<String> createDevice(String name, {String platform = ''}) async =>
       _map(await _request('POST', '/api/account/devices', json: {'name': name, 'platform': platform}))['token'].toString();
+
+  /// Renames a signed-in device; it keeps its id and token.
+  Future<void> renameDevice(int id, String name) => _request('PATCH', '/api/account/devices/$id', json: {'name': name});
 
   Future<void> revokeDevice(int id) => _request('DELETE', '/api/account/devices/$id');
 

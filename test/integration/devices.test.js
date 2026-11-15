@@ -132,3 +132,35 @@ test('only the device code’s hash is stored', async () => {
   assert.notEqual(row.device_code_hash, start.deviceCode);
   assert.ok(!JSON.stringify(row).includes(start.deviceCode));
 });
+
+test('a device can be renamed, by the account and by itself', async () => {
+  const created = (await owner.agent.post('/api/account/devices').send({ name: 'Old name', platform: 'lite' }).expect(201)).body;
+  const id = created.device.id;
+
+  const res = await owner.agent.patch(`/api/account/devices/${id}`).send({ name: '  Studio PC  ' }).expect(200);
+  assert.equal(res.body.device.name, 'Studio PC');
+  assert.equal(res.body.device.id, id);
+  const listed = (await owner.agent.get('/api/account/devices').expect(200)).body.devices.find((d) => d.id === id);
+  assert.equal(listed.name, 'Studio PC');
+
+  const self = await request(app).patch('/api/devices/me').set('Authorization', `Bearer ${created.token}`).send({ name: 'Desk' }).expect(200);
+  assert.equal(self.body.device.name, 'Desk');
+  const me = await request(app).get('/api/devices/me').set('Authorization', `Bearer ${created.token}`).expect(200);
+  assert.equal(me.body.device.name, 'Desk');
+});
+
+test('renaming refuses bad names and other accounts', async () => {
+  const created = (await owner.agent.post('/api/account/devices').send({ name: 'Keep', platform: 'lite' }).expect(201)).body;
+  const url = `/api/account/devices/${created.device.id}`;
+  const cases = [['   ', 'NAME_REQUIRED'], ['a\nb', 'NAME_INVALID'], ['a​b', 'NAME_INVALID'], ['x'.repeat(81), 'NAME_TOO_LONG']];
+  for (const [name, code] of cases) {
+    assert.equal((await owner.agent.patch(url).send({ name }).expect(400)).body.code, code);
+  }
+  const other = await registerUser('devices');
+  await other.agent.patch(url).send({ name: 'Mine now' }).expect(404);
+  await owner.agent.patch('/api/account/devices/999999').send({ name: 'Nope' }).expect(404);
+  await owner.agent.delete(url).expect(200);
+  await owner.agent.patch(url).send({ name: 'Back' }).expect(404);
+  const list = (await owner.agent.get('/api/account/devices').expect(200)).body.devices;
+  assert.equal(list.find((d) => d.id === created.device.id), undefined);
+});

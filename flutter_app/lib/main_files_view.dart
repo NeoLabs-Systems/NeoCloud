@@ -41,6 +41,7 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
         _PaletteCommand(Icons.upload_rounded, appStrings.uploadFiles, () => unawaited(pickAndUpload())),
         _PaletteCommand(Icons.create_new_folder_outlined, appStrings.newFolder, () => unawaited(newFolder())),
       ],
+      if (!inShare) _PaletteCommand(Icons.send_to_mobile_rounded, appStrings.handoffTitle, () => unawaited(showSendToDevice(context, controller, nodes: <FileNode>[for (final node in targets) if (!node.isFolder && !node.inVault) node]))),
       if (_canRequestFilesHere) _PaletteCommand(Icons.inbox_outlined, appStrings.requestFilesHere, () => unawaited(requestFilesInto(context, controller, listing!.folder))),
       _PaletteCommand(Icons.search_rounded, appStrings.paletteSearchFiles, searchFocus.requestFocus, shortcut: '/'),
       _PaletteCommand(
@@ -135,6 +136,12 @@ class _FilesPanelState extends _FilesBase with _FilesActions, _FilesKeyboard {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         _sortMenu(),
+        if (!inShare)
+          IconButton(
+            tooltip: appStrings.activityNav,
+            onPressed: () => controller.setSelectedSection(AppSection.activity),
+            icon: const Icon(Icons.timeline_rounded, size: 20),
+          ),
         const SizedBox(width: 4),
         SegmentedButton<String>(
           segments: <ButtonSegment<String>>[

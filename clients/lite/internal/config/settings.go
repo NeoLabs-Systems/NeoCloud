@@ -225,6 +225,9 @@ type GlobalSettings struct {
 	FileManagerSidebar *bool  `toml:"file_manager_sidebar,omitempty" json:"fileManagerSidebar"`
 	Proxy              string `toml:"proxy,omitempty" json:"proxy"`
 	ProxyURL           string `toml:"proxy_url,omitempty" json:"proxyUrl"`
+	// ReceiveFromDevices lets the account's other devices send files here
+	// (Send to device); off keeps this computer out of their lists.
+	ReceiveFromDevices *bool `toml:"receive_from_devices,omitempty" json:"receiveFromDevices"`
 }
 
 // Validate checks the global values.
@@ -270,6 +273,9 @@ func (g GlobalSettings) BatteryPause() bool { return orTrue(g.PauseOnBatterySave
 
 // NotifyLevel is Notifications with its default.
 func (g GlobalSettings) NotifyLevel() string { return orString(g.Notifications, DefaultNotifications) }
+
+// ReceiveEnabled is ReceiveFromDevices with its default (on).
+func (g GlobalSettings) ReceiveEnabled() bool { return orTrue(g.ReceiveFromDevices) }
 
 // Sidebar is FileManagerSidebar with its default (on).
 func (g GlobalSettings) Sidebar() bool { return orTrue(g.FileManagerSidebar) }

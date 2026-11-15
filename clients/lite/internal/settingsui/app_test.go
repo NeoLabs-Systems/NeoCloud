@@ -53,6 +53,7 @@ var newEndpoints = []struct{ method, path string }{
 	{http.MethodGet, "/api/remote/folders"},
 	{http.MethodPost, "/api/remote/folders"},
 	{http.MethodGet, "/api/account"},
+	{http.MethodPut, "/api/device-name"},
 	{http.MethodPost, "/api/open/logs"},
 	{http.MethodPost, "/api/open/web"},
 	{http.MethodPost, "/api/open/approval"},

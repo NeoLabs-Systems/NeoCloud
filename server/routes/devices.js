@@ -11,7 +11,7 @@ const { isAdminUser } = require('../services/access/admin');
 const { exchangeDeviceCode, startAuthorization } = require('../services/devices/authorizations');
 const { redeemPairing } = require('../services/devices/pairing');
 const securityKey = require('../services/devices/security_key_sign_in');
-const { getDeviceToken } = require('../services/devices/tokens');
+const { getDeviceToken, renameDeviceToken } = require('../services/devices/tokens');
 const { getUsage } = require('../services/storage/quota');
 const { jsonHandler, publicOrigin, rateLimiter } = require('./_helpers/http');
 
@@ -76,5 +76,12 @@ router.get('/me', requireDevice, jsonHandler((req) => {
     quota: { used: usage.usedBytes, limit: usage.quotaBytes },
   };
 }));
+
+// A client renames itself (the lite client's token cannot reach /api/account).
+const renameLimiter = rateLimiter(60);
+
+router.patch('/me', renameLimiter, requireDevice, jsonHandler((req) => ({
+  device: renameDeviceToken(req.userId, req.deviceId, req.body?.name),
+})));
 
 module.exports = router;

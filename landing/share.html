@@ -56,9 +56,28 @@
     .thanks strong { display: block; font-size: 18px; }
     .thanks span { display: block; margin: 4px 0 12px; color: var(--ink-2); }
     .uploads { list-style: none; margin: 10px 0 0; padding: 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); text-align: left; }
-    .uploads li::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 999px; background: var(--ink-3); vertical-align: 1px; }
-    .uploads li.ok::before { background: var(--success); }
-    .uploads li.failed::before { background: var(--danger); }
+    .uploads li { display: grid; gap: 4px; padding: 3px 0; overflow-wrap: anywhere; }
+    .uploads li::before { content: ""; display: none; }
+    .uploads li.ok { color: var(--ink-2); }
+    .uploads li.failed { color: var(--danger); }
+    .uploads progress { width: 100%; height: 4px; border: 0; border-radius: 999px; overflow: hidden; background: var(--line); accent-color: var(--gold); }
+    .uploads progress::-webkit-progress-bar { background: var(--line); }
+    .uploads progress::-webkit-progress-value { background: var(--gold); }
+    .uploads progress::-moz-progress-bar { background: var(--gold); }
+    /* Upload-only link: the card is the one surface and the drop target. */
+    .share.inbox { width: min(560px, calc(100% - (var(--gutter) * 2))); }
+    .share.inbox .panel { margin-top: 20px; border: 1.5px dashed var(--line-strong); box-shadow: none; transition: border-color .2s, background .2s; }
+    .share.inbox .panel.over { border-color: var(--gold); background: var(--gold-muted); }
+    .share.inbox .drop { margin: 0; padding: 28px 24px; border: 0; border-radius: 0; background: none; }
+    .share.inbox .drop-title { font-size: 18px; margin-bottom: 4px; }
+    .share.inbox .drop button.btn { margin-top: 16px; min-width: 180px; }
+    .share.inbox .drop .hint { margin-top: 14px; font-size: 12.5px; }
+    .share.inbox .receipt { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+    .share.inbox .thanks { margin: 16px 0 0; padding: 0; background: none; }
+    .share.inbox .thanks span { margin: 2px 0 0; }
+    .share.inbox [data-more] { display: none; }
+    .share.inbox h1 { margin: 12px 0 6px; }
+    .share.inbox .share-foot { display: none; }
     [hidden] { display: none !important; }
   </style>
 </head>

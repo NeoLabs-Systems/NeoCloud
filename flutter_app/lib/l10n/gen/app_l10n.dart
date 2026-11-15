@@ -13571,6 +13571,204 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Copied.'**
   String get cloudCopied;
+
+  /// No description provided for @deviceRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get deviceRename;
+
+  /// No description provided for @deviceRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename this device'**
+  String get deviceRenameTitle;
+
+  /// No description provided for @handoffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to device'**
+  String get handoffTitle;
+
+  /// No description provided for @handoffSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file} other{{count} files}} · {size}'**
+  String handoffSummary(int count, String size);
+
+  /// No description provided for @handoffChooseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose files'**
+  String get handoffChooseFiles;
+
+  /// No description provided for @handoffPickDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to…'**
+  String get handoffPickDevice;
+
+  /// No description provided for @handoffNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No other device is online right now. Open NeoCloud on your other device and sign in to this account.'**
+  String get handoffNoDevices;
+
+  /// No description provided for @handoffKindPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get handoffKindPhone;
+
+  /// No description provided for @handoffKindDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer'**
+  String get handoffKindDesktop;
+
+  /// No description provided for @handoffKindBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser'**
+  String get handoffKindBrowser;
+
+  /// No description provided for @handoffKindApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get handoffKindApp;
+
+  /// No description provided for @handoffSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {name}…'**
+  String handoffSending(String name);
+
+  /// No description provided for @handoffWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {name} to accept'**
+  String handoffWaiting(String name);
+
+  /// No description provided for @handoffDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} received your files.'**
+  String handoffDelivered(String name);
+
+  /// No description provided for @handoffDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} declined the files.'**
+  String handoffDeclined(String name);
+
+  /// No description provided for @handoffCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The send was cancelled.'**
+  String get handoffCancelled;
+
+  /// No description provided for @handoffExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody picked the files up in time.'**
+  String get handoffExpired;
+
+  /// No description provided for @handoffCancelSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get handoffCancelSend;
+
+  /// No description provided for @handoffFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send. Check your connection and try again.'**
+  String get handoffFailed;
+
+  /// No description provided for @handoffTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That is more than can be sent at once (2 GB, 50 files).'**
+  String get handoffTooLarge;
+
+  /// No description provided for @handoffDeviceGone.
+  ///
+  /// In en, this message translates to:
+  /// **'That device went offline. Choose another one.'**
+  String get handoffDeviceGone;
+
+  /// No description provided for @handoffSaveToCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my NeoCloud'**
+  String get handoffSaveToCloud;
+
+  /// No description provided for @handoffIncomingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{name} sent you a file} other{{name} sent you {count} files}}'**
+  String handoffIncomingTitle(String name, int count);
+
+  /// No description provided for @handoffAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get handoffAccept;
+
+  /// No description provided for @handoffDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get handoffDecline;
+
+  /// No description provided for @handoffSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get handoffSaved;
+
+  /// No description provided for @handoffSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save the files. Ask to send them again.'**
+  String get handoffSaveFailed;
+
+  /// No description provided for @handoffNotifySwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me about incoming files'**
+  String get handoffNotifySwitch;
+
+  /// No description provided for @handoffNotifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows a notification in this browser when another of your devices sends you something.'**
+  String get handoffNotifyHint;
+
+  /// No description provided for @handoffNotifyBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are blocked for this site in your browser settings.'**
+  String get handoffNotifyBlocked;
+
+  /// No description provided for @handoffReceiveSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Let my other devices send files here'**
+  String get handoffReceiveSwitch;
+
+  /// No description provided for @handoffReceiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your other signed-in devices can then send files to this one, wherever they are.'**
+  String get handoffReceiveHint;
+
+  /// No description provided for @handoffSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to device'**
+  String get handoffSectionTitle;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

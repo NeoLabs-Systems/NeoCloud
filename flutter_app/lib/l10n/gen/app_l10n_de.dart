@@ -8377,4 +8377,136 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get cloudCopied => 'Kopiert.';
+
+  @override
+  String get deviceRename => 'Umbenennen';
+
+  @override
+  String get deviceRenameTitle => 'Gerät umbenennen';
+
+  @override
+  String get handoffTitle => 'An Gerät senden';
+
+  @override
+  String handoffSummary(int count, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Dateien',
+      one: '1 Datei',
+    );
+    return '$_temp0 · $size';
+  }
+
+  @override
+  String get handoffChooseFiles => 'Dateien wählen';
+
+  @override
+  String get handoffPickDevice => 'Senden an …';
+
+  @override
+  String get handoffNoDevices =>
+      'Gerade ist kein anderes Gerät online. Öffne NeoCloud auf deinem anderen Gerät und melde dich mit diesem Konto an.';
+
+  @override
+  String get handoffKindPhone => 'Handy';
+
+  @override
+  String get handoffKindDesktop => 'Computer';
+
+  @override
+  String get handoffKindBrowser => 'Browser';
+
+  @override
+  String get handoffKindApp => 'App';
+
+  @override
+  String handoffSending(String name) {
+    return 'Sende an $name …';
+  }
+
+  @override
+  String handoffWaiting(String name) {
+    return 'Warte, bis $name annimmt';
+  }
+
+  @override
+  String handoffDelivered(String name) {
+    return '$name hat deine Dateien erhalten.';
+  }
+
+  @override
+  String handoffDeclined(String name) {
+    return '$name hat die Dateien abgelehnt.';
+  }
+
+  @override
+  String get handoffCancelled => 'Das Senden wurde abgebrochen.';
+
+  @override
+  String get handoffExpired => 'Niemand hat die Dateien rechtzeitig abgeholt.';
+
+  @override
+  String get handoffCancelSend => 'Abbrechen';
+
+  @override
+  String get handoffFailed =>
+      'Senden nicht möglich. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get handoffTooLarge =>
+      'Das ist mehr, als auf einmal gesendet werden kann (2 GB, 50 Dateien).';
+
+  @override
+  String get handoffDeviceGone =>
+      'Dieses Gerät ist offline gegangen. Wähle ein anderes.';
+
+  @override
+  String get handoffSaveToCloud => 'In meiner NeoCloud speichern';
+
+  @override
+  String handoffIncomingTitle(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name hat dir $count Dateien geschickt',
+      one: '$name hat dir eine Datei geschickt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get handoffAccept => 'Annehmen';
+
+  @override
+  String get handoffDecline => 'Ablehnen';
+
+  @override
+  String get handoffSaved => 'Gespeichert.';
+
+  @override
+  String get handoffSaveFailed =>
+      'Die Dateien konnten nicht gespeichert werden. Bitte sie erneut zu senden.';
+
+  @override
+  String get handoffNotifySwitch => 'Über eingehende Dateien benachrichtigen';
+
+  @override
+  String get handoffNotifyHint =>
+      'Zeigt eine Benachrichtigung in diesem Browser, wenn dir eines deiner anderen Geräte etwas schickt.';
+
+  @override
+  String get handoffNotifyBlocked =>
+      'Benachrichtigungen sind für diese Seite in den Browser-Einstellungen blockiert.';
+
+  @override
+  String get handoffReceiveSwitch =>
+      'Meine anderen Geräte dürfen Dateien hierher senden';
+
+  @override
+  String get handoffReceiveHint =>
+      'Deine anderen angemeldeten Geräte können dann Dateien an dieses senden, egal wo sie sind.';
+
+  @override
+  String get handoffSectionTitle => 'An Gerät senden';
 }

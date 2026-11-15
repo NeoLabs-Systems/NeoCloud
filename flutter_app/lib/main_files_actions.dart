@@ -411,6 +411,13 @@ mixin _FilesActions on _FilesBase {
     ];
   }
 
+  /// Send copies of the files in [nodes] (not folders, not vault files) to another of the account's devices.
+  Future<void> sendToDevice(List<FileNode> nodes) async {
+    final sendable = <FileNode>[for (final node in nodes) if (!node.isFolder && !node.inVault) node];
+    if (sendable.isEmpty) return;
+    await showSendToDevice(context, controller, nodes: sendable);
+  }
+
   // Menus
 
   /// What an action applies to: the selection if [node] is in it, else just [node].
@@ -434,6 +441,8 @@ mixin _FilesActions on _FilesBase {
       if (node.signed && !node.isFolder && own)
         _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(guard(() => controller.downloadSignedWithoutCertificate(node)))),
       if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
+      if (own && !vault && !node.isFolder)
+        _FileAction(Icons.send_to_mobile_rounded, appStrings.handoffTitle, () => unawaited(sendToDevice(subjectFor(node))), quick: true),
       if (own && node.isFolder && !vault)
         _FileAction(Icons.inbox_outlined, appStrings.requestFiles, () => unawaited(requestFilesInto(context, controller, node)), quick: true),
       if (own)

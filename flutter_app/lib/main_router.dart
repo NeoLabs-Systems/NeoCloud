@@ -63,7 +63,7 @@ class _AppRouterDelegate extends RouterDelegate<AppRoute> with ChangeNotifier, P
       pages: <Page<void>>[
         MaterialPage<void>(
           key: const ValueKey<String>('home'),
-          child: _NativeRuntime(controller: controller, child: NeoCloudRoot(controller: controller)),
+          child: _NativeRuntime(controller: controller, child: _HandoffHost(controller: controller, child: NeoCloudRoot(controller: controller))),
         ),
       ],
       onDidRemovePage: (_) {},

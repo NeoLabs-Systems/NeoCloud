@@ -127,19 +127,24 @@ async function act(fn, done) {
 }
 
 // A small in-page dialog; resolves true when confirmed.
-function ask({ title, body, ok, danger }) {
+// With `field` ({ value, label }) it has a text box and resolves with the
+// typed text instead (false when cancelled).
+function ask({ title, body, ok, danger, field }) {
   return new Promise((resolve) => {
-    const close = (answer) => { scrim.remove(); document.removeEventListener("keydown", onKey); resolve(answer); };
+    const box = field && el("input", { class: "input", value: field.value, maxlength: "80", "aria-label": field.label, spellcheck: "false" });
+    const close = (answer) => { scrim.remove(); document.removeEventListener("keydown", onKey); resolve(answer && box ? box.value : answer); };
     const onKey = (event) => { if (event.key === "Escape") close(false); };
     const confirm = button(ok, () => close(true), { kind: danger ? "destructive" : "primary" });
     const scrim = el("div", { class: "scrim", onclick: (event) => { if (event.target === scrim) close(false); } },
       el("div", { class: "dialog", role: "dialog", "aria-modal": "true" },
         el("h3", {}, title),
         el("p", {}, body),
+        box,
         el("div", { class: "actions" }, button("Cancel", () => close(false), { kind: "ghost" }), confirm)));
     document.body.append(scrim);
     document.addEventListener("keydown", onKey);
-    confirm.focus();
+    (box || confirm).focus();
+    if (box) box.addEventListener("keydown", (event) => { if (event.key === "Enter") close(true); });
   });
 }
 
@@ -1240,6 +1245,7 @@ function settings() {
         el("div", { class: "setting" },
           el("div", { class: "avatar" }, (S.username || "?").slice(0, 1)),
           el("div", { class: "text" }, el("strong", {}, S.username), el("span", { class: "ellipsis" }, host(S.server)), el("span", { class: "ellipsis" }, "This computer: " + S.deviceName)),
+          button("Rename", renameDevice),
           button("Open web app", () => act(() => call("POST", "/api/open/web")), { icon: "external" })),
         el("div", { class: "setting" },
           el("div", { class: "text" }, el("strong", {}, "Sign out"), el("span", {}, "Syncing stops. Your files stay on this computer and in NeoCloud.")),
@@ -1294,6 +1300,13 @@ function keyLockCard() {
     lock.enrolled ? null : el("div", { class: "setting column" },
       el("label", { class: "field", for: "pin" }, "Security key PIN", pin),
       el("p", { class: "hint" }, "Used once to set up the lock, never stored.")));
+}
+
+async function renameDevice() {
+  const name = await ask({ title: "Rename this computer", body: "This is how it appears in your NeoCloud devices list.", ok: "Save", field: { value: S.deviceName, label: "Computer name" } });
+  if (name && name.trim() && name.trim() !== S.deviceName) {
+    act(() => call("PUT", "/api/device-name", { name }), "Renamed");
+  }
 }
 
 async function signOut() {

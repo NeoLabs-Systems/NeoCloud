@@ -153,8 +153,9 @@
     renderShare({ ...data.share, expiresAt: null }, '');
     $('[data-folder-head]').hidden = true;
     $('[data-rows]').hidden = true;
-    $('[data-drop-title]').textContent = 'Drag files here';
-    $('[data-drop-text]').textContent = 'or choose them from your device. You can send as many as you like. You won’t see what is already in the folder.';
+    document.querySelector('main').classList.add('inbox');
+    $('[data-drop-title]').textContent = 'Drop files here';
+    $('[data-drop-text]').textContent = 'You can send as many files as you like. You won’t see what’s already in the folder.';
     const limits = $('[data-limits]');
     limits.textContent = limitsText(data.share);
     limits.hidden = !limits.textContent;
@@ -164,6 +165,7 @@
   function renderFolder(data) {
     show('folder');
     inbox = false;
+    document.querySelector('main').classList.remove('inbox');
     bytesLeft = data.share.uploadBytesLeft ?? null;
     $('[data-folder-head]').hidden = false;
     $('[data-limits]').hidden = true;
@@ -270,23 +272,43 @@
     }
     const query = new URLSearchParams({ name: file.name });
     if (currentFolderId) query.set('folderId', currentFolderId);
-    const res = await fetch(`${api}/upload?${query}`, {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: file,
-    }).catch(() => null);
-    if (res && res.ok) {
-      const node = await res.json();
+    const bar = document.createElement('progress');
+    bar.max = 1;
+    bar.value = 0;
+    line.append(bar);
+    const result = await putFile(`${api}/upload?${query}`, file, (done) => { bar.value = done; });
+    bar.remove();
+    if (result.ok) {
+      const node = result.data;
       line.className = 'ok';
       line.textContent = `${node.name} · ${formatBytes(node.size)} · sent`;
       if (bytesLeft !== null) bytesLeft = Math.max(0, bytesLeft - node.size);
       return true;
     }
-    const data = res ? await res.json().catch(() => ({})) : {};
     line.className = 'failed';
-    line.textContent = `${file.name} · ${data.error || 'upload failed'}`;
+    line.textContent = `${file.name} · ${result.data.error || 'upload failed'}`;
     return false;
+  }
+
+  // One PUT per file; XHR (not fetch) because it reports upload progress.
+  function putFile(url, file, onProgress) {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+      const finish = () => {
+        let data = {};
+        try { data = JSON.parse(xhr.responseText); } catch { /* empty body */ }
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
+      };
+      xhr.onload = finish;
+      xhr.onerror = () => resolve({ ok: false, data: { error: 'connection lost' } });
+      xhr.send(file);
+    });
   }
 
   async function uploadFiles(files) {
@@ -323,7 +345,7 @@
   }
 
   function wireUploads() {
-    const drop = $('[data-drop]');
+    const drop = document.querySelector('[data-folder]');
     const picker = $('[data-picker]');
     $('[data-pick]').addEventListener('click', () => picker.click());
     $('[data-more]').addEventListener('click', () => {
@@ -334,14 +356,20 @@
       uploadFiles([...picker.files]);
       picker.value = '';
     });
+    const zone = $('[data-drop]');
+    const highlight = (on) => (inbox ? drop : zone).classList.toggle('over', on);
     drop.addEventListener('dragover', (event) => {
+      if (zone.hidden) return;
       event.preventDefault();
-      drop.classList.add('over');
+      highlight(true);
     });
-    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('dragleave', (event) => {
+      if (!drop.contains(event.relatedTarget)) highlight(false);
+    });
     drop.addEventListener('drop', (event) => {
+      if (zone.hidden) return;
       event.preventDefault();
-      drop.classList.remove('over');
+      highlight(false);
       uploadFiles([...event.dataTransfer.files]);
     });
   }

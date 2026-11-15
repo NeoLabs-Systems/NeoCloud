@@ -87,19 +87,47 @@ func (s *Server) pickFolder(r *http.Request) (any, error) {
 	if r.URL.Query().Get("for") == "parent" {
 		title = parentPickerTitle
 	}
-	for _, command := range pickerCommands(runtime.GOOS, title, s.lookPath) {
-		out, err := s.run(r.Context(), command.name, command.args...)
+	path, outcome := pickWith(r.Context(), s.run, s.lookPath, title)
+	switch outcome {
+	case pickedFolder:
+		return map[string]string{"path": path}, nil
+	case pickCancelled:
+		return map[string]bool{"cancelled": true}, nil
+	}
+	return map[string]bool{"unsupported": true}, nil
+}
+
+type pickOutcome int
+
+const (
+	pickedFolder pickOutcome = iota
+	pickCancelled
+	pickUnsupported
+)
+
+// pickWith tries the native folder dialogs of this system in order.
+func pickWith(ctx context.Context, run commandRunner, lookPath func(string) (string, error), title string) (string, pickOutcome) {
+	for _, command := range pickerCommands(runtime.GOOS, title, lookPath) {
+		out, err := run(ctx, command.name, command.args...)
 		if errors.Is(err, errPickerCancelled) {
-			return map[string]bool{"cancelled": true}, nil
+			return "", pickCancelled
 		}
 		if err != nil {
 			continue // not installed or not runnable here: try the next one
 		}
 		path := strings.TrimSpace(string(out))
 		if path == "" {
-			return map[string]bool{"cancelled": true}, nil
+			return "", pickCancelled
 		}
-		return map[string]string{"path": filepath.Clean(path)}, nil
+		return filepath.Clean(path), pickedFolder
 	}
-	return map[string]bool{"unsupported": true}, nil
+	return "", pickUnsupported
+}
+
+// ChooseFolder shows the OS folder dialog (title must be a plain constant:
+// it goes into a script). ok is false when the person cancelled or this
+// system has no dialog.
+func ChooseFolder(ctx context.Context, title string) (path string, ok bool) {
+	path, outcome := pickWith(ctx, runCommand, exec.LookPath, title)
+	return path, outcome == pickedFolder
 }

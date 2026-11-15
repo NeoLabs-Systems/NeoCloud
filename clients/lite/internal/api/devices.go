@@ -116,3 +116,15 @@ func (c *Client) Me(ctx context.Context) (*Me, error) {
 	}
 	return &out, nil
 }
+
+// RenameDevice gives this client's device a new name on the server and
+// returns the name as stored (trimmed, at most 80 characters).
+func (c *Client) RenameDevice(ctx context.Context, name string) (*Device, error) {
+	var out struct {
+		Device Device `json:"device"`
+	}
+	if err := c.doJSON(ctx, http.MethodPatch, "/api/devices/me", nil, map[string]string{"name": name}, &out); err != nil {
+		return nil, err
+	}
+	return &out.Device, nil
+}

@@ -140,6 +140,7 @@ password and 2FA code are asked for exactly as with a session.
 | POST | `/security-keys/register/verify` | `{ response, label? }` → `{ success, credentials }`; `label` up to 48 characters, default "Security key N". Recorded in the admin audit log (`account.security_key_added`; removing one, `account.security_key_removed`) |
 | PUT / DELETE | `/security-keys/:id` | `{ label }` to rename → `{ success, credentials }`; another account's key is `404` |
 | GET / POST / DELETE | `/devices` · `/devices/:id` | `{ name, platform }`; the token is returned once. `GET` → `{ devices: [{ id, name, platform, createdAt, lastSeenAt, current }] }`; `DELETE` of the phone asking → `400 CURRENT_DEVICE` |; `devices[].wipe` is `null` or `{ requestedAt, eraseFiles, deliveredAt }` (devices asked to erase themselves stay listed until delivered, then for 30 days); `DELETE` of one still waiting to erase itself calls the wipe off |
+| PATCH | `/devices/:id` (account limiter) | `{ name }` | Renames a signed-in device (trimmed, 1–80 characters, no control or invisible characters: `400 NAME_REQUIRED` / `NAME_INVALID` / `NAME_TOO_LONG`) → `{ device }` (with `current`). The device keeps its id and token. `404` for another account's, signed-out or unknown devices. Works for the phone asking too |
 | POST | `/devices/:id/wipe` (10 / 15 min) | `{ eraseFiles?: boolean }` | Remote wipe of a lost client: revokes the token at once and stores a wipe marker. The next request that client makes with the dead token answers `401 { code: "DEVICE_WIPE_REQUESTED", eraseFiles }` exactly once (and emits `devices:wiped` to the owner's sockets), then the plain `401 UNAUTHORIZED`. → `{ device }`. Idempotent: asking again keeps the first request (a repeat after delivery changes nothing). `400 CURRENT_DEVICE` for the phone asking, `404` for another account's, WebDAV app-password or already signed-out device. Audit log: `device.wipe_requested`, `device.wipe_delivered`. A device that never reconnects never wipes |
 | GET | `/devices/authorize/:userCode` | → `{ name, platform, createdAt, expiresAt }` of a pending device login |
 | POST | `/devices/authorize/:userCode` | `{ approve: true\|false }` → `{ success: true }` |
@@ -192,6 +193,7 @@ The OAuth-style device code flow from [clients.md](clients.md#1-device-login-oau
 | POST | `/webauthn/verify` | none (40 / 15 min) | `{ challengeId, response, name, platform }` | `200 { token, device: { id, name, platform }, user: { id, username } }` like `/token` · `200 { requiresTwoFactor: true, challengeId }` for a presence-only key on an account with 2FA · `400 SECURITY_KEY_CHALLENGE_EXPIRED` (unknown, used or older than 5 minutes; every challenge is spent by its first verify) · `401 SECURITY_KEY_UNKNOWN` · `401 SECURITY_KEY_REJECTED` (wrong origin, RP ID, challenge or signature) · `400 NAME_REQUIRED` |
 | POST | `/webauthn/2fa` | none (40 / 15 min) | `{ challengeId, code }` | TOTP or recovery code within 10 minutes, at most 5 per sign-in → the token answer above · `401 INVALID_CODE` · `401 TWO_FACTOR_EXPIRED` (also after the fifth wrong code) · `429 LOGIN_LOCKED` |
 | GET | `/me` | bearer only | | `{ device: { id, name, platform, createdAt, lastSeenAt }, user: { id, username, isAdmin }, quota: { used, limit } }`; `limit` -1 = unlimited |
+| PATCH | `/me` | bearer only (60 / 15 min) | `{ name }` | The client renames itself (same rules as `PATCH /api/account/devices/:id`; lite tokens cannot reach `/api/account`) → `{ device: { id, name, platform, createdAt, lastSeenAt } }` |
 
 `platform` is one of `windows`, `macos`, `linux`, `android`, `ios`, `lite`, `webdav` (an app password for WebDAV)
 or empty. `verificationUrl` is `<PUBLIC_URL origin or request origin>/app/device?code=ABCD-EFGH`.
@@ -1349,3 +1351,33 @@ item `404 EXTERNAL_NOT_FOUND`. Addresses on private networks are
 metadata addresses are refused regardless. Connecting, editing and
 disconnecting are recorded in the access audit log (`external_storage.*`).
 The account export lists `externalStorage` without secrets.
+
+## Send to device (`/api/handoff`)
+
+Files from one of the account's devices to another, anywhere (see
+[handoff.md](handoff.md)). Session or device token (not WebDAV app passwords).
+A device is addressed by its `id`: `d:<device token id>` for a signed-in app,
+`s:<hash>` for a browser session. Offers are visible only to the device that
+sent them (as `role: "sender"`) and the device they are addressed to
+(`role: "receiver"`); another device or account gets `404`.
+
+An offer: `{ id, role, status, from: { id, name, platform }, to: { id, name },
+totalSize, files: [{ id, name, mime, size }], createdAt, updatedAt, expiresAt }`.
+`status`: `uploading` (sender still uploading), `pending` (waiting for the
+receiver), `accepted` (receiver is downloading), `delivered`, `declined`,
+`cancelled`, `expired`. File names are sanitised and made unique by the server.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/handoff/devices` | `{ devices: [{ id, name, platform, kind: phone\|desktop\|browser\|app, canReceive, online, current }] }`. Online devices, then apps seen in the last 7 days (`online: false`, they get the offer when they reconnect). |
+| GET | `/api/handoff/events?receive=1` | Server-sent events for signed-in apps; holding it open makes the device online. `receive=0` hides it from send lists. Events: `handoff:offer` (an offer for this device; re-sent on every connect while pending), `handoff:updated` `{ offer }`, `handoff:devices` `{}` (refetch the list). Web sessions use the socket.io connection instead, with the same events. |
+| GET | `/api/handoff/offers` | `{ sent, inbox }`: what this device sent (latest 50) and what waits for it. |
+| POST | `/api/handoff/offers` | `{ targetId, files?: [{ name, size, mime? }], nodeIds?: [id] }` → `201` offer. `nodeIds` (own files, not in vaults) are sent as copies and the offer is `pending` at once; `files` must be uploaded next. Up to 50 files and 2 GiB per send, 10 open sends / 4 GiB per account (`429 TOO_MANY_OPEN_SENDS`, `413 SEND_TOO_LARGE`, `413 QUOTA_EXCEEDED`). `404 DEVICE_NOT_FOUND`, `409 DEVICE_NOT_RECEIVING`, `400 SAME_DEVICE`. 60 per 15 minutes. |
+| PUT | `/api/handoff/offers/:id/files/:fileId` | Body = the file's bytes; exactly the declared size (`400 SIZE_MISMATCH`). Sending again replaces it. The last file makes the offer `pending` and notifies the receiver. An offer not finished within an hour expires. |
+| GET | `/api/handoff/offers/:id` | The offer. |
+| POST | `/api/handoff/offers/:id/accept` | Receiver only. `accepted`; asking again is fine. `409 OFFER_CLOSED`, `410 OFFER_EXPIRED`. |
+| POST | `/api/handoff/offers/:id/decline` | Receiver only. Deletes the staged files. |
+| POST | `/api/handoff/offers/:id/complete` | Receiver only, after saving: `delivered`, staged files deleted. `409 NOT_ACCEPTED` before accepting. |
+| DELETE | `/api/handoff/offers/:id` | Sender only: `cancelled`, staged files deleted. |
+| GET | `/api/handoff/offers/:id/files/:fileId` | Receiver only, once accepted: the file with `Range` support (`206`, `416`); always an attachment. |
+| GET | `/api/handoff/offers/:id/zip` | Receiver only, once accepted: all files as a stored ZIP. |

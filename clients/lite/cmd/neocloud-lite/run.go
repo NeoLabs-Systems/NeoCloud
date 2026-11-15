@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/neolabs/neocloud/clients/lite/internal/autostart"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/handoff"
 	"github.com/neolabs/neocloud/clients/lite/internal/instance"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/notify"
@@ -88,6 +90,16 @@ func cmdRun(args []string) error {
 		return <-done
 	}
 	notify.Watch(a.engine, a.cfg, logger)
+	receiver := handoff.New(a.cfg, logger)
+	receiver.Notify = func(title, body string) {
+		if err := notify.Show(title, body); err != nil {
+			logger.Printf("notification: %v", err)
+		}
+	}
+	receiver.ChooseFolder = func(ctx context.Context) (string, bool) {
+		return settingsui.ChooseFolder(ctx, "Choose where to save the files")
+	}
+	go receiver.Run(ctx)
 	go func() {
 		<-ctx.Done() // Ctrl-C in a terminal also ends the tray
 		tray.Quit()
@@ -115,6 +127,15 @@ func cmdRun(args []string) error {
 			}
 		},
 		OnQuit: cancel,
+		SetReceive: func(on bool) {
+			err := a.cfg.Update(func(c *config.Config) error {
+				c.ReceiveFromDevices = &on
+				return nil
+			})
+			if err != nil {
+				logger.Printf("saving the receive setting: %v", err)
+			}
+		},
 	})
 	cancel()
 	settings.CloseWindow() // Quit leaves no window behind

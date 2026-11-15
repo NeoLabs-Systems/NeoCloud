@@ -118,14 +118,12 @@ List<AppSection> _mainSections(NeoCloudController controller) {
     // AI suggestions wait here while AI runs for the account; its
     // Duplicates tab needs no AI, so the page is always there.
     AppSection.review,
-    AppSection.shared,
     // Documents to sign and their progress; hidden for nobody (every account
     // can sign its own files).
     AppSection.signing,
-    // Recent and Favorites are views of Files, not places: chips above the
-    // file list (and the phone's section chips) open them, the sidebar
-    // stays short.
-    AppSection.activity,
+    // Recent, Favorites and Shared with me are views of Files, not places:
+    // chips above the file list open them; Activity is a Files toolbar action
+    // and a palette command. The sidebar stays short.
     AppSection.trash,
     // Its own sidebar entry and phone tab: the timeline of photos and videos.
     AppSection.photos,

@@ -11,6 +11,7 @@ const db = require('../../db/database');
 const { recordAccessEvent } = require('../access/audit');
 const { revokeAllSessionsForUser } = require('./sessions');
 const { emitToUser, disconnectUser } = require('../events');
+const { dropAccount } = require('../handoff/presence');
 const { deleteUserBlobDirectory } = require('../storage/blob_store');
 const { removePartFiles } = require('../transfer/uploads');
 const importRunner = require('../import/runner');
@@ -68,6 +69,7 @@ function deleteRows(userId) {
   // The account's own signing profile and saved signatures (their blobs go with the account's blobs below).
   run('DELETE FROM sign_profile_images WHERE user_id = @id');
   run('DELETE FROM sign_profiles WHERE user_id = @id');
+  run('DELETE FROM handoff_offers WHERE user_id = @id');
   run('DELETE FROM import_jobs WHERE user_id = @id');
   run('DELETE FROM external_mounts WHERE user_id = @id');
   run('DELETE FROM upload_sessions WHERE user_id = @id OR created_by = @id');
@@ -137,6 +139,7 @@ async function eraseAccount(userId, { actorUserId }) {
   await deleteUserBlobDirectory(user.id);
   for (const { id } of uploads) await removePartFiles(id);
   disconnectUser(user.id);
+  dropAccount(user.id);
   for (const [partnerId, nodeIds] of partners) {
     emitToUser(partnerId, 'shares:changed', {});
     emitToUser(partnerId, 'files:changed', { folderIds: [...new Set(nodeIds)] });

@@ -2,7 +2,7 @@
 
 // Housekeeping that runs while the server is up. Each pass is independent and
 // safe to repeat.
-//   hourly  expired trash, abandoned uploads, ended session records, activity older than 90 days, a WAL checkpoint when the WAL
+//   hourly  expired trash, expired sends to other devices, abandoned uploads, ended session records, activity older than 90 days, a WAL checkpoint when the WAL
 //           has grown, the next slice of the blob scrub
 //   daily   PRAGMA optimize, and a quick_check on a worker thread whose
 //           result admin health shows (a request never runs one itself)
@@ -16,6 +16,7 @@ const { purgeExpiredTrash } = require('./files/trash');
 const { purgeExpiredUploads } = require('./transfer/uploads');
 const { purgeEndedSessions } = require('./account/sessions');
 const { pruneActivity } = require('./activity/record');
+const { purgeExpired: purgeHandoff } = require('./handoff/delivery');
 const { scrubSlice } = require('./storage/blob_scrub');
 const { createServiceLogger } = require('../utils/logger');
 
@@ -104,6 +105,7 @@ async function runMaintenance() {
   });
   await step('Session records', purgeEndedSessions);
   await step('Activity log', pruneActivity);
+  await step('Send to device', purgeHandoff);
   await step('WAL checkpoint', checkpointLargeWal);
   await step('Blob scrub', scrubSlice);
   if (Date.now() - lastDailyAt >= DAILY_MS) {

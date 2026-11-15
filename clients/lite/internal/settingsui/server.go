@@ -109,6 +109,8 @@ type Server struct {
 	goneAt   time.Time // when the last of them let go
 	quota    map[string]int64
 	quotaAt  time.Time
+	nameAt   time.Time // last time this device's name was read from the server
+	nameBusy bool
 }
 
 const (
@@ -171,6 +173,7 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("POST /api/pairs/{id}/new-folders", s.api(s.decideNewFolder))
 	mux.HandleFunc("POST /api/pairs/{id}/resolve", s.api(s.resolve))
 	mux.HandleFunc("PUT /api/settings", s.api(s.updateSettings))
+	mux.HandleFunc("PUT /api/device-name", s.api(s.renameDevice))
 	mux.HandleFunc("POST /api/key-lock", s.api(s.enrollKey))
 	mux.HandleFunc("DELETE /api/key-lock", s.api(s.removeKey))
 	mux.HandleFunc("POST /api/sync", s.api(func(*http.Request) (any, error) { engine.SyncNow(); return ok(), nil }))
@@ -337,6 +340,7 @@ func decode(r *http.Request, into any) error {
 }
 
 func (s *Server) state(r *http.Request) (any, error) {
+	s.refreshDeviceName()
 	cfg := s.cfg.Get()
 	seq := s.sessionSeq(r)
 	s.mu.Lock()

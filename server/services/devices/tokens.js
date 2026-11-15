@@ -10,6 +10,7 @@ const db = require('../../db/database');
 const { httpError } = require('../../utils/http_error');
 const { assertAccountActive, assertEmailConfirmed } = require('../account/status');
 const { revokeAllGrants } = require('../oauth/connected_apps');
+const handoff = require('../handoff/revoke');
 
 const TOKEN_PREFIX = 'nc_';
 const MAX_NAME_LENGTH = 80;
@@ -48,6 +49,15 @@ function cleanDeviceInfo({ name, platform = '' } = {}) {
   return { name: cleanName, platform: cleanPlatform(platform) };
 }
 
+// A new name for an existing device: 1-80 characters, nothing invisible.
+function cleanDeviceName(raw) {
+  const name = String(raw ?? '').normalize('NFC').trim();
+  if (!name) throw httpError(400, 'Give the device a name.', 'NAME_REQUIRED');
+  if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(name)) throw httpError(400, 'Names can’t contain control or invisible characters.', 'NAME_INVALID');
+  if ([...name].length > MAX_NAME_LENGTH) throw httpError(400, `Names can be up to ${MAX_NAME_LENGTH} characters.`, 'NAME_TOO_LONG');
+  return name;
+}
+
 // Every route that hands out a token (device code, QR pairing, security key,
 // app passwords) comes through here, so a disabled account, or one that has not
 // confirmed its email yet, gets none.
@@ -75,6 +85,16 @@ function listDeviceTokens(userId) {
   `).all(userId).map(serialize);
 }
 
+// Renames a signed-in device; it stays the same device (same id and token).
+function renameDeviceToken(userId, id, rawName) {
+  const name = cleanDeviceName(rawName);
+  const result = db.prepare(`
+    UPDATE device_tokens SET name = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL
+  `).run(name, id, userId);
+  if (result.changes === 0) throw httpError(404, 'Device not found', 'NOT_FOUND');
+  return getDeviceToken(userId, id);
+}
+
 // Deleting a device that is waiting to erase itself calls the wipe off.
 function cancelPendingWipe(userId, id) {
   const result = db.prepare(`
@@ -91,6 +111,7 @@ function revokeDeviceToken(userId, id) {
     WHERE id = ? AND user_id = ? AND revoked_at IS NULL
   `).run(id, userId);
   if (result.changes === 0) return cancelPendingWipe(userId, id);
+  handoff.deviceRevoked(userId, id);
   return { success: true };
 }
 
@@ -103,7 +124,7 @@ function revokeDeviceToken(userId, id) {
  * `exceptDeviceId` the phone that asked stays signed in.
  */
 function revokeAllDeviceTokens(userId, { exceptDeviceId = null } = {}) {
-  return db.transaction(() => {
+  const revoked = db.transaction(() => {
     const { changes } = db.prepare(`
       UPDATE device_tokens SET revoked_at = datetime('now')
       WHERE user_id = ? AND revoked_at IS NULL AND id IS NOT ?
@@ -120,6 +141,8 @@ function revokeAllDeviceTokens(userId, { exceptDeviceId = null } = {}) {
     revokeAllGrants(userId);
     return changes;
   })();
+  handoff.allDevicesRevoked(userId, { exceptDeviceId });
+  return revoked;
 }
 
 function getDeviceToken(userId, id) {
@@ -153,6 +176,7 @@ module.exports = {
   getDeviceToken,
   hashToken,
   listDeviceTokens,
+  renameDeviceToken,
   serialize,
   resolveDeviceToken,
   revokeAllDeviceTokens,

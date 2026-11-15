@@ -86,6 +86,21 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
     }),
   );
 
+  Future<void> _rename(DeviceInfo device) async {
+    final name = await _promptText(
+      context,
+      title: appStrings.deviceRenameTitle,
+      label: appStrings.deviceName,
+      confirmLabel: appStrings.save,
+      initialValue: device.name,
+    );
+    if (name == null || name == device.name || !mounted) return;
+    await runAction(_controller, () async {
+      await _controller.client.renameDevice(device.id, name);
+      await _load();
+    });
+  }
+
   Future<void> _wipe(DeviceInfo device) async {
     final eraseFiles = await _askWipeChoice(context, device);
     if (eraseFiles == null || !mounted) return;
@@ -128,15 +143,16 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
       tag: device.current ? appStrings.deviceCurrent : tag,
       description: description,
       // This phone signs out with Disconnect (Profile, or the settings list).
-      control: device.current || device.wiped
+      control: device.wiped
           ? null
           : Wrap(
               spacing: 4,
               children: <Widget>[
-                if (!device.wipePending && !webDav) TextButton(onPressed: busy ? null : () => unawaited(_wipe(device)), child: Text(appStrings.deviceWipeAction)),
+                if (!device.wipePending) TextButton(onPressed: busy ? null : () => unawaited(_rename(device)), child: Text(appStrings.deviceRename)),
+                if (!device.current && !device.wipePending && !webDav) TextButton(onPressed: busy ? null : () => unawaited(_wipe(device)), child: Text(appStrings.deviceWipeAction)),
                 if (device.wipePending)
                   TextButton(onPressed: busy ? null : () => unawaited(_callOffWipe(device)), child: Text(appStrings.deviceWipeCancel))
-                else
+                else if (!device.current)
                   TextButton(onPressed: busy ? null : () => unawaited(_revoke(device)), child: Text(appStrings.deviceRevoke)),
               ],
             ),
@@ -170,6 +186,7 @@ class _DevicesSettingsPageState extends State<_DevicesSettingsPage> with _PageLo
             for (final device in devices ?? const <DeviceInfo>[]) _deviceRow(device),
           ],
         ),
+        _HandoffSettingsCard(controller: _controller),
         _WebDavCard(controller: _controller, busy: busy, onCreatePassword: () => unawaited(_createAppPassword())),
       ],
     );

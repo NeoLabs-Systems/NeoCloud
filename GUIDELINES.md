@@ -34,6 +34,7 @@ server/
     activity/       Activity feed (log written beside the change journal, access-checked feed, retention) and comments on files (services/comments)
     members/        Sharing with other accounts: grants, the access resolver, member file/transfer ops
     office/         Document editing: WOPI host for Collabora Online (discovery, access tokens, locks, CheckFileInfo/GetFile/PutFile; docs/office-editing.md)
+    handoff/        Send to device: presence, offers addressed to one device, staged encrypted files, delivery, device revoke (docs/handoff.md)
     settings/       Per-account preferences
     import/         Imports from Nextcloud/WebDAV: read-only client, jobs, runner
     external_storage/  Per-account cloud storage (S3, WebDAV, SFTP): mounts store, adapters, SSRF guard, browse/copy ops; pass-through, never indexed (docs/external-storage.md)

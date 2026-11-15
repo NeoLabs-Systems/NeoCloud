@@ -47,6 +47,7 @@ class LiveFileUpdates {
     this.onAiSuggestions,
     this.onSigningUpdated,
     this.onCommentsChanged,
+    this.onHandoffEvent,
     this.onPolled,
     this.pollInterval = const Duration(seconds: 15),
     this.maxBackoff = const Duration(seconds: 30),
@@ -67,6 +68,10 @@ class LiveFileUpdates {
 
   /// Someone added, changed or removed a comment on a file the account can see (`comments:changed`).
   final void Function()? onCommentsChanged;
+
+  /// A `handoff:*` event (Send to device): a device came or went, an offer
+  /// arrived or changed.
+  final void Function(String event, Object? data)? onHandoffEvent;
   final void Function()? onPolled;
   final Duration pollInterval;
   final Duration maxBackoff;
@@ -132,6 +137,7 @@ class LiveFileUpdates {
           if (event == 'ai:suggestions' && data is Map) onAiSuggestions?.call(data);
           if (event == 'signing:updated' || event == 'signing:inbox') onSigningUpdated?.call();
           if (event == 'comments:changed') onCommentsChanged?.call();
+          if (event.startsWith('handoff:')) onHandoffEvent?.call(event, data);
           if (event != 'files:changed' || data is! Map) return;
           final ids = data['folderIds'];
           if (ids is List) feed.addFolders(ids.whereType<String>());

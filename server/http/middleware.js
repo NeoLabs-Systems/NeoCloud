@@ -29,6 +29,7 @@ const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const RAW_BODY_PATHS = [
   /^\/api\/upload$/,
   /^\/api\/uploads\/[^/]+\/parts\/\d+$/,
+  /^\/api\/handoff\/offers\/[^/]+\/files\/\d+$/,
   /^\/api\/public\/shares\/[^/]+\/upload$/,
   /^\/api\/public\/sign\/[^/]+\/fields\/[^/]+\/upload$/,
   /^\/wopi\/files\/[^/]+\/contents$/,

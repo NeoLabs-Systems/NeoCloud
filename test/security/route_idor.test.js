@@ -28,7 +28,7 @@ const REGISTRY = [
   ['/api/vaults', 'vaults'], ['/api/imports', 'imports'], ['/api/ai', 'ai'], ['/api/neorouter', 'neorouter'],
   ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
   ['/api/photos', 'photos'], ['/api/external-storage', 'external_storage'],
-  ['/api', 'comments'], ['/api/activity', 'activity'],
+  ['/api', 'comments'], ['/api/activity', 'activity'], ['/api/handoff', 'handoff'],
   ['/api/account', 'connected_apps'], ['/api/oauth', 'oauth_companion'], ['/oauth', 'oauth'], ['/api/v1', 'agent_api'],
 ];
 
@@ -109,6 +109,12 @@ test.before(async () => {
   const field = await owner.agent.put(`/api/signing/documents/${v.sign}/fields`)
     .send({ fields: [{ partyId: v.signParty, type: 'text', areas: [{ page: 0, x: 0.1, y: 0.1, w: 0.3, h: 0.05 }] }] }).expect(200);
   v.signField = field.body.fields[0].id;
+  v.offer = crypto.randomUUID();
+  db.prepare(`
+    INSERT INTO handoff_offers (id, user_id, sender_key, sender_name, target_key, target_name, status, total_size, expires_at)
+    VALUES (?, ?, ?, 'Phone', ?, 'Laptop', 'pending', 1, datetime('now', '+1 day'))
+  `).run(v.offer, owner.user.id, `d:${v.device}`, `d:${v.device + 1}`);
+  v.offerFile = db.prepare("INSERT INTO handoff_files (offer_id, position, name, size) VALUES (?, 0, 'a.txt', 1)").run(v.offer).lastInsertRowid;
   v.comment = (await owner.agent.post(`/api/files/${v.file}/comments`).send({ body: 'private note' }).expect(201)).body.id;
   v.signImage = (await owner.agent.post('/api/signing/profile/images?kind=signature&method=draw&label=Mine')
     .set('Content-Type', 'image/png').send(await makePng()).expect(201)).body.id;
@@ -164,6 +170,7 @@ const CLASSIFIED = {
   'POST /api/account/devices': OWN,
   'POST /api/account/devices/pairing': OWN,
   'GET /api/account/devices/pairing/:code': () => ['GET', `/api/account/devices/pairing/${v.pairing}`],
+  'PATCH /api/account/devices/:id': () => ['PATCH', `/api/account/devices/${v.device}`, { name: 'Renamed' }],
   'DELETE /api/account/devices/:id': () => ['DELETE', `/api/account/devices/${v.device}`],
   'POST /api/account/devices/:id/wipe': () => ['POST', `/api/account/devices/${v.device}/wipe`, { eraseFiles: true }],
   'POST /api/account/export': OWN,
@@ -229,6 +236,7 @@ const CLASSIFIED = {
   'POST /api/devices/webauthn/verify': OWN,
   'POST /api/devices/webauthn/2fa': PUBLIC,
   'GET /api/devices/me': OWN,
+  'PATCH /api/devices/me': OWN,
   'GET /api/storage/breakdown': OWN,
   'GET /api/storage/duplicates': OWN,
   // A cursor only says where to start; rows are always the caller's (photos.test.js).
@@ -342,6 +350,18 @@ const CLASSIFIED = {
   'PATCH /api/files/:id/comments/:commentId': () => ['PATCH', `/api/files/${v.file}/comments/${v.comment}`, { body: 'x' }],
   'DELETE /api/files/:id/comments/:commentId': () => ['DELETE', `/api/files/${v.file}/comments/${v.comment}`],
   'GET /api/activity': () => ['GET', `/api/activity?nodeId=${v.file}`],
+  'GET /api/handoff/devices': OWN,
+  'GET /api/handoff/events': OWN,
+  'GET /api/handoff/offers': OWN,
+  'POST /api/handoff/offers': () => ['POST', '/api/handoff/offers', { targetId: `d:${v.device}`, files: [{ name: 'a', size: 1 }] }],
+  'GET /api/handoff/offers/:id': () => ['GET', `/api/handoff/offers/${v.offer}`],
+  'PUT /api/handoff/offers/:id/files/:fileId': () => ['PUT', `/api/handoff/offers/${v.offer}/files/${v.offerFile}`, Buffer.from('x')],
+  'POST /api/handoff/offers/:id/accept': () => ['POST', `/api/handoff/offers/${v.offer}/accept`],
+  'POST /api/handoff/offers/:id/decline': () => ['POST', `/api/handoff/offers/${v.offer}/decline`],
+  'POST /api/handoff/offers/:id/complete': () => ['POST', `/api/handoff/offers/${v.offer}/complete`],
+  'DELETE /api/handoff/offers/:id': () => ['DELETE', `/api/handoff/offers/${v.offer}`],
+  'GET /api/handoff/offers/:id/files/:fileId': () => ['GET', `/api/handoff/offers/${v.offer}/files/${v.offerFile}`],
+  'GET /api/handoff/offers/:id/zip': () => ['GET', `/api/handoff/offers/${v.offer}/zip`],
   'GET /api/neorouter': OWN,
   'POST /api/neorouter/connect': OWN,
   'GET /api/neorouter/connect/:id': 'flows live in memory and are checked against the account (sign_in.status)',

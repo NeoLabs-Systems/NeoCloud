@@ -436,7 +436,7 @@ class _SectionBody extends StatelessWidget {
         return AiReviewPage(controller: controller);
       case AppSection.shared:
         return controller.openSharedFolderId == null
-            ? SharedWithMePanel(controller: controller)
+            ? _ViewChips(controller: controller, child: SharedWithMePanel(controller: controller))
             : FilesPanel(key: const ValueKey<String>('shared-folder'), controller: controller);
       case AppSection.signing:
         return SigningPanel(controller: controller);
@@ -456,8 +456,8 @@ class _SectionBody extends StatelessWidget {
   }
 }
 
-/// All files · Recent · Favorites above the file list on wide screens,
-/// where they used to be sidebar entries. Phones have the section chips.
+/// All files · Recent · Favorites · Shared with me above the file list, where
+/// they used to be sidebar entries (and phone section chips).
 class _ViewChips extends StatelessWidget {
   const _ViewChips({required this.controller, required this.child});
 
@@ -466,23 +466,23 @@ class _ViewChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < AppBreakpoints.mobile) return child;
+    final phone = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
     final selected = controller.selectedSection;
-    Widget chip(AppSection section, String label, IconData icon) => Padding(
+    Widget chip(AppSection section, String label, IconData icon, {VoidCallback? onTap}) => Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
         avatar: Icon(icon, size: 16),
         label: Text(label),
         selected: selected == section,
         showCheckmark: false,
-        onSelected: (_) => controller.setSelectedSection(section),
+        onSelected: (_) => onTap == null ? controller.setSelectedSection(section) : onTap(),
       ),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+          padding: EdgeInsets.fromLTRB(phone ? 16 : 24, phone ? 4 : 14, phone ? 16 : 24, 0),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -490,6 +490,7 @@ class _ViewChips extends StatelessWidget {
                 chip(AppSection.files, AppSection.files.label, Icons.folder_outlined),
                 chip(AppSection.recent, AppSection.recent.label, Icons.schedule_rounded),
                 chip(AppSection.favorites, AppSection.favorites.label, Icons.star_outline_rounded),
+                chip(AppSection.shared, AppSection.shared.label, AppSection.shared.icon, onTap: () => controller.openSharedFolder(null)),
               ],
             ),
           ),

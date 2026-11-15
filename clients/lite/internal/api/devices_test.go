@@ -50,3 +50,24 @@ func TestCleanServer(t *testing.T) {
 		t.Errorf("trimmed to %q", got)
 	}
 }
+
+func TestRenameDevice(t *testing.T) {
+	var gotMethod, gotPath, gotAuth string
+	var gotBody map[string]string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath, gotAuth = r.Method, r.URL.Path, r.Header.Get("Authorization")
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		json.NewEncoder(w).Encode(map[string]any{"device": map[string]any{"id": 7, "name": "Desk", "platform": "lite"}})
+	}))
+	defer srv.Close()
+	device, err := New(srv.URL, "nc_token").RenameDevice(context.Background(), "  Desk ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != http.MethodPatch || gotPath != "/api/devices/me" || gotAuth != "Bearer nc_token" || gotBody["name"] != "  Desk " {
+		t.Errorf("sent %s %s auth=%q body=%v", gotMethod, gotPath, gotAuth, gotBody)
+	}
+	if device.Name != "Desk" || device.ID != 7 {
+		t.Errorf("answer %+v", device)
+	}
+}

@@ -9,7 +9,7 @@ const accountEmail = require('../services/account/account_email');
 const twoFactor = require('../services/account/two_factor');
 const webauthn = require('../services/account/webauthn');
 const { listSessions, ownSessionId, regenerateCurrentSession, revokeSession } = require('../services/account/sessions');
-const { createDeviceToken, listDeviceTokens, revokeDeviceToken } = require('../services/devices/tokens');
+const { createDeviceToken, listDeviceTokens, renameDeviceToken, revokeDeviceToken } = require('../services/devices/tokens');
 const { requestDeviceWipe } = require('../services/devices/wipe');
 const { decideAuthorization, describeAuthorization } = require('../services/devices/authorizations');
 const { getPairingStatus, startPairing } = require('../services/devices/pairing');
@@ -239,6 +239,12 @@ router.post('/devices/:id/wipe', wipeLimiter, jsonHandler((req) => ({
     currentDeviceId: req.deviceId,
   }),
 })));
+
+router.patch('/devices/:id', accountLimiter, jsonHandler((req) => {
+  const id = intParam(req.params.id, 'device id');
+  const device = renameDeviceToken(req.userId, id, req.body?.name);
+  return { device: { ...device, current: device.id === req.deviceId } };
+}));
 
 router.delete('/devices/:id', accountLimiter, jsonHandler((req) => {
   const id = intParam(req.params.id, 'device id');

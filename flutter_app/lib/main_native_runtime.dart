@@ -240,6 +240,15 @@ class _NativeRuntimeState extends State<_NativeRuntime> {
         intake.remove(batch);
         return;
       }
+      // Two ways to take a share: send it to another of the account's
+      // devices, or save it into NeoCloud (the folder prompt below).
+      final destination = await showSendToDevice(navigatorContext, _controller, files: batch.files, offerSaveToCloud: true);
+      if (destination != HandoffOutcome.saveToCloud || !_controller.isAuthenticated) {
+        intake.remove(batch);
+        await intake.release(batch.files);
+        return;
+      }
+      if (!navigatorContext.mounted) return;
       final target = await showFolderPicker(
         navigatorContext,
         _controller,

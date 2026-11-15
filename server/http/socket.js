@@ -8,6 +8,7 @@ const { Server: SocketIO } = require('socket.io');
 const { sessionHash } = require('../services/account/sessions');
 const { isAccountActive } = require('../services/account/status');
 const { sessionRoom, userRoom } = require('../services/events');
+const { attachSocket: trackHandoffPresence } = require('../services/handoff/live');
 
 function createSocketServer(httpServer, { validateOrigin }) {
   return new SocketIO(httpServer, {
@@ -24,6 +25,7 @@ function createSocketServer(httpServer, { validateOrigin }) {
 }
 
 function bindSocketSessions(io, sessionMiddleware) {
+  io.on('connection', trackHandoffPresence);
   io.use((socket, next) => {
     sessionMiddleware(socket.request, {}, (err) => {
       if (err) return next(err);

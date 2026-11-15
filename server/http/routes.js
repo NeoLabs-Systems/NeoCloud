@@ -16,6 +16,7 @@ const ROUTE_REGISTRY = [
   { basePath: '/api', modulePath: '../routes/members' },
   { basePath: '/api', modulePath: '../routes/comments' },
   { basePath: '/api/activity', modulePath: '../routes/activity' },
+  { basePath: '/api/handoff', modulePath: '../routes/handoff' },
   { basePath: '/api', modulePath: '../routes/office' },
   { basePath: '/wopi', modulePath: '../routes/wopi' },
   { basePath: '/api/sync', modulePath: '../routes/sync' },
