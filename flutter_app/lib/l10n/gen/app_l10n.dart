@@ -1951,6 +1951,84 @@ abstract class AppL10n {
   /// **'Path-style URLs (MinIO)'**
   String get backupPathStyle;
 
+  /// No description provided for @backupStorageClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage class (AWS)'**
+  String get backupStorageClass;
+
+  /// No description provided for @backupClassStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard: readable at once'**
+  String get backupClassStandard;
+
+  /// No description provided for @backupClassStandardIa.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard-IA: cheaper, readable at once, 30-day minimum'**
+  String get backupClassStandardIa;
+
+  /// No description provided for @backupClassGlacierIr.
+  ///
+  /// In en, this message translates to:
+  /// **'Glacier Instant Retrieval: cheap, readable at once, 90-day minimum'**
+  String get backupClassGlacierIr;
+
+  /// No description provided for @backupClassGlacier.
+  ///
+  /// In en, this message translates to:
+  /// **'Glacier Flexible Retrieval: cheapest for rarely needed backups; restore takes hours'**
+  String get backupClassGlacier;
+
+  /// No description provided for @backupClassDeepArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Glacier Deep Archive: lowest price; restore takes up to two days'**
+  String get backupClassDeepArchive;
+
+  /// No description provided for @backupMoveExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Move existing backups to {storageClass}'**
+  String backupMoveExisting(String storageClass);
+
+  /// No description provided for @backupMoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Every backup already on this target is copied once into {storageClass}. AWS charges a request fee per object and the transition, and Glacier Flexible Retrieval bills each object for at least 90 days, even if it is deleted sooner. Backups already in Glacier or Deep Archive stay where they are. Nothing is deleted.'**
+  String backupMoveConfirm(String storageClass);
+
+  /// No description provided for @backupMoveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Move backups'**
+  String get backupMoveAction;
+
+  /// No description provided for @backupMoveStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving the existing backups in the background.'**
+  String get backupMoveStarted;
+
+  /// No description provided for @backupMoving.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving backups… {done} of {total} objects'**
+  String backupMoving(int done, int total);
+
+  /// No description provided for @backupMoveDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing backups moved: {done} objects, {archived} already archived and left as they are'**
+  String backupMoveDone(int done, int archived);
+
+  /// No description provided for @backupMoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving the backups stopped: {error}. Start it again to continue.'**
+  String backupMoveFailed(String error);
+
   /// No description provided for @backupUrl.
   ///
   /// In en, this message translates to:
@@ -9384,6 +9462,1482 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 file couldn’t be moved to the trash.} other{{count} files couldn’t be moved to the trash.}}'**
   String duplicatesTrashFailed(int count);
+
+  /// No description provided for @signingFieldText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get signingFieldText;
+
+  /// No description provided for @signingFieldSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature'**
+  String get signingFieldSignature;
+
+  /// No description provided for @signingFieldInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Initials'**
+  String get signingFieldInitials;
+
+  /// No description provided for @signingFieldDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get signingFieldDate;
+
+  /// No description provided for @signingFieldNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get signingFieldNumber;
+
+  /// No description provided for @signingFieldImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get signingFieldImage;
+
+  /// No description provided for @signingFieldCheckbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkbox'**
+  String get signingFieldCheckbox;
+
+  /// No description provided for @signingFieldMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple choice'**
+  String get signingFieldMultiple;
+
+  /// No description provided for @signingFieldRadio.
+  ///
+  /// In en, this message translates to:
+  /// **'Single choice'**
+  String get signingFieldRadio;
+
+  /// No description provided for @signingFieldSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropdown'**
+  String get signingFieldSelect;
+
+  /// No description provided for @signingFieldCells.
+  ///
+  /// In en, this message translates to:
+  /// **'Character boxes'**
+  String get signingFieldCells;
+
+  /// No description provided for @signingFieldStamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Stamp'**
+  String get signingFieldStamp;
+
+  /// No description provided for @signingFieldPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get signingFieldPhone;
+
+  /// No description provided for @signingFieldFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get signingFieldFile;
+
+  /// No description provided for @signingFieldHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading'**
+  String get signingFieldHeading;
+
+  /// No description provided for @signingPrefFontSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size'**
+  String get signingPrefFontSize;
+
+  /// No description provided for @signingPrefAlign.
+  ///
+  /// In en, this message translates to:
+  /// **'Alignment'**
+  String get signingPrefAlign;
+
+  /// No description provided for @signingPrefAlignLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get signingPrefAlignLeft;
+
+  /// No description provided for @signingPrefAlignCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Center'**
+  String get signingPrefAlignCenter;
+
+  /// No description provided for @signingPrefAlignRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get signingPrefAlignRight;
+
+  /// No description provided for @signingPrefPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Hint text'**
+  String get signingPrefPlaceholder;
+
+  /// No description provided for @signingPrefOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Choices'**
+  String get signingPrefOptions;
+
+  /// No description provided for @signingPrefMultiline.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow several lines'**
+  String get signingPrefMultiline;
+
+  /// No description provided for @signingPrefDateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Date format'**
+  String get signingPrefDateFormat;
+
+  /// No description provided for @signingPrefDefaultToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with today\'s date'**
+  String get signingPrefDefaultToday;
+
+  /// No description provided for @signingPrefMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Smallest value'**
+  String get signingPrefMin;
+
+  /// No description provided for @signingPrefMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest value'**
+  String get signingPrefMax;
+
+  /// No description provided for @signingPrefDecimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimal places'**
+  String get signingPrefDecimals;
+
+  /// No description provided for @signingPrefCells.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of boxes'**
+  String get signingPrefCells;
+
+  /// No description provided for @signingIssueRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'This is required.'**
+  String get signingIssueRequired;
+
+  /// No description provided for @signingIssueTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Please use at most {limit} characters.'**
+  String signingIssueTooLong(String limit);
+
+  /// No description provided for @signingIssueInvalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a number.'**
+  String get signingIssueInvalidNumber;
+
+  /// No description provided for @signingIssueBelowMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter {limit} or more.'**
+  String signingIssueBelowMin(String limit);
+
+  /// No description provided for @signingIssueAboveMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter {limit} or less.'**
+  String signingIssueAboveMax(String limit);
+
+  /// No description provided for @signingIssueDecimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Please use at most {limit} decimal places.'**
+  String signingIssueDecimals(String limit);
+
+  /// No description provided for @signingIssueInvalidDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a real date.'**
+  String get signingIssueInvalidDate;
+
+  /// No description provided for @signingIssueInvalidPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid phone number.'**
+  String get signingIssueInvalidPhone;
+
+  /// No description provided for @signingIssueCells.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill all {limit} boxes.'**
+  String signingIssueCells(String limit);
+
+  /// No description provided for @signingIssueNotAnOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Please pick one of the choices.'**
+  String get signingIssueNotAnOption;
+
+  /// No description provided for @signingOptionDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Option {number}'**
+  String signingOptionDefault(String number);
+
+  /// No description provided for @signingPartyDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Party {number}'**
+  String signingPartyDefaultName(String number);
+
+  /// No description provided for @signingSignatureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your signature'**
+  String get signingSignatureTitle;
+
+  /// No description provided for @signingInitialsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your initials'**
+  String get signingInitialsTitle;
+
+  /// No description provided for @signingTabDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get signingTabDraw;
+
+  /// No description provided for @signingTabType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get signingTabType;
+
+  /// No description provided for @signingTabUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get signingTabUpload;
+
+  /// No description provided for @signingPadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign here'**
+  String get signingPadHint;
+
+  /// No description provided for @signingPadUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get signingPadUndo;
+
+  /// No description provided for @signingPadClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get signingPadClear;
+
+  /// No description provided for @signingTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your name'**
+  String get signingTypeHint;
+
+  /// No description provided for @signingTypePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get signingTypePreview;
+
+  /// No description provided for @signingUploadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a picture of your signature, ideally dark ink on a plain background.'**
+  String get signingUploadHint;
+
+  /// No description provided for @signingUploadChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a picture'**
+  String get signingUploadChoose;
+
+  /// No description provided for @signingUploadChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another picture'**
+  String get signingUploadChange;
+
+  /// No description provided for @signingUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That picture couldn\'t be read. Try another one.'**
+  String get signingUploadFailed;
+
+  /// No description provided for @signingApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get signingApply;
+
+  /// No description provided for @signingUseForInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this for my initials too'**
+  String get signingUseForInitials;
+
+  /// No description provided for @signingPdfLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The document couldn\'t be shown.'**
+  String get signingPdfLoadFailed;
+
+  /// No description provided for @signingPrefFontType.
+  ///
+  /// In en, this message translates to:
+  /// **'Font style'**
+  String get signingPrefFontType;
+
+  /// No description provided for @signingPrefFontRegular.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular'**
+  String get signingPrefFontRegular;
+
+  /// No description provided for @signingPrefFontBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get signingPrefFontBold;
+
+  /// No description provided for @signingPrefFontItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get signingPrefFontItalic;
+
+  /// No description provided for @signingPrefFontBoldItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold italic'**
+  String get signingPrefFontBoldItalic;
+
+  /// No description provided for @signingPrefColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Text color'**
+  String get signingPrefColor;
+
+  /// No description provided for @signingPrefBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background color'**
+  String get signingPrefBackground;
+
+  /// No description provided for @signingPrefValign.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical alignment'**
+  String get signingPrefValign;
+
+  /// No description provided for @signingPrefValignTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get signingPrefValignTop;
+
+  /// No description provided for @signingPrefValignMiddle.
+  ///
+  /// In en, this message translates to:
+  /// **'Middle'**
+  String get signingPrefValignMiddle;
+
+  /// No description provided for @signingPrefValignBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get signingPrefValignBottom;
+
+  /// No description provided for @signingNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing'**
+  String get signingNav;
+
+  /// No description provided for @signingPrepare.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare for signing…'**
+  String get signingPrepare;
+
+  /// No description provided for @signingPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the document…'**
+  String get signingPreparing;
+
+  /// No description provided for @signingPrepareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The document couldn\'t be prepared.'**
+  String get signingPrepareFailed;
+
+  /// No description provided for @signingUnsupportedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of file can\'t be signed. Use a PDF or an image.'**
+  String get signingUnsupportedFile;
+
+  /// No description provided for @signingOfficeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Office documents can\'t be converted on this server. Save the file as a PDF first.'**
+  String get signingOfficeUnavailable;
+
+  /// No description provided for @signingFlattened.
+  ///
+  /// In en, this message translates to:
+  /// **'This PDF had form fields. They were merged into the page, so people can\'t type into them. Use \"Autodetect fields\" in the editor to add boxes at the same places.'**
+  String get signingFlattened;
+
+  /// No description provided for @signingSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search documents'**
+  String get signingSearchHint;
+
+  /// No description provided for @signingFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get signingFilterAll;
+
+  /// No description provided for @signingStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get signingStatusDraft;
+
+  /// No description provided for @signingStatusSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get signingStatusSent;
+
+  /// No description provided for @signingStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get signingStatusInProgress;
+
+  /// No description provided for @signingStatusFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing'**
+  String get signingStatusFinalizing;
+
+  /// No description provided for @signingStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get signingStatusCompleted;
+
+  /// No description provided for @signingStatusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get signingStatusDeclined;
+
+  /// No description provided for @signingStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get signingStatusExpired;
+
+  /// No description provided for @signingStatusCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get signingStatusCanceled;
+
+  /// No description provided for @signingEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to sign yet'**
+  String get signingEmptyTitle;
+
+  /// No description provided for @signingEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a PDF or an image from your files, place signature and text fields on it and send each person their own link. They don\'t need an account.'**
+  String get signingEmptyBody;
+
+  /// No description provided for @signingChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get signingChooseFile;
+
+  /// No description provided for @signingPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file to sign'**
+  String get signingPickerTitle;
+
+  /// No description provided for @signingPickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No PDF or image in this folder.'**
+  String get signingPickerEmpty;
+
+  /// No description provided for @signingOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get signingOpen;
+
+  /// No description provided for @signingDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get signingDuplicate;
+
+  /// No description provided for @signingDeleteDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get signingDeleteDoc;
+
+  /// No description provided for @signingCancelDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel signing'**
+  String get signingCancelDoc;
+
+  /// No description provided for @signingCancelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this document?'**
+  String get signingCancelTitle;
+
+  /// No description provided for @signingCancelBody.
+  ///
+  /// In en, this message translates to:
+  /// **'All links stop working. People who already signed keep nothing; you can duplicate the document to start again.'**
+  String get signingCancelBody;
+
+  /// No description provided for @signingDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this document?'**
+  String get signingDeleteTitle;
+
+  /// No description provided for @signingDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The document and its history are removed. A signed file in your folder stays.'**
+  String get signingDeleteBody;
+
+  /// No description provided for @signingKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get signingKeep;
+
+  /// No description provided for @signingProgressCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} signed'**
+  String signingProgressCount(String done, String total);
+
+  /// No description provided for @signingUpdatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {time}'**
+  String signingUpdatedAt(String time);
+
+  /// No description provided for @signingLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The documents couldn\'t be loaded.'**
+  String get signingLoadFailed;
+
+  /// No description provided for @signingRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get signingRetry;
+
+  /// No description provided for @signingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get signingSaved;
+
+  /// No description provided for @signingSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get signingSaving;
+
+  /// No description provided for @signingUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get signingUnsaved;
+
+  /// No description provided for @signingSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Trying again…'**
+  String get signingSaveFailed;
+
+  /// No description provided for @signingSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get signingSend;
+
+  /// No description provided for @signingTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Document title'**
+  String get signingTitleHint;
+
+  /// No description provided for @signingLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave with unsaved changes?'**
+  String get signingLeaveTitle;
+
+  /// No description provided for @signingLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest changes haven\'t been saved yet.'**
+  String get signingLeaveBody;
+
+  /// No description provided for @signingLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get signingLeave;
+
+  /// No description provided for @signingStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get signingStay;
+
+  /// No description provided for @signingParties.
+  ///
+  /// In en, this message translates to:
+  /// **'Parties'**
+  String get signingParties;
+
+  /// No description provided for @signingAddParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a party'**
+  String get signingAddParty;
+
+  /// No description provided for @signingRenameParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get signingRenameParty;
+
+  /// No description provided for @signingDeleteParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get signingDeleteParty;
+
+  /// No description provided for @signingDeletePartyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String signingDeletePartyTitle(String name);
+
+  /// No description provided for @signingDeletePartyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The fields of this party are removed too.'**
+  String get signingDeletePartyBody;
+
+  /// No description provided for @signingPartyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get signingPartyName;
+
+  /// No description provided for @signingPartyEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional)'**
+  String get signingPartyEmail;
+
+  /// No description provided for @signingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields'**
+  String get signingFields;
+
+  /// No description provided for @signingAutodetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Autodetect fields'**
+  String get signingAutodetect;
+
+  /// No description provided for @signingAutodetectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No form fields found in this PDF.'**
+  String get signingAutodetectNone;
+
+  /// No description provided for @signingAutodetectDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} form fields found and added for the first party.'**
+  String signingAutodetectDone(String count);
+
+  /// No description provided for @signingPlaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a field onto the page, or tap one and then tap the page.'**
+  String get signingPlaceHint;
+
+  /// No description provided for @signingPlaceArmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the page to place: {type}'**
+  String signingPlaceArmed(String type);
+
+  /// No description provided for @signingPages.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages'**
+  String get signingPages;
+
+  /// No description provided for @signingZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get signingZoomIn;
+
+  /// No description provided for @signingZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get signingZoomOut;
+
+  /// No description provided for @signingZoomFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit to width'**
+  String get signingZoomFit;
+
+  /// No description provided for @signingUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get signingUndo;
+
+  /// No description provided for @signingRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get signingRedo;
+
+  /// No description provided for @signingDuplicateField.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate field'**
+  String get signingDuplicateField;
+
+  /// No description provided for @signingDeleteField.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete field'**
+  String get signingDeleteField;
+
+  /// No description provided for @signingFieldSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Field settings'**
+  String get signingFieldSettings;
+
+  /// No description provided for @signingNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a field to change its settings.'**
+  String get signingNoSelection;
+
+  /// No description provided for @signingFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get signingFieldLabel;
+
+  /// No description provided for @signingRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get signingRequired;
+
+  /// No description provided for @signingReadonly.
+  ///
+  /// In en, this message translates to:
+  /// **'Filled in by you, read-only'**
+  String get signingReadonly;
+
+  /// No description provided for @signingDefaultValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Default value'**
+  String get signingDefaultValue;
+
+  /// No description provided for @signingFieldParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Belongs to'**
+  String get signingFieldParty;
+
+  /// No description provided for @signingAddChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a choice'**
+  String get signingAddChoice;
+
+  /// No description provided for @signingChoiceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Choice {number}'**
+  String signingChoiceLabel(String number);
+
+  /// No description provided for @signingRemoveChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove choice'**
+  String get signingRemoveChoice;
+
+  /// No description provided for @signingProblemOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one choice.'**
+  String get signingProblemOptions;
+
+  /// No description provided for @signingProblemOptionsUnique.
+  ///
+  /// In en, this message translates to:
+  /// **'Every choice must be different and not empty.'**
+  String get signingProblemOptionsUnique;
+
+  /// No description provided for @signingProblemRange.
+  ///
+  /// In en, this message translates to:
+  /// **'The smallest value is above the largest.'**
+  String get signingProblemRange;
+
+  /// No description provided for @signingProblemLength.
+  ///
+  /// In en, this message translates to:
+  /// **'The shortest length is above the longest.'**
+  String get signingProblemLength;
+
+  /// No description provided for @signingProblemSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'The fewest choices are above the most.'**
+  String get signingProblemSelect;
+
+  /// No description provided for @signingProblemFontSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size is from 6 to 72.'**
+  String get signingProblemFontSize;
+
+  /// No description provided for @signingProblemCells.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 1 to 50 boxes.'**
+  String get signingProblemCells;
+
+  /// No description provided for @signingProblemDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'The default value doesn\'t fit these settings.'**
+  String get signingProblemDefault;
+
+  /// No description provided for @signingProblemsBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Some fields need attention first. They are marked in the list.'**
+  String get signingProblemsBlock;
+
+  /// No description provided for @signingLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This document is locked'**
+  String get signingLockedTitle;
+
+  /// No description provided for @signingLockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone already opened a link, so fields and parties can\'t change anymore. Duplicate it to make a new version.'**
+  String get signingLockedBody;
+
+  /// No description provided for @signingDuplicateAsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate as new'**
+  String get signingDuplicateAsNew;
+
+  /// No description provided for @signingConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This document can\'t be edited anymore. Reload it to see what changed.'**
+  String get signingConflict;
+
+  /// No description provided for @signingReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get signingReload;
+
+  /// No description provided for @signingSendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients'**
+  String get signingSendTitle;
+
+  /// No description provided for @signingSendIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Check who signs and how. Each person gets their own link.'**
+  String get signingSendIntro;
+
+  /// No description provided for @signingEmailNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Mail delivery comes later. Copy the link and share it yourself.'**
+  String get signingEmailNote;
+
+  /// No description provided for @signingOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing order'**
+  String get signingOrderLabel;
+
+  /// No description provided for @signingOrderPreserved.
+  ///
+  /// In en, this message translates to:
+  /// **'One after another'**
+  String get signingOrderPreserved;
+
+  /// No description provided for @signingOrderRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Any order'**
+  String get signingOrderRandom;
+
+  /// No description provided for @signingExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Links valid until'**
+  String get signingExpiry;
+
+  /// No description provided for @signingNoExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'No expiry'**
+  String get signingNoExpiry;
+
+  /// No description provided for @signingLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language of the signing page'**
+  String get signingLanguage;
+
+  /// No description provided for @signingNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a name.'**
+  String get signingNameRequired;
+
+  /// No description provided for @signingEmailInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'That email address doesn\'t look right.'**
+  String get signingEmailInvalid;
+
+  /// No description provided for @signingPartyNoFields.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has nothing to fill in yet. Add a field for them first.'**
+  String signingPartyNoFields(String name);
+
+  /// No description provided for @signingPartyNoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has no required fields, so they could finish without doing anything.'**
+  String signingPartyNoRequired(String name);
+
+  /// No description provided for @signingSendAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Send anyway'**
+  String get signingSendAnyway;
+
+  /// No description provided for @signingSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The document couldn\'t be sent.'**
+  String get signingSendFailed;
+
+  /// No description provided for @signingLinksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Links are ready'**
+  String get signingLinksTitle;
+
+  /// No description provided for @signingLinksWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'These links are shown only now. If you lose one, make a new link for that person; the old one stops working then.'**
+  String get signingLinksWarning;
+
+  /// No description provided for @signingCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get signingCopyLink;
+
+  /// No description provided for @signingLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get signingLinkCopied;
+
+  /// No description provided for @signingShowQr.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code'**
+  String get signingShowQr;
+
+  /// No description provided for @signingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get signingDone;
+
+  /// No description provided for @signingTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get signingTimeline;
+
+  /// No description provided for @signingEventCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Document created'**
+  String get signingEventCreated;
+
+  /// No description provided for @signingEventUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields changed after sending'**
+  String get signingEventUpdated;
+
+  /// No description provided for @signingEventSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent for signing'**
+  String get signingEventSent;
+
+  /// No description provided for @signingEventLinkRegenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'New link for {party}'**
+  String signingEventLinkRegenerated(String party);
+
+  /// No description provided for @signingEventRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Link of {party} turned off'**
+  String signingEventRevoked(String party);
+
+  /// No description provided for @signingEventOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'{party} opened the document'**
+  String signingEventOpened(String party);
+
+  /// No description provided for @signingEventConsented.
+  ///
+  /// In en, this message translates to:
+  /// **'{party} agreed to sign electronically'**
+  String signingEventConsented(String party);
+
+  /// No description provided for @signingEventPartyCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{party} signed'**
+  String signingEventPartyCompleted(String party);
+
+  /// No description provided for @signingEventPartyDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'{party} declined'**
+  String signingEventPartyDeclined(String party);
+
+  /// No description provided for @signingEventCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone signed'**
+  String get signingEventCompleted;
+
+  /// No description provided for @signingEventFinalized.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed file created'**
+  String get signingEventFinalized;
+
+  /// No description provided for @signingEventCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Document canceled'**
+  String get signingEventCanceled;
+
+  /// No description provided for @signingEventExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Document expired'**
+  String get signingEventExpired;
+
+  /// No description provided for @signingEventFinalDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed file downloaded'**
+  String get signingEventFinalDownloaded;
+
+  /// No description provided for @signingEventOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Something happened'**
+  String get signingEventOther;
+
+  /// No description provided for @signingPartyPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Hasn\'t opened it yet'**
+  String get signingPartyPending;
+
+  /// No description provided for @signingPartyWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for their turn'**
+  String get signingPartyWaiting;
+
+  /// No description provided for @signingPartyOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened'**
+  String get signingPartyOpened;
+
+  /// No description provided for @signingPartyCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed'**
+  String get signingPartyCompleted;
+
+  /// No description provided for @signingPartyDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get signingPartyDeclined;
+
+  /// No description provided for @signingDeclineReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String signingDeclineReason(String reason);
+
+  /// No description provided for @signingRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'New link'**
+  String get signingRegenerate;
+
+  /// No description provided for @signingRegenerateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new link?'**
+  String get signingRegenerateTitle;
+
+  /// No description provided for @signingRegenerateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The old link stops working right away. The new one is shown once.'**
+  String get signingRegenerateBody;
+
+  /// No description provided for @signingRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn link off'**
+  String get signingRevoke;
+
+  /// No description provided for @signingRevokeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this link off?'**
+  String get signingRevokeTitle;
+
+  /// No description provided for @signingRevokeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The person can\'t open the document anymore until you make a new link.'**
+  String get signingRevokeBody;
+
+  /// No description provided for @signingNewLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New link for {name}'**
+  String signingNewLinkTitle(String name);
+
+  /// No description provided for @signingNoLink.
+  ///
+  /// In en, this message translates to:
+  /// **'No active link'**
+  String get signingNoLink;
+
+  /// No description provided for @signingLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Link ending in {hint}'**
+  String signingLinkHint(String hint);
+
+  /// No description provided for @signingAuditDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download audit (JSON)'**
+  String get signingAuditDownload;
+
+  /// No description provided for @signingAuditSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit saved'**
+  String get signingAuditSaved;
+
+  /// No description provided for @signingVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify audit trail'**
+  String get signingVerify;
+
+  /// No description provided for @signingChainOk.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit trail is intact ({count} entries).'**
+  String signingChainOk(String count);
+
+  /// No description provided for @signingChainBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit trail doesn\'t check out (entry {id}).'**
+  String signingChainBroken(String id);
+
+  /// No description provided for @signingOpenSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Open signed file'**
+  String get signingOpenSigned;
+
+  /// No description provided for @signingDownloadSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get signingDownloadSigned;
+
+  /// No description provided for @signingFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating the signed file…'**
+  String get signingFinalizing;
+
+  /// No description provided for @signingFinalizeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The signed file isn\'t ready yet. NeoCloud keeps trying.'**
+  String get signingFinalizeFailed;
+
+  /// No description provided for @signingRetryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Try now'**
+  String get signingRetryNow;
+
+  /// No description provided for @signingPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get signingPreview;
+
+  /// No description provided for @signingExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String signingExpiresOn(String date);
+
+  /// No description provided for @signingSignedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed'**
+  String get signingSignedBadge;
+
+  /// No description provided for @signingPrefMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortest length'**
+  String get signingPrefMinLength;
+
+  /// No description provided for @signingPrefMaxLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest length'**
+  String get signingPrefMaxLength;
+
+  /// No description provided for @signingPrefTextFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed text'**
+  String get signingPrefTextFormat;
+
+  /// No description provided for @signingPrefFormatAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any text'**
+  String get signingPrefFormatAny;
+
+  /// No description provided for @signingPrefFormatEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address'**
+  String get signingPrefFormatEmail;
+
+  /// No description provided for @signingPrefNumberFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Number format'**
+  String get signingPrefNumberFormat;
+
+  /// No description provided for @signingPrefFormatPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain'**
+  String get signingPrefFormatPlain;
+
+  /// No description provided for @signingPrefFormatComma.
+  ///
+  /// In en, this message translates to:
+  /// **'1,234.56'**
+  String get signingPrefFormatComma;
+
+  /// No description provided for @signingPrefFormatDot.
+  ///
+  /// In en, this message translates to:
+  /// **'1.234,56'**
+  String get signingPrefFormatDot;
+
+  /// No description provided for @signingPrefFormatSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'1 234,56'**
+  String get signingPrefFormatSpace;
+
+  /// No description provided for @signingPrefFormatUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'US dollars'**
+  String get signingPrefFormatUsd;
+
+  /// No description provided for @signingPrefFormatEur.
+  ///
+  /// In en, this message translates to:
+  /// **'Euros'**
+  String get signingPrefFormatEur;
+
+  /// No description provided for @signingPrefFormatGbp.
+  ///
+  /// In en, this message translates to:
+  /// **'Pounds'**
+  String get signingPrefFormatGbp;
+
+  /// No description provided for @signingPrefCharset.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed characters'**
+  String get signingPrefCharset;
+
+  /// No description provided for @signingPrefCharsAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get signingPrefCharsAny;
+
+  /// No description provided for @signingPrefCharsDigits.
+  ///
+  /// In en, this message translates to:
+  /// **'Digits'**
+  String get signingPrefCharsDigits;
+
+  /// No description provided for @signingPrefCharsLetters.
+  ///
+  /// In en, this message translates to:
+  /// **'Letters'**
+  String get signingPrefCharsLetters;
+
+  /// No description provided for @signingPrefMinSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewest choices'**
+  String get signingPrefMinSelect;
+
+  /// No description provided for @signingPrefMaxSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Most choices'**
+  String get signingPrefMaxSelect;
+
+  /// No description provided for @signingFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the list'**
+  String get signingFinish;
+
+  /// No description provided for @signingSourceGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The original file is gone, but the document still works.'**
+  String get signingSourceGone;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

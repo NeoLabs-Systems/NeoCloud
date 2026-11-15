@@ -17,7 +17,8 @@ const { encryptedSize } = require('../crypto/stream_cipher');
 const { removeQuietly } = require('../storage/blob_store');
 const { syncDirectory, syncFile } = require('../../utils/durable_fs');
 const { openTarget, openTargetSpec } = require('./targets');
-const { DATABASE_OBJECT, localBlobPath, readManifest, snapshotIdFor } = require('./runner');
+const { DATABASE_OBJECT, MANIFEST, cacheManifest, cachedManifest, isArchivedObject, localBlobPath, readManifest, snapshotIdFor } = require('./runner');
+const { wakeArchivedObjects } = require('./archive_restore');
 const { assertRestorable, assertServerStopped, decryptDatabase, swapInDatabase } = require('./database_file');
 
 // Plaintext size of every blob the restored database records, by
@@ -68,13 +69,68 @@ function openSource(source) {
   return typeof source === 'object' && source !== null ? openTargetSpec(source.from) : openTarget(source);
 }
 
-async function restoreSnapshot(source, name, { log = () => {} } = {}) {
+// The snapshot's manifest without needing it readable: from the target, or,
+// when it is archived there, the copy this install kept when it made it.
+async function manifestForWaking(adapter, source, name) {
+  try {
+    return await readManifest(adapter, name);
+  } catch (err) {
+    if (!isArchivedObject(err)) throw err;
+    return typeof source === 'number' ? cachedManifest(source, name) : null;
+  }
+}
+
+function presentLocally(blob) {
+  try {
+    return fs.existsSync(localBlobPath(blob));
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Asks Glacier to make everything the restore will read available: the
+ * manifest, the database and every blob not already on this disk. Without a
+ * readable manifest the blob list isn't known, so every blob on the target
+ * is woken (they are nearly all in the newest snapshot anyway), which saves
+ * waiting twice. → null when everything is readable now.
+ */
+async function wakeSnapshot(adapter, source, name, tier, log) {
+  const manifest = await manifestForWaking(adapter, source, name);
+  const blobs = manifest
+    ? manifest.blobs
+    : (await adapter.list('blobs/')).map((key) => key.slice('blobs/'.length));
+  const keys = [
+    `snapshots/${name}/${MANIFEST}`,
+    `snapshots/${name}/${DATABASE_OBJECT}`,
+    ...blobs.filter((blob) => !presentLocally(blob)).map((blob) => `blobs/${blob}`),
+  ];
+  const counts = await wakeArchivedObjects(adapter, keys, { tier });
+  if (counts.requested + counts.pending === 0) {
+    if (counts.archived > 0) log(`All ${counts.archived} archived object(s) are restored and readable.`);
+    return null;
+  }
+  return { waiting: true, tier, ...counts };
+}
+
+/**
+ * Restores the snapshot → { restored: true }, or, when objects are still
+ * archived (S3 Glacier), requests their restore and answers
+ * { waiting: true, tier, requested, pending, archived } without changing
+ * anything local: run it again once Glacier is done. `tier` is 'Standard'
+ * (3–5 hours) or 'Bulk' (5–12 hours, cheaper).
+ */
+async function restoreSnapshot(source, name, { log = () => {}, tier = 'Standard' } = {}) {
   await assertServerStopped();
   const { adapter } = await openSource(source);
   const stamp = Date.now();
   const encrypted = path.join(DATA_DIR, `restore-${stamp}.enc`);
   const staged = path.join(DATA_DIR, `restore-${stamp}.db`);
   try {
+    if (typeof adapter.stat === 'function') {
+      const waiting = await wakeSnapshot(adapter, source, name, tier, log);
+      if (waiting) return waiting;
+    }
     const manifest = await readManifest(adapter, name);
     log(`Snapshot ${name}: ${manifest.blobs.length} blob(s), made by NeoCloud ${manifest.version}.`);
     if (manifest.schemaVersion > latestSchemaVersion()) {
@@ -90,6 +146,8 @@ async function restoreSnapshot(source, name, { log = () => {} } = {}) {
     log(`Downloaded ${await downloadMissingBlobs(adapter, manifest.blobs, blobSizesOf(staged))} blob(s).`);
     const { previous } = await swapInDatabase(staged);
     log(previous ? `Database restored. The previous one is at ${previous}.` : 'Database restored.');
+    if (typeof source === 'number') cacheManifest(source, name, manifest);
+    return { restored: true };
   } finally {
     for (const file of [encrypted, staged, `${staged}-wal`, `${staged}-shm`]) await removeQuietly(file);
     await adapter.close();

@@ -200,6 +200,12 @@ async function prune(adapter, retention, targetId) {
   const needed = new Set();
   for (const name of snapshots.slice(0, retention)) {
     let manifest = cachedManifest(targetId, name);
+    if (!manifest && adapter.archived) {
+      // Runs never read from an archive class target: reading would fail
+      // until a restore, and pruning only needs blob lists it can't get.
+      logger.warn(`Kept old blobs: no local copy of manifest ${name}, and the target's storage class is archived.`);
+      return;
+    }
     if (!manifest) {
       try {
         manifest = await readManifest(adapter, name);
@@ -397,6 +403,10 @@ async function snapshotsOf(targetId) {
 
 module.exports = {
   DATABASE_OBJECT,
+  MANIFEST,
+  cacheManifest,
+  cachedManifest,
+  isArchivedObject,
   listSnapshots,
   localBlobPath,
   markInterruptedRuns,

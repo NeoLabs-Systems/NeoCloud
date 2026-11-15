@@ -1049,6 +1049,60 @@ class AppL10nEn extends AppL10n {
   String get backupPathStyle => 'Path-style URLs (MinIO)';
 
   @override
+  String get backupStorageClass => 'Storage class (AWS)';
+
+  @override
+  String get backupClassStandard => 'Standard: readable at once';
+
+  @override
+  String get backupClassStandardIa =>
+      'Standard-IA: cheaper, readable at once, 30-day minimum';
+
+  @override
+  String get backupClassGlacierIr =>
+      'Glacier Instant Retrieval: cheap, readable at once, 90-day minimum';
+
+  @override
+  String get backupClassGlacier =>
+      'Glacier Flexible Retrieval: cheapest for rarely needed backups; restore takes hours';
+
+  @override
+  String get backupClassDeepArchive =>
+      'Glacier Deep Archive: lowest price; restore takes up to two days';
+
+  @override
+  String backupMoveExisting(String storageClass) {
+    return 'Move existing backups to $storageClass';
+  }
+
+  @override
+  String backupMoveConfirm(String storageClass) {
+    return 'Every backup already on this target is copied once into $storageClass. AWS charges a request fee per object and the transition, and Glacier Flexible Retrieval bills each object for at least 90 days, even if it is deleted sooner. Backups already in Glacier or Deep Archive stay where they are. Nothing is deleted.';
+  }
+
+  @override
+  String get backupMoveAction => 'Move backups';
+
+  @override
+  String get backupMoveStarted =>
+      'Moving the existing backups in the background.';
+
+  @override
+  String backupMoving(int done, int total) {
+    return 'Moving backups… $done of $total objects';
+  }
+
+  @override
+  String backupMoveDone(int done, int archived) {
+    return 'Existing backups moved: $done objects, $archived already archived and left as they are';
+  }
+
+  @override
+  String backupMoveFailed(String error) {
+    return 'Moving the backups stopped: $error. Start it again to continue.';
+  }
+
+  @override
   String get backupUrl => 'WebDAV folder URL';
 
   @override
@@ -5741,4 +5795,819 @@ class AppL10nEn extends AppL10n {
     );
     return '$_temp0';
   }
+
+  @override
+  String get signingFieldText => 'Text';
+
+  @override
+  String get signingFieldSignature => 'Signature';
+
+  @override
+  String get signingFieldInitials => 'Initials';
+
+  @override
+  String get signingFieldDate => 'Date';
+
+  @override
+  String get signingFieldNumber => 'Number';
+
+  @override
+  String get signingFieldImage => 'Image';
+
+  @override
+  String get signingFieldCheckbox => 'Checkbox';
+
+  @override
+  String get signingFieldMultiple => 'Multiple choice';
+
+  @override
+  String get signingFieldRadio => 'Single choice';
+
+  @override
+  String get signingFieldSelect => 'Dropdown';
+
+  @override
+  String get signingFieldCells => 'Character boxes';
+
+  @override
+  String get signingFieldStamp => 'Stamp';
+
+  @override
+  String get signingFieldPhone => 'Phone number';
+
+  @override
+  String get signingFieldFile => 'File';
+
+  @override
+  String get signingFieldHeading => 'Heading';
+
+  @override
+  String get signingPrefFontSize => 'Font size';
+
+  @override
+  String get signingPrefAlign => 'Alignment';
+
+  @override
+  String get signingPrefAlignLeft => 'Left';
+
+  @override
+  String get signingPrefAlignCenter => 'Center';
+
+  @override
+  String get signingPrefAlignRight => 'Right';
+
+  @override
+  String get signingPrefPlaceholder => 'Hint text';
+
+  @override
+  String get signingPrefOptions => 'Choices';
+
+  @override
+  String get signingPrefMultiline => 'Allow several lines';
+
+  @override
+  String get signingPrefDateFormat => 'Date format';
+
+  @override
+  String get signingPrefDefaultToday => 'Start with today\'s date';
+
+  @override
+  String get signingPrefMin => 'Smallest value';
+
+  @override
+  String get signingPrefMax => 'Largest value';
+
+  @override
+  String get signingPrefDecimals => 'Decimal places';
+
+  @override
+  String get signingPrefCells => 'Number of boxes';
+
+  @override
+  String get signingIssueRequired => 'This is required.';
+
+  @override
+  String signingIssueTooLong(String limit) {
+    return 'Please use at most $limit characters.';
+  }
+
+  @override
+  String get signingIssueInvalidNumber => 'Please enter a number.';
+
+  @override
+  String signingIssueBelowMin(String limit) {
+    return 'Please enter $limit or more.';
+  }
+
+  @override
+  String signingIssueAboveMax(String limit) {
+    return 'Please enter $limit or less.';
+  }
+
+  @override
+  String signingIssueDecimals(String limit) {
+    return 'Please use at most $limit decimal places.';
+  }
+
+  @override
+  String get signingIssueInvalidDate => 'Please enter a real date.';
+
+  @override
+  String get signingIssueInvalidPhone => 'Please enter a valid phone number.';
+
+  @override
+  String signingIssueCells(String limit) {
+    return 'Please fill all $limit boxes.';
+  }
+
+  @override
+  String get signingIssueNotAnOption => 'Please pick one of the choices.';
+
+  @override
+  String signingOptionDefault(String number) {
+    return 'Option $number';
+  }
+
+  @override
+  String signingPartyDefaultName(String number) {
+    return 'Party $number';
+  }
+
+  @override
+  String get signingSignatureTitle => 'Add your signature';
+
+  @override
+  String get signingInitialsTitle => 'Add your initials';
+
+  @override
+  String get signingTabDraw => 'Draw';
+
+  @override
+  String get signingTabType => 'Type';
+
+  @override
+  String get signingTabUpload => 'Upload';
+
+  @override
+  String get signingPadHint => 'Sign here';
+
+  @override
+  String get signingPadUndo => 'Undo';
+
+  @override
+  String get signingPadClear => 'Clear';
+
+  @override
+  String get signingTypeHint => 'Type your name';
+
+  @override
+  String get signingTypePreview => 'Your name';
+
+  @override
+  String get signingUploadHint =>
+      'Choose a picture of your signature, ideally dark ink on a plain background.';
+
+  @override
+  String get signingUploadChoose => 'Choose a picture';
+
+  @override
+  String get signingUploadChange => 'Choose another picture';
+
+  @override
+  String get signingUploadFailed =>
+      'That picture couldn\'t be read. Try another one.';
+
+  @override
+  String get signingApply => 'Apply';
+
+  @override
+  String get signingUseForInitials => 'Use this for my initials too';
+
+  @override
+  String get signingPdfLoadFailed => 'The document couldn\'t be shown.';
+
+  @override
+  String get signingPrefFontType => 'Font style';
+
+  @override
+  String get signingPrefFontRegular => 'Regular';
+
+  @override
+  String get signingPrefFontBold => 'Bold';
+
+  @override
+  String get signingPrefFontItalic => 'Italic';
+
+  @override
+  String get signingPrefFontBoldItalic => 'Bold italic';
+
+  @override
+  String get signingPrefColor => 'Text color';
+
+  @override
+  String get signingPrefBackground => 'Background color';
+
+  @override
+  String get signingPrefValign => 'Vertical alignment';
+
+  @override
+  String get signingPrefValignTop => 'Top';
+
+  @override
+  String get signingPrefValignMiddle => 'Middle';
+
+  @override
+  String get signingPrefValignBottom => 'Bottom';
+
+  @override
+  String get signingNav => 'Signing';
+
+  @override
+  String get signingPrepare => 'Prepare for signing…';
+
+  @override
+  String get signingPreparing => 'Preparing the document…';
+
+  @override
+  String get signingPrepareFailed => 'The document couldn\'t be prepared.';
+
+  @override
+  String get signingUnsupportedFile =>
+      'This kind of file can\'t be signed. Use a PDF or an image.';
+
+  @override
+  String get signingOfficeUnavailable =>
+      'Office documents can\'t be converted on this server. Save the file as a PDF first.';
+
+  @override
+  String get signingFlattened =>
+      'This PDF had form fields. They were merged into the page, so people can\'t type into them. Use \"Autodetect fields\" in the editor to add boxes at the same places.';
+
+  @override
+  String get signingSearchHint => 'Search documents';
+
+  @override
+  String get signingFilterAll => 'All';
+
+  @override
+  String get signingStatusDraft => 'Draft';
+
+  @override
+  String get signingStatusSent => 'Waiting';
+
+  @override
+  String get signingStatusInProgress => 'In progress';
+
+  @override
+  String get signingStatusFinalizing => 'Finishing';
+
+  @override
+  String get signingStatusCompleted => 'Completed';
+
+  @override
+  String get signingStatusDeclined => 'Declined';
+
+  @override
+  String get signingStatusExpired => 'Expired';
+
+  @override
+  String get signingStatusCanceled => 'Canceled';
+
+  @override
+  String get signingEmptyTitle => 'Nothing to sign yet';
+
+  @override
+  String get signingEmptyBody =>
+      'Pick a PDF or an image from your files, place signature and text fields on it and send each person their own link. They don\'t need an account.';
+
+  @override
+  String get signingChooseFile => 'Choose a file';
+
+  @override
+  String get signingPickerTitle => 'Choose a file to sign';
+
+  @override
+  String get signingPickerEmpty => 'No PDF or image in this folder.';
+
+  @override
+  String get signingOpen => 'Open';
+
+  @override
+  String get signingDuplicate => 'Duplicate';
+
+  @override
+  String get signingDeleteDoc => 'Delete';
+
+  @override
+  String get signingCancelDoc => 'Cancel signing';
+
+  @override
+  String get signingCancelTitle => 'Cancel this document?';
+
+  @override
+  String get signingCancelBody =>
+      'All links stop working. People who already signed keep nothing; you can duplicate the document to start again.';
+
+  @override
+  String get signingDeleteTitle => 'Delete this document?';
+
+  @override
+  String get signingDeleteBody =>
+      'The document and its history are removed. A signed file in your folder stays.';
+
+  @override
+  String get signingKeep => 'Keep it';
+
+  @override
+  String signingProgressCount(String done, String total) {
+    return '$done of $total signed';
+  }
+
+  @override
+  String signingUpdatedAt(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String get signingLoadFailed => 'The documents couldn\'t be loaded.';
+
+  @override
+  String get signingRetry => 'Try again';
+
+  @override
+  String get signingSaved => 'Saved';
+
+  @override
+  String get signingSaving => 'Saving…';
+
+  @override
+  String get signingUnsaved => 'Unsaved changes';
+
+  @override
+  String get signingSaveFailed => 'Couldn\'t save. Trying again…';
+
+  @override
+  String get signingSend => 'Send';
+
+  @override
+  String get signingTitleHint => 'Document title';
+
+  @override
+  String get signingLeaveTitle => 'Leave with unsaved changes?';
+
+  @override
+  String get signingLeaveBody => 'Your latest changes haven\'t been saved yet.';
+
+  @override
+  String get signingLeave => 'Leave';
+
+  @override
+  String get signingStay => 'Stay';
+
+  @override
+  String get signingParties => 'Parties';
+
+  @override
+  String get signingAddParty => 'Add a party';
+
+  @override
+  String get signingRenameParty => 'Rename';
+
+  @override
+  String get signingDeleteParty => 'Remove';
+
+  @override
+  String signingDeletePartyTitle(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get signingDeletePartyBody =>
+      'The fields of this party are removed too.';
+
+  @override
+  String get signingPartyName => 'Name';
+
+  @override
+  String get signingPartyEmail => 'Email (optional)';
+
+  @override
+  String get signingFields => 'Fields';
+
+  @override
+  String get signingAutodetect => 'Autodetect fields';
+
+  @override
+  String get signingAutodetectNone => 'No form fields found in this PDF.';
+
+  @override
+  String signingAutodetectDone(String count) {
+    return '$count form fields found and added for the first party.';
+  }
+
+  @override
+  String get signingPlaceHint =>
+      'Drag a field onto the page, or tap one and then tap the page.';
+
+  @override
+  String signingPlaceArmed(String type) {
+    return 'Tap the page to place: $type';
+  }
+
+  @override
+  String get signingPages => 'Pages';
+
+  @override
+  String get signingZoomIn => 'Zoom in';
+
+  @override
+  String get signingZoomOut => 'Zoom out';
+
+  @override
+  String get signingZoomFit => 'Fit to width';
+
+  @override
+  String get signingUndo => 'Undo';
+
+  @override
+  String get signingRedo => 'Redo';
+
+  @override
+  String get signingDuplicateField => 'Duplicate field';
+
+  @override
+  String get signingDeleteField => 'Delete field';
+
+  @override
+  String get signingFieldSettings => 'Field settings';
+
+  @override
+  String get signingNoSelection => 'Select a field to change its settings.';
+
+  @override
+  String get signingFieldLabel => 'Label';
+
+  @override
+  String get signingRequired => 'Required';
+
+  @override
+  String get signingReadonly => 'Filled in by you, read-only';
+
+  @override
+  String get signingDefaultValue => 'Default value';
+
+  @override
+  String get signingFieldParty => 'Belongs to';
+
+  @override
+  String get signingAddChoice => 'Add a choice';
+
+  @override
+  String signingChoiceLabel(String number) {
+    return 'Choice $number';
+  }
+
+  @override
+  String get signingRemoveChoice => 'Remove choice';
+
+  @override
+  String get signingProblemOptions => 'Add at least one choice.';
+
+  @override
+  String get signingProblemOptionsUnique =>
+      'Every choice must be different and not empty.';
+
+  @override
+  String get signingProblemRange => 'The smallest value is above the largest.';
+
+  @override
+  String get signingProblemLength =>
+      'The shortest length is above the longest.';
+
+  @override
+  String get signingProblemSelect => 'The fewest choices are above the most.';
+
+  @override
+  String get signingProblemFontSize => 'Font size is from 6 to 72.';
+
+  @override
+  String get signingProblemCells => 'Use 1 to 50 boxes.';
+
+  @override
+  String get signingProblemDefault =>
+      'The default value doesn\'t fit these settings.';
+
+  @override
+  String get signingProblemsBlock =>
+      'Some fields need attention first. They are marked in the list.';
+
+  @override
+  String get signingLockedTitle => 'This document is locked';
+
+  @override
+  String get signingLockedBody =>
+      'Someone already opened a link, so fields and parties can\'t change anymore. Duplicate it to make a new version.';
+
+  @override
+  String get signingDuplicateAsNew => 'Duplicate as new';
+
+  @override
+  String get signingConflict =>
+      'This document can\'t be edited anymore. Reload it to see what changed.';
+
+  @override
+  String get signingReload => 'Reload';
+
+  @override
+  String get signingSendTitle => 'Recipients';
+
+  @override
+  String get signingSendIntro =>
+      'Check who signs and how. Each person gets their own link.';
+
+  @override
+  String get signingEmailNote =>
+      'Mail delivery comes later. Copy the link and share it yourself.';
+
+  @override
+  String get signingOrderLabel => 'Signing order';
+
+  @override
+  String get signingOrderPreserved => 'One after another';
+
+  @override
+  String get signingOrderRandom => 'Any order';
+
+  @override
+  String get signingExpiry => 'Links valid until';
+
+  @override
+  String get signingNoExpiry => 'No expiry';
+
+  @override
+  String get signingLanguage => 'Language of the signing page';
+
+  @override
+  String get signingNameRequired => 'Please enter a name.';
+
+  @override
+  String get signingEmailInvalid => 'That email address doesn\'t look right.';
+
+  @override
+  String signingPartyNoFields(String name) {
+    return '$name has nothing to fill in yet. Add a field for them first.';
+  }
+
+  @override
+  String signingPartyNoRequired(String name) {
+    return '$name has no required fields, so they could finish without doing anything.';
+  }
+
+  @override
+  String get signingSendAnyway => 'Send anyway';
+
+  @override
+  String get signingSendFailed => 'The document couldn\'t be sent.';
+
+  @override
+  String get signingLinksTitle => 'Links are ready';
+
+  @override
+  String get signingLinksWarning =>
+      'These links are shown only now. If you lose one, make a new link for that person; the old one stops working then.';
+
+  @override
+  String get signingCopyLink => 'Copy link';
+
+  @override
+  String get signingLinkCopied => 'Link copied';
+
+  @override
+  String get signingShowQr => 'QR code';
+
+  @override
+  String get signingDone => 'Done';
+
+  @override
+  String get signingTimeline => 'Activity';
+
+  @override
+  String get signingEventCreated => 'Document created';
+
+  @override
+  String get signingEventUpdated => 'Fields changed after sending';
+
+  @override
+  String get signingEventSent => 'Sent for signing';
+
+  @override
+  String signingEventLinkRegenerated(String party) {
+    return 'New link for $party';
+  }
+
+  @override
+  String signingEventRevoked(String party) {
+    return 'Link of $party turned off';
+  }
+
+  @override
+  String signingEventOpened(String party) {
+    return '$party opened the document';
+  }
+
+  @override
+  String signingEventConsented(String party) {
+    return '$party agreed to sign electronically';
+  }
+
+  @override
+  String signingEventPartyCompleted(String party) {
+    return '$party signed';
+  }
+
+  @override
+  String signingEventPartyDeclined(String party) {
+    return '$party declined';
+  }
+
+  @override
+  String get signingEventCompleted => 'Everyone signed';
+
+  @override
+  String get signingEventFinalized => 'Signed file created';
+
+  @override
+  String get signingEventCanceled => 'Document canceled';
+
+  @override
+  String get signingEventExpired => 'Document expired';
+
+  @override
+  String get signingEventFinalDownloaded => 'Signed file downloaded';
+
+  @override
+  String get signingEventOther => 'Something happened';
+
+  @override
+  String get signingPartyPending => 'Hasn\'t opened it yet';
+
+  @override
+  String get signingPartyWaiting => 'Waiting for their turn';
+
+  @override
+  String get signingPartyOpened => 'Opened';
+
+  @override
+  String get signingPartyCompleted => 'Signed';
+
+  @override
+  String get signingPartyDeclined => 'Declined';
+
+  @override
+  String signingDeclineReason(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get signingRegenerate => 'New link';
+
+  @override
+  String get signingRegenerateTitle => 'Make a new link?';
+
+  @override
+  String get signingRegenerateBody =>
+      'The old link stops working right away. The new one is shown once.';
+
+  @override
+  String get signingRevoke => 'Turn link off';
+
+  @override
+  String get signingRevokeTitle => 'Turn this link off?';
+
+  @override
+  String get signingRevokeBody =>
+      'The person can\'t open the document anymore until you make a new link.';
+
+  @override
+  String signingNewLinkTitle(String name) {
+    return 'New link for $name';
+  }
+
+  @override
+  String get signingNoLink => 'No active link';
+
+  @override
+  String signingLinkHint(String hint) {
+    return 'Link ending in $hint';
+  }
+
+  @override
+  String get signingAuditDownload => 'Download audit (JSON)';
+
+  @override
+  String get signingAuditSaved => 'Audit saved';
+
+  @override
+  String get signingVerify => 'Verify audit trail';
+
+  @override
+  String signingChainOk(String count) {
+    return 'The audit trail is intact ($count entries).';
+  }
+
+  @override
+  String signingChainBroken(String id) {
+    return 'The audit trail doesn\'t check out (entry $id).';
+  }
+
+  @override
+  String get signingOpenSigned => 'Open signed file';
+
+  @override
+  String get signingDownloadSigned => 'Download';
+
+  @override
+  String get signingFinalizing => 'Creating the signed file…';
+
+  @override
+  String get signingFinalizeFailed =>
+      'The signed file isn\'t ready yet. NeoCloud keeps trying.';
+
+  @override
+  String get signingRetryNow => 'Try now';
+
+  @override
+  String get signingPreview => 'Preview';
+
+  @override
+  String signingExpiresOn(String date) {
+    return 'Expires $date';
+  }
+
+  @override
+  String get signingSignedBadge => 'Signed';
+
+  @override
+  String get signingPrefMinLength => 'Shortest length';
+
+  @override
+  String get signingPrefMaxLength => 'Longest length';
+
+  @override
+  String get signingPrefTextFormat => 'Allowed text';
+
+  @override
+  String get signingPrefFormatAny => 'Any text';
+
+  @override
+  String get signingPrefFormatEmail => 'Email address';
+
+  @override
+  String get signingPrefNumberFormat => 'Number format';
+
+  @override
+  String get signingPrefFormatPlain => 'Plain';
+
+  @override
+  String get signingPrefFormatComma => '1,234.56';
+
+  @override
+  String get signingPrefFormatDot => '1.234,56';
+
+  @override
+  String get signingPrefFormatSpace => '1 234,56';
+
+  @override
+  String get signingPrefFormatUsd => 'US dollars';
+
+  @override
+  String get signingPrefFormatEur => 'Euros';
+
+  @override
+  String get signingPrefFormatGbp => 'Pounds';
+
+  @override
+  String get signingPrefCharset => 'Allowed characters';
+
+  @override
+  String get signingPrefCharsAny => 'Any';
+
+  @override
+  String get signingPrefCharsDigits => 'Digits';
+
+  @override
+  String get signingPrefCharsLetters => 'Letters';
+
+  @override
+  String get signingPrefMinSelect => 'Fewest choices';
+
+  @override
+  String get signingPrefMaxSelect => 'Most choices';
+
+  @override
+  String get signingFinish => 'Back to the list';
+
+  @override
+  String get signingSourceGone =>
+      'The original file is gone, but the document still works.';
 }

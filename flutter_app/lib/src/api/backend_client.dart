@@ -6,12 +6,15 @@ import 'package:flutter/foundation.dart' show compute;
 import '../network/app_http_client.dart';
 import '../network/app_http_client_factory.dart';
 import '../photos/photo_models.dart';
+import '../signing/models.dart';
+import '../signing/signing_api.dart';
 import 'models.dart';
 
 part 'backend_client_ai.dart';
 part 'backend_client_features.dart';
 part 'backend_client_members.dart';
 part 'backend_client_photos.dart';
+part 'backend_client_signing.dart';
 part 'backend_client_vaults.dart';
 
 /// An error the server answered with. [code] is the stable machine code from
@@ -663,6 +666,11 @@ class BackendClient {
   Future<void> adminTestBackupTarget(int id) => _request('POST', '/api/admin/backups/targets/$id/test');
 
   Future<void> adminRunBackup(int id) => _request('POST', '/api/admin/backups/targets/$id/run');
+
+  /// Copies the target's existing objects into its storage class in the
+  /// background; progress shows as the target's `storageMigration`.
+  Future<void> adminMigrateBackupStorageClass(int id) =>
+      _request('POST', '/api/admin/backups/targets/$id/storage-class/migrate', json: const {});
 
   /// Restores the target's latest snapshot to a scratch location and checks
   /// it; the result shows as the target's `lastVerification`.

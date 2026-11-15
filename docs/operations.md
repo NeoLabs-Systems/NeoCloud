@@ -377,6 +377,81 @@ docker compose start neocloud
 verify, wipe, restore, compare every file's SHA-256, versions, trash, shares,
 vault and accounts) on every `npm test`.
 
+### S3 storage classes and Glacier Flexible Retrieval
+
+An S3 target writes every object (blobs, database, manifest) in its
+**storage class** (Admin › Backups › edit target, or `storageClass` in the
+target JSON): `STANDARD` (default), `STANDARD_IA`, `GLACIER_IR`, `GLACIER`
+(Glacier Flexible Retrieval) or `DEEP_ARCHIVE`. Other S3-compatible stores
+may not know these classes; leave them on Standard.
+
+`GLACIER` is the cheapest choice for backups that are rarely needed. Its
+objects can be listed, copied and deleted but not read until a restore made
+a temporary copy; AWS bills each object for at least 90 days. NeoCloud works
+around that:
+
+- **Runs** only list, upload and delete; they never read the target. Pruning
+  takes the kept snapshots' blob lists from the local copies this server made
+  of its manifests (`data/backups/manifests/<target>/`). Without such a copy
+  (a reinstalled server) old blobs are kept rather than deleted.
+- **Verify** can't decrypt archived data, so it checks metadata instead
+  (`mode: "metadata"`, `database: "archived"`): every blob the newest
+  manifest lists is in the listing, and the database object is there with
+  exactly the size its encryption implies. The CLI prints *checked without
+  reading (archived)*. A real read happens at restore time; a yearly restore
+  drill onto a spare machine is the full check.
+- **Restore** first HEADs everything it will read (the manifest, the database
+  and every blob missing on this disk; without a readable manifest, every
+  blob on the target) and requests a 7-day restore for archived objects:
+
+  ```sh
+  neocloud backup restore <target-id> <snapshot>          # Standard tier: 3–5 hours
+  neocloud backup restore <target-id> <snapshot> --bulk   # Bulk tier: 5–12 hours, cheaper
+  neocloud backup restore --from target.json <snapshot>   # new machine, same options
+  ```
+
+  It prints "restore requested for N objects" and stops without changing
+  anything. Run the **same command again** later: while Glacier still works
+  it says how many are pending; once every object is available
+  (`x-amz-restore: ongoing-request="false"`) it restores as usual. The copies
+  stay readable for 7 days. `neocloud backup snapshots` works at any time
+  (it only lists). Deep Archive works the same, but takes up to 12 (Standard)
+  or 48 hours (Bulk).
+
+**Moving existing backups to the class.** Changing the class affects new
+uploads only. To move what is already there, use *Move existing backups to
+…* on the target card, or:
+
+```sh
+neocloud backup migrate-storage-class <target-id>
+# or: POST /api/admin/backups/targets/:id/storage-class/migrate
+```
+
+Each object under the target's `blobs/` and `snapshots/` (below its prefix,
+nothing else in the bucket) is copied onto its own key in the new class
+(CopyObject with `MetadataDirective: COPY`; a multipart copy above 5 GB).
+Nothing is deleted. Objects already in the class are skipped, and so are
+objects in `GLACIER`/`DEEP_ARCHIVE` when the target class differs (they can't
+be copied without a restore; the count is reported). It runs in the
+background with progress on the card; when interrupted, start it again: it
+lists afresh and copies only what is left. Costs: a request fee per object,
+the transition, and Glacier's 90-day minimum per copied object.
+
+**Setting up Glacier Flexible Retrieval on AWS:**
+
+1. Bucket in your region, Block Public Access on, versioning off (a copy onto
+   the same key would otherwise keep the old version and bill it too).
+2. An IAM user for NeoCloud limited to the bucket (and prefix) with
+   `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`,
+   `s3:RestoreObject` and `s3:AbortMultipartUpload`.
+3. **Remove any lifecycle rule that transitions objects** to another class:
+   NeoCloud sets the class itself, and a rule moving manifests or the
+   database behind its back is what made runs and verify fail before. A rule
+   that only aborts incomplete multipart uploads after a few days is fine.
+4. In NeoCloud: Admin › Backups › edit the S3 target › Storage class:
+   *Glacier Flexible Retrieval*, save, then *Move existing backups to Glacier
+   Flexible Retrieval* once.
+
 ## Upgrades and rollback
 
 ### Git installs

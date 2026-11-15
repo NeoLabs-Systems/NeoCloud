@@ -507,6 +507,60 @@
   "backupSecretKey": "Secret key",
   "backupPrefix": "Prefix (optional)",
   "backupPathStyle": "Path-style URLs (MinIO)",
+  "backupStorageClass": "Storage class (AWS)",
+  "backupClassStandard": "Standard: readable at once",
+  "backupClassStandardIa": "Standard-IA: cheaper, readable at once, 30-day minimum",
+  "backupClassGlacierIr": "Glacier Instant Retrieval: cheap, readable at once, 90-day minimum",
+  "backupClassGlacier": "Glacier Flexible Retrieval: cheapest for rarely needed backups; restore takes hours",
+  "backupClassDeepArchive": "Glacier Deep Archive: lowest price; restore takes up to two days",
+  "backupMoveExisting": "Move existing backups to {storageClass}",
+  "@backupMoveExisting": {
+    "placeholders": {
+      "storageClass": {
+        "type": "String"
+      }
+    }
+  },
+  "backupMoveConfirm": "Every backup already on this target is copied once into {storageClass}. AWS charges a request fee per object and the transition, and Glacier Flexible Retrieval bills each object for at least 90 days, even if it is deleted sooner. Backups already in Glacier or Deep Archive stay where they are. Nothing is deleted.",
+  "@backupMoveConfirm": {
+    "placeholders": {
+      "storageClass": {
+        "type": "String"
+      }
+    }
+  },
+  "backupMoveAction": "Move backups",
+  "backupMoveStarted": "Moving the existing backups in the background.",
+  "backupMoving": "Moving backups… {done} of {total} objects",
+  "@backupMoving": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "backupMoveDone": "Existing backups moved: {done} objects, {archived} already archived and left as they are",
+  "@backupMoveDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "archived": {
+        "type": "int"
+      }
+    }
+  },
+  "backupMoveFailed": "Moving the backups stopped: {error}. Start it again to continue.",
+  "@backupMoveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "backupUrl": "WebDAV folder URL",
   "backupSchedule": "Schedule",
   "backupScheduleManual": "Manual",
@@ -543,9 +597,15 @@
   "backupRunningProgress": "Backing up… {percent} % · {done} of {total}",
   "@backupRunningProgress": {
     "placeholders": {
-      "percent": {"type": "int"},
-      "done": {"type": "String"},
-      "total": {"type": "String"}
+      "percent": {
+        "type": "int"
+      },
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
     }
   },
   "backupDeleteMessage": "The target is removed from NeoCloud. Backups already on it stay there.",
@@ -1767,8 +1827,12 @@
   "filesMemberRemoveConfirm": "{name} will no longer be able to open “{item}”.",
   "@filesMemberRemoveConfirm": {
     "placeholders": {
-      "name": {"type": "String"},
-      "item": {"type": "String"}
+      "name": {
+        "type": "String"
+      },
+      "item": {
+        "type": "String"
+      }
     }
   },
   "done": "Done",
@@ -3219,5 +3283,320 @@
         "type": "int"
       }
     }
-  }
+  },
+  "signingFieldText": "Text",
+  "signingFieldSignature": "Signature",
+  "signingFieldInitials": "Initials",
+  "signingFieldDate": "Date",
+  "signingFieldNumber": "Number",
+  "signingFieldImage": "Image",
+  "signingFieldCheckbox": "Checkbox",
+  "signingFieldMultiple": "Multiple choice",
+  "signingFieldRadio": "Single choice",
+  "signingFieldSelect": "Dropdown",
+  "signingFieldCells": "Character boxes",
+  "signingFieldStamp": "Stamp",
+  "signingFieldPhone": "Phone number",
+  "signingFieldFile": "File",
+  "signingFieldHeading": "Heading",
+  "signingPrefFontSize": "Font size",
+  "signingPrefAlign": "Alignment",
+  "signingPrefAlignLeft": "Left",
+  "signingPrefAlignCenter": "Center",
+  "signingPrefAlignRight": "Right",
+  "signingPrefPlaceholder": "Hint text",
+  "signingPrefOptions": "Choices",
+  "signingPrefMultiline": "Allow several lines",
+  "signingPrefDateFormat": "Date format",
+  "signingPrefDefaultToday": "Start with today's date",
+  "signingPrefMin": "Smallest value",
+  "signingPrefMax": "Largest value",
+  "signingPrefDecimals": "Decimal places",
+  "signingPrefCells": "Number of boxes",
+  "signingIssueRequired": "This is required.",
+  "signingIssueTooLong": "Please use at most {limit} characters.",
+  "@signingIssueTooLong": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "signingIssueInvalidNumber": "Please enter a number.",
+  "signingIssueBelowMin": "Please enter {limit} or more.",
+  "@signingIssueBelowMin": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "signingIssueAboveMax": "Please enter {limit} or less.",
+  "@signingIssueAboveMax": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "signingIssueDecimals": "Please use at most {limit} decimal places.",
+  "@signingIssueDecimals": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "signingIssueInvalidDate": "Please enter a real date.",
+  "signingIssueInvalidPhone": "Please enter a valid phone number.",
+  "signingIssueCells": "Please fill all {limit} boxes.",
+  "@signingIssueCells": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "signingIssueNotAnOption": "Please pick one of the choices.",
+  "signingOptionDefault": "Option {number}",
+  "@signingOptionDefault": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "signingPartyDefaultName": "Party {number}",
+  "@signingPartyDefaultName": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "signingSignatureTitle": "Add your signature",
+  "signingInitialsTitle": "Add your initials",
+  "signingTabDraw": "Draw",
+  "signingTabType": "Type",
+  "signingTabUpload": "Upload",
+  "signingPadHint": "Sign here",
+  "signingPadUndo": "Undo",
+  "signingPadClear": "Clear",
+  "signingTypeHint": "Type your name",
+  "signingTypePreview": "Your name",
+  "signingUploadHint": "Choose a picture of your signature, ideally dark ink on a plain background.",
+  "signingUploadChoose": "Choose a picture",
+  "signingUploadChange": "Choose another picture",
+  "signingUploadFailed": "That picture couldn't be read. Try another one.",
+  "signingApply": "Apply",
+  "signingUseForInitials": "Use this for my initials too",
+  "signingPdfLoadFailed": "The document couldn't be shown.",
+  "signingPrefFontType": "Font style",
+  "signingPrefFontRegular": "Regular",
+  "signingPrefFontBold": "Bold",
+  "signingPrefFontItalic": "Italic",
+  "signingPrefFontBoldItalic": "Bold italic",
+  "signingPrefColor": "Text color",
+  "signingPrefBackground": "Background color",
+  "signingPrefValign": "Vertical alignment",
+  "signingPrefValignTop": "Top",
+  "signingPrefValignMiddle": "Middle",
+  "signingPrefValignBottom": "Bottom",
+  "signingNav": "Signing",
+  "signingPrepare": "Prepare for signing…",
+  "signingPreparing": "Preparing the document…",
+  "signingPrepareFailed": "The document couldn't be prepared.",
+  "signingUnsupportedFile": "This kind of file can't be signed. Use a PDF or an image.",
+  "signingOfficeUnavailable": "Office documents can't be converted on this server. Save the file as a PDF first.",
+  "signingFlattened": "This PDF had form fields. They were merged into the page, so people can't type into them. Use \"Autodetect fields\" in the editor to add boxes at the same places.",
+  "signingSearchHint": "Search documents",
+  "signingFilterAll": "All",
+  "signingStatusDraft": "Draft",
+  "signingStatusSent": "Waiting",
+  "signingStatusInProgress": "In progress",
+  "signingStatusFinalizing": "Finishing",
+  "signingStatusCompleted": "Completed",
+  "signingStatusDeclined": "Declined",
+  "signingStatusExpired": "Expired",
+  "signingStatusCanceled": "Canceled",
+  "signingEmptyTitle": "Nothing to sign yet",
+  "signingEmptyBody": "Pick a PDF or an image from your files, place signature and text fields on it and send each person their own link. They don't need an account.",
+  "signingChooseFile": "Choose a file",
+  "signingPickerTitle": "Choose a file to sign",
+  "signingPickerEmpty": "No PDF or image in this folder.",
+  "signingOpen": "Open",
+  "signingDuplicate": "Duplicate",
+  "signingDeleteDoc": "Delete",
+  "signingCancelDoc": "Cancel signing",
+  "signingCancelTitle": "Cancel this document?",
+  "signingCancelBody": "All links stop working. People who already signed keep nothing; you can duplicate the document to start again.",
+  "signingDeleteTitle": "Delete this document?",
+  "signingDeleteBody": "The document and its history are removed. A signed file in your folder stays.",
+  "signingKeep": "Keep it",
+  "signingProgressCount": "{done} of {total} signed",
+  "@signingProgressCount": {"placeholders": {"done": {"type": "String"}, "total": {"type": "String"}}},
+  "signingUpdatedAt": "Updated {time}",
+  "@signingUpdatedAt": {"placeholders": {"time": {"type": "String"}}},
+  "signingLoadFailed": "The documents couldn't be loaded.",
+  "signingRetry": "Try again",
+  "signingSaved": "Saved",
+  "signingSaving": "Saving…",
+  "signingUnsaved": "Unsaved changes",
+  "signingSaveFailed": "Couldn't save. Trying again…",
+  "signingSend": "Send",
+  "signingTitleHint": "Document title",
+  "signingLeaveTitle": "Leave with unsaved changes?",
+  "signingLeaveBody": "Your latest changes haven't been saved yet.",
+  "signingLeave": "Leave",
+  "signingStay": "Stay",
+  "signingParties": "Parties",
+  "signingAddParty": "Add a party",
+  "signingRenameParty": "Rename",
+  "signingDeleteParty": "Remove",
+  "signingDeletePartyTitle": "Remove {name}?",
+  "@signingDeletePartyTitle": {"placeholders": {"name": {"type": "String"}}},
+  "signingDeletePartyBody": "The fields of this party are removed too.",
+  "signingPartyName": "Name",
+  "signingPartyEmail": "Email (optional)",
+  "signingFields": "Fields",
+  "signingAutodetect": "Autodetect fields",
+  "signingAutodetectNone": "No form fields found in this PDF.",
+  "signingAutodetectDone": "{count} form fields found and added for the first party.",
+  "@signingAutodetectDone": {"placeholders": {"count": {"type": "String"}}},
+  "signingPlaceHint": "Drag a field onto the page, or tap one and then tap the page.",
+  "signingPlaceArmed": "Tap the page to place: {type}",
+  "@signingPlaceArmed": {"placeholders": {"type": {"type": "String"}}},
+  "signingPages": "Pages",
+  "signingZoomIn": "Zoom in",
+  "signingZoomOut": "Zoom out",
+  "signingZoomFit": "Fit to width",
+  "signingUndo": "Undo",
+  "signingRedo": "Redo",
+  "signingDuplicateField": "Duplicate field",
+  "signingDeleteField": "Delete field",
+  "signingFieldSettings": "Field settings",
+  "signingNoSelection": "Select a field to change its settings.",
+  "signingFieldLabel": "Label",
+  "signingRequired": "Required",
+  "signingReadonly": "Filled in by you, read-only",
+  "signingDefaultValue": "Default value",
+  "signingFieldParty": "Belongs to",
+  "signingAddChoice": "Add a choice",
+  "signingChoiceLabel": "Choice {number}",
+  "@signingChoiceLabel": {"placeholders": {"number": {"type": "String"}}},
+  "signingRemoveChoice": "Remove choice",
+  "signingProblemOptions": "Add at least one choice.",
+  "signingProblemOptionsUnique": "Every choice must be different and not empty.",
+  "signingProblemRange": "The smallest value is above the largest.",
+  "signingProblemLength": "The shortest length is above the longest.",
+  "signingProblemSelect": "The fewest choices are above the most.",
+  "signingProblemFontSize": "Font size is from 6 to 72.",
+  "signingProblemCells": "Use 1 to 50 boxes.",
+  "signingProblemDefault": "The default value doesn't fit these settings.",
+  "signingProblemsBlock": "Some fields need attention first. They are marked in the list.",
+  "signingLockedTitle": "This document is locked",
+  "signingLockedBody": "Someone already opened a link, so fields and parties can't change anymore. Duplicate it to make a new version.",
+  "signingDuplicateAsNew": "Duplicate as new",
+  "signingConflict": "This document can't be edited anymore. Reload it to see what changed.",
+  "signingReload": "Reload",
+  "signingSendTitle": "Recipients",
+  "signingSendIntro": "Check who signs and how. Each person gets their own link.",
+  "signingEmailNote": "Mail delivery comes later. Copy the link and share it yourself.",
+  "signingOrderLabel": "Signing order",
+  "signingOrderPreserved": "One after another",
+  "signingOrderRandom": "Any order",
+  "signingExpiry": "Links valid until",
+  "signingNoExpiry": "No expiry",
+  "signingLanguage": "Language of the signing page",
+  "signingNameRequired": "Please enter a name.",
+  "signingEmailInvalid": "That email address doesn't look right.",
+  "signingPartyNoFields": "{name} has nothing to fill in yet. Add a field for them first.",
+  "@signingPartyNoFields": {"placeholders": {"name": {"type": "String"}}},
+  "signingPartyNoRequired": "{name} has no required fields, so they could finish without doing anything.",
+  "@signingPartyNoRequired": {"placeholders": {"name": {"type": "String"}}},
+  "signingSendAnyway": "Send anyway",
+  "signingSendFailed": "The document couldn't be sent.",
+  "signingLinksTitle": "Links are ready",
+  "signingLinksWarning": "These links are shown only now. If you lose one, make a new link for that person; the old one stops working then.",
+  "signingCopyLink": "Copy link",
+  "signingLinkCopied": "Link copied",
+  "signingShowQr": "QR code",
+  "signingDone": "Done",
+  "signingTimeline": "Activity",
+  "signingEventCreated": "Document created",
+  "signingEventUpdated": "Fields changed after sending",
+  "signingEventSent": "Sent for signing",
+  "signingEventLinkRegenerated": "New link for {party}",
+  "@signingEventLinkRegenerated": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventRevoked": "Link of {party} turned off",
+  "@signingEventRevoked": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventOpened": "{party} opened the document",
+  "@signingEventOpened": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventConsented": "{party} agreed to sign electronically",
+  "@signingEventConsented": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventPartyCompleted": "{party} signed",
+  "@signingEventPartyCompleted": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventPartyDeclined": "{party} declined",
+  "@signingEventPartyDeclined": {"placeholders": {"party": {"type": "String"}}},
+  "signingEventCompleted": "Everyone signed",
+  "signingEventFinalized": "Signed file created",
+  "signingEventCanceled": "Document canceled",
+  "signingEventExpired": "Document expired",
+  "signingEventFinalDownloaded": "Signed file downloaded",
+  "signingEventOther": "Something happened",
+  "signingPartyPending": "Hasn't opened it yet",
+  "signingPartyWaiting": "Waiting for their turn",
+  "signingPartyOpened": "Opened",
+  "signingPartyCompleted": "Signed",
+  "signingPartyDeclined": "Declined",
+  "signingDeclineReason": "Reason: {reason}",
+  "@signingDeclineReason": {"placeholders": {"reason": {"type": "String"}}},
+  "signingRegenerate": "New link",
+  "signingRegenerateTitle": "Make a new link?",
+  "signingRegenerateBody": "The old link stops working right away. The new one is shown once.",
+  "signingRevoke": "Turn link off",
+  "signingRevokeTitle": "Turn this link off?",
+  "signingRevokeBody": "The person can't open the document anymore until you make a new link.",
+  "signingNewLinkTitle": "New link for {name}",
+  "@signingNewLinkTitle": {"placeholders": {"name": {"type": "String"}}},
+  "signingNoLink": "No active link",
+  "signingLinkHint": "Link ending in {hint}",
+  "@signingLinkHint": {"placeholders": {"hint": {"type": "String"}}},
+  "signingAuditDownload": "Download audit (JSON)",
+  "signingAuditSaved": "Audit saved",
+  "signingVerify": "Verify audit trail",
+  "signingChainOk": "The audit trail is intact ({count} entries).",
+  "@signingChainOk": {"placeholders": {"count": {"type": "String"}}},
+  "signingChainBroken": "The audit trail doesn't check out (entry {id}).",
+  "@signingChainBroken": {"placeholders": {"id": {"type": "String"}}},
+  "signingOpenSigned": "Open signed file",
+  "signingDownloadSigned": "Download",
+  "signingFinalizing": "Creating the signed file…",
+  "signingFinalizeFailed": "The signed file isn't ready yet. NeoCloud keeps trying.",
+  "signingRetryNow": "Try now",
+  "signingPreview": "Preview",
+  "signingExpiresOn": "Expires {date}",
+  "@signingExpiresOn": {"placeholders": {"date": {"type": "String"}}},
+  "signingSignedBadge": "Signed",
+  "signingPrefMinLength": "Shortest length",
+  "signingPrefMaxLength": "Longest length",
+  "signingPrefTextFormat": "Allowed text",
+  "signingPrefFormatAny": "Any text",
+  "signingPrefFormatEmail": "Email address",
+  "signingPrefNumberFormat": "Number format",
+  "signingPrefFormatPlain": "Plain",
+  "signingPrefFormatComma": "1,234.56",
+  "signingPrefFormatDot": "1.234,56",
+  "signingPrefFormatSpace": "1 234,56",
+  "signingPrefFormatUsd": "US dollars",
+  "signingPrefFormatEur": "Euros",
+  "signingPrefFormatGbp": "Pounds",
+  "signingPrefCharset": "Allowed characters",
+  "signingPrefCharsAny": "Any",
+  "signingPrefCharsDigits": "Digits",
+  "signingPrefCharsLetters": "Letters",
+  "signingPrefMinSelect": "Fewest choices",
+  "signingPrefMaxSelect": "Most choices",
+  "signingFinish": "Back to the list",
+  "signingSourceGone": "The original file is gone, but the document still works."
 }

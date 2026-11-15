@@ -11,13 +11,14 @@ const { decryptValue, encryptValue } = require('../crypto/keys');
 const { httpError } = require('../../utils/http_error');
 const { readState } = require('../state_store');
 const { BACKUP_TYPES, createAdapter } = require('./adapters');
+const { STORAGE_CLASSES } = require('./adapters/s3');
 
 const SCHEDULES = new Set(['manual', 'daily', 'weekly']);
 const SECRET_FIELDS = new Set(['password', 'privateKey', 'passphrase', 'secretAccessKey']);
 const FIELDS = {
   local: ['path'],
   sftp: ['host', 'port', 'username', 'password', 'privateKey', 'passphrase', 'path'],
-  s3: ['endpoint', 'region', 'bucket', 'accessKeyId', 'secretAccessKey', 'prefix', 'forcePathStyle'],
+  s3: ['endpoint', 'region', 'bucket', 'accessKeyId', 'secretAccessKey', 'prefix', 'forcePathStyle', 'storageClass'],
   webdav: ['url', 'username', 'password'],
 };
 
@@ -58,6 +59,18 @@ function serializeRun(row) {
   };
 }
 
+// A migration whose process stopped beating for 5 minutes was interrupted;
+// starting it again continues where it left off.
+const MIGRATION_STALE_MS = 5 * 60 * 1000;
+
+function readStorageMigration(targetId) {
+  const migration = readState('backup-storage-class', {})[targetId] ?? null;
+  if (migration?.status === 'running' && Date.now() - Date.parse(migration.heartbeatAt) > MIGRATION_STALE_MS) {
+    return { ...migration, status: 'interrupted' };
+  }
+  return migration;
+}
+
 function serializeTarget(row) {
   return {
     id: row.id,
@@ -72,6 +85,8 @@ function serializeTarget(row) {
     lastRun: serializeRun(lastRun(row.id)),
     // Written by verify.js: { verifiedAt, ok, snapshot, database, blobsChecked, missingBlobs, error }.
     lastVerification: readState('backup-verify', {})[row.id] ?? null,
+    // Written by storage_class.js while existing objects move to the configured class.
+    storageMigration: readStorageMigration(row.id),
   };
 }
 
@@ -103,6 +118,12 @@ function cleanConfig(type, incoming, previous = {}) {
   }
   if (config.port !== undefined) config.port = Number(config.port);
   if (config.forcePathStyle !== undefined) config.forcePathStyle = config.forcePathStyle === true || config.forcePathStyle === 'true';
+  if (config.storageClass !== undefined) {
+    config.storageClass = String(config.storageClass).toUpperCase();
+    if (!STORAGE_CLASSES.includes(config.storageClass)) {
+      throw httpError(400, `storageClass must be one of ${STORAGE_CLASSES.join(', ')}.`, 'INVALID_VALUE');
+    }
+  }
   // Building the adapter validates the required fields.
   createAdapter(type, config);
   return config;
@@ -207,6 +228,7 @@ module.exports = {
   listTargets,
   openTarget,
   openTargetSpec,
+  readStorageMigration,
   serializeRun,
   updateTarget,
 };

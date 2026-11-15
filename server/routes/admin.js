@@ -10,6 +10,7 @@ const { getServerVersion } = require('../utils/version');
 const backupTargets = require('../services/backup/targets');
 const backupRunner = require('../services/backup/runner');
 const { verifyTarget } = require('../services/backup/verify');
+const { startStorageClassMigration } = require('../services/backup/storage_class');
 const { getIndexStatus, rebuildIndex } = require('../services/search_index/indexer');
 const { ownSessionId } = require('../services/account/sessions');
 const { listProviders, updateProvider } = require('../services/admin/ai_providers');
@@ -90,6 +91,7 @@ router.delete('/backups/targets/:id', jsonHandler((req) => backupTargets.deleteT
 router.post('/backups/targets/:id/test', settingsLimiter, jsonHandler((req) => backupRunner.testTarget(intParam(req.params.id, 'target id'))));
 router.post('/backups/targets/:id/run', jsonHandler((req) => backupRunner.startBackup(intParam(req.params.id, 'target id')), { status: 202 }));
 router.post('/backups/targets/:id/verify', settingsLimiter, jsonHandler((req) => verifyTarget(intParam(req.params.id, 'target id'))));
+router.post('/backups/targets/:id/storage-class/migrate', settingsLimiter, jsonHandler((req) => startStorageClassMigration(intParam(req.params.id, 'target id')), { status: 202 }));
 router.get('/backups/targets/:id/snapshots', jsonHandler((req) => backupRunner.snapshotsOf(intParam(req.params.id, 'target id'))));
 
 router.get('/config', jsonHandler(() => serverConfig.getServerConfig()));

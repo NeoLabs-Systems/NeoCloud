@@ -40,7 +40,8 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
         _targets = ((data['targets'] as List?) ?? const []).map((e) => (e as Map).cast<String, dynamic>()).toList();
         _runs = runs;
       });
-      final running = runs.any((run) => run['status'] == 'running');
+      final moving = _targets!.any((target) => (target['storageMigration'] as Map?)?['status'] == 'running');
+      final running = moving || runs.any((run) => run['status'] == 'running');
       _poll?.cancel();
       if (running) _poll = Timer(const Duration(seconds: 3), _load);
     } catch (error) {
@@ -62,6 +63,38 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
     await _act(() => target == null
         ? _controller.client.adminCreateBackupTarget(body)
         : _controller.client.adminUpdateBackupTarget((target['id'] as num).toInt(), body));
+  }
+
+  /// Asks before copying every existing object into the target's class:
+  /// AWS bills requests, transitions and Glacier's 90-day minimum.
+  Future<void> _moveExisting(Map<String, dynamic> target, String storageClass) => _confirmDelete(
+    context,
+    title: appStrings.backupMoveExisting(storageClass),
+    message: appStrings.backupMoveConfirm(storageClass),
+    confirmLabel: appStrings.backupMoveAction,
+    onConfirm: () => _act(
+      () => _controller.client.adminMigrateBackupStorageClass((target['id'] as num).toInt()),
+      notice: appStrings.backupMoveStarted,
+    ),
+  );
+
+  /// The class an S3 target is set to write in; null for other types.
+  String? _s3StorageClass(Map<String, dynamic> target) {
+    if (target['type'] != 's3') return null;
+    return (target['config'] as Map?)?['storageClass'] as String?;
+  }
+
+  Widget? _migrationStatus(Map<String, dynamic>? migration) {
+    if (migration == null) return null;
+    final done = (migration['objectsDone'] as num?)?.toInt() ?? 0;
+    switch (migration['status']) {
+      case 'running':
+        return _StatusPill(label: appStrings.backupMoving(done, (migration['objectsTotal'] as num?)?.toInt() ?? 0), color: _info);
+      case 'ok':
+        return _wrappingStatus(appStrings.backupMoveDone(done, (migration['objectsArchived'] as num?)?.toInt() ?? 0), _success);
+      default:
+        return _wrappingStatus(appStrings.backupMoveFailed('${migration['error'] ?? migration['status']}'), _danger);
+    }
   }
 
   String _typeLabel(String type) {
@@ -200,6 +233,10 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
                               ),
                               const SizedBox(height: 4),
                               _runStatus((target['lastRun'] as Map?)?.cast<String, dynamic>()),
+                              if (_migrationStatus((target['storageMigration'] as Map?)?.cast<String, dynamic>()) case final status?) ...<Widget>[
+                                const SizedBox(height: 4),
+                                status,
+                              ],
                             ],
                           ),
                         ),
@@ -220,6 +257,13 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
                           child: Text(appStrings.backupTest),
                         ),
                         TextButton(onPressed: busy ? null : () => unawaited(_edit(target)), child: Text(appStrings.backupEditTarget)),
+                        if (_s3StorageClass(target) case final storageClass?)
+                          TextButton(
+                            onPressed: busy || (target['storageMigration'] as Map?)?['status'] == 'running'
+                                ? null
+                                : () => unawaited(_moveExisting(target, _storageClassName(storageClass))),
+                            child: Text(appStrings.backupMoveExisting(_storageClassName(storageClass))),
+                          ),
                         TextButton(
                           onPressed: busy
                               ? null
@@ -268,6 +312,25 @@ class _AdminBackupsTabState extends State<_AdminBackupsTab> with _PageLoad {
   }
 }
 
+const List<String> _storageClasses = <String>['STANDARD', 'STANDARD_IA', 'GLACIER_IR', 'GLACIER', 'DEEP_ARCHIVE'];
+
+/// AWS's own product name for a storage class.
+String _storageClassName(String storageClass) => switch (storageClass) {
+  'STANDARD_IA' => 'S3 Standard-IA',
+  'GLACIER_IR' => 'Glacier Instant Retrieval',
+  'GLACIER' => 'Glacier Flexible Retrieval',
+  'DEEP_ARCHIVE' => 'Glacier Deep Archive',
+  _ => 'S3 Standard',
+};
+
+String _storageClassDescription(String storageClass) => switch (storageClass) {
+  'STANDARD_IA' => appStrings.backupClassStandardIa,
+  'GLACIER_IR' => appStrings.backupClassGlacierIr,
+  'GLACIER' => appStrings.backupClassGlacier,
+  'DEEP_ARCHIVE' => appStrings.backupClassDeepArchive,
+  _ => appStrings.backupClassStandard,
+};
+
 String _weekdayName(int day) {
   // DateTime weekdays run Monday=1..Sunday=7; the server uses Sunday=0.
   final date = DateTime(2024, 1, 7 + day);
@@ -291,6 +354,7 @@ class _BackupTargetDialogState extends State<_BackupTargetDialog> {
   late int _hour = (widget.target?['hour'] as num?)?.toInt() ?? 3;
   late int _weekday = (widget.target?['weekday'] as num?)?.toInt() ?? 0;
   late bool _pathStyle = (widget.target?['config'] as Map?)?['forcePathStyle'] == true;
+  late String _storageClass = '${(widget.target?['config'] as Map?)?['storageClass'] ?? 'STANDARD'}';
   final Map<String, TextEditingController> _fields = <String, TextEditingController>{};
 
   bool get _editing => widget.target != null;
@@ -352,6 +416,19 @@ class _BackupTargetDialogState extends State<_BackupTargetDialog> {
             onChanged: (value) => setState(() => _pathStyle = value),
             title: Text(appStrings.backupPathStyle, style: const TextStyle(fontSize: 13.5)),
           ),
+          DropdownButtonFormField<String>(
+            initialValue: _storageClasses.contains(_storageClass) ? _storageClass : 'STANDARD',
+            isExpanded: true,
+            decoration: InputDecoration(labelText: appStrings.backupStorageClass, isDense: true),
+            items: <DropdownMenuItem<String>>[
+              for (final value in _storageClasses)
+                DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(_storageClassDescription(value), overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: (value) => setState(() => _storageClass = value ?? _storageClass),
+          ),
         ];
       default:
         return <Widget>[
@@ -367,6 +444,7 @@ class _BackupTargetDialogState extends State<_BackupTargetDialog> {
       for (final entry in _fields.entries)
         if (entry.key != 'name' && entry.key != 'retention' && entry.value.text.trim().isNotEmpty) entry.key: entry.value.text.trim(),
       if (_type == 's3') 'forcePathStyle': _pathStyle,
+      if (_type == 's3') 'storageClass': _storageClass,
     };
     return <String, Object?>{
       'name': _field('name', '${widget.target?['name'] ?? ''}').text.trim(),

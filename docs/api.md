@@ -16,6 +16,7 @@ allows it; file content, thumbnails and previews are always sent as stored.
 | Phone app (platform `android`/`ios`) | `Authorization: Bearer nc_…` from QR pairing, the device login or a password sign-in swapped for a token. A full client: everything a session reaches, account, settings, imports and admin (for an admin account) included. A handful of session-bound routes refuse it (see [Account](#account--apiaccount-session-or-phone)). |
 | Lite (desktop) client, other tokens | `Authorization: Bearer nc_…` from the device login (below) or `POST /api/account/devices`. Reaches files, transfers, storage, sync, shares, members and vaults only; account, settings, imports, AI and NeoRouter answer `403 PHONE_REQUIRED`, admin `403 ADMIN_REQUIRED`. WebDAV app passwords reach WebDAV only (below); sent as a bearer token they answer `401`. |
 | Share link visitors | No account: the link token in the path, plus an unlock cookie for password links. |
+| Signers | No account: the signing link's token in the path, no cookie. |
 
 Browsers on another origin must be listed in `ALLOWED_ORIGINS`; state-changing
 requests from any other origin get `403 ORIGIN_NOT_ALLOWED`.
@@ -673,6 +674,69 @@ Errors: unknown link `404 NOT_FOUND`, revoked `410 SHARE_REVOKED`, expired
 SHARE_PASSWORD_REQUIRED`, wrong password `401 SHARE_PASSWORD_INVALID`.
 Reads allow 600 requests per 15 minutes per address.
 
+## Signing — `/api/signing` (session or phone)
+
+E-signature requests; see [signing.md](signing.md) for the flow and the security
+model. Everything is scoped to the owner: another account's document, party or
+field id answers `404 NOT_FOUND`. Times are ISO strings. Areas are
+`{ page, x, y, w, h }` with `page` counted from 0 and the rest fractions (0..1)
+of the displayed page, origin top left. 1500 requests / 15 min per address;
+creating, importing, sending and duplicating 200.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/capabilities` | `{ formats: { pdf, image, office }, maxSourceBytes, maxPages, maxParties, maxFields }`; `office` is true only when LibreOffice is available |
+| POST | `/documents` | `{ nodeId, title?, locale? }` → `201 { document, parties, fields, warnings }`. Freezes the file (PDF, image or, when possible, office document) and adds one party. `warnings` has `FORM_FIELDS_FLATTENED` when the PDF has form fields (the final file flattens them; an existing digital signature in the source is lost). Errors: `404` (not yours, trashed), `400 VAULT_FILE`, `NOT_A_FILE`, `PDF_ENCRYPTED`, `INVALID_PDF`, `TOO_MANY_PAGES` (over 300), `CONVERSION_UNAVAILABLE`, `CONVERSION_FAILED`, `INVALID_IMAGE`, `413 DOCUMENT_TOO_LARGE` (over 50 MB), `QUOTA_EXCEEDED`, `415 UNSUPPORTED_TYPE` |
+| GET | `/documents` `?status=&limit=&cursor=` | `{ items: [{ id, title, status, parties: [{ id, name, color, status }], pageCount, expiresAt, createdAt, updatedAt, completedAt, finalNodeId, sourceNodeId }], nextCursor }`, newest activity first, `limit` 1–100 (50) |
+| GET | `/documents/:id` | `{ document, parties, fields }`. `document`: `id, title, status, signingOrder, locale, expiresAt, pageCount, pages, sourceNodeId, sourceName, finalNodeId, snapshotSha256, finalSha256, consentVersion, finalizeError, createdAt, updatedAt, sentAt, completedAt, canceledAt`. Party: `id, position, name, color, email, status, hasLink, linkHint, openedAt, consentedAt, completedAt, declinedAt, declineReason, signerName`. Field: `id, partyId, type, name, required, readonly, defaultValue, prefs, areas, position`. Link URLs are never returned here |
+| PUT | `/documents/:id` | `{ title?, signingOrder? (preserved\|random), expiresAt? (future, ≤ 365 days, or null), locale? (en\|de) }`; draft, or sent and still unopened (`409 DOCUMENT_LOCKED`) |
+| DELETE | `/documents/:id` | draft, completed, declined, expired or canceled (`409 INVALID_STATE` otherwise). Deletes values and the frozen copy; the signed file stays in the library |
+| PUT | `/documents/:id/fields` | `{ fields: [{ id?, partyId, type, name?, required?, readonly?, defaultValue?, prefs?, areas }] }` replaces the list (max 500; ids of existing fields are kept, others get new ones) → `{ fields }`. Types: `text number date phone checkbox radio select multiple cells signature initials stamp image file heading`. `400 INVALID_FIELD` |
+| PUT | `/documents/:id/parties` | `{ parties: [{ id?, name, email?, color? }] }` (1–20), draft only; parties left out are removed with their fields → `{ document, parties, fields }`. `400 INVALID_PARTY` |
+| POST | `/documents/:id/import-fields` | draft only: the PDF's own form fields as new fields of the first party → `{ imported, fields }` |
+| POST | `/documents/:id/send` | → `{ document, parties, fields, links: [{ partyId, url }] }`. The only time the URLs exist (`<origin>/app/sign/<token>`). `400 PARTY_WITHOUT_FIELDS`, `EXPIRY_IN_PAST`; `409 ALREADY_SENT` |
+| POST | `/documents/:id/parties/:partyId/link` | new link, the old one stops working → `{ partyId, url }`. `409 INVALID_STATE`, `PARTY_FINISHED` |
+| POST | `/documents/:id/parties/:partyId/revoke` | turns the link off → `{ party }` |
+| POST | `/documents/:id/cancel` | sent / in progress only; every link then shows `canceled` |
+| POST | `/documents/:id/duplicate` | new draft with the same pages, parties and fields → `201` |
+| POST | `/documents/:id/finalize` | tries a `finalizing` document's signed file again now (it is also retried on its own with growing pauses) |
+| GET | `/documents/:id/pdf` | the frozen PDF (Range) |
+| GET | `/documents/:id/preview-values` | `{ values: { fieldId: value } }`; uploads are `{ kind: 'image'\|'file', … }`, images come from `/values/:fieldId/image` |
+| GET | `/documents/:id/values/:fieldId/image` | the entered image (PNG) |
+| GET | `/documents/:id/events` | `{ events: [{ id, type, partyId, at, ip, userAgent, data, prevHash, hash }], verify: { chainValid, count, head, brokenAt? } }` |
+| GET | `/documents/:id/audit.json` | the whole record as a download |
+| GET | `/documents/:id/final` | the signed PDF (a library file too); `404 FINAL_UNAVAILABLE` when moved to trash, replaced or not made yet |
+
+Document status: `draft sent in_progress finalizing completed declined expired
+canceled`. Party status: `pending waiting opened completed declined`. Socket
+event `signing:updated { documentId, status }` goes to the owner's sessions on
+every change (`status: "deleted"` after a delete); phones poll.
+
+## Public signing — `/api/public/sign/:token` (no account)
+
+The token (256 bits) is the only credential. No cookie is read or set; answers
+carry `Cache-Control: no-store`, `X-Robots-Tag: noindex` and
+`Referrer-Policy: no-referrer`. An unknown, malformed, revoked or replaced
+token is one and the same `404 NOT_FOUND`. Limits per 15 min: 600 reads and
+300 writes per address, 500 per token, and 60 answers of `404` per address,
+then `429 RATE_LIMITED`. The page for people is `/app/sign/<token>`.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/` | `{ state, document, party, parties, fields, myValues, turn, result? }`. `state`: `ready waiting completed declined expired canceled`. A closed state (`declined expired canceled`) answers only `{ state, document: { locale }, party }`. `document`: `title, pageCount, pages, locale, expiresAt, consentText, consentVersion`. `party`: `id, name, color, status, consentedAt, signerName`. `parties`: `[{ name, color, status }]`. `fields`: the party's own (`own: true`) plus other parties' filled or read-only ones (`own: false`, with `value`). `myValues`: stored value or the sender's default. `turn`: `{ canSign, waitingFor? }`. The first look at a ready turn records `opened` |
+| GET | `/pdf` | the frozen PDF (Range); not while `waiting` (`409 NOT_YOUR_TURN`) |
+| POST | `/consent` | `{ accepted: true, signerName, timezone?, tzOffsetMinutes? }` → `{ consentedAt, signerName }` |
+| PUT | `/fields/:fieldId` | `{ value }` (`null` clears); only the party's own, non-read-only fields while `ready` and after consent. `400 INVALID_VALUE` → `{ value }` as stored |
+| POST | `/fields/:fieldId/upload` | raw body (not multipart): an image for `signature initials stamp image` (re-encoded as PNG, ≤ 8 MB in; query `method=draw\|type\|upload` and `text=` for typed signatures), any file for `file` (≤ 10 MB; `name=` query, `Content-Type` kept) → `201 { value }`. `413 UPLOAD_TOO_LARGE`, `UPLOAD_LIMIT`, `QUOTA_EXCEEDED`; `400 INVALID_IMAGE`, `INVALID_UPLOAD` |
+| GET | `/values/:fieldId/image` | an own image, or one of a party that has completed |
+| POST | `/complete` | checks required fields and consent, finishes the party, opens the next turn or starts finalizing → `{ state: 'completed', finalAvailable }`. `400 FIELDS_INCOMPLETE` with `fieldIds`; repeating is harmless |
+| POST | `/decline` | `{ reason? }` (≤ 500 chars) → `{ state: 'declined' }`; the document ends declined |
+| GET | `/result` | `{ state, finalAvailable }` |
+| GET | `/final` | the signed PDF once the document is completed |
+
+Write errors: `409 NOT_YOUR_TURN`, `ALREADY_COMPLETED`, `DOCUMENT_CLOSED`,
+`CONSENT_REQUIRED`.
+
 ## Storage — `/api/storage` (session or bearer)
 
 | Method | Path | Answer |
@@ -911,8 +975,9 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 | POST | `/backups/targets` | `{ name, type: local\|sftp\|s3\|webdav, config, schedule: manual\|daily\|weekly, hour, weekday, retention }` |
 | PUT / DELETE | `/backups/targets/:id` | an empty secret keeps the stored one |
 | POST | `/backups/targets/:id/test` · `/backups/targets/:id/run` | run answers 202 and works in the background; `404 NOT_FOUND` for an unknown target, `409 BACKUP_RUNNING` while a run to it is going (in the server or `neocloud backup run`) |
-| POST | `/backups/targets/:id/verify` | checks the newest snapshot → `{ verifiedAt, ok, snapshot, database, blobsChecked, missingBlobs, error }` |
+| POST | `/backups/targets/:id/verify` | checks the newest snapshot → `{ verifiedAt, ok, mode, snapshot, database, blobsChecked, missingBlobs, error }`. `mode` is `full` (database downloaded, decrypted, `quick_check`ed) or, for an S3 target in `GLACIER`/`DEEP_ARCHIVE`, `metadata`: nothing is read, `database` is `archived` when the object is there with the expected size (else `missing` or `wrong size (…)`) |
 | GET | `/backups/targets/:id/snapshots` | finished snapshots, newest first |
+| POST | `/backups/targets/:id/storage-class/migrate` | 202 `{ started }`: copies every existing object under the target's `blobs/` and `snapshots/` into its configured `storageClass` in the background; never deletes, skips objects already in the class and (counted as `objectsArchived`) ones in `GLACIER`/`DEEP_ARCHIVE`. Progress is the target's `storageMigration`: `{ status: running\|ok\|failed\|interrupted, storageClass, startedAt, finishedAt, objectsTotal, objectsDone, bytesTotal, bytesDone, objectsSkipped, objectsArchived, error, heartbeatAt }` (null before the first). Starting again resumes. `400 BACKUP_NOT_S3`, `404 NOT_FOUND`, `409 MIGRATION_RUNNING` |
 | GET | `/providers` | `{ providers: [{ key, label, type: "key"\|"url", configured, hint }] }`: AI provider env keys; `hint` is the masked key (`sk-a••••1234`) or the URL |
 | PUT | `/providers` | `{ key, value }`: sets one (`""` clears it). `400 UNKNOWN_PROVIDER`, `400 INVALID_URL`. URLs may be on the LAN |
 | GET | `/models` | `{ models: [model], disabledModels, autoEnableNewModels }`: the server's catalog (its own credentials); records newly seen models and, with auto-enable off, disables them |
@@ -924,7 +989,9 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 
 Backup `config` per type: `local { path }`, `sftp { host, port, username,
 password | privateKey, passphrase, path }`, `s3 { endpoint, region, bucket,
-accessKeyId, secretAccessKey, prefix, forcePathStyle }`, `webdav { url,
+accessKeyId, secretAccessKey, prefix, forcePathStyle, storageClass }`
+(`storageClass`: `STANDARD` (default) \| `STANDARD_IA` \| `GLACIER_IR` \|
+`GLACIER` \| `DEEP_ARCHIVE`, else `400 INVALID_VALUE`), `webdav { url,
 username, password }`.
 
 Verify (and `neocloud backup restore`) refuse a snapshot whose manifest is
