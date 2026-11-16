@@ -133,10 +133,12 @@ class _FileRowState extends State<_FileRow> {
     final callbacks = widget.callbacks;
     final selected = callbacks.isSelected(node.id);
     final actions = callbacks.actionsFor(node);
-    final showCheckbox = callbacks.onToggleSelected != null && (_hovering || callbacks.selecting);
+    final mouse = _usesMouse;
+    // On touch there is no hover (a tap fakes one): the box only shows while
+    // selecting, so a tap on the icon opens instead of ticking.
+    final showCheckbox = callbacks.onToggleSelected != null && ((mouse && _hovering) || callbacks.selecting);
     final locale = currentAppLanguage.code;
     final meta = node.isFolder ? '—' : formatBytes(node.size);
-    final mouse = _usesMouse;
     final focused = callbacks.focusedId == node.id;
     final radius = BorderRadius.vertical(
       top: Radius.circular(widget.first ? AppRadius.card : 0),
@@ -297,7 +299,7 @@ class _FileTile extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        if (callbacks.onToggleSelected != null)
+                        if (callbacks.onToggleSelected != null && (mouse || callbacks.selecting))
                           Checkbox(value: selected, onChanged: (_) => callbacks.onToggleSelected!(node))
                         else
                           const SizedBox(height: 40),
