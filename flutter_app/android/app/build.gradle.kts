@@ -30,11 +30,23 @@ android {
         versionName = flutter.versionName
     }
 
+    // An update only installs over an installed app when both carry the same
+    // signature. A runner's own debug key is new on every CI run, so releases
+    // are signed with a key kept in the repository (like NeoAgent's), which
+    // makes every APK from CI update the one before it. Not a secret: it only
+    // keeps the signature stable.
+    signingConfigs {
+        create("release") {
+            storeFile = file("${rootProject.projectDir}/ci-release.keystore")
+            storePassword = "neocloud-ci"
+            keyAlias = "neocloud-ci"
+            keyPassword = "neocloud-ci"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
