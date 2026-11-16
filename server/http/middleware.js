@@ -57,7 +57,8 @@ function buildHelmetOptions({ secureCookies }) {
   // Flutter web (CanvasKit) needs wasm eval and loads its engine from gstatic.
   const allowExternal = readEnvBool('NEOCLOUD_CSP_ALLOW_EXTERNAL', true);
   const scriptSrc = ["'self'", "'unsafe-inline'", 'blob:', "'wasm-unsafe-eval'"];
-  const connectSrc = ["'self'", ...(secureCookies ? ['wss:'] : ['ws:', 'wss:'])];
+  // blob:/data: let the PDF viewer and image decoders read in-memory files.
+  const connectSrc = ["'self'", 'blob:', 'data:', ...(secureCookies ? ['wss:'] : ['ws:', 'wss:'])];
   if (allowExternal) {
     scriptSrc.push('https://www.gstatic.com');
     connectSrc.push('https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://www.gstatic.com');
