@@ -366,7 +366,7 @@ class _SavedChoices extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: palette.borderLight),
                         ),
-                        child: Image.memory(item.png, fit: BoxFit.contain),
+                        child: Image.memory(item.png, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox.shrink()),
                       ),
                     ),
                   ),
