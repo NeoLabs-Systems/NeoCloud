@@ -3,6 +3,7 @@ package sendmenu
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -28,7 +29,8 @@ func TestLinuxEntriesAreWrittenAndRemoved(t *testing.T) {
 	if !strings.Contains(string(body), `exec '/opt/My "Apps"/neo cloud/$x/neocloud-lite' send "$@"`) {
 		t.Errorf("script: %s", body)
 	}
-	if info, _ := os.Stat(script); info == nil || info.Mode()&0o111 == 0 {
+	// Windows has no executable bit; the script is only ever used on Linux.
+	if info, _ := os.Stat(script); info == nil || (runtime.GOOS != "windows" && info.Mode()&0o111 == 0) {
 		t.Error("the script must be executable")
 	}
 	menu, _ := os.ReadFile(filepath.Join(data, "kio", "servicemenus", "neocloud-send.desktop"))

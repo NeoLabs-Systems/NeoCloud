@@ -149,7 +149,13 @@ test('a send is delivered once every file was streamed to its end, without a con
   assert.equal((await as(phone, 'get', `/api/handoff/offers/${offer.id}`).expect(200)).body.status, 'accepted', 'a partial read is not a delivery');
   await as(desktop, 'get', `/api/handoff/offers/${offer.id}/files/${offer.files[0].id}`).expect(200);
   await as(desktop, 'get', `/api/handoff/offers/${offer.id}/files/${offer.files[1].id}`).expect(200);
-  assert.equal((await as(phone, 'get', `/api/handoff/offers/${offer.id}`).expect(200)).body.status, 'delivered');
+  // The server marks the send delivered right after the last byte went out, which can land a moment after the client has read it.
+  let status;
+  for (let attempt = 0; attempt < 20 && status !== 'delivered'; attempt += 1) {
+    status = (await as(phone, 'get', `/api/handoff/offers/${offer.id}`).expect(200)).body.status;
+    if (status !== 'delivered') await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.equal(status, 'delivered');
   assert.equal(usedBytes(), before);
 });
 
