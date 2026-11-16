@@ -146290,26 +146290,26 @@ q(a0){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=this,d=null,c=e.a,b=c.c,a=c.d
 c=b.a
 s=a.a.$1(c)
 r=a.d.$1(b)
-if(a.r!=null)q=e.d||a.f
-else q=!1
-p=$.c.c
-o=b.c==="folder"
-n=o?"\u2014":A.cW(b.e)
-m=$.m3.cx$.c.a
+q=$.m3.cx$.c.a!==0
+if(a.r!=null)p=q&&e.d||a.f
+else p=!1
+o=$.c.c
+n=b.c==="folder"
+m=n?"\u2014":A.cW(b.e)
 l=e.a
 k=l.f?14:0
 k=new A.b6(k,k)
 l=l.r?14:0
 l=new A.b6(l,l)
 j=a.as?A.a0G(b):d
-i=A.f_(b.x,p)
+i=A.f_(b.x,o)
 if(j==null)if(e.a.e)h=d
-else{o=o?i:n+" \xb7 "+i
-h=o}else h=j
-o=a.at
-g=o==null?d:o.$1(c)
+else{n=n?i:m+" \xb7 "+i
+h=n}else h=j
+n=a.at
+g=n==null?d:n.$1(c)
 f=g==null?d:g.c
-return new A.Ve(b,a,new A.bid(e,r,a.e===c,a,b,new A.cX(k,k,l,l),s,m!==0,q,g,f,h,n,p),d)}}
+return new A.Ve(b,a,new A.bid(e,r,a.e===c,a,b,new A.cX(k,k,l,l),s,q,p,g,f,h,m,o),d)}}
 A.bid.prototype={
 $2(a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d=f.a,c=f.b,b=f.d,a=b.Q
 a=a==null?e:a.$1(f.e.a)
@@ -146405,7 +146405,9 @@ else r=(A.h()===B.c?B.d:B.e).as
 o=c.w==null||g.d?f:new A.bie(d)
 n=t.p
 m=A.d([],n)
-if(c.r!=null)m.push(A.LE(f,!1,f,f,f,!1,f,f,new A.bif(d),f,f,f,f,f,!1,s))
+if(c.r!=null)l=g.d||c.f
+else l=!1
+if(l)m.push(A.LE(f,!1,f,f,f,!1,f,f,new A.bif(d),f,f,f,f,f,!1,s))
 else m.push(B.aBB)
 m.push(B.q6)
 if(b.at)m.push(A.al(B.fL,(A.h()===B.c?B.d:B.e).w,f,f,16))
