@@ -64,6 +64,14 @@ var newEndpoints = []struct{ method, path string }{
 	{http.MethodPost, "/api/login/key"},
 	{http.MethodPost, "/api/login/key/code"},
 	{http.MethodGet, "/api/window"},
+	{http.MethodGet, "/api/send/devices"},
+	{http.MethodPost, "/api/send/pick"},
+	{http.MethodPost, "/api/send/inspect"},
+	{http.MethodPut, "/api/send/stage"},
+	{http.MethodPost, "/api/send/discard"},
+	{http.MethodPost, "/api/send"},
+	{http.MethodDelete, "/api/send/x"},
+	{http.MethodPost, "/api/send/x/dismiss"},
 }
 
 func TestNewEndpointsNeedASessionAndTheHeader(t *testing.T) {
@@ -87,7 +95,7 @@ func TestNewEndpointsNeedASessionAndTheHeader(t *testing.T) {
 			t.Errorf("%s %s without the header: %d", endpoint.method, endpoint.path, got)
 		}
 	}
-	for _, asset := range []string{"/", "/assets/app.js", "/assets/app.css", "/assets/logo.svg"} {
+	for _, asset := range []string{"/", "/assets/app.js", "/assets/send.js", "/assets/app.css", "/assets/logo.svg"} {
 		if got := status(stranger.Get("http://" + s.host + asset)); got != http.StatusForbidden {
 			t.Errorf("%s without a session: %d", asset, got)
 		}

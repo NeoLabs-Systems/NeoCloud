@@ -1,6 +1,7 @@
 package systems.neolabs.neocloud.background
 
 import android.Manifest
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -18,6 +19,8 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
+import systems.neolabs.neocloud.background.handoff.AppVisibility
+import systems.neolabs.neocloud.background.handoff.HandoffBridge
 
 /**
  * The `neocloud/background` channel: the transfer service, camera upload's
@@ -64,6 +67,7 @@ class NeoCloudBackgroundPlugin :
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
+        AppVisibility.register(context as Application)
         channel = MethodChannel(binding.binaryMessenger, CHANNEL).also { it.setMethodCallHandler(this) }
     }
 
@@ -191,7 +195,7 @@ class NeoCloudBackgroundPlugin :
                 result.success(null)
                 onWorkerDone?.invoke()
             }
-            else -> result.notImplemented()
+            else -> if (!HandoffBridge.handle(context, call, result)) result.notImplemented()
         }
     }
 

@@ -6,6 +6,9 @@
          also as data sync. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Receiving files in the background (HandoffService): a remote messaging
+         foreground service (Android 14+; data sync before), see handoff/. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Re-arms the new-photo trigger and runs a pass after a reboot or an update. -->
@@ -21,6 +24,17 @@
             android:name=".TransferService"
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
+        <!-- "Receive files in the background": the live connection that brings
+             "Send to device" offers while the app is closed. Not exported;
+             only started by the app, a reboot or the 15-minute check. -->
+        <service
+            android:name=".handoff.HandoffService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging|dataSync"/>
+        <!-- Accept and Decline on an offer's notification. -->
+        <receiver
+            android:name=".handoff.AnswerReceiver"
+            android:exported="false"/>
         <!-- CameraUploadWorker's setForeground: Android 14+ needs the type
              declared on WorkManager's service. -->
         <service

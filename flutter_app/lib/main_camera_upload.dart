@@ -44,13 +44,26 @@ class _CameraUploadSettingsPageState extends State<_CameraUploadSettingsPage> wi
     if (mounted) setState(() {});
   }
 
+  /// Camera upload, and receiving files in the background when that is on too:
+  /// both need the same battery and notification settings.
+  BackgroundFeatures get _features => BackgroundFeatures(
+    receive: _controller.handoff.background.enabled,
+    receiveOn: _controller.handoff.background.enabled,
+  );
+
   Future<void> _loadReliability() async {
-    final next = await _uploads.backgroundReliability();
+    final next = await _loadBackgroundReliability(_uploads, _features, _controller.handoff.background);
     if (mounted) setState(() => _reliability = next);
   }
 
   Future<void> _showReliability({bool onlyIfOpen = false}) async {
-    await showBackgroundReliabilitySheet(context, _uploads, onlyIfOpen: onlyIfOpen);
+    await showBackgroundReliabilitySheet(
+      context,
+      _uploads,
+      onlyIfOpen: onlyIfOpen,
+      features: _features,
+      handoff: _controller.handoff.background,
+    );
     await _loadReliability();
   }
 

@@ -31,6 +31,10 @@ class NeoCloudBackground {
   static bool get supported =>
       !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
 
+  /// Receiving files while the app is closed: Android only (iOS has no way
+  /// to hold a connection in the background without Apple's push service).
+  static bool get supportsHandoff => _android;
+
   static bool get _android => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   static void _listen() {
@@ -220,6 +224,55 @@ class NeoCloudBackground {
   static Future<void> cameraWorkerDone() async {
     if (!_android) return;
     await _invoke<void>('cameraWorkerDone');
+  }
+
+  /// Android: turns on receiving "Send to device" files while the app is
+  /// closed. Hands the native side everything it needs without an engine:
+  /// the server, this device's token (stored sealed with a Keystore key) and
+  /// the notification [texts] (`{name}` and `{count}` are filled in natively).
+  /// Starts the foreground service that keeps the event stream open and books
+  /// the 15-minute check that covers for it. True when the service runs.
+  static Future<bool> configureHandoff({
+    required String server,
+    required String token,
+    required Map<String, String> texts,
+  }) async {
+    if (!_android) return false;
+    return await _invoke<bool>('handoffConfigure', <String, Object?>{
+          'server': server,
+          'token': token,
+          'texts': texts,
+        }) ??
+        false;
+  }
+
+  /// Android: stops background receiving and forgets the token: signed out,
+  /// switched off, or the "Let my other devices send files here" switch is off.
+  static Future<void> disableHandoff() async {
+    if (!_android) return;
+    await _invoke<void>('handoffDisable');
+  }
+
+  /// Android: `enabled`, `serviceRunning` and `wipeRequested` (the server
+  /// asked this device to erase itself while only the background receiver
+  /// was talking to it). Empty elsewhere.
+  static Future<Map<String, Object?>> handoffStatus() async {
+    if (!_android) return const <String, Object?>{};
+    final raw = await _invoke<Map<Object?, Object?>>('handoffStatus');
+    return raw?.cast<String, Object?>() ?? const <String, Object?>{};
+  }
+
+  /// Android: takes the wipe request the background receiver kept (true
+  /// once), so the app can erase what it holds.
+  static Future<bool> takeHandoffWipeRequest() async {
+    if (!_android) return false;
+    return await _invoke<bool>('handoffTakeWipeRequest') ?? false;
+  }
+
+  /// Android: the app shows its own dialog for the offer; its notification goes.
+  static Future<void> dismissHandoffOffer(String offerId) async {
+    if (!_android) return;
+    await _invoke<void>('handoffDismiss', <String, Object?>{'offerId': offerId});
   }
 
   /// [onStop] runs when the platform wants [owner]'s work to end, whether

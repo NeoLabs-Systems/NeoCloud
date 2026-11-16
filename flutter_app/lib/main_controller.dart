@@ -24,6 +24,7 @@ class NeoCloudController extends ChangeNotifier {
     SigningAccountApi? signingAccount,
     PublicSigningApi Function(String token)? publicSigningFactory,
     PhotoLibrary? photoLibrary,
+    HandoffBackgroundPlatform? handoffBackgroundPlatform,
     Uri? launchUri,
   }) : _preferences = preferences,
        ai = ai ?? AiApi(client),
@@ -34,7 +35,16 @@ class NeoCloudController extends ChangeNotifier {
        deviceSessions = deviceSessions ?? createDeviceSessions(),
        cameraUploads = cameraUploads ?? createCameraUploads(),
        shareIntake = shareIntake ?? createShareIntake() {
-    handoff = HandoffController(client, preferences: preferences);
+    handoff = HandoffController(
+      client,
+      preferences: preferences,
+      background: HandoffBackground(
+        client: client,
+        preferences: preferences,
+        platform: handoffBackgroundPlatform,
+        texts: handoffBackgroundTexts,
+      ),
+    );
     client.onSessionExpired = _handleSessionExpired;
     client.onDeviceWiped = _handleDeviceWiped;
     uploads = UploadQueue(client: client, onFileUploaded: _handleFileUploaded);
@@ -499,7 +509,12 @@ class NeoCloudController extends ChangeNotifier {
     try {
       final connection = await deviceSessions.read();
       connectedServer = connection?.server ?? await deviceSessions.lastServer() ?? '';
-      if (connection != null) await _enterDeviceSession(connection);
+      // The server's one-time "erase this device" may have reached the background receiver, not the app.
+      if (connection != null && await handoff.background.takeWipeRequest()) {
+        _handleDeviceWiped();
+      } else if (connection != null) {
+        await _enterDeviceSession(connection);
+      }
     } catch (error) {
       errorMessage = friendlyError(error);
     } finally {

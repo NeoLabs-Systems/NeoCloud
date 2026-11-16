@@ -26,6 +26,11 @@ Future<HandoffOutcome> showSendToDevice(
       offerSaveToCloud: offerSaveToCloud,
     ),
   );
+  // The first time: files can also be received while NeoCloud is closed. Not
+  // on top of the folder picker that "Save to my NeoCloud" opens next.
+  if (outcome != HandoffOutcome.saveToCloud && context.mounted) {
+    unawaited(offerBackgroundReceiving(context, controller));
+  }
   return outcome ?? HandoffOutcome.closed;
 }
 

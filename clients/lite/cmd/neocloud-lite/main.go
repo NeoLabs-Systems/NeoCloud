@@ -39,7 +39,13 @@ Usage:
   neocloud-lite status [--json]
   neocloud-lite check-ignore <path>...
   neocloud-lite autostart on|off
+  neocloud-lite send [--to NAME|ID] [--no-wait] <file>...
   neocloud-lite key enroll|status|remove
+
+send sends files to another of your devices that is online (see the Send
+to device card in the app window). With several devices online and no --to it
+asks which; with no terminal it asks in dialogs. Only files, not folders:
+up to 50 files and 2 GiB at once.
 
 key enroll turns on the security key lock: the device token is stored
 encrypted and NeoCloud Lite syncs only while that key is plugged in. Quit
@@ -72,6 +78,7 @@ func main() {
 		"check-ignore": cmdCheckIgnore,
 		"autostart":    cmdAutostart,
 		"key":          cmdKey,
+		"send":         cmdSend,
 	}
 	command, ok := commands[args[0]]
 	if !ok {

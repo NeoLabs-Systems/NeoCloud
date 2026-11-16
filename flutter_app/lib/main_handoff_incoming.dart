@@ -2,7 +2,9 @@ part of 'main.dart';
 
 // The receiving side: an offer from another device of the account asks
 // "Accept or decline?". The web app also shows a browser notification when
-// the person allowed it. The phone shows the sheet while the app is open.
+// the person allowed it. The phone shows the sheet while the app is open; with
+// the app closed or in the background, Android's receiving service (if the
+// person turned it on) asks in a notification instead (src/handoff/background).
 
 class _HandoffHost extends StatefulWidget {
   const _HandoffHost({required this.controller, required this.child});
@@ -14,10 +16,13 @@ class _HandoffHost extends StatefulWidget {
   State<_HandoffHost> createState() => _HandoffHostState();
 }
 
-class _HandoffHostState extends State<_HandoffHost> {
+class _HandoffHostState extends State<_HandoffHost> with WidgetsBindingObserver {
   final BrowserNotice _notice = createBrowserNotice();
   final List<HandoffOffer> _queue = <HandoffOffer>[];
   bool _asking = false;
+
+  /// The offer whose dialog is up.
+  String? _showing;
 
   HandoffController get _handoff => widget.controller.handoff;
 
@@ -25,12 +30,32 @@ class _HandoffHostState extends State<_HandoffHost> {
   void initState() {
     super.initState();
     _handoff.onIncoming = _arrived;
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_handoff.onIncoming == _arrived) _handoff.onIncoming = null;
     super.dispose();
+  }
+
+  /// The app is on screen (unknown counts: tests, desktop).
+  bool get _visible => (WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed) == AppLifecycleState.resumed;
+
+  /// Coming back, what still waits is asked about here: whatever a
+  /// notification's button answered meanwhile is gone after the refresh.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_askWaiting());
+  }
+
+  Future<void> _askWaiting() async {
+    await _handoff.refresh();
+    for (final offer in _handoff.incoming) {
+      if (offer.id != _showing && !_queue.any((queued) => queued.id == offer.id)) _queue.add(offer);
+    }
+    unawaited(_askNext());
   }
 
   void _arrived(HandoffOffer offer) {
@@ -42,17 +67,25 @@ class _HandoffHostState extends State<_HandoffHost> {
         onClick: () {},
       );
     }
+    // In the background the notification asks; it stays in the controller's
+    // list and is asked here once the app is back.
+    if (!_visible) return;
     _queue.add(offer);
     unawaited(_askNext());
   }
 
   Future<void> _askNext() async {
-    if (_asking || _queue.isEmpty) return;
+    if (_asking || !_visible) return;
+    // Offers answered elsewhere (a notification's button) are not asked again.
+    _queue.removeWhere((queued) => !_handoff.incoming.any((known) => known.id == queued.id));
+    if (_queue.isEmpty) return;
     final navigatorContext = _navigatorKey.currentContext;
     if (navigatorContext == null) return;
     _asking = true;
     final messenger = ScaffoldMessenger.maybeOf(navigatorContext);
     final offer = _queue.removeAt(0);
+    _showing = offer.id;
+    _handoff.background.dismissOffer(offer.id);
     try {
       final accepted = await showAdaptiveSheet<bool>(
         context: navigatorContext,
@@ -61,6 +94,9 @@ class _HandoffHostState extends State<_HandoffHost> {
       );
       if (accepted == true) {
         await _receive(messenger, offer);
+        // The first time files are accepted: they could also arrive with the app closed.
+        final after = _navigatorKey.currentContext;
+        if (after != null && after.mounted) await offerBackgroundReceiving(after, widget.controller);
       } else {
         await widget.controller.client
             .declineHandoff(offer.id)
@@ -68,6 +104,7 @@ class _HandoffHostState extends State<_HandoffHost> {
       }
     } finally {
       _handoff.answered(offer);
+      _showing = null;
       _asking = false;
       unawaited(_askNext());
     }

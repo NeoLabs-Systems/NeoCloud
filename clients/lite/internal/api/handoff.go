@@ -23,6 +23,9 @@ type HandoffOffer struct {
 		Name     string `json:"name"`
 		Platform string `json:"platform"`
 	} `json:"from"`
+	To struct {
+		Name string `json:"name"`
+	} `json:"to"`
 	TotalSize int64         `json:"totalSize"`
 	Files     []HandoffFile `json:"files"`
 }

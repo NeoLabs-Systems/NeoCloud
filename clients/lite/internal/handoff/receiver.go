@@ -32,6 +32,11 @@ type Receiver struct {
 	ChooseFolder func(ctx context.Context) (path string, ok bool)
 	// Downloads is the folder "Save to Downloads" uses.
 	Downloads func() string
+	// Updated is told about every change of a send (also one this computer
+	// made), so a sender waiting for the answer need not wait for its next
+	// poll; DevicesChanged when the list of devices changed.
+	Updated        func(offerID string)
+	DevicesChanged func()
 
 	// client builds the API client for the signed-in account; tests replace it.
 	client func(cfg config.Config) *api.Client
@@ -112,6 +117,14 @@ func (r *Receiver) connect(ctx context.Context, cfg config.Config) error {
 	defer res.Body.Close()
 	go r.watchSettings(streamCtx, stop, cfg.Server, cfg.Token, receive)
 	return readEvents(res.Body, func(event Event) {
+		switch event.Name {
+		case "handoff:updated":
+			r.updated(event)
+		case "handoff:devices":
+			if r.DevicesChanged != nil {
+				r.DevicesChanged()
+			}
+		}
 		if !receive || event.Name != "handoff:offer" {
 			return
 		}
@@ -121,6 +134,15 @@ func (r *Receiver) connect(ctx context.Context, cfg config.Config) error {
 		}
 		go r.handle(streamCtx, client, offer)
 	})
+}
+
+func (r *Receiver) updated(event Event) {
+	var payload struct {
+		Offer api.HandoffOffer `json:"offer"`
+	}
+	if r.Updated != nil && decode(event, &payload) == nil && payload.Offer.ID != "" {
+		r.Updated(payload.Offer.ID)
+	}
 }
 
 // watchSettings ends the stream when what it was opened with changes.

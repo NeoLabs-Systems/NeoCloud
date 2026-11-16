@@ -37,10 +37,12 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/autostart"
 	"github.com/neolabs/neocloud/clients/lite/internal/browser"
 	"github.com/neolabs/neocloud/clients/lite/internal/config"
+	"github.com/neolabs/neocloud/clients/lite/internal/handoff"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/proxy"
 	"github.com/neolabs/neocloud/clients/lite/internal/qr"
 	"github.com/neolabs/neocloud/clients/lite/internal/securitykey"
+	"github.com/neolabs/neocloud/clients/lite/internal/sendmenu"
 	"github.com/neolabs/neocloud/clients/lite/internal/shellfolder"
 	"github.com/neolabs/neocloud/clients/lite/internal/sync"
 )
@@ -55,6 +57,7 @@ var ui embed.FS
 var assetTypes = map[string]string{
 	"app.css":  "text/css; charset=utf-8",
 	"app.js":   "text/javascript; charset=utf-8",
+	"send.js":  "text/javascript; charset=utf-8",
 	"logo.svg": "image/svg+xml",
 	// Geist and Geist Mono, the NeoLabs apps' type (OFL, see ui/OFL.txt).
 	"geist.woff2":      "font/woff2",
@@ -75,6 +78,9 @@ type Options struct {
 	// Logger gets what goes wrong outside a request (folder icons and
 	// the sidebar entry); nil logs to the standard logger.
 	Logger *log.Logger
+	// Sender sends files to the account's other devices; nil hides the
+	// "Send to device" card.
+	Sender *handoff.Sender
 }
 
 // Server serves the app window's page and API.
@@ -111,6 +117,7 @@ type Server struct {
 	quotaAt  time.Time
 	nameAt   time.Time // last time this device's name was read from the server
 	nameBusy bool
+	stageDir string // where files dropped on the page wait to be sent
 }
 
 const (
@@ -184,6 +191,14 @@ func Start(engine *sync.Engine, cfg *config.Store, lock *keylock.Lock, opts Opti
 	mux.HandleFunc("GET /api/local/suggest", s.api(s.suggestLocal))
 	mux.HandleFunc("GET /api/remote/folders", s.api(s.remoteFolders))
 	mux.HandleFunc("POST /api/remote/folders", s.api(s.createRemoteFolder))
+	mux.HandleFunc("GET /api/send/devices", s.api(s.sendDevices))
+	mux.HandleFunc("POST /api/send/pick", s.api(s.pickFiles))
+	mux.HandleFunc("POST /api/send/inspect", s.api(s.inspect))
+	mux.HandleFunc("PUT /api/send/stage", s.api(s.stageDrop))
+	mux.HandleFunc("POST /api/send/discard", s.api(s.discardDrops))
+	mux.HandleFunc("POST /api/send", s.api(s.startSend))
+	mux.HandleFunc("DELETE /api/send/{id}", s.api(s.cancelSend))
+	mux.HandleFunc("POST /api/send/{id}/dismiss", s.api(s.dismissSend))
 	mux.HandleFunc("GET /api/account", s.api(s.account))
 	mux.HandleFunc("POST /api/open/{target}", s.api(s.openTarget))
 	s.http = &http.Server{Handler: s.guard(mux), ReadHeaderTimeout: 10 * time.Second}
@@ -211,7 +226,10 @@ func (s *Server) LaunchURL(ttl time.Duration) string {
 }
 
 // Close stops the server.
-func (s *Server) Close() error { return s.http.Close() }
+func (s *Server) Close() error {
+	s.removeStaging()
+	return s.http.Close()
+}
 
 func randomHex() string {
 	buf := make([]byte, 32)
@@ -374,6 +392,7 @@ func (s *Server) state(r *http.Request) (any, error) {
 		"os":            runtime.GOOS,
 		"home":          home,
 		"superseded":    superseded,
+		"send":          s.sendState(),
 	}, nil
 }
 
@@ -673,6 +692,7 @@ func (s *Server) updateSettings(r *http.Request) (any, error) {
 	}
 	if body.Global != nil {
 		shellfolder.Reconcile(s.cfg, s.opts.Logger)
+		sendmenu.Reconcile(s.cfg, s.opts.Logger)
 		api.SetProxy(proxy.For(*body.Global))
 		s.engine.SyncNow() // the network rules may let pairs run now
 	}
@@ -714,6 +734,8 @@ func effectiveGlobal(cfg config.Config) config.GlobalSettings {
 		PauseOnBatterySaver: new(cfg.BatteryPause()),
 		Notifications:       cfg.NotifyLevel(),
 		FileManagerSidebar:  new(cfg.Sidebar()),
+		ReceiveFromDevices:  new(cfg.ReceiveEnabled()),
+		SendToMenu:          new(cfg.SendMenuEnabled()),
 		Proxy:               cfg.ProxyMode(),
 		ProxyURL:            cfg.ProxyURL,
 	}

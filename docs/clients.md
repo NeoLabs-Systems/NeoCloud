@@ -435,6 +435,15 @@ app, Sync now and Pause are greyed out. Its icon (the logo's glyph, a template i
 in the macOS menu bar) carries a badge for syncing, paused, locked and
 needs attention.
 
+### Send to device (lite)
+
+Besides receiving, the lite client sends files to the account's other online
+devices: tray menu "Send files to device…", the "Send to device" card of the
+app window (drop files or choose them), `neocloud-lite send [--to NAME|ID]
+[--no-wait] <file>...`, and, opt-in in Settings, the Windows Send to menu and
+Linux file manager entries (none on macOS: no signed app). It uses the
+`/api/handoff` routes with the device token; see [handoff.md](handoff.md).
+
 ### Security key lock (lite)
 
 Optional, macOS and Linux only: with it on, the lite client syncs only

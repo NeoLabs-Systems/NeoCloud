@@ -13769,6 +13769,186 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Send to device'**
   String get handoffSectionTitle;
+
+  /// No description provided for @handoffChannelOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming files'**
+  String get handoffChannelOffers;
+
+  /// No description provided for @handoffChannelService.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to receive'**
+  String get handoffChannelService;
+
+  /// No description provided for @handoffChannelTransfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Receiving files'**
+  String get handoffChannelTransfers;
+
+  /// No description provided for @handoffServiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud is ready to receive files'**
+  String get handoffServiceTitle;
+
+  /// No description provided for @handoffBackgroundOfferOne.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to send you a file'**
+  String handoffBackgroundOfferOne(String name);
+
+  /// No description provided for @handoffBackgroundOfferMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to send you {count} files'**
+  String handoffBackgroundOfferMany(String name, String count);
+
+  /// No description provided for @handoffReceivingFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Receiving from {name}'**
+  String handoffReceivingFrom(String name);
+
+  /// No description provided for @handoffReceivedOne.
+  ///
+  /// In en, this message translates to:
+  /// **'File received'**
+  String get handoffReceivedOne;
+
+  /// No description provided for @handoffReceivedMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files received'**
+  String handoffReceivedMany(String count);
+
+  /// No description provided for @handoffSavedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved in Downloads/NeoCloud'**
+  String get handoffSavedIn;
+
+  /// No description provided for @handoffOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get handoffOpen;
+
+  /// No description provided for @handoffReceiveFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t receive the files'**
+  String get handoffReceiveFailedTitle;
+
+  /// No description provided for @handoffReceiveFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask {name} to send them again.'**
+  String handoffReceiveFailedBody(String name);
+
+  /// No description provided for @handoffBackgroundSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive files in the background'**
+  String get handoffBackgroundSwitch;
+
+  /// No description provided for @handoffBackgroundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a popup to accept files from your other devices, even when NeoCloud is closed. Shows a small notification while it listens.'**
+  String get handoffBackgroundHint;
+
+  /// No description provided for @handoffBackgroundNeedsReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on “Let my other devices send files here” first.'**
+  String get handoffBackgroundNeedsReceive;
+
+  /// No description provided for @handoffBackgroundHintTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get files even when NeoCloud is closed?'**
+  String get handoffBackgroundHintTitle;
+
+  /// No description provided for @handoffBackgroundHintBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on “Receive files in the background” and your other devices can send you files at any time: you get a popup to accept them, and they land in your Downloads folder.'**
+  String get handoffBackgroundHintBody;
+
+  /// No description provided for @backgroundTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get backgroundTurnOn;
+
+  /// No description provided for @backgroundTitleReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep receiving files'**
+  String get backgroundTitleReceive;
+
+  /// No description provided for @backgroundTitleBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep NeoCloud running'**
+  String get backgroundTitleBoth;
+
+  /// No description provided for @backgroundIntroReceiveAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud can tell you when another of your devices sends you files, even while the app is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud listening.'**
+  String get backgroundIntroReceiveAndroid;
+
+  /// No description provided for @backgroundIntroBothAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera upload and receiving files keep going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.'**
+  String get backgroundIntroBothAndroid;
+
+  /// No description provided for @backgroundReceiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive files in the background'**
+  String get backgroundReceiveTitle;
+
+  /// No description provided for @backgroundReceiveDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows a small “ready to receive” notification so Android keeps NeoCloud listening. Files from your other devices then arrive with a popup.'**
+  String get backgroundReceiveDetail;
+
+  /// No description provided for @backgroundBatteryDetailReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets Android keep NeoCloud listening while the screen is off, so files arrive within seconds instead of minutes.'**
+  String get backgroundBatteryDetailReceive;
+
+  /// No description provided for @backgroundBatteryDetailBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets Android run NeoCloud in the background: backups start soon after you take a photo and files from your other devices arrive within seconds.'**
+  String get backgroundBatteryDetailBoth;
+
+  /// No description provided for @backgroundNotificationsDetailReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for the popup that asks you to accept files, and for the small “ready to receive” notification.'**
+  String get backgroundNotificationsDetailReceive;
+
+  /// No description provided for @backgroundNotificationsDetailBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows the backup’s progress and the popup that asks you to accept files.'**
+  String get backgroundNotificationsDetailBoth;
+
+  /// No description provided for @backgroundBannerTitleReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Files may not arrive in the background'**
+  String get backgroundBannerTitleReceive;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

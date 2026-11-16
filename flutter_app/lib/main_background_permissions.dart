@@ -1,18 +1,30 @@
 part of 'main.dart';
 
-// What keeps camera upload running in the background, as NeoAgent's shared
-// permission sheet (main_permission_sheet.dart): an icon, a title, a short
+// What keeps camera upload and receiving files (Send to device) running in the
+// background, as NeoAgent's shared permission sheet (main_permission_sheet.dart): an icon, a title, a short
 // explanation and how many are set, then one card per setting with a check
 // or the button that fixes it, and "Allow all", which walks through the
 // system prompts and screens in order. Each fix happens in a system prompt or
 // the system settings; coming back re-reads them all. Also the banner on
 // Settings › Camera upload. The checks are src/mobile/background_reliability.dart.
 
-/// Shows the checklist. With [onlyIfOpen] (camera upload was just turned
-/// on) it shows only when something isn't granted yet.
-Future<void> showBackgroundReliabilitySheet(BuildContext context, CameraUploads uploads, {bool onlyIfOpen = false}) async {
+/// The checks for [features], from what the phone reports now. Receiving is
+/// on when [handoff] says so.
+Future<BackgroundReliability> _loadBackgroundReliability(CameraUploads uploads, BackgroundFeatures features, HandoffBackground? handoff) async =>
+    (await uploads.backgroundReliability()).forFeatures(features.withReceiveOn(handoff?.enabled ?? false));
+
+/// Shows the checklist for [features] (camera upload by default; receiving
+/// files in the background needs [handoff] too). With [onlyIfOpen] (a feature
+/// was just turned on) it shows only when something isn't granted yet.
+Future<void> showBackgroundReliabilitySheet(
+  BuildContext context,
+  CameraUploads uploads, {
+  bool onlyIfOpen = false,
+  BackgroundFeatures features = const BackgroundFeatures(),
+  HandoffBackground? handoff,
+}) async {
   if (!uploads.supported) return;
-  final initial = await uploads.backgroundReliability();
+  final initial = await _loadBackgroundReliability(uploads, features, handoff);
   if (onlyIfOpen && initial.openCount == 0) return;
   if (!context.mounted) return;
   await showModalBottomSheet<void>(
@@ -20,7 +32,7 @@ Future<void> showBackgroundReliabilitySheet(BuildContext context, CameraUploads 
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder: (_) => _BackgroundReliabilitySheet(uploads: uploads, initial: initial),
+    builder: (_) => _BackgroundReliabilitySheet(uploads: uploads, initial: initial, features: features, handoff: handoff),
   );
 }
 
@@ -29,10 +41,12 @@ Future<void> showBackgroundReliabilitySheet(BuildContext context, CameraUploads 
 bool _backgroundItemDone(BackgroundItem item) => item.state == BackgroundCheckState.granted;
 
 class _BackgroundReliabilitySheet extends StatefulWidget {
-  const _BackgroundReliabilitySheet({required this.uploads, required this.initial});
+  const _BackgroundReliabilitySheet({required this.uploads, required this.initial, required this.features, required this.handoff});
 
   final CameraUploads uploads;
   final BackgroundReliability initial;
+  final BackgroundFeatures features;
+  final HandoffBackground? handoff;
 
   @override
   State<_BackgroundReliabilitySheet> createState() => _BackgroundReliabilitySheetState();
@@ -79,8 +93,10 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
     }
   }
 
+  Future<BackgroundReliability> _load() => _loadBackgroundReliability(widget.uploads, widget.features, widget.handoff);
+
   Future<void> _refresh() async {
-    final next = await widget.uploads.backgroundReliability();
+    final next = await _load();
     if (mounted) setState(() => _reliability = next);
   }
 
@@ -88,6 +104,8 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
   Future<void> _fix(BackgroundItem item) async {
     final ios = !_reliability.status.android;
     switch (item.check) {
+      case BackgroundCheck.receiveFiles:
+        await widget.handoff?.setEnabled(true);
       case BackgroundCheck.photos:
         if (ios && item.state == BackgroundCheckState.recommended) {
           // iOS only offers "Full Access" in Settings once a selection was made.
@@ -170,7 +188,7 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
     final asked = _asking;
     if (asked == null) return;
     _asking = null;
-    final next = await widget.uploads.backgroundReliability();
+    final next = await _load();
     if (!mounted) return;
     setState(() => _reliability = next);
     final granted = asked == BackgroundCheck.manufacturer || next.stateOf(asked) == BackgroundCheckState.granted;
@@ -184,6 +202,16 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
   Widget _header(bool android) {
     final items = _reliability.items;
     final granted = items.where(_backgroundItemDone).length;
+    // Camera upload and receiving files each explain themselves; both together get a joint text.
+    final features = widget.features;
+    final receiveOnly = android && features.receive && !features.camera;
+    final both = android && features.both;
+    final title = both ? appStrings.backgroundTitleBoth : (receiveOnly ? appStrings.backgroundTitleReceive : appStrings.backgroundTitle);
+    final intro = both
+        ? appStrings.backgroundIntroBothAndroid
+        : receiveOnly
+        ? appStrings.backgroundIntroReceiveAndroid
+        : (android ? appStrings.backgroundIntroAndroid : appStrings.backgroundIntroIos);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -192,18 +220,18 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
             width: 64,
             height: 64,
             decoration: BoxDecoration(color: _accent.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Icon(Icons.cloud_upload_outlined, color: _accent, size: 30),
+            child: Icon(both ? Icons.cloud_sync_outlined : (receiveOnly ? Icons.cloud_download_outlined : Icons.cloud_upload_outlined), color: _accent, size: 30),
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          appStrings.backgroundTitle,
+          title,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
-          android ? appStrings.backgroundIntroAndroid : appStrings.backgroundIntroIos,
+          intro,
           textAlign: TextAlign.center,
           style: TextStyle(color: _textSecondary, height: 1.45),
         ),
@@ -247,6 +275,7 @@ class _BackgroundReliabilitySheetState extends State<_BackgroundReliabilitySheet
               _BackgroundCheckRow(
                 item: item,
                 status: _reliability.status,
+                features: widget.features,
                 asking: _asking == item.check,
                 step: _step,
                 steps: _steps,
@@ -307,6 +336,7 @@ class _BackgroundCheckRow extends StatelessWidget {
   const _BackgroundCheckRow({
     required this.item,
     required this.status,
+    required this.features,
     required this.asking,
     required this.step,
     required this.steps,
@@ -315,6 +345,7 @@ class _BackgroundCheckRow extends StatelessWidget {
 
   final BackgroundItem item;
   final BackgroundPlatformStatus status;
+  final BackgroundFeatures features;
 
   /// Whether "Allow all" has this one's prompt or screen open.
   final bool asking;
@@ -326,17 +357,31 @@ class _BackgroundCheckRow extends StatelessWidget {
 
   (IconData, String, String) _describe() {
     final maker = _backgroundMakerName(status);
+    // What the checks are for decides how the shared ones are explained.
+    final receiveOnly = features.receive && !features.camera;
     switch (item.check) {
+      case BackgroundCheck.receiveFiles:
+        return (Icons.cloud_download_outlined, appStrings.backgroundReceiveTitle, appStrings.backgroundReceiveDetail);
       case BackgroundCheck.photos:
         return (Icons.photo_library_outlined, appStrings.backgroundPhotosTitle, appStrings.backgroundPhotosDetail);
       case BackgroundCheck.notifications:
         return (
           Icons.notifications_none_rounded,
           appStrings.backgroundNotificationsTitle,
-          status.android ? appStrings.backgroundNotificationsDetailAndroid : appStrings.backgroundNotificationsDetailIos,
+          !status.android
+              ? appStrings.backgroundNotificationsDetailIos
+              : features.both
+              ? appStrings.backgroundNotificationsDetailBoth
+              : (receiveOnly ? appStrings.backgroundNotificationsDetailReceive : appStrings.backgroundNotificationsDetailAndroid),
         );
       case BackgroundCheck.battery:
-        return (Icons.battery_charging_full_rounded, appStrings.backgroundBatteryTitle, appStrings.backgroundBatteryDetail);
+        return (
+          Icons.battery_charging_full_rounded,
+          appStrings.backgroundBatteryTitle,
+          features.both
+              ? appStrings.backgroundBatteryDetailBoth
+              : (receiveOnly ? appStrings.backgroundBatteryDetailReceive : appStrings.backgroundBatteryDetail),
+        );
       case BackgroundCheck.manufacturer:
         return (Icons.phone_android_rounded, appStrings.backgroundManufacturerTitle(maker), appStrings.backgroundManufacturerDetail(maker));
       case BackgroundCheck.backgroundData:
@@ -368,6 +413,8 @@ class _BackgroundCheckRow extends StatelessWidget {
 
   String _buttonLabel() {
     switch (item.check) {
+      case BackgroundCheck.receiveFiles:
+        return appStrings.backgroundTurnOn;
       case BackgroundCheck.photos:
         return item.state == BackgroundCheckState.recommended ? appStrings.backgroundAllowAll : appStrings.backgroundAllow;
       case BackgroundCheck.notifications:
@@ -506,12 +553,15 @@ class _BackgroundNote extends StatelessWidget {
 /// On Settings › Camera upload when something needed is missing or no
 /// pass has succeeded for a day.
 class _BackgroundReliabilityBanner extends StatelessWidget {
-  const _BackgroundReliabilityBanner({required this.missing, required this.since, required this.onFix});
+  const _BackgroundReliabilityBanner({required this.missing, required this.since, required this.onFix, this.title});
 
   /// Something needed is off; otherwise the backup is just stale.
   final bool missing;
   final DateTime? since;
   final VoidCallback onFix;
+
+  /// Replaces the camera upload headline (Settings › Devices: receiving files).
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +578,7 @@ class _BackgroundReliabilityBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  appStrings.backgroundBannerTitle,
+                  title ?? appStrings.backgroundBannerTitle,
                   style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 13.5),
                 ),
               ),

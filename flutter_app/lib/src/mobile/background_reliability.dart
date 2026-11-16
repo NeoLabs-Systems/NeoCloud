@@ -1,12 +1,17 @@
 import 'camera_upload.dart';
 
-// What decides whether camera upload keeps running in the background, as a
-// checklist: each item is granted, needed or recommended, from what the
-// platform reports (neocloud_background's `status`) and the photo access.
-// Plain data so it can be tested; the screen is main_background_permissions.dart.
+// What decides whether camera upload and receiving files (Send to device)
+// keep running in the background, as a checklist: each item is granted,
+// needed or recommended, from what the platform reports (neocloud_background's
+// `status`) and the photo access. Plain data so it can be tested; the screen
+// is main_background_permissions.dart.
 
 /// One thing on the checklist.
 enum BackgroundCheck {
+  /// Android: "Receive files in the background" is on, which keeps the small
+  /// "ready to receive" notification and the connection that brings files.
+  receiveFiles,
+
   /// Full access to photos and videos, not a selection.
   photos,
 
@@ -27,6 +32,26 @@ enum BackgroundCheck {
 
   /// iOS: Low Power Mode is off.
   lowPowerMode,
+}
+
+/// What the checklist is for: camera upload, receiving files in the
+/// background, or both. Items that only one feature needs are left out for
+/// the other, and the explanation follows.
+class BackgroundFeatures {
+  const BackgroundFeatures({this.camera = true, this.receive = false, this.receiveOn = false});
+
+  /// Camera upload needs the checklist.
+  final bool camera;
+
+  /// Receiving files in the background needs it (Android).
+  final bool receive;
+
+  /// Receiving files in the background is switched on.
+  final bool receiveOn;
+
+  bool get both => camera && receive;
+
+  BackgroundFeatures withReceiveOn(bool value) => BackgroundFeatures(camera: camera, receive: receive, receiveOn: value);
 }
 
 /// Shown as a dot plus a word.
@@ -235,6 +260,28 @@ class BackgroundReliability {
 
   final BackgroundPlatformStatus status;
   final List<BackgroundItem> items;
+
+  /// The same checks, for [features]: without the photo access when camera
+  /// upload isn't one of them, with the "receive in the background" switch
+  /// first when receiving is (Android only), and notifications are then
+  /// needed, not just recommended: without them there is no popup to accept.
+  BackgroundReliability forFeatures(BackgroundFeatures features) {
+    final receive = features.receive && status.android;
+    return BackgroundReliability(
+      status: status,
+      items: <BackgroundItem>[
+        if (receive)
+          BackgroundItem(BackgroundCheck.receiveFiles, features.receiveOn ? BackgroundCheckState.granted : BackgroundCheckState.needed),
+        for (final item in items)
+          if (item.check == BackgroundCheck.photos && !features.camera)
+            ...const <BackgroundItem>[]
+          else if (receive && item.check == BackgroundCheck.notifications && item.state != BackgroundCheckState.granted)
+            const BackgroundItem(BackgroundCheck.notifications, BackgroundCheckState.needed)
+          else
+            item,
+      ],
+    );
+  }
 
   bool get anyNeeded => items.any((item) => item.state == BackgroundCheckState.needed);
 

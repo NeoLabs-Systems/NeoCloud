@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/backend_client.dart';
 import '../files/upload_queue.dart';
 import 'handoff_models.dart';
+import 'background/handoff_background.dart';
 import 'handoff_stream.dart';
 
 /// Send to device (docs/handoff.md): the account's other devices, what this
@@ -18,14 +19,24 @@ class HandoffController extends ChangeNotifier {
     this.client, {
     SharedPreferences? preferences,
     HandoffStream? Function()? streamFactory,
+    HandoffBackground? background,
     this.reconnectBase = const Duration(seconds: 1),
   }) : _preferences = preferences,
-       _streamFactory = streamFactory ?? createHandoffStream;
+       _streamFactory = streamFactory ?? createHandoffStream {
+    this.background =
+        background ??
+        HandoffBackground(client: client, preferences: preferences);
+    this.background.receiving = () => receiving;
+  }
 
   static const String _notifyKey = 'handoff_notify_in_browser';
+  static const String _receivingKey = 'handoff_receiving';
   final SharedPreferences? _preferences;
 
   final BackendClient client;
+
+  /// Receiving while the app is closed (Android).
+  late final HandoffBackground background;
   final HandoffStream? Function() _streamFactory;
   final Duration reconnectBase;
 
@@ -38,8 +49,9 @@ class HandoffController extends ChangeNotifier {
   int _attempt = 0;
   bool _running = false;
 
-  /// Whether this device may be sent to. Off keeps it out of other devices' lists.
-  bool receiving = true;
+  /// Whether this device may be sent to. Off keeps it out of other devices'
+  /// lists (and stops receiving in the background). Kept across restarts.
+  late bool receiving = _preferences?.getBool(_receivingKey) ?? true;
 
   /// The person turned on browser notifications for incoming files (web).
   bool get notifyInBrowser => _preferences?.getBool(_notifyKey) ?? false;
@@ -68,6 +80,7 @@ class HandoffController extends ChangeNotifier {
     _running = true;
     unawaited(refresh());
     _openStream();
+    unawaited(background.sync());
   }
 
   void stop() {
@@ -80,6 +93,7 @@ class HandoffController extends ChangeNotifier {
     _sent = const <HandoffOffer>[];
     _incoming.clear();
     _announced.clear();
+    unawaited(background.suspend());
     notifyListeners();
   }
 
@@ -119,6 +133,8 @@ class HandoffController extends ChangeNotifier {
   void setReceiving(bool value) {
     if (receiving == value) return;
     receiving = value;
+    unawaited(_preferences?.setBool(_receivingKey, value));
+    unawaited(background.sync());
     if (_stream != null) {
       _stream!.close();
       _openStream();
@@ -162,7 +178,9 @@ class HandoffController extends ChangeNotifier {
 
   void _updated(HandoffOffer offer) {
     if (offer.receiving) {
-      if (offer.finished) {
+      // Answered (here, or from the notification of the background receiver),
+      // cancelled or expired: nothing is left to ask.
+      if (offer.status != HandoffStatus.pending) {
         _incoming.removeWhere((other) => other.id == offer.id);
       }
     } else {
@@ -192,9 +210,15 @@ class HandoffController extends ChangeNotifier {
     try {
       final lists = await client.handoffOffers();
       _sent = lists.sent;
-      for (final offer in lists.inbox) {
-        if (offer.status == HandoffStatus.pending) _offered(offer);
-      }
+      final waiting = <HandoffOffer>[
+        for (final offer in lists.inbox)
+          if (offer.status == HandoffStatus.pending) offer,
+      ];
+      // What was answered meanwhile (a notification's button) isn't asked again.
+      _incoming.removeWhere(
+        (known) => !waiting.any((offer) => offer.id == known.id),
+      );
+      waiting.forEach(_offered);
       notifyListeners();
     } catch (_) {
       // Offline.

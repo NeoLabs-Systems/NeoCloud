@@ -40,6 +40,8 @@ import 'src/files/selection_model.dart';
 import 'src/files/undo.dart';
 import 'src/files/unload_guard.dart';
 import 'src/files/upload_journal.dart';
+import 'src/handoff/background/handoff_background.dart';
+import 'src/handoff/background/handoff_background_platform.dart';
 import 'src/handoff/browser_notice.dart';
 import 'src/handoff/handoff_controller.dart';
 import 'src/handoff/handoff_models.dart';
@@ -136,6 +138,7 @@ part 'main_files_search_hits.dart';
 part 'main_files_view.dart';
 part 'main_files_widgets.dart';
 part 'main_handoff.dart';
+part 'main_handoff_background.dart';
 part 'main_handoff_incoming.dart';
 part 'main_handoff_settings.dart';
 part 'main_native_runtime.dart';
@@ -233,12 +236,27 @@ class NeoCloudApp extends StatefulWidget {
   State<NeoCloudApp> createState() => _NeoCloudAppState();
 }
 
-class _NeoCloudAppState extends State<NeoCloudApp> {
+class _NeoCloudAppState extends State<NeoCloudApp> with WidgetsBindingObserver {
   late final _AppRouterDelegate _routerDelegate = _AppRouterDelegate(widget.controller);
   late final _AppRouteProvider _routeProvider = _AppRouteProvider();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  // With the theme on "system" the colour tokens are read in build(), so a
+  // change of the system appearance must rebuild every screen, not only the
+  // ones that depend on Theme.of.
+  @override
+  void didChangePlatformBrightness() {
+    if (_appThemeMode == ThemeMode.system) setState(() {});
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _routerDelegate.dispose();
     _routeProvider.dispose();
     super.dispose();
@@ -252,7 +270,7 @@ class _NeoCloudAppState extends State<NeoCloudApp> {
       builder: (context, _) {
         _appThemeMode = controller.themeMode;
         return MaterialApp.router(
-          key: ValueKey<String>('${controller.themeMode.name}-${currentAppLanguage.code}'),
+          key: ValueKey<String>('${_appBrightness.name}-${currentAppLanguage.code}'),
           title: 'NeoCloud',
           debugShowCheckedModeBanner: false,
           themeMode: controller.themeMode,

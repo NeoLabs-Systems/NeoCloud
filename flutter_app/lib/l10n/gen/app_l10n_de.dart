@@ -8509,4 +8509,117 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get handoffSectionTitle => 'An Gerät senden';
+
+  @override
+  String get handoffChannelOffers => 'Eingehende Dateien';
+
+  @override
+  String get handoffChannelService => 'Empfangsbereit';
+
+  @override
+  String get handoffChannelTransfers => 'Dateien empfangen';
+
+  @override
+  String get handoffServiceTitle => 'NeoCloud ist bereit, Dateien zu empfangen';
+
+  @override
+  String handoffBackgroundOfferOne(String name) {
+    return '$name möchte dir eine Datei schicken';
+  }
+
+  @override
+  String handoffBackgroundOfferMany(String name, String count) {
+    return '$name möchte dir $count Dateien schicken';
+  }
+
+  @override
+  String handoffReceivingFrom(String name) {
+    return 'Empfange von $name';
+  }
+
+  @override
+  String get handoffReceivedOne => 'Datei empfangen';
+
+  @override
+  String handoffReceivedMany(String count) {
+    return '$count Dateien empfangen';
+  }
+
+  @override
+  String get handoffSavedIn => 'Gespeichert in Downloads/NeoCloud';
+
+  @override
+  String get handoffOpen => 'Öffnen';
+
+  @override
+  String get handoffReceiveFailedTitle =>
+      'Die Dateien konnten nicht empfangen werden';
+
+  @override
+  String handoffReceiveFailedBody(String name) {
+    return 'Bitte $name, sie noch einmal zu senden.';
+  }
+
+  @override
+  String get handoffBackgroundSwitch => 'Dateien im Hintergrund empfangen';
+
+  @override
+  String get handoffBackgroundHint =>
+      'Du bekommst ein Popup, um Dateien von deinen anderen Geräten anzunehmen, auch wenn NeoCloud geschlossen ist. Solange es zuhört, zeigt es eine kleine Benachrichtigung.';
+
+  @override
+  String get handoffBackgroundNeedsReceive =>
+      'Schalte zuerst „Meine anderen Geräte dürfen Dateien hierher senden“ ein.';
+
+  @override
+  String get handoffBackgroundHintTitle =>
+      'Dateien auch bei geschlossener App erhalten?';
+
+  @override
+  String get handoffBackgroundHintBody =>
+      'Schalte „Dateien im Hintergrund empfangen“ ein, dann können deine anderen Geräte dir jederzeit Dateien schicken: Du bekommst ein Popup zum Annehmen, und sie landen in deinem Download-Ordner.';
+
+  @override
+  String get backgroundTurnOn => 'Einschalten';
+
+  @override
+  String get backgroundTitleReceive => 'Empfang am Laufen halten';
+
+  @override
+  String get backgroundTitleBoth => 'NeoCloud am Laufen halten';
+
+  @override
+  String get backgroundIntroReceiveAndroid =>
+      'NeoCloud kann dir Bescheid geben, wenn eines deiner anderen Geräte dir Dateien schickt, auch bei geschlossener App. Um Akku zu sparen, beenden Android und der Handyhersteller Apps im Hintergrund; mit diesen Einstellungen bleibt NeoCloud empfangsbereit.';
+
+  @override
+  String get backgroundIntroBothAndroid =>
+      'Kamera-Upload und der Empfang von Dateien laufen weiter, während NeoCloud geschlossen ist. Um Akku zu sparen, beenden Android und der Handyhersteller Apps im Hintergrund; mit diesen Einstellungen bleibt NeoCloud am Laufen.';
+
+  @override
+  String get backgroundReceiveTitle => 'Dateien im Hintergrund empfangen';
+
+  @override
+  String get backgroundReceiveDetail =>
+      'Zeigt eine kleine Benachrichtigung „Empfangsbereit“, damit Android NeoCloud zuhören lässt. Dateien von deinen anderen Geräten kommen dann mit einem Popup an.';
+
+  @override
+  String get backgroundBatteryDetailReceive =>
+      'Lässt Android NeoCloud auch bei ausgeschaltetem Bildschirm zuhören, damit Dateien in Sekunden statt Minuten ankommen.';
+
+  @override
+  String get backgroundBatteryDetailBoth =>
+      'Lässt Android NeoCloud im Hintergrund laufen: Sicherungen starten kurz nach einem Foto, und Dateien von deinen anderen Geräten kommen in Sekunden an.';
+
+  @override
+  String get backgroundNotificationsDetailReceive =>
+      'Nötig für das Popup, das dich um Annahme der Dateien bittet, und für die kleine Benachrichtigung „Empfangsbereit“.';
+
+  @override
+  String get backgroundNotificationsDetailBoth =>
+      'Zeigt den Fortschritt der Sicherung und das Popup, das dich um Annahme der Dateien bittet.';
+
+  @override
+  String get backgroundBannerTitleReceive =>
+      'Dateien kommen im Hintergrund womöglich nicht an';
 }

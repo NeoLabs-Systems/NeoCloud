@@ -277,7 +277,7 @@ function signatureOf(name) {
     case "welcome": return JSON.stringify([S.server, S.login && S.login.error]);
     case "approve": return JSON.stringify(S.login);
     case "connected": return S.username;
-    case "home": return JSON.stringify([S.status, S.pairs, S.paused, S.activity, S.keyLock, quota, Math.floor(Date.now() / 30000)]);
+    case "home": return JSON.stringify([S.status, S.pairs, S.paused, S.activity, S.keyLock, quota, S.send, send.files, send.devices, send.deviceError, send.busy, Math.floor(Date.now() / 30000)]);
     case "add": return JSON.stringify([view.flow, view.step, view.local, view.manual, view.remote && view.remote.folder, view.direction, view.busy, view.newFolders, view.tree && view.tree.rev]);
     case "edit": return JSON.stringify([view.id, S.pairs.find((p) => p.id === view.id), view.rev, view.tree && view.tree.rev]);
     case "issues": return JSON.stringify([view.id, S.status.pairs && S.status.pairs[view.id]]);
@@ -538,6 +538,7 @@ function home() {
     el("main", { class: "content" },
       overviewCard(),
       ...attentionCards(),
+      S.send && S.send.enabled ? [el("div", { class: "section-head" }, el("h2", {}, "Send to device")), sendCard()] : null,
       el("div", { class: "section-head" },
         el("h2", {}, "Folders"),
         button("Add folder", () => go(newWizard()), { kind: "ghost", icon: "plus" })),
@@ -678,6 +679,12 @@ function folderList() {
         iconButton(paused ? "play" : "pause", paused ? "Resume" : "Pause", () => act(() => call("PUT", "/api/pairs/" + pair.id, { paused: !paused }))),
         iconButton("edit", "Edit", () => go({ name: "edit", id: pair.id }))));
   }));
+}
+
+function sendMenuText() {
+  return S.os === "windows"
+    ? "Adds “Send to my NeoCloud device” to the Send to menu in File Explorer."
+    : "Adds “Send to my device” to Open with and the Nautilus, Nemo and Dolphin menus.";
 }
 
 function sidebarTitle() {
@@ -1205,6 +1212,8 @@ function settings() {
           toggle("paused", S.paused, (on) => set({ paused: on })), "paused"),
         settingRow(sidebarTitle(), "Shows the NeoCloud folder this app created for you.",
           toggle("sidebar", S.global.fileManagerSidebar, (on) => setGlobal({ fileManagerSidebar: on })), "sidebar"),
+        S.os === "darwin" ? null : settingRow("Add to the right-click Send to menu", sendMenuText(),
+          toggle("sendmenu", S.global.sendToMenu, (on) => setGlobal({ sendToMenu: on })), "sendmenu"),
         settingRow("Notifications", "", selectField("notifications", S.global.notifications,
           [["errors", "Problems only"], ["all", "Everything"], ["off", "Off"]], (value) => setGlobal({ notifications: value })), "notifications")),
       el("div", { class: "section-head" }, el("h2", {}, "Network")),

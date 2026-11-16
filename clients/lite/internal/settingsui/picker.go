@@ -16,7 +16,10 @@ import (
 // as errPickerCancelled.
 type commandRunner func(ctx context.Context, name string, args ...string) ([]byte, error)
 
-var errPickerCancelled = errors.New("cancelled")
+var (
+	errPickerCancelled = errors.New("cancelled")
+	errAlreadyPicking  = errors.New("a dialog is already open")
+)
 
 type pickerCommand struct {
 	name string
@@ -80,7 +83,7 @@ func runCommand(ctx context.Context, name string, args ...string) ([]byte, error
 // to show (the page then asks for the path as text).
 func (s *Server) pickFolder(r *http.Request) (any, error) {
 	if !s.picking.TryLock() {
-		return nil, errors.New("a folder dialog is already open")
+		return nil, errAlreadyPicking
 	}
 	defer s.picking.Unlock()
 	title := pickerTitle
@@ -107,7 +110,17 @@ const (
 
 // pickWith tries the native folder dialogs of this system in order.
 func pickWith(ctx context.Context, run commandRunner, lookPath func(string) (string, error), title string) (string, pickOutcome) {
-	for _, command := range pickerCommands(runtime.GOOS, title, lookPath) {
+	out, outcome := firstAnswer(ctx, run, pickerCommands(runtime.GOOS, title, lookPath))
+	if outcome != pickedFolder {
+		return "", outcome
+	}
+	return filepath.Clean(strings.TrimSpace(out)), pickedFolder
+}
+
+// firstAnswer runs the dialogs in order until one answers: its output, or
+// that the person cancelled, or that none could run.
+func firstAnswer(ctx context.Context, run commandRunner, commands []pickerCommand) (string, pickOutcome) {
+	for _, command := range commands {
 		out, err := run(ctx, command.name, command.args...)
 		if errors.Is(err, errPickerCancelled) {
 			return "", pickCancelled
@@ -115,11 +128,10 @@ func pickWith(ctx context.Context, run commandRunner, lookPath func(string) (str
 		if err != nil {
 			continue // not installed or not runnable here: try the next one
 		}
-		path := strings.TrimSpace(string(out))
-		if path == "" {
+		if strings.TrimSpace(string(out)) == "" {
 			return "", pickCancelled
 		}
-		return filepath.Clean(path), pickedFolder
+		return string(out), pickedFolder
 	}
 	return "", pickUnsupported
 }

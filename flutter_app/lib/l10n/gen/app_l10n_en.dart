@@ -8420,4 +8420,116 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get handoffSectionTitle => 'Send to device';
+
+  @override
+  String get handoffChannelOffers => 'Incoming files';
+
+  @override
+  String get handoffChannelService => 'Ready to receive';
+
+  @override
+  String get handoffChannelTransfers => 'Receiving files';
+
+  @override
+  String get handoffServiceTitle => 'NeoCloud is ready to receive files';
+
+  @override
+  String handoffBackgroundOfferOne(String name) {
+    return '$name wants to send you a file';
+  }
+
+  @override
+  String handoffBackgroundOfferMany(String name, String count) {
+    return '$name wants to send you $count files';
+  }
+
+  @override
+  String handoffReceivingFrom(String name) {
+    return 'Receiving from $name';
+  }
+
+  @override
+  String get handoffReceivedOne => 'File received';
+
+  @override
+  String handoffReceivedMany(String count) {
+    return '$count files received';
+  }
+
+  @override
+  String get handoffSavedIn => 'Saved in Downloads/NeoCloud';
+
+  @override
+  String get handoffOpen => 'Open';
+
+  @override
+  String get handoffReceiveFailedTitle => 'Couldn’t receive the files';
+
+  @override
+  String handoffReceiveFailedBody(String name) {
+    return 'Ask $name to send them again.';
+  }
+
+  @override
+  String get handoffBackgroundSwitch => 'Receive files in the background';
+
+  @override
+  String get handoffBackgroundHint =>
+      'Get a popup to accept files from your other devices, even when NeoCloud is closed. Shows a small notification while it listens.';
+
+  @override
+  String get handoffBackgroundNeedsReceive =>
+      'Turn on “Let my other devices send files here” first.';
+
+  @override
+  String get handoffBackgroundHintTitle =>
+      'Get files even when NeoCloud is closed?';
+
+  @override
+  String get handoffBackgroundHintBody =>
+      'Turn on “Receive files in the background” and your other devices can send you files at any time: you get a popup to accept them, and they land in your Downloads folder.';
+
+  @override
+  String get backgroundTurnOn => 'Turn on';
+
+  @override
+  String get backgroundTitleReceive => 'Keep receiving files';
+
+  @override
+  String get backgroundTitleBoth => 'Keep NeoCloud running';
+
+  @override
+  String get backgroundIntroReceiveAndroid =>
+      'NeoCloud can tell you when another of your devices sends you files, even while the app is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud listening.';
+
+  @override
+  String get backgroundIntroBothAndroid =>
+      'Camera upload and receiving files keep going while NeoCloud is closed. To save battery, Android and your phone’s maker stop apps in the background; these settings keep NeoCloud running.';
+
+  @override
+  String get backgroundReceiveTitle => 'Receive files in the background';
+
+  @override
+  String get backgroundReceiveDetail =>
+      'Shows a small “ready to receive” notification so Android keeps NeoCloud listening. Files from your other devices then arrive with a popup.';
+
+  @override
+  String get backgroundBatteryDetailReceive =>
+      'Lets Android keep NeoCloud listening while the screen is off, so files arrive within seconds instead of minutes.';
+
+  @override
+  String get backgroundBatteryDetailBoth =>
+      'Lets Android run NeoCloud in the background: backups start soon after you take a photo and files from your other devices arrive within seconds.';
+
+  @override
+  String get backgroundNotificationsDetailReceive =>
+      'Needed for the popup that asks you to accept files, and for the small “ready to receive” notification.';
+
+  @override
+  String get backgroundNotificationsDetailBoth =>
+      'Shows the backup’s progress and the popup that asks you to accept files.';
+
+  @override
+  String get backgroundBannerTitleReceive =>
+      'Files may not arrive in the background';
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/neolabs/neocloud/clients/lite/internal/instance"
 	"github.com/neolabs/neocloud/clients/lite/internal/keylock"
 	"github.com/neolabs/neocloud/clients/lite/internal/notify"
+	"github.com/neolabs/neocloud/clients/lite/internal/sendmenu"
 	"github.com/neolabs/neocloud/clients/lite/internal/settingsui"
 	"github.com/neolabs/neocloud/clients/lite/internal/tray"
 )
@@ -66,7 +67,10 @@ func cmdRun(args []string) error {
 	if *headless {
 		lock.Prompt = func(message string) { fmt.Fprintln(os.Stderr, message) }
 	}
-	opts := settingsui.Options{WindowProfile: filepath.Join(a.dir, "app-window"), Logger: logger}
+	ctx, cancel := signalContext()
+	defer cancel()
+	sender := handoff.NewSender(ctx, a.cfg, logger)
+	opts := settingsui.Options{WindowProfile: filepath.Join(a.dir, "app-window"), Logger: logger, Sender: sender}
 	if !*headless {
 		opts.LogPath = filepath.Join(a.dir, logFileName)
 	}
@@ -75,9 +79,8 @@ func cmdRun(args []string) error {
 		return err
 	}
 	defer settings.Close()
+	go sendmenu.Reconcile(a.cfg, logger)
 
-	ctx, cancel := signalContext()
-	defer cancel()
 	go lock.Run(ctx)
 	done := make(chan error, 1)
 	go func() { done <- a.engine.Run(ctx) }()
@@ -90,12 +93,16 @@ func cmdRun(args []string) error {
 		return <-done
 	}
 	notify.Watch(a.engine, a.cfg, logger)
-	receiver := handoff.New(a.cfg, logger)
-	receiver.Notify = func(title, body string) {
+	showNotice := func(title, body string) {
 		if err := notify.Show(title, body); err != nil {
 			logger.Printf("notification: %v", err)
 		}
 	}
+	sender.Notify = showNotice
+	receiver := handoff.New(a.cfg, logger)
+	receiver.Notify = showNotice
+	receiver.Updated = sender.Kick
+	flow := &handoff.Flow{Sender: sender, Dialogs: handoff.NewNativeDialogs(), ChooseFiles: settingsui.ChooseFiles}
 	receiver.ChooseFolder = func(ctx context.Context) (string, bool) {
 		return settingsui.ChooseFolder(ctx, "Choose where to save the files")
 	}
@@ -126,7 +133,8 @@ func cmdRun(args []string) error {
 				openWindow()
 			}
 		},
-		OnQuit: cancel,
+		OnQuit:    cancel,
+		SendFiles: func() { flow.Run(ctx, nil) },
 		SetReceive: func(on bool) {
 			err := a.cfg.Update(func(c *config.Config) error {
 				c.ReceiveFromDevices = &on

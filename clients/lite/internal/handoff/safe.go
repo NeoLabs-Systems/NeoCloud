@@ -1,7 +1,8 @@
-// Package handoff receives files other devices of the account send to this
-// computer ("Send to device", docs/handoff.md): it listens on the account's
-// event stream, tells the person, asks where to save, downloads with resume
-// and keeps every write inside the chosen folder.
+// Package handoff is this computer's side of "Send to device"
+// (docs/handoff.md). Receiving: it listens on the account's event stream,
+// tells the person, asks where to save, downloads with resume and keeps every
+// write inside the chosen folder. Sending: it streams chosen files to another
+// of the account's online devices and follows the send to its outcome.
 package handoff
 
 import (

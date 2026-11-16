@@ -228,6 +228,10 @@ type GlobalSettings struct {
 	// ReceiveFromDevices lets the account's other devices send files here
 	// (Send to device); off keeps this computer out of their lists.
 	ReceiveFromDevices *bool `toml:"receive_from_devices,omitempty" json:"receiveFromDevices"`
+	// SendToMenu adds "Send to my device" to the file manager's menus
+	// (Windows: the Send to menu; Linux: Open with and the file manager's
+	// scripts). Off by default.
+	SendToMenu *bool `toml:"send_to_menu,omitempty" json:"sendToMenu"`
 }
 
 // Validate checks the global values.
@@ -276,6 +280,9 @@ func (g GlobalSettings) NotifyLevel() string { return orString(g.Notifications, 
 
 // ReceiveEnabled is ReceiveFromDevices with its default (on).
 func (g GlobalSettings) ReceiveEnabled() bool { return orTrue(g.ReceiveFromDevices) }
+
+// SendMenuEnabled is SendToMenu with its default (off).
+func (g GlobalSettings) SendMenuEnabled() bool { return g.SendToMenu != nil && *g.SendToMenu }
 
 // Sidebar is FileManagerSidebar with its default (on).
 func (g GlobalSettings) Sidebar() bool { return orTrue(g.FileManagerSidebar) }

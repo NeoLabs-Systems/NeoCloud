@@ -274,3 +274,34 @@ func TestPromptTextNamesDeviceAndCutsLongLists(t *testing.T) {
 		t.Error("control characters reached the dialog")
 	}
 }
+
+func TestForwardsUpdatesAndDeviceChangesToTheSender(t *testing.T) {
+	var mu sync.Mutex
+	var updated []string
+	var devices int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, ": connected\n\nevent: handoff:updated\ndata: {\"offer\":{\"id\":\"o9\",\"status\":\"delivered\"}}\n\nevent: handoff:devices\ndata: {}\n\n")
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	store, _ := config.Open(t.TempDir())
+	store.Update(func(c *config.Config) error {
+		c.Server, c.Token = server.URL, "t"
+		off := false
+		c.ReceiveFromDevices = &off // sending works with receiving off
+		return nil
+	})
+	r := New(store, log.New(io.Discard, "", 0))
+	r.Updated = func(id string) { mu.Lock(); updated = append(updated, id); mu.Unlock() }
+	r.DevicesChanged = func() { mu.Lock(); devices++; mu.Unlock() }
+	ctx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { r.Run(ctx); close(done) }()
+	defer func() { stop(); <-done }()
+	waitFor(t, "the events", func() bool { mu.Lock(); defer mu.Unlock(); return len(updated) == 1 && devices == 1 })
+	if updated[0] != "o9" {
+		t.Errorf("updated: %v", updated)
+	}
+}

@@ -444,3 +444,27 @@ details.advanced .body { display: flex; flex-direction: column; gap: 10px; margi
   .setting { flex-wrap: wrap; }
   .setting select.input { width: 100%; }
 }
+
+/* ---------- Send to device ---------- */
+.send { overflow: hidden; }
+.send .drop { display: flex; align-items: center; gap: 14px; padding: 16px; }
+.send .drop .eicon { width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--raised); color: var(--text-2); }
+.send .drop .eicon svg { width: 18px; height: 18px; }
+.send .drop .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.send .drop .text span { color: var(--muted); font-size: 12.5px; }
+body.dropping .send { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-wash); }
+.send .files, .send .devices, .send .xfers:not(:empty) { border-top: 1px solid var(--border); }
+.send .file { display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 16px; font-size: 13px; }
+.send .file > svg { width: 15px; height: 15px; flex: none; color: var(--muted); }
+.send .file .ellipsis { flex: 1; }
+.send .device { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 16px; }
+.send .device > svg { width: 17px; height: 17px; flex: none; color: var(--text-2); }
+.send .device .ellipsis { flex: 1; font-weight: 500; }
+.send .devices.none { padding: 14px 16px; color: var(--muted); font-size: 13px; }
+.send .xfer { display: flex; align-items: center; gap: 10px; padding: 10px 6px 10px 16px; }
+.send .xfer + .xfer { border-top: 1px solid var(--border); }
+.send .xfer .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.send .xfer .local { font-weight: 500; }
+.send .xfer .state { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-2); }
+.send .xfer .meter { height: 4px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+.send .xfer .meter i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }

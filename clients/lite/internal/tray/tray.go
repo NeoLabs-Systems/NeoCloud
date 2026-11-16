@@ -36,6 +36,8 @@ type Options struct {
 	OpenSettings func()
 	OnReady      func()
 	OnQuit       func()
+	// SendFiles starts "Send files to device…": the file and device dialogs.
+	SendFiles func()
 	// SetReceive turns "Receive from my devices" (Send to device) on or off;
 	// the menu item reflects Config.
 	SetReceive func(bool)
@@ -69,6 +71,7 @@ func onReady(opts Options) {
 		folders[i].Hide()
 	}
 	systray.AddSeparator()
+	send := systray.AddMenuItem("Send files to device…", "Send files to another of your devices")
 	receive := systray.AddMenuItemCheckbox("Receive from my devices", "Let your other devices send files to this computer", opts.Config.Get().ReceiveEnabled())
 	settings := systray.AddMenuItem("Settings…", "")
 	quit := systray.AddMenuItem("Quit NeoCloud", "")
@@ -85,7 +88,7 @@ func onReady(opts Options) {
 			pause.SetTitle("Pause syncing")
 		}
 		// Signed out there is nothing to sync, pause or open on the web.
-		for _, item := range []*systray.MenuItem{web, syncNow, pause} {
+		for _, item := range []*systray.MenuItem{web, syncNow, pause, send} {
 			if cfg.LoggedIn() {
 				item.Enable()
 			} else {
@@ -135,6 +138,10 @@ func onReady(opts Options) {
 			case <-web.ClickedCh:
 				if server := opts.Config.Get().Server; server != "" {
 					browser.Open(server + "/app")
+				}
+			case <-send.ClickedCh:
+				if opts.SendFiles != nil {
+					go opts.SendFiles() // it waits on dialogs; the menu must stay responsive
 				}
 			case <-receive.ClickedCh:
 				on := !opts.Config.Get().ReceiveEnabled()
