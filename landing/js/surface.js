@@ -64,7 +64,7 @@
 
   /* ---------- static GitHub Pages hosts have no app ---------- */
   if (location.hostname.includes('github.io')) {
-    document.querySelectorAll('a.signin').forEach((a) => { a.style.display = 'none'; });
+    document.querySelectorAll('a.signin, a[href="/status"]').forEach((a) => { a.style.display = 'none'; });
     document.querySelectorAll('a[data-start]').forEach((a) => {
       a.href = 'https://github.com/NeoLabs-Systems/NeoCloud#-install';
     });

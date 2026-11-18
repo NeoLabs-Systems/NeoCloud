@@ -34,6 +34,9 @@ directories are writable; nothing else, so it is safe to poll (Docker's
 HEALTHCHECK, load balancers, `neocloud start`). `GET /api/version` →
 `{ name, version, node }`.
 
+`GET /status` serves the public status page, which refreshes from
+`/api/health` every minute.
+
 While the server shuts down (up to 30 s), new uploads get
 `503 SERVER_STOPPING` with `Retry-After: 30`; requests already running finish.
 

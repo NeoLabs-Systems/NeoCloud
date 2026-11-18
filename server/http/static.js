@@ -81,6 +81,7 @@ function registerStaticRoutes(app) {
   // The landing page at /. A mistyped address in a browser gets the 404
   // page; API clients keep their JSON error.
   if (fs.existsSync(path.join(LANDING_DIR, 'index.html'))) {
+    app.get('/status', (_req, res) => res.sendFile(path.join(LANDING_DIR, 'status.html')));
     app.use(express.static(LANDING_DIR));
     app.use((req, res, next) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();

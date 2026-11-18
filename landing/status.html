@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Live service status for NeoCloud.">
+  <title>System status · NeoCloud</title>
+  <meta name="theme-color" content="#0e1511" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
+  <meta property="og:site_name" content="NeoCloud">
+  <meta property="og:title" content="System status · NeoCloud">
+  <meta property="og:description" content="Is NeoCloud up? Live status of this server, database, and file storage.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/favicon.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/status.css">
+  <script src="/js/status.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="nav">
+      <a class="brand" href="/"><img src="/assets/logo.svg" alt="" width="32" height="32"><span>NeoCloud</span><span class="nav-divider"></span><span class="nav-label">STATUS</span></a>
+      <a class="back" href="/" aria-label="Back to product">← <span>Back to product</span></a>
+    </header>
+    <main>
+      <div class="intro"><div><div class="eyebrow"><span></span> SYSTEM STATUS</div><h1>System status</h1><p>Current service health for this NeoCloud instance.</p></div><div class="live"><span></span> AUTO REFRESH</div></div>
+      <section class="summary" aria-live="polite">
+        <div class="summary-main"><div class="status-icon unknown" id="status-icon"><span></span></div><div><div class="kicker">CURRENT STATUS</div><h2 id="overall">Checking status…</h2><p id="note">Connecting to the status endpoint.</p></div></div>
+        <div class="summary-meta"><span>LAST CHECKED</span><strong id="updated">—</strong><small>Refreshes every minute</small></div>
+      </section>
+      <section class="services" aria-labelledby="services-title">
+        <div class="section-head"><div><div class="kicker">SERVICE HEALTH</div><h2 id="services-title">Monitored components</h2></div></div>
+        <div class="component-list" id="components" aria-live="polite"></div>
+      </section>
+    </main>
+    <footer><span>NeoCloud <span class="footer-separator">/</span> System status</span><a href="/">Back to product ↗</a></footer>
+  </div>
+</body>
+</html>
