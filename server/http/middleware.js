@@ -1,5 +1,7 @@
 'use strict';
 
+const { analyticsConfig } = require('../analytics-config');
+
 const express = require('express');
 const session = require('express-session');
 const BaseSQLiteStore = require('better-sqlite3-session-store')(session);
@@ -59,6 +61,8 @@ function buildHelmetOptions({ secureCookies }) {
   const scriptSrc = ["'self'", "'unsafe-inline'", 'blob:', "'wasm-unsafe-eval'"];
   // blob:/data: let the PDF viewer and image decoders read in-memory files.
   const connectSrc = ["'self'", 'blob:', 'data:', ...(secureCookies ? ['wss:'] : ['ws:', 'wss:'])];
+  const analytics = analyticsConfig();
+  if (analytics) connectSrc.push(analytics.origin);
   if (allowExternal) {
     scriptSrc.push('https://www.gstatic.com');
     connectSrc.push('https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://www.gstatic.com');

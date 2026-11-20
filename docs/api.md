@@ -1384,3 +1384,7 @@ receiver), `accepted` (receiver is downloading), `delivered`, `declined`,
 | DELETE | `/api/handoff/offers/:id` | Sender only: `cancelled`, staged files deleted. |
 | GET | `/api/handoff/offers/:id/files/:fileId` | Receiver only, once accepted: the file with `Range` support (`206`, `416`); always an attachment. |
 | GET | `/api/handoff/offers/:id/zip` | Receiver only, once accepted: all files as a stored ZIP. |
+
+## Browser analytics
+
+`GET /_neolabs/analytics.js` serves the browser analytics script when analytics are enabled. See [Analytics](analytics.md) for configuration and data collection.

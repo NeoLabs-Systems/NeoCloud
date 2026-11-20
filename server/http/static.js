@@ -3,6 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const { registerAnalyticsClient, injectAnalytics } = require('../analytics');
+const { analyticsConfig } = require('../analytics-config');
 
 const FLUTTER_WEB_DIR = path.join(__dirname, '..', 'public');
 const LANDING_DIR = path.join(__dirname, '..', '..', 'landing');
@@ -31,7 +33,10 @@ function serveFlutterApp(req, res) {
   // Flutter resolves its assets against <base href>; the app lives under /app/.
   const html = fs.readFileSync(entry, 'utf8').replace('<base href="/">', '<base href="/app/">');
   res.set('Content-Type', 'text/html');
-  return res.send(html);
+  const signingPage = /^\/app\/sign(?:\/|$)/i.test(req.path);
+  if (signingPage) return res.send(html);
+  const withNotice = html.replace(/<\/head>/i, '<script defer src="/js/cookie-notice.js"></script>\n</head>');
+  return res.send(analyticsConfig() ? injectAnalytics(withNotice) : withNotice);
 }
 
 // A signing link is its own credential: never indexed, never sent on in a
@@ -64,7 +69,9 @@ function setSigningPageHeaders(req, res, next) {
 }
 
 function registerStaticRoutes(app) {
+  registerAnalyticsClient(app);
   app.use('/app/sign', setSigningPageHeaders);
+  app.get('/app/index.html', serveFlutterApp);
   app.use('/app', express.static(FLUTTER_WEB_DIR, { index: false, setHeaders: setFlutterStaticHeaders }));
   app.get(/^\/app(\/.*)?$/, serveFlutterApp);
 
@@ -82,6 +89,15 @@ function registerStaticRoutes(app) {
   // page; API clients keep their JSON error.
   if (fs.existsSync(path.join(LANDING_DIR, 'index.html'))) {
     app.get('/status', (_req, res) => res.sendFile(path.join(LANDING_DIR, 'status.html')));
+    app.get(['/', '/index.html'], (_req, res, next) => {
+      if (!analyticsConfig()) return next();
+      const entry = path.join(LANDING_DIR, 'index.html');
+      fs.readFile(entry, 'utf8', (error, html) => {
+        if (error) return next(error);
+        setNoStoreHeaders(res);
+        return res.type('html').send(injectAnalytics(html));
+      });
+    });
     app.use(express.static(LANDING_DIR));
     app.use((req, res, next) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();

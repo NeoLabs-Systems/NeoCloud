@@ -28,6 +28,7 @@ services:
       # a hop-count TRUST_PROXY: any client could then set its own address.
       - "127.0.0.1:3344:3344"
     environment:
+      ANALYTICS_ENABLED:
       # Every address people open NeoCloud at in a browser, comma-separated, e.g.
       # http://192.168.1.20:3344,https://cloud.example.com. Empty allows only localhost.
       ALLOWED_ORIGINS: ""

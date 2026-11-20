@@ -166,6 +166,7 @@ httpServer.on('error', (error) => {
 });
 
 httpServer.listen(PORT, () => {
+  require('./host_analytics').startHostAnalytics(httpServer);
   // Lets `neocloud backup restore` and `neocloud rollback` see that the
   // server runs, whichever service manager started it.
   fs.writeFileSync(PID_FILE, String(process.pid), { mode: 0o600 });
