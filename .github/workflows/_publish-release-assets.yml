@@ -1,6 +1,7 @@
 name: Reusable release assets
 
-# Publishes a checksum list after all client builds have completed.
+# Publishes a checksum list and the download buttons after all client
+# builds have completed.
 # The builds attach their own assets as soon as they finish.
 
 on:
@@ -20,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
       # Only the client builds: docker/build-push-action can upload its own
       # build-record artifacts, which are not release assets.
       - uses: actions/download-artifact@v4
@@ -40,3 +44,9 @@ jobs:
         run: |
           sha256sum -- * > SHA256SUMS.txt
           gh release upload --clobber --repo "$REPOSITORY" "$RELEASE_TAG" SHA256SUMS.txt
+
+      # Every build has attached its file by now: the buttons link to them.
+      - name: Refresh the download buttons in the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release_download_notes.js --tag "${{ inputs.release_tag }}"

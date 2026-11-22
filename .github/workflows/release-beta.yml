@@ -116,6 +116,12 @@ jobs:
                  --title "Beta ${RELEASE_TAG}" \
                  --generate-notes --prerelease --verify-tag
 
+      - name: Add download buttons to the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+        run: node scripts/release_download_notes.js --tag "$RELEASE_TAG"
+
       - id: sha
         run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
