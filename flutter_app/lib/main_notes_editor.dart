@@ -6,13 +6,16 @@ part of 'main.dart';
 // blocks. Saves by itself a moment after typing stops (NoteSession).
 
 class _NoteEditorView extends StatefulWidget {
-  const _NoteEditorView({super.key, required this.controller, required this.session, required this.notebooks, required this.onClose, required this.onDelete});
+  const _NoteEditorView({super.key, required this.controller, required this.session, required this.notebooks, required this.onClose, required this.onDelete, this.onEncrypt});
 
   final NeoCloudController controller;
   final NoteSession session;
   final List<String> notebooks;
   final VoidCallback onClose;
   final VoidCallback onDelete;
+
+  /// Moves the note into an encrypted notebook; null when it already is in one.
+  final VoidCallback? onEncrypt;
 
   @override
   State<_NoteEditorView> createState() => _NoteEditorViewState();
@@ -318,6 +321,7 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
                 await session.setProperties(archived: !note.archived, pinned: note.archived ? null : false);
                 if (!note.archived) widget.onClose();
               }),
+              if (widget.onEncrypt != null) _FileAction(Icons.enhanced_encryption_outlined, appStrings.notesEncryptAction, widget.onEncrypt!),
               _FileAction(Icons.delete_outline_rounded, appStrings.notesMoveToTrash, widget.onDelete, danger: true),
             ],
           ),
@@ -488,29 +492,38 @@ class _NoteTopBar extends StatelessWidget {
       child: Row(
         children: <Widget>[
           IconButton(tooltip: appStrings.notesBack, onPressed: onBack, icon: Icon(phone ? Icons.arrow_back_rounded : Icons.close_rounded, color: _textSecondary)),
-          if (!phone) ...<Widget>[
-            Flexible(
-              child: Text(
-                note.notebook.isEmpty ? appStrings.notesTitle : '${appStrings.notesTitle} / ${note.notebook}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: _textMuted),
-              ),
-            ),
-            const SizedBox(width: 14),
-          ],
-          Semantics(
-            liveRegion: true,
+          // Where the note is and whether it is saved take the free width,
+          // so the actions sit at the right edge.
+          Expanded(
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                const SizedBox(width: 6),
-                Text(label, style: TextStyle(fontSize: 12, color: _textSecondary)),
+                if (!phone) ...<Widget>[
+                  Flexible(
+                    child: Text(
+                      note.notebook.isEmpty ? appStrings.notesTitle : '${appStrings.notesTitle} / ${note.notebook}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: _textMuted),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                ],
+                Flexible(
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                        const SizedBox(width: 6),
+                        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: _textSecondary))),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const Spacer(),
           if (aiOn)
             phone
                 ? IconButton(tooltip: appStrings.notesAi, onPressed: onAi, icon: Icon(Icons.auto_awesome_outlined, color: _accent))

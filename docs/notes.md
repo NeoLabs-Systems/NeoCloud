@@ -68,8 +68,12 @@ names and content are encrypted in the app before they leave it:
 - Locked notebooks show a lock and ask for the passphrase in place of the
   notes. Unlocked ones join "All notes"; locking the vault closes an open
   note from it.
-- AI is off for these notes (AI never reads vault files), and a note can't be
-  moved into or out of an encrypted notebook (`VAULT_BOUNDARY`).
+- AI is off for these notes (AI never reads vault files). A note can't be
+  moved across the vault boundary on the server (`VAULT_BOUNDARY`), so
+  "Move to encrypted notebook" in a note's ⋯ menu makes an encrypted copy
+  there (creating or unlocking the notebook first) and moves the original to
+  the trash, where it stays, unencrypted, until the trash is emptied – the
+  app says so.
 - The parser (`server/utils/note_markdown.js`) reads a simple YAML subset
   (scalars and lists of scalars) and writes the same subset back.
 

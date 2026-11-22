@@ -90,8 +90,10 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
     return true;
   }
 
-  Future<void> _create() async {
-    if (!_checksMatch) {
+  /// [skipCheck]: the person chose not to type the words back (their call;
+  /// the words were shown and they ticked that they saved them).
+  Future<void> _create({bool skipCheck = false}) async {
+    if (!skipCheck && !_checksMatch) {
       setState(() => _error = appStrings.vaultRecoveryCheckWrong);
       return;
     }
@@ -177,6 +179,14 @@ class _NewVaultDialogState extends State<_NewVaultDialog> {
         const SizedBox(height: AppSpacing.sm),
       ],
       _InlineNote(message: appStrings.vaultWarningCallout, icon: Icons.warning_amber_rounded, color: _warning),
+      const SizedBox(height: AppSpacing.xs),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          onPressed: _busy ? null : () => unawaited(_create(skipCheck: true)),
+          child: Text(appStrings.vaultSkipCheck),
+        ),
+      ),
     ];
   }
 

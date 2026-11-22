@@ -58,6 +58,7 @@ import 'src/mobile/camera_upload.dart';
 import 'src/mobile/qr_scanner.dart';
 import 'src/mobile/share_intake.dart';
 import 'src/navigation/app_route.dart';
+import 'src/notes/note_frontmatter.dart';
 import 'src/notes/note_markdown.dart';
 import 'src/notes/note_models.dart';
 import 'src/notes/note_session.dart';

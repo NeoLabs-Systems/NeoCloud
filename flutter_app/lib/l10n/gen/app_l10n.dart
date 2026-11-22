@@ -14579,6 +14579,36 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Encrypted'**
   String get notesEncrypted;
+
+  /// No description provided for @vaultSkipCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip the check and create the vault'**
+  String get vaultSkipCheck;
+
+  /// No description provided for @notesEncryptAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to encrypted notebook'**
+  String get notesEncryptAction;
+
+  /// No description provided for @notesEncryptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypt this note'**
+  String get notesEncryptTitle;
+
+  /// No description provided for @notesEncryptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The note is encrypted on this device with the notebook’s passphrase; the server only stores ciphertext and AI can’t read it. The unencrypted copy goes to the trash – empty the trash to remove it for good.'**
+  String get notesEncryptBody;
+
+  /// No description provided for @notesEncryptedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Note encrypted. Its unencrypted copy is in the trash until you empty it.'**
+  String get notesEncryptedDone;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

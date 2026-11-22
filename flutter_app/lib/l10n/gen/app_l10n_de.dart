@@ -8947,4 +8947,21 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get notesEncrypted => 'Verschlüsselt';
+
+  @override
+  String get vaultSkipCheck => 'Prüfung überspringen und Tresor erstellen';
+
+  @override
+  String get notesEncryptAction => 'In verschlüsseltes Notizbuch verschieben';
+
+  @override
+  String get notesEncryptTitle => 'Diese Notiz verschlüsseln';
+
+  @override
+  String get notesEncryptBody =>
+      'Die Notiz wird auf diesem Gerät mit der Passphrase des Notizbuchs verschlüsselt; der Server speichert nur Chiffretext und die KI kann sie nicht lesen. Die unverschlüsselte Kopie kommt in den Papierkorb – leere ihn, um sie endgültig zu entfernen.';
+
+  @override
+  String get notesEncryptedDone =>
+      'Notiz verschlüsselt. Die unverschlüsselte Kopie liegt im Papierkorb, bis du ihn leerst.';
 }

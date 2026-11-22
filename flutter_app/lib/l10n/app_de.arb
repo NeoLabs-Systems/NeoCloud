@@ -2526,5 +2526,10 @@
   "vaultShortPassphraseWarning": "Kürzer als {count} Zeichen: dringend abgeraten. Niemand kann eine Tresor-Passphrase zurücksetzen, und eine kurze ist viel leichter zu erraten.",
   "notesDone": "Fertig",
   "notesNewEncryptedChip": "Verschlüsseltes Notizbuch",
-  "notesEncrypted": "Verschlüsselt"
+  "notesEncrypted": "Verschlüsselt",
+  "vaultSkipCheck": "Prüfung überspringen und Tresor erstellen",
+  "notesEncryptAction": "In verschlüsseltes Notizbuch verschieben",
+  "notesEncryptTitle": "Diese Notiz verschlüsseln",
+  "notesEncryptBody": "Die Notiz wird auf diesem Gerät mit der Passphrase des Notizbuchs verschlüsselt; der Server speichert nur Chiffretext und die KI kann sie nicht lesen. Die unverschlüsselte Kopie kommt in den Papierkorb – leere ihn, um sie endgültig zu entfernen.",
+  "notesEncryptedDone": "Notiz verschlüsselt. Die unverschlüsselte Kopie liegt im Papierkorb, bis du ihn leerst."
 }

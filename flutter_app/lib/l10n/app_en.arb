@@ -4377,5 +4377,10 @@
   "@vaultShortPassphraseWarning": {"placeholders": {"count": {"type": "int"}}},
   "notesDone": "Done",
   "notesNewEncryptedChip": "Encrypted notebook",
-  "notesEncrypted": "Encrypted"
+  "notesEncrypted": "Encrypted",
+  "vaultSkipCheck": "Skip the check and create the vault",
+  "notesEncryptAction": "Move to encrypted notebook",
+  "notesEncryptTitle": "Encrypt this note",
+  "notesEncryptBody": "The note is encrypted on this device with the notebook’s passphrase; the server only stores ciphertext and AI can’t read it. The unencrypted copy goes to the trash – empty the trash to remove it for good.",
+  "notesEncryptedDone": "Note encrypted. Its unencrypted copy is in the trash until you empty it."
 }

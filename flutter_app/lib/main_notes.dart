@@ -146,16 +146,27 @@ class _NotesPageState extends State<NotesPage> {
 
   Future<void> _openNote(String id) async {
     final card = _cards.where((item) => item.id == id).firstOrNull;
-    if (card == null) return;
-    await _closeNote();
+    if (card == null || _open?.note.id == id) return;
     try {
       final store = _storeFor(card);
       final note = await store.load(id);
       if (!mounted) return;
-      setState(() => _open = NoteSession(store, note));
+      _swapTo(NoteSession(store, note));
     } catch (error) {
       _toast(controller.friendlyError(error));
     }
+  }
+
+  /// Shows [next] in place of the open note at once (no frame of the grid
+  /// in between), then saves and lets go of the one it replaced.
+  void _swapTo(NoteSession next) {
+    final previous = _open;
+    setState(() => _open = next);
+    if (previous == null) return;
+    unawaited(previous.flush().whenComplete(() {
+      previous.dispose();
+      if (mounted) unawaited(_load());
+    }));
   }
 
   Future<void> _closeNote() async {
@@ -176,10 +187,7 @@ class _NotesPageState extends State<NotesPage> {
           ? await controller.client.createNote(title: title, body: body, notebook: _notebook == null || _notebook!.isEmpty ? null : _notebook)
           : await _vaultStore(vault).create(title: title, body: body);
       if (!mounted) return;
-      if (open) {
-        await _closeNote();
-        if (mounted) setState(() => _open = NoteSession(store, note));
-      }
+      if (open) _swapTo(NoteSession(store, note));
       unawaited(_load());
     } catch (error) {
       _toast(controller.friendlyError(error));
@@ -241,6 +249,7 @@ class _NotesPageState extends State<NotesPage> {
             notebooks: _listing.notebooks,
             onClose: () => unawaited(_closeNote()),
             onDelete: () => unawaited(_delete(open.note)),
+            onEncrypt: open.note.encrypted ? null : () => unawaited(_encrypt(open)),
           );
         }
         if (open != null) {
@@ -260,6 +269,7 @@ class _NotesPageState extends State<NotesPage> {
                   notebooks: _listing.notebooks,
                   onClose: () => unawaited(_closeNote()),
                   onDelete: () => unawaited(_delete(open.note)),
+                  onEncrypt: open.note.encrypted ? null : () => unawaited(_encrypt(open)),
                 ),
               ),
             ],
@@ -372,14 +382,47 @@ class _NotesPageState extends State<NotesPage> {
   /// An encrypted notebook: a vault in the Notes folder, set up with the
   /// same passphrase and recovery words as any vault.
   Future<void> _newEncryptedNotebook() async {
+    final created = await _createEncryptedNotebook();
+    if (created != null) _filter(vault: created);
+  }
+
+  /// Sets up a vault in the Notes folder; the new notebook, or null.
+  Future<EncryptedNotebook?> _createEncryptedNotebook() async {
     try {
       final rootId = _listing.rootId ?? await controller.client.notesRootId();
-      if (!mounted) return;
+      if (!mounted) return null;
       final folder = await showNewVaultDialog(context, controller, parentId: rootId);
-      if (folder == null || !mounted) return;
+      if (folder == null || !mounted) return null;
       await _load();
-      final created = _listing.encryptedNotebooks.where((item) => item.folderId == folder.id).firstOrNull;
-      if (created != null) _filter(vault: created);
+      return _listing.encryptedNotebooks.where((item) => item.folderId == folder.id).firstOrNull;
+    } catch (error) {
+      _toast(controller.friendlyError(error));
+      return null;
+    }
+  }
+
+  /// Turns an ordinary note into an encrypted one: an encrypted copy in the
+  /// chosen encrypted notebook, then the original to the trash (a note can't
+  /// cross into a vault on the server, like a file can't).
+  Future<void> _encrypt(NoteSession session) async {
+    final choice = await _pickEncryptedNotebook(context, _listing.encryptedNotebooks);
+    if (choice == null || !mounted) return;
+    final notebook = choice.vaultId.isEmpty ? await _createEncryptedNotebook() : choice;
+    if (notebook == null || !mounted) return;
+    if (!controller.vaults.isUnlocked(notebook.vaultId) && !await _unlockVault(context, controller, notebook)) return;
+    try {
+      await session.flush();
+      final plain = session.note;
+      final store = _vaultStore(notebook);
+      final encrypted = await store.create(
+        title: plain.title,
+        body: plain.body,
+        properties: NoteProperties(tags: plain.tags, pinned: plain.pinned, archived: plain.archived, color: plain.color),
+      );
+      await ServerNoteStore(controller.client).trash(plain.id);
+      if (!mounted) return;
+      _swapTo(NoteSession(store, encrypted));
+      _toast(appStrings.notesEncryptedDone);
     } catch (error) {
       _toast(controller.friendlyError(error));
     }
@@ -914,4 +957,73 @@ Future<String?> _askText(BuildContext context, {required String title, required 
       ],
     ),
   ).whenComplete(input.dispose);
+}
+
+/// Which encrypted notebook a note goes to; a notebook with an empty
+/// `vaultId` means "make a new one".
+Future<EncryptedNotebook?> _pickEncryptedNotebook(BuildContext context, List<EncryptedNotebook> notebooks) {
+  return showAdaptiveSheet<EncryptedNotebook>(
+    context: context,
+    builder: (dialogContext) => _AdaptiveDialog(
+      icon: Icon(Icons.enhanced_encryption_outlined, color: _accent),
+      title: Text(appStrings.notesEncryptTitle),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(appStrings.notesEncryptBody, style: TextStyle(color: _textSecondary, height: 1.45)),
+            const SizedBox(height: AppSpacing.sm),
+            for (final notebook in notebooks)
+              ListTile(leading: const Icon(Icons.lock_outline_rounded), title: Text(notebook.name), onTap: () => Navigator.of(dialogContext).pop(notebook)),
+            ListTile(
+              leading: const Icon(Icons.add_rounded),
+              title: Text(appStrings.notesNewEncryptedChip),
+              onTap: () => Navigator.of(dialogContext).pop(const EncryptedNotebook(vaultId: '', folderId: '', name: '')),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.cancel))],
+    ),
+  );
+}
+
+/// Asks for an encrypted notebook's passphrase; true once it is unlocked.
+Future<bool> _unlockVault(BuildContext context, NeoCloudController controller, EncryptedNotebook notebook) async {
+  var closed = false;
+  final unlocked = await showAdaptiveSheet<bool>(
+    context: context,
+    builder: (dialogContext) => _AdaptiveDialog(
+      title: Text(notebook.name),
+      content: SizedBox(
+        width: 420,
+        // Closes by itself once the passphrase was right.
+        child: ListenableBuilder(
+          listenable: controller.vaults,
+          builder: (context, child) {
+            if (!closed && controller.vaults.isUnlocked(notebook.vaultId)) {
+              closed = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
+              });
+            }
+            return child!;
+          },
+          child: _VaultUnlockCard(controller: controller, vaultId: notebook.vaultId, folderName: notebook.name),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            closed = true;
+            Navigator.of(dialogContext).pop(controller.vaults.isUnlocked(notebook.vaultId));
+          },
+          child: Text(appStrings.close),
+        ),
+      ],
+    ),
+  );
+  return unlocked == true || controller.vaults.isUnlocked(notebook.vaultId);
 }

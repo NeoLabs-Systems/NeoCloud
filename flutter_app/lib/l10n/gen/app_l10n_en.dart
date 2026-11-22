@@ -8856,4 +8856,21 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get notesEncrypted => 'Encrypted';
+
+  @override
+  String get vaultSkipCheck => 'Skip the check and create the vault';
+
+  @override
+  String get notesEncryptAction => 'Move to encrypted notebook';
+
+  @override
+  String get notesEncryptTitle => 'Encrypt this note';
+
+  @override
+  String get notesEncryptBody =>
+      'The note is encrypted on this device with the notebook’s passphrase; the server only stores ciphertext and AI can’t read it. The unencrypted copy goes to the trash – empty the trash to remove it for good.';
+
+  @override
+  String get notesEncryptedDone =>
+      'Note encrypted. Its unencrypted copy is in the trash until you empty it.';
 }
