@@ -13949,6 +13949,612 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Files may not arrive in the background'**
   String get backgroundBannerTitleReceive;
+
+  /// No description provided for @notesNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesNav;
+
+  /// No description provided for @notesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesTitle;
+
+  /// No description provided for @notesArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get notesArchiveTitle;
+
+  /// No description provided for @notesSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notes'**
+  String get notesSearch;
+
+  /// No description provided for @notesArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get notesArchive;
+
+  /// No description provided for @notesUnarchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Move out of archive'**
+  String get notesUnarchive;
+
+  /// No description provided for @notesArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Note archived.'**
+  String get notesArchived;
+
+  /// No description provided for @notesUnarchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Note moved out of the archive.'**
+  String get notesUnarchived;
+
+  /// No description provided for @notesBackToNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to notes'**
+  String get notesBackToNotes;
+
+  /// No description provided for @notesAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All notes'**
+  String get notesAll;
+
+  /// No description provided for @notesNewNotebook.
+  ///
+  /// In en, this message translates to:
+  /// **'New notebook'**
+  String get notesNewNotebook;
+
+  /// No description provided for @notesNewNotebookChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Notebook'**
+  String get notesNewNotebookChip;
+
+  /// No description provided for @notesNotebookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of the notebook'**
+  String get notesNotebookName;
+
+  /// No description provided for @notesNoNotebook.
+  ///
+  /// In en, this message translates to:
+  /// **'No notebook'**
+  String get notesNoNotebook;
+
+  /// No description provided for @notesMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to notebook'**
+  String get notesMoveTo;
+
+  /// No description provided for @notesTakeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a note…'**
+  String get notesTakeNote;
+
+  /// No description provided for @notesNewChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'New checklist'**
+  String get notesNewChecklist;
+
+  /// No description provided for @notesOpenEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in the editor'**
+  String get notesOpenEditor;
+
+  /// No description provided for @notesNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New note'**
+  String get notesNew;
+
+  /// No description provided for @notesNewShort.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get notesNewShort;
+
+  /// No description provided for @notesPinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get notesPinned;
+
+  /// No description provided for @notesOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get notesOthers;
+
+  /// No description provided for @notesPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get notesPin;
+
+  /// No description provided for @notesUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get notesUnpin;
+
+  /// No description provided for @notesColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get notesColor;
+
+  /// No description provided for @notesColorNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No color'**
+  String get notesColorNone;
+
+  /// No description provided for @notesColorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get notesColorRed;
+
+  /// No description provided for @notesColorOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get notesColorOrange;
+
+  /// No description provided for @notesColorAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get notesColorAmber;
+
+  /// No description provided for @notesColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get notesColorGreen;
+
+  /// No description provided for @notesColorTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get notesColorTeal;
+
+  /// No description provided for @notesColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get notesColorBlue;
+
+  /// No description provided for @notesColorPurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get notesColorPurple;
+
+  /// No description provided for @notesColorGray.
+  ///
+  /// In en, this message translates to:
+  /// **'Gray'**
+  String get notesColorGray;
+
+  /// No description provided for @notesMoveToTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to trash'**
+  String get notesMoveToTrash;
+
+  /// No description provided for @notesDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move this note to the trash?'**
+  String get notesDeleteTitle;
+
+  /// No description provided for @notesLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes could not be loaded'**
+  String get notesLoadFailed;
+
+  /// No description provided for @notesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes yet'**
+  String get notesEmptyTitle;
+
+  /// No description provided for @notesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Write something in the bar above. Notes are saved as files in your Notes folder.'**
+  String get notesEmptyBody;
+
+  /// No description provided for @notesNoMatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get notesNoMatchTitle;
+
+  /// No description provided for @notesNoMatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No note matches this search or filter.'**
+  String get notesNoMatchBody;
+
+  /// No description provided for @notesArchiveEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The archive is empty'**
+  String get notesArchiveEmptyTitle;
+
+  /// No description provided for @notesArchiveEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived notes wait here, out of the way.'**
+  String get notesArchiveEmptyBody;
+
+  /// No description provided for @notesEmptyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This note is empty.'**
+  String get notesEmptyNote;
+
+  /// No description provided for @notesTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get notesTitleHint;
+
+  /// No description provided for @notesBodyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write, or type / for blocks'**
+  String get notesBodyHint;
+
+  /// No description provided for @notesAddTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a tag'**
+  String get notesAddTag;
+
+  /// No description provided for @notesAddTagChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get notesAddTagChip;
+
+  /// No description provided for @notesTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get notesTagName;
+
+  /// No description provided for @notesBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to notes'**
+  String get notesBack;
+
+  /// No description provided for @notesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get notesSaved;
+
+  /// No description provided for @notesUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved yet'**
+  String get notesUnsaved;
+
+  /// No description provided for @notesSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get notesSaving;
+
+  /// No description provided for @notesSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved – will try again when you type'**
+  String get notesSaveFailed;
+
+  /// No description provided for @notesConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed elsewhere'**
+  String get notesConflict;
+
+  /// No description provided for @notesConflictMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This note was changed on another device. Your text is not saved yet.'**
+  String get notesConflictMessage;
+
+  /// No description provided for @notesKeepMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep my text'**
+  String get notesKeepMine;
+
+  /// No description provided for @notesTakeTheirs.
+  ///
+  /// In en, this message translates to:
+  /// **'Load the other version'**
+  String get notesTakeTheirs;
+
+  /// No description provided for @notesEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get notesEdit;
+
+  /// No description provided for @notesRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get notesRead;
+
+  /// No description provided for @notesAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get notesAi;
+
+  /// No description provided for @notesAskAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI'**
+  String get notesAskAi;
+
+  /// No description provided for @notesSuggestedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested title:'**
+  String get notesSuggestedTitle;
+
+  /// No description provided for @notesUseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use title'**
+  String get notesUseTitle;
+
+  /// No description provided for @notesBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get notesBlocks;
+
+  /// No description provided for @notesBlockChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get notesBlockChecklist;
+
+  /// No description provided for @notesBlockHeading1.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading'**
+  String get notesBlockHeading1;
+
+  /// No description provided for @notesBlockHeading2.
+  ///
+  /// In en, this message translates to:
+  /// **'Subheading'**
+  String get notesBlockHeading2;
+
+  /// No description provided for @notesBlockBullets.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulleted list'**
+  String get notesBlockBullets;
+
+  /// No description provided for @notesBlockNumbered.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered list'**
+  String get notesBlockNumbered;
+
+  /// No description provided for @notesBlockQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote'**
+  String get notesBlockQuote;
+
+  /// No description provided for @notesBlockCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get notesBlockCode;
+
+  /// No description provided for @notesBlockDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'Divider'**
+  String get notesBlockDivider;
+
+  /// No description provided for @notesBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get notesBold;
+
+  /// No description provided for @notesItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get notesItalic;
+
+  /// No description provided for @notesStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strikethrough'**
+  String get notesStrike;
+
+  /// No description provided for @notesCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get notesCode;
+
+  /// No description provided for @notesLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get notesLink;
+
+  /// No description provided for @notesAiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI help'**
+  String get notesAiTitle;
+
+  /// No description provided for @notesAiOnSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'On the selected text'**
+  String get notesAiOnSelection;
+
+  /// No description provided for @notesAiOnNoteText.
+  ///
+  /// In en, this message translates to:
+  /// **'On the note'**
+  String get notesAiOnNoteText;
+
+  /// No description provided for @notesAiOnWholeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'On the whole note'**
+  String get notesAiOnWholeNote;
+
+  /// No description provided for @notesAiImprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Improve writing'**
+  String get notesAiImprove;
+
+  /// No description provided for @notesAiShorten.
+  ///
+  /// In en, this message translates to:
+  /// **'Make shorter'**
+  String get notesAiShorten;
+
+  /// No description provided for @notesAiContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue writing'**
+  String get notesAiContinue;
+
+  /// No description provided for @notesAiSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize'**
+  String get notesAiSummarize;
+
+  /// No description provided for @notesAiActionItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Action items'**
+  String get notesAiActionItems;
+
+  /// No description provided for @notesAiSuggestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a title'**
+  String get notesAiSuggestTitle;
+
+  /// No description provided for @notesAiSuggestTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest tags'**
+  String get notesAiSuggestTags;
+
+  /// No description provided for @notesAiAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get notesAiAsk;
+
+  /// No description provided for @notesAiAskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about this note…'**
+  String get notesAiAskHint;
+
+  /// No description provided for @notesAiWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get notesAiWorking;
+
+  /// No description provided for @notesAiTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get notesAiTryAgain;
+
+  /// No description provided for @notesAiInsert.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert below'**
+  String get notesAiInsert;
+
+  /// No description provided for @notesAiReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace selection'**
+  String get notesAiReplace;
+
+  /// No description provided for @notesAiAddTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tags'**
+  String get notesAiAddTags;
+
+  /// No description provided for @notesAiNoTags.
+  ///
+  /// In en, this message translates to:
+  /// **'No tags fit this note.'**
+  String get notesAiNoTags;
+
+  /// No description provided for @notesAiNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing came back for this note.'**
+  String get notesAiNothing;
+
+  /// No description provided for @notesDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” goes to the trash; you can restore it from there.'**
+  String notesDeleteMessage(String title);
+
+  /// No description provided for @notesRemoveTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove tag {tag}'**
+  String notesRemoveTag(String tag);
+
+  /// No description provided for @notesAiBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Written by {model}'**
+  String notesAiBy(String model);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

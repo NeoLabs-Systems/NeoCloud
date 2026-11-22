@@ -8532,4 +8532,316 @@ class AppL10nEn extends AppL10n {
   @override
   String get backgroundBannerTitleReceive =>
       'Files may not arrive in the background';
+
+  @override
+  String get notesNav => 'Notes';
+
+  @override
+  String get notesTitle => 'Notes';
+
+  @override
+  String get notesArchiveTitle => 'Archive';
+
+  @override
+  String get notesSearch => 'Search notes';
+
+  @override
+  String get notesArchive => 'Archive';
+
+  @override
+  String get notesUnarchive => 'Move out of archive';
+
+  @override
+  String get notesArchived => 'Note archived.';
+
+  @override
+  String get notesUnarchived => 'Note moved out of the archive.';
+
+  @override
+  String get notesBackToNotes => 'Back to notes';
+
+  @override
+  String get notesAll => 'All notes';
+
+  @override
+  String get notesNewNotebook => 'New notebook';
+
+  @override
+  String get notesNewNotebookChip => 'Notebook';
+
+  @override
+  String get notesNotebookName => 'Name of the notebook';
+
+  @override
+  String get notesNoNotebook => 'No notebook';
+
+  @override
+  String get notesMoveTo => 'Move to notebook';
+
+  @override
+  String get notesTakeNote => 'Take a note…';
+
+  @override
+  String get notesNewChecklist => 'New checklist';
+
+  @override
+  String get notesOpenEditor => 'Open in the editor';
+
+  @override
+  String get notesNew => 'New note';
+
+  @override
+  String get notesNewShort => 'New';
+
+  @override
+  String get notesPinned => 'Pinned';
+
+  @override
+  String get notesOthers => 'Others';
+
+  @override
+  String get notesPin => 'Pin';
+
+  @override
+  String get notesUnpin => 'Unpin';
+
+  @override
+  String get notesColor => 'Color';
+
+  @override
+  String get notesColorNone => 'No color';
+
+  @override
+  String get notesColorRed => 'Red';
+
+  @override
+  String get notesColorOrange => 'Orange';
+
+  @override
+  String get notesColorAmber => 'Amber';
+
+  @override
+  String get notesColorGreen => 'Green';
+
+  @override
+  String get notesColorTeal => 'Teal';
+
+  @override
+  String get notesColorBlue => 'Blue';
+
+  @override
+  String get notesColorPurple => 'Purple';
+
+  @override
+  String get notesColorGray => 'Gray';
+
+  @override
+  String get notesMoveToTrash => 'Move to trash';
+
+  @override
+  String get notesDeleteTitle => 'Move this note to the trash?';
+
+  @override
+  String get notesLoadFailed => 'Notes could not be loaded';
+
+  @override
+  String get notesEmptyTitle => 'No notes yet';
+
+  @override
+  String get notesEmptyBody =>
+      'Write something in the bar above. Notes are saved as files in your Notes folder.';
+
+  @override
+  String get notesNoMatchTitle => 'Nothing found';
+
+  @override
+  String get notesNoMatchBody => 'No note matches this search or filter.';
+
+  @override
+  String get notesArchiveEmptyTitle => 'The archive is empty';
+
+  @override
+  String get notesArchiveEmptyBody =>
+      'Archived notes wait here, out of the way.';
+
+  @override
+  String get notesEmptyNote => 'This note is empty.';
+
+  @override
+  String get notesTitleHint => 'Title';
+
+  @override
+  String get notesBodyHint => 'Write, or type / for blocks';
+
+  @override
+  String get notesAddTag => 'Add a tag';
+
+  @override
+  String get notesAddTagChip => 'Tag';
+
+  @override
+  String get notesTagName => 'Tag';
+
+  @override
+  String get notesBack => 'Back to notes';
+
+  @override
+  String get notesSaved => 'Saved';
+
+  @override
+  String get notesUnsaved => 'Not saved yet';
+
+  @override
+  String get notesSaving => 'Saving…';
+
+  @override
+  String get notesSaveFailed => 'Not saved – will try again when you type';
+
+  @override
+  String get notesConflict => 'Changed elsewhere';
+
+  @override
+  String get notesConflictMessage =>
+      'This note was changed on another device. Your text is not saved yet.';
+
+  @override
+  String get notesKeepMine => 'Keep my text';
+
+  @override
+  String get notesTakeTheirs => 'Load the other version';
+
+  @override
+  String get notesEdit => 'Edit';
+
+  @override
+  String get notesRead => 'Read';
+
+  @override
+  String get notesAi => 'AI';
+
+  @override
+  String get notesAskAi => 'Ask AI';
+
+  @override
+  String get notesSuggestedTitle => 'Suggested title:';
+
+  @override
+  String get notesUseTitle => 'Use title';
+
+  @override
+  String get notesBlocks => 'Blocks';
+
+  @override
+  String get notesBlockChecklist => 'Checklist';
+
+  @override
+  String get notesBlockHeading1 => 'Heading';
+
+  @override
+  String get notesBlockHeading2 => 'Subheading';
+
+  @override
+  String get notesBlockBullets => 'Bulleted list';
+
+  @override
+  String get notesBlockNumbered => 'Numbered list';
+
+  @override
+  String get notesBlockQuote => 'Quote';
+
+  @override
+  String get notesBlockCode => 'Code';
+
+  @override
+  String get notesBlockDivider => 'Divider';
+
+  @override
+  String get notesBold => 'Bold';
+
+  @override
+  String get notesItalic => 'Italic';
+
+  @override
+  String get notesStrike => 'Strikethrough';
+
+  @override
+  String get notesCode => 'Code';
+
+  @override
+  String get notesLink => 'Link';
+
+  @override
+  String get notesAiTitle => 'AI help';
+
+  @override
+  String get notesAiOnSelection => 'On the selected text';
+
+  @override
+  String get notesAiOnNoteText => 'On the note';
+
+  @override
+  String get notesAiOnWholeNote => 'On the whole note';
+
+  @override
+  String get notesAiImprove => 'Improve writing';
+
+  @override
+  String get notesAiShorten => 'Make shorter';
+
+  @override
+  String get notesAiContinue => 'Continue writing';
+
+  @override
+  String get notesAiSummarize => 'Summarize';
+
+  @override
+  String get notesAiActionItems => 'Action items';
+
+  @override
+  String get notesAiSuggestTitle => 'Suggest a title';
+
+  @override
+  String get notesAiSuggestTags => 'Suggest tags';
+
+  @override
+  String get notesAiAsk => 'Ask';
+
+  @override
+  String get notesAiAskHint => 'Ask about this note…';
+
+  @override
+  String get notesAiWorking => 'Thinking…';
+
+  @override
+  String get notesAiTryAgain => 'Try again';
+
+  @override
+  String get notesAiInsert => 'Insert below';
+
+  @override
+  String get notesAiReplace => 'Replace selection';
+
+  @override
+  String get notesAiAddTags => 'Add tags';
+
+  @override
+  String get notesAiNoTags => 'No tags fit this note.';
+
+  @override
+  String get notesAiNothing => 'Nothing came back for this note.';
+
+  @override
+  String notesDeleteMessage(String title) {
+    return '“$title” goes to the trash; you can restore it from there.';
+  }
+
+  @override
+  String notesRemoveTag(String tag) {
+    return 'Remove tag $tag';
+  }
+
+  @override
+  String notesAiBy(String model) {
+    return 'Written by $model';
+  }
 }

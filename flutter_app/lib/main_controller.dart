@@ -1066,6 +1066,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.signing:
         return AppRoute(AppSection.signing.name, openSigningId);
       case AppSection.photos:
+      case AppSection.notes:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:
@@ -1125,6 +1126,7 @@ class NeoCloudController extends ChangeNotifier {
       case AppSection.signing:
         openSigningId = detail;
       case AppSection.photos:
+      case AppSection.notes:
       case AppSection.favorites:
       case AppSection.recent:
       case AppSection.trash:

@@ -26,7 +26,7 @@ const REGISTRY = [
   ['/api', 'files'], ['/api', 'transfers'], ['/api', 'members'], ['/api', 'office'], ['/wopi', 'wopi'], ['/api/sync', 'sync'], ['/api/devices', 'devices'],
   ['/api/storage', 'storage'], ['/api/shares', 'shares'], ['/api/public/shares', 'public_shares'],
   ['/api/vaults', 'vaults'], ['/api/imports', 'imports'], ['/api/ai', 'ai'], ['/api/neorouter', 'neorouter'],
-  ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
+  ['/api/notes', 'notes'], ['/api/signing', 'signing'], ['/api/public/sign', 'public_signing'],
   ['/api/photos', 'photos'], ['/api/external-storage', 'external_storage'],
   ['/api', 'comments'], ['/api/activity', 'activity'], ['/api/handoff', 'handoff'],
   ['/api/account', 'connected_apps'], ['/api/oauth', 'oauth_companion'], ['/oauth', 'oauth'], ['/api/v1', 'agent_api'],
@@ -116,6 +116,7 @@ test.before(async () => {
   `).run(v.offer, owner.user.id, `d:${v.device}`, `d:${v.device + 1}`);
   v.offerFile = db.prepare("INSERT INTO handoff_files (offer_id, position, name, size) VALUES (?, 0, 'a.txt', 1)").run(v.offer).lastInsertRowid;
   v.comment = (await owner.agent.post(`/api/files/${v.file}/comments`).send({ body: 'private note' }).expect(201)).body.id;
+  v.note = (await owner.agent.post('/api/notes').send({ title: 'Private', body: 'secret note' }).expect(201)).body.id;
   v.signImage = (await owner.agent.post('/api/signing/profile/images?kind=signature&method=draw&label=Mine')
     .set('Content-Type', 'image/png').send(await makePng()).expect(201)).body.id;
 });
@@ -350,6 +351,13 @@ const CLASSIFIED = {
   'PATCH /api/files/:id/comments/:commentId': () => ['PATCH', `/api/files/${v.file}/comments/${v.comment}`, { body: 'x' }],
   'DELETE /api/files/:id/comments/:commentId': () => ['DELETE', `/api/files/${v.file}/comments/${v.comment}`],
   'GET /api/activity': () => ['GET', `/api/activity?nodeId=${v.file}`],
+  'GET /api/notes': OWN,
+  'POST /api/notes': OWN,
+  'POST /api/notes/notebooks': OWN,
+  'GET /api/notes/:id': () => ['GET', `/api/notes/${v.note}`],
+  'PATCH /api/notes/:id': () => ['PATCH', `/api/notes/${v.note}`, { body: 'taken' }],
+  'DELETE /api/notes/:id': () => ['DELETE', `/api/notes/${v.note}`],
+  'POST /api/notes/:id/ai': () => ['POST', `/api/notes/${v.note}/ai`, { action: 'summarize' }],
   'GET /api/handoff/devices': OWN,
   'GET /api/handoff/events': OWN,
   'GET /api/handoff/offers': OWN,
@@ -460,6 +468,7 @@ test('the owner’s things are all still there and unchanged', async () => {
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_documents WHERE owner_id = ?').get(other.user.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_fields WHERE document_id = ?').get(v.sign).n, 1);
   assert.equal(db.prepare('SELECT label FROM sign_profile_images WHERE id = ?').get(v.signImage).label, 'Mine');
+  assert.equal(db.prepare('SELECT trashed_at FROM nodes WHERE id = ?').get(v.note).trashed_at, null);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_party_grants').get().n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sign_mail_outbox').get().n, 0);
   const owned = db.prepare('SELECT COUNT(*) AS count FROM nodes WHERE user_id = ?').get(other.user.id).count;

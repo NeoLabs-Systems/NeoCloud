@@ -145,6 +145,7 @@ class _CommandPaletteState extends State<_CommandPalette> {
       _PaletteCommand(Icons.folder_outlined, appStrings.navAllFiles, () => controller.openFolder(null)),
       _PaletteCommand(Icons.folder_shared_outlined, appStrings.navSharedWithMe, () => controller.openSharedFolder(null)),
       _PaletteCommand(AppSection.signing.icon, appStrings.signingNav, () => _go(AppSection.signing)),
+      _PaletteCommand(AppSection.notes.icon, appStrings.notesNav, () => _go(AppSection.notes)),
       _PaletteCommand(Icons.star_outline_rounded, appStrings.filesNavFavorites, () => _go(AppSection.favorites)),
       _PaletteCommand(Icons.schedule_rounded, appStrings.navRecent, () => _go(AppSection.recent)),
       _PaletteCommand(AppSection.activity.icon, appStrings.activityNav, () => _go(AppSection.activity)),

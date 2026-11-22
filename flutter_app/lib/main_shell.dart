@@ -432,6 +432,8 @@ class _SectionBody extends StatelessWidget {
         return _ViewChips(controller: controller, child: FilesPanel(controller: controller));
       case AppSection.photos:
         return PhotosPage(controller: controller);
+      case AppSection.notes:
+        return NotesPage(controller: controller);
       case AppSection.review:
         return AiReviewPage(controller: controller);
       case AppSection.shared:

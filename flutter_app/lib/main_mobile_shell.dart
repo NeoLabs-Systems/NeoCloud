@@ -7,10 +7,11 @@ part of 'main.dart';
 // it also carries camera backup's status (the old Camera tab), whose
 // settings stay under Settings › Camera upload. 640–980px keeps the drawer.
 
-enum _PhoneTab { files, photos, settings, admin }
+enum _PhoneTab { files, notes, photos, settings, admin }
 
 List<_PhoneTab> _phoneTabs(NeoCloudController controller) => <_PhoneTab>[
   _PhoneTab.files,
+  _PhoneTab.notes,
   _PhoneTab.photos,
   _PhoneTab.settings,
   if (controller.isAdmin) _PhoneTab.admin,
@@ -19,6 +20,7 @@ List<_PhoneTab> _phoneTabs(NeoCloudController controller) => <_PhoneTab>[
 _PhoneTab _currentPhoneTab(NeoCloudController controller) {
   final section = controller.selectedSection;
   if (section == AppSection.photos) return _PhoneTab.photos;
+  if (section == AppSection.notes) return _PhoneTab.notes;
   if (section == AppSection.settings) return _PhoneTab.settings;
   if (section == AppSection.admin) return _PhoneTab.admin;
   return _PhoneTab.files;
@@ -28,6 +30,8 @@ void _openPhoneTab(NeoCloudController controller, _PhoneTab tab) {
   switch (tab) {
     case _PhoneTab.files:
       controller.setSelectedSection(AppSection.files);
+    case _PhoneTab.notes:
+      controller.setSelectedSection(AppSection.notes);
     case _PhoneTab.photos:
       controller.setSelectedSection(AppSection.photos);
     case _PhoneTab.settings:
@@ -40,6 +44,7 @@ void _openPhoneTab(NeoCloudController controller, _PhoneTab tab) {
 extension _PhoneTabInfo on _PhoneTab {
   String get label => switch (this) {
     _PhoneTab.files => SidebarGroup.files.label,
+    _PhoneTab.notes => SidebarGroup.notes.label,
     _PhoneTab.photos => SidebarGroup.photos.label,
     _PhoneTab.settings => SidebarGroup.settings.label,
     _PhoneTab.admin => SidebarGroup.admin.label,
@@ -50,6 +55,7 @@ extension _PhoneTabInfo on _PhoneTab {
   // sliders.
   IconData get icon => switch (this) {
     _PhoneTab.files => SidebarGroup.files.icon,
+    _PhoneTab.notes => SidebarGroup.notes.icon,
     _PhoneTab.photos => SidebarGroup.photos.icon,
     _PhoneTab.settings => Icons.tune,
     _PhoneTab.admin => SidebarGroup.admin.icon,

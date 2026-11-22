@@ -527,6 +527,36 @@ files shared with the account are never listed.
 - Thumbnails: `GET /api/files/:id/thumbnail?size=square&v=<etag>`. Videos
   have no thumbnail.
 
+## Notes — `/api/notes` (session or phone)
+
+Notes are Markdown files under the account's `/Notes` folder, a subfolder is
+a notebook, and `tags`, `pinned`, `archived` and `color` live in the file's
+YAML frontmatter ([notes.md](notes.md)). Notes in a vault never show; another
+account's note id answers `404`.
+
+A **card** is `{ id, title, notebook, snippet, checklist: { done, total }, tags, pinned, archived, color, size, modifiedAt, revision }`;
+a **note** is a card plus `body` (the Markdown without the frontmatter).
+`color` is one of `default`, `red`, `orange`, `amber`, `green`, `teal`,
+`blue`, `purple`, `gray`.
+
+| Method | Path | Body / query | Answer |
+| --- | --- | --- | --- |
+| GET | `/` | `q?` (title, text, tags), `tag?`, `notebook?` (`''` for none), `archived?` (`true` lists the archive) | `{ notes: [card], notebooks: [path], tags: [{ name, count }] }`, pinned first, then newest |
+| POST | `/` | `{ title?, body?, notebook?, tags?, pinned?, color? }` | `201` note. No title: the first line of the text. A taken title gets ` (2)`. |
+| GET | `/:id` | | note |
+| PATCH | `/:id` | `{ body?, title?, notebook?, tags?, pinned?, archived?, color?, baseRevision? }` | note. `title` renames the file, `notebook` moves it (made when missing). A stale `baseRevision` → `409 CONFLICT`. Frontmatter keys NeoCloud doesn't use are kept. |
+| DELETE | `/:id` | | `{ trashed: true }` (the note goes to the trash) |
+| POST | `/notebooks` | `{ name }` | `{ name, created }` (idempotent) |
+| POST | `/:id/ai` | `{ action, selection?, question? }` | `{ text, model }`, `{ title, model }` or `{ tags, model }` |
+
+AI actions: `summarize`, `actionItems` (a `- [ ]` checklist), `improve`,
+`shorten`, `continue`, `ask` (needs `question`), `title`, `tags` (up to five,
+preferring tags already in use). They work on `selection` when it is sent,
+else on the whole note, and never change the note. They need AI on for the
+account and the `summaries` feature (`AI_DISABLED`, `AI_NOT_OPTED_IN`,
+`AI_FEATURE_OFF`, `AI_VAULT`, `AI_EXCLUDED`); an empty note answers
+`422 AI_NO_CONTENT`. Rate limited (120 calls per window).
+
 ## Share links — `/api/shares` (session or bearer)
 
 | Method | Path | Body / query | Answer |

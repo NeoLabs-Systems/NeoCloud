@@ -30,6 +30,7 @@ const ROUTE_REGISTRY = [
   { basePath: '/api/external-storage', modulePath: '../routes/external_storage' },
   { basePath: '/api/ai', modulePath: '../routes/ai' },
   { basePath: '/api/neorouter', modulePath: '../routes/neorouter' },
+  { basePath: '/api/notes', modulePath: '../routes/notes' },
   { basePath: '/api/signing', modulePath: '../routes/signing' },
   { basePath: '/api/public/sign', modulePath: '../routes/public_signing' },
   { basePath: '/api/account', modulePath: '../routes/connected_apps' },

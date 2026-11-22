@@ -2,10 +2,10 @@ part of 'main.dart';
 
 /// The pages of the app. Settings is reached from the account button at the
 /// foot of the sidebar, like in every NeoLabs app.
-enum AppSection { files, photos, review, shared, signing, favorites, recent, activity, trash, settings, admin }
+enum AppSection { files, photos, notes, review, shared, signing, favorites, recent, activity, trash, settings, admin }
 
 /// The sidebar's top-level entries; a group with several sections expands.
-enum SidebarGroup { files, photos, admin, settings }
+enum SidebarGroup { files, notes, photos, admin, settings }
 
 extension AppSectionInfo on AppSection {
   String get label {
@@ -14,6 +14,8 @@ extension AppSectionInfo on AppSection {
         return appStrings.navAllFiles;
       case AppSection.photos:
         return appStrings.photosNav;
+      case AppSection.notes:
+        return appStrings.notesNav;
       case AppSection.review:
         return appStrings.aiReviewNav;
       case AppSection.shared:
@@ -41,6 +43,8 @@ extension AppSectionInfo on AppSection {
         return Icons.folder_outlined;
       case AppSection.photos:
         return Icons.photo_library_outlined;
+      case AppSection.notes:
+        return Icons.sticky_note_2_outlined;
       case AppSection.review:
         return Icons.auto_awesome_outlined;
       case AppSection.shared:
@@ -75,6 +79,8 @@ extension AppSectionInfo on AppSection {
         return SidebarGroup.files;
       case AppSection.photos:
         return SidebarGroup.photos;
+      case AppSection.notes:
+        return SidebarGroup.notes;
       case AppSection.settings:
         return SidebarGroup.settings;
       case AppSection.admin:
@@ -88,6 +94,8 @@ extension SidebarGroupInfo on SidebarGroup {
     switch (this) {
       case SidebarGroup.files:
         return appStrings.navFiles;
+      case SidebarGroup.notes:
+        return appStrings.notesNav;
       case SidebarGroup.photos:
         return appStrings.photosNav;
       case SidebarGroup.admin:
@@ -101,6 +109,8 @@ extension SidebarGroupInfo on SidebarGroup {
     switch (this) {
       case SidebarGroup.files:
         return Icons.cloud_outlined;
+      case SidebarGroup.notes:
+        return Icons.sticky_note_2_outlined;
       case SidebarGroup.photos:
         return Icons.photo_library_outlined;
       case SidebarGroup.admin:
@@ -125,6 +135,8 @@ List<AppSection> _mainSections(NeoCloudController controller) {
     // chips above the file list open them; Activity is a Files toolbar action
     // and a palette command. The sidebar stays short.
     AppSection.trash,
+    // Notes: Markdown files under /Notes, its own sidebar entry and phone tab.
+    AppSection.notes,
     // Its own sidebar entry and phone tab: the timeline of photos and videos.
     AppSection.photos,
     AppSection.settings,
