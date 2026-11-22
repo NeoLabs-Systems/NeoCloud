@@ -25,6 +25,7 @@ router.get('/', jsonHandler((req) => store.listNotes(req.userId, {
   archived: text(req.query.archived),
 })));
 router.post('/', jsonHandler((req) => store.createNote(req.userId, req.body || {}), { status: 201 }));
+router.post('/root', jsonHandler((req) => store.ensureRoot(req.userId)));
 router.post('/notebooks', jsonHandler((req) => store.createNotebook(req.userId, req.body || {})));
 router.get('/:id', jsonHandler((req) => store.getNote(req.userId, req.params.id)));
 router.patch('/:id', jsonHandler((req) => store.updateNote(req.userId, req.params.id, req.body || {})));

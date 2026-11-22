@@ -1002,14 +1002,6 @@
       }
     }
   },
-  "vaultHintTooShort": "Use at least {count} characters, or generate a passphrase.",
-  "@vaultHintTooShort": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "vaultHintTooWeak": "Easy to guess. Add more words or characters, avoid names, years and common passwords.",
   "vaultHintGood": "Good. Longer is stronger: four or more unrelated words work well.",
   "vaultHintStrong": "Strong passphrase.",
@@ -4379,5 +4371,11 @@
   "notesRemoveTag": "Remove tag {tag}",
   "@notesRemoveTag": {"placeholders": {"tag": {"type": "String"}}},
   "notesAiBy": "Written by {model}",
-  "@notesAiBy": {"placeholders": {"model": {"type": "String"}}}
+  "@notesAiBy": {"placeholders": {"model": {"type": "String"}}},
+  "vaultPassphraseRequired": "Choose a passphrase.",
+  "vaultShortPassphraseWarning": "Shorter than {count} characters: highly discouraged. Nobody can reset a vault passphrase, and a short one is far easier to guess.",
+  "@vaultShortPassphraseWarning": {"placeholders": {"count": {"type": "int"}}},
+  "notesDone": "Done",
+  "notesNewEncryptedChip": "Encrypted notebook",
+  "notesEncrypted": "Encrypted"
 }

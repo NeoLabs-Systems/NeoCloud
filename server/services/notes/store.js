@@ -5,6 +5,7 @@
 // change keeps the change journal, versions, quota and trash, and nothing
 // inside a vault is reached.
 
+const db = require('../../db/database');
 const tree = require('../files/tree');
 const agentFiles = require('../agent/files');
 const { httpError } = require('../../utils/http_error');
@@ -34,18 +35,21 @@ function notebookOf(relativePath) {
   return index === -1 ? '' : relativePath.slice(0, index);
 }
 
-/** Every live note and notebook under /Notes, outside vaults. */
+/** Every live note and notebook under /Notes, outside vaults, and the vault folders there. */
 function scan(userId) {
   const root = notesRoot(userId);
-  if (!root) return { root: null, files: [], notebooks: [] };
+  if (!root) return { root: null, files: [], notebooks: [], encrypted: [] };
   const rows = tree.liveSubtree(userId, root.id).filter((row) => row.depth > 0);
-  // A vault folder hides everything under it.
+  // A vault folder hides everything under it: only the app holding its key reads it.
   const hidden = rows.filter((row) => row.vault_id).map((row) => `${row.relative_path}/`);
   const visible = rows.filter((row) => !row.vault_id && !hidden.some((prefix) => row.relative_path.startsWith(prefix)));
+  const vaultRoots = new Map(db.prepare('SELECT id, folder_id FROM vaults WHERE user_id = ?').all(userId).map((row) => [row.folder_id, row.id]));
   return {
     root,
     files: visible.filter(isNoteFile),
     notebooks: visible.filter((row) => row.type === 'folder').map((row) => row.relative_path),
+    // Encrypted notebooks: vault folders under /Notes (their own name is plaintext).
+    encrypted: rows.filter((row) => vaultRoots.has(row.id)).map((row) => ({ vaultId: vaultRoots.get(row.id), folderId: row.id, name: row.relative_path })),
   };
 }
 
@@ -66,7 +70,7 @@ function textQuery(value) {
  * `q` (title, text, tags), `tag`, `notebook` ('' for none), `archived`.
  */
 async function listNotes(userId, { q, tag, notebook, archived } = {}) {
-  const { files, notebooks } = scan(userId);
+  const { root, files, notebooks, encrypted } = scan(userId);
   const cards = [];
   await eachLimit(files, READ_LANES, async (row) => {
     cards.push(await cache.cardFor(userId, row, notebookOf(row.relative_path)));
@@ -88,8 +92,10 @@ async function listNotes(userId, { q, tag, notebook, archived } = {}) {
   });
   notes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.modifiedAt).localeCompare(String(a.modifiedAt)));
   return {
+    rootId: root ? root.id : null,
     notes,
     notebooks: notebooks.sort((a, b) => a.localeCompare(b)),
+    encryptedNotebooks: encrypted.sort((a, b) => a.name.localeCompare(b.name)),
     tags: [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count })),
   };
 }
@@ -222,6 +228,12 @@ function deleteNote(userId, id) {
   return agentFiles.trashItem(userId, node.id);
 }
 
+/** The /Notes folder, made when missing: where the app creates an encrypted notebook (a vault). */
+function ensureRoot(userId) {
+  const { item } = agentFiles.createFolder(userId, { path: `/${NOTES_FOLDER}` });
+  return { id: item.id };
+}
+
 /** A notebook (a folder under /Notes); idempotent. */
 function createNotebook(userId, input = {}) {
   const parts = notebookParts(input.name);
@@ -230,4 +242,4 @@ function createNotebook(userId, input = {}) {
   return { name: parts.join('/'), created };
 }
 
-module.exports = { NOTES_FOLDER, createNote, createNotebook, deleteNote, getNote, listNotes, noteNode, updateNote };
+module.exports = { NOTES_FOLDER, createNote, createNotebook, deleteNote, ensureRoot, getNote, listNotes, noteNode, updateNote };

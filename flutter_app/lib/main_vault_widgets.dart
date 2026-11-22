@@ -37,11 +37,10 @@ class _PassphraseDraft extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Why the passphrase can't be used yet, or null.
+  /// Why the passphrase can't be used yet, or null. Any length is allowed:
+  /// a short or weak one is the person's choice, warned about below the field.
   String? get problem {
-    final value = strength;
-    if (passphrase.text.isEmpty || value.tooShort) return appStrings.vaultHintTooShort(minVaultPassphraseLength);
-    if (!value.acceptable) return appStrings.vaultHintTooWeak;
+    if (passphrase.text.isEmpty) return appStrings.vaultPassphraseRequired;
     if (!matches) return appStrings.passwordsDoNotMatch;
     return null;
   }
@@ -106,6 +105,10 @@ class _PassphraseFields extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             _PassphraseMeter(strength: draft.strength),
+            if (draft.strength.tooShort && draft.passphrase.text.isNotEmpty) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              _InlineNote(message: appStrings.vaultShortPassphraseWarning(minVaultPassphraseLength), icon: Icons.warning_amber_rounded, color: _danger),
+            ],
             if (generated) ...<Widget>[
               const SizedBox(height: AppSpacing.sm),
               _InlineNote(message: appStrings.vaultGeneratedHint),
@@ -127,7 +130,7 @@ class _PassphraseFields extends StatelessWidget {
   }
 }
 
-/// Four segments and a word; red until the passphrase is acceptable.
+/// Four segments and a word; red while the passphrase is short or easy to guess.
 class _PassphraseMeter extends StatelessWidget {
   const _PassphraseMeter({required this.strength});
 
@@ -143,7 +146,7 @@ class _PassphraseMeter extends StatelessWidget {
     };
     final empty = strength.length == 0;
     final color = empty ? _borderLight : (strength.acceptable ? _success : _danger);
-    final message = strength.tooShort ? appStrings.vaultHintTooShort(minVaultPassphraseLength) : hint;
+    final message = hint;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[

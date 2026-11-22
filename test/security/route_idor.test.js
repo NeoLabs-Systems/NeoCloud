@@ -354,6 +354,7 @@ const CLASSIFIED = {
   'GET /api/notes': OWN,
   'POST /api/notes': OWN,
   'POST /api/notes/notebooks': OWN,
+  'POST /api/notes/root': OWN,
   'GET /api/notes/:id': () => ['GET', `/api/notes/${v.note}`],
   'PATCH /api/notes/:id': () => ['PATCH', `/api/notes/${v.note}`, { body: 'taken' }],
   'DELETE /api/notes/:id': () => ['DELETE', `/api/notes/${v.note}`],

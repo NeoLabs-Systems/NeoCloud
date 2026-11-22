@@ -537,7 +537,6 @@
   "vaultStrengthGood": "Gut",
   "vaultStrengthStrong": "Stark",
   "vaultStrengthLabel": "Stärke: {label}",
-  "vaultHintTooShort": "Mindestens {count} Zeichen, oder erzeuge eine Passphrase.",
   "vaultHintTooWeak": "Leicht zu erraten. Füge Wörter oder Zeichen hinzu, vermeide Namen, Jahreszahlen und gängige Passwörter.",
   "vaultHintGood": "Gut. Länger ist stärker: vier oder mehr zusammenhanglose Wörter funktionieren gut.",
   "vaultHintStrong": "Starke Passphrase.",
@@ -2522,5 +2521,10 @@
   "notesAiNothing": "Für diese Notiz kam nichts zurück.",
   "notesDeleteMessage": "„{title}“ kommt in den Papierkorb; dort kannst du sie wiederherstellen.",
   "notesRemoveTag": "Tag {tag} entfernen",
-  "notesAiBy": "Geschrieben von {model}"
+  "notesAiBy": "Geschrieben von {model}",
+  "vaultPassphraseRequired": "Wähle eine Passphrase.",
+  "vaultShortPassphraseWarning": "Kürzer als {count} Zeichen: dringend abgeraten. Niemand kann eine Tresor-Passphrase zurücksetzen, und eine kurze ist viel leichter zu erraten.",
+  "notesDone": "Fertig",
+  "notesNewEncryptedChip": "Verschlüsseltes Notizbuch",
+  "notesEncrypted": "Verschlüsselt"
 }

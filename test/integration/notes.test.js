@@ -6,7 +6,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { cleanup, registerUser } = require('../helpers/app');
+const crypto = require('crypto');
+const { cleanup, registerUser, upload } = require('../helpers/app');
 const { startFakeProvider } = require('../helpers/fake_ai');
 
 const SERVER_KEY = 'sk-notes-key-4242';
@@ -44,7 +45,7 @@ async function fileText(agent, id) {
 
 test('before the first note there is nothing, and no Notes folder', async () => {
   const listed = await owner.agent.get('/api/notes').expect(200);
-  assert.deepEqual(listed.body, { notes: [], notebooks: [], tags: [] });
+  assert.deepEqual(listed.body, { rootId: null, notes: [], notebooks: [], encryptedNotebooks: [], tags: [] });
 });
 
 test('a note is a Markdown file under /Notes with its properties as frontmatter', async () => {
@@ -160,4 +161,26 @@ test('AI help returns text, a title or tags and never changes the note', async (
   await owner.agent.post(`/api/notes/${note.id}/ai`).send({ action: 'ask' }).expect(400);
   await owner.agent.post(`/api/notes/${note.id}/ai`).send({ action: 'delete everything' }).expect(400);
   assert.equal((await owner.agent.get(`/api/notes/${note.id}`).expect(200)).body.revision, note.revision);
+});
+
+test('an encrypted notebook is a vault under /Notes: listed by name, its files never read', async () => {
+  const root = (await owner.agent.post('/api/notes/root').expect(200)).body;
+  assert.equal((await owner.agent.post('/api/notes/root').expect(200)).body.id, root.id, 'the same folder again');
+  const vault = (await owner.agent.post('/api/vaults').send({
+    parentId: root.id,
+    name: 'Private',
+    salt: crypto.randomBytes(16).toString('base64'),
+    iterations: 600000,
+    wrappedKey: crypto.randomBytes(60).toString('base64'),
+  }).expect(201)).body;
+  // The app uploads ciphertext under an encrypted name; the server stores it as it is.
+  const cipher = (await upload(owner.agent, 'bm90LWEtcmVhbC1uYW1l.md', crypto.randomBytes(80), { parentId: vault.folderId }).expect(201)).body;
+  const listed = (await owner.agent.get('/api/notes').expect(200)).body;
+  assert.equal(listed.rootId, root.id);
+  assert.deepEqual(listed.encryptedNotebooks, [{ vaultId: vault.id, folderId: vault.folderId, name: 'Private' }]);
+  assert.ok(!listed.notebooks.includes('Private'), 'not a plain notebook');
+  assert.ok(!listed.notes.some((note) => note.id === cipher.id), 'never a card');
+  await owner.agent.get(`/api/notes/${cipher.id}`).expect(404);
+  await owner.agent.post(`/api/notes/${cipher.id}/ai`).send({ action: 'summarize' }).expect(404);
+  assert.deepEqual((await other.agent.get('/api/notes').expect(200)).body.encryptedNotebooks, []);
 });

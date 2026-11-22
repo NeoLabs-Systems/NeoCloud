@@ -47,7 +47,29 @@ Meeting with the team
 - The body is Markdown: headings, lists, `- [ ]` checklists, quotes, code,
   `---`, `**bold**`, `*italic*`, `` `code` ``, links.
 - Because a note is a file it syncs, shows in search, has versions, goes to the
-  trash and can be shared like any other file. Notes in a vault never show.
+  trash and can be shared like any other file.
+
+## Encrypted notebooks
+
+An encrypted notebook is a vault folder inside `/Notes`, created with the
+same passphrase, recovery words and crypto as any vault ([clients.md §4](clients.md#4-vault-folders-end-to-end-encrypted)).
+Its notes are the same `.md` files with the same frontmatter, but their
+names and content are encrypted in the app before they leave it:
+
+- The server only lists the notebook (`encryptedNotebooks`: vault id,
+  folder id and the folder's plaintext name). It never reads, searches or
+  indexes the notes inside, and `/api/notes/:id` answers `404` for them.
+- The app unlocks the vault with the passphrase, lists the folder, decrypts
+  names and content, and parses the frontmatter itself
+  (`lib/src/notes/note_frontmatter.dart`, the same rules as the server's).
+  Saving encrypts and uploads with the file's etag (`If-Match`), so a change
+  made elsewhere is a conflict, not an overwrite; a title change renames the
+  file under a new encrypted name.
+- Locked notebooks show a lock and ask for the passphrase in place of the
+  notes. Unlocked ones join "All notes"; locking the vault closes an open
+  note from it.
+- AI is off for these notes (AI never reads vault files), and a note can't be
+  moved into or out of an encrypted notebook (`VAULT_BOUNDARY`).
 - The parser (`server/utils/note_markdown.js`) reads a simple YAML subset
   (scalars and lists of scalars) and writes the same subset back.
 
@@ -101,6 +123,9 @@ then.
 - `note_markdown.dart` — blocks for the read view, checklist ticks, and the
   text edits of the formatting bar, the `/` menu and Enter in lists; pure,
   tested (`test/notes_markdown_test.dart`).
+- `note_store.dart` — where a note is read and saved: `ServerNoteStore`
+  (`/api/notes`) or `VaultNoteStore` (encrypted notebook, crypto in the app).
+- `note_frontmatter.dart` — the frontmatter rules for encrypted notes.
 - `note_session.dart` — one open note: autosave after typing stops, one save
   at a time, each with its base revision; a conflict asks before saving over.
 
@@ -109,8 +134,10 @@ UI: `main_notes.dart` (page, filters, capture bar, card grid),
 `main_notes_widgets.dart` (cards, colors, read view, Markdown styling while
 typing), `main_notes_ai.dart` (AI menu and answers).
 
-The page: search, notebook and tag filters, Archive; the capture bar; pinned
-cards, then the others. A note opens in the editor (beside the list on wide
+The page: search, notebook and tag filters (encrypted notebooks with a
+lock), Archive; the capture bar ("Take a note…" opens to a title and as many
+lines as needed; Done, Ctrl/⌘+Enter or tapping away saves); pinned cards,
+then the others. A note opens in the editor (beside the list on wide
 screens, full screen on phones): title, color, pin, tags, notebook, the AI
 menu and an Edit/Read toggle. Markdown is typed as text and shown styled.
 Selecting text shows a formatting bubble above it (bold, italic,

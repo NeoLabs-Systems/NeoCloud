@@ -143,6 +143,7 @@ class _NoteCardView extends StatelessWidget {
                         child: Text(card.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.3, color: _textPrimary)),
                       ),
                     ),
+                    if (card.encrypted) Padding(padding: const EdgeInsets.only(top: 8, left: 4), child: Icon(Icons.lock_outline_rounded, size: 15, color: _textMuted, semanticLabel: appStrings.notesEncrypted)),
                     if (card.pinned) Padding(padding: const EdgeInsets.only(top: 8, left: 4), child: Icon(Icons.push_pin, size: 15, color: _accent, semanticLabel: appStrings.notesPinned)),
                     SizedBox(width: 36, height: 32, child: _FileActionsMenu(actions: actions, title: card.title)),
                   ],

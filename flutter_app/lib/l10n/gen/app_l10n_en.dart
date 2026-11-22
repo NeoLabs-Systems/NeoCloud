@@ -1903,11 +1903,6 @@ class AppL10nEn extends AppL10n {
   }
 
   @override
-  String vaultHintTooShort(int count) {
-    return 'Use at least $count characters, or generate a passphrase.';
-  }
-
-  @override
   String get vaultHintTooWeak =>
       'Easy to guess. Add more words or characters, avoid names, years and common passwords.';
 
@@ -8844,4 +8839,21 @@ class AppL10nEn extends AppL10n {
   String notesAiBy(String model) {
     return 'Written by $model';
   }
+
+  @override
+  String get vaultPassphraseRequired => 'Choose a passphrase.';
+
+  @override
+  String vaultShortPassphraseWarning(int count) {
+    return 'Shorter than $count characters: highly discouraged. Nobody can reset a vault passphrase, and a short one is far easier to guess.';
+  }
+
+  @override
+  String get notesDone => 'Done';
+
+  @override
+  String get notesNewEncryptedChip => 'Encrypted notebook';
+
+  @override
+  String get notesEncrypted => 'Encrypted';
 }

@@ -531,8 +531,9 @@ files shared with the account are never listed.
 
 Notes are Markdown files under the account's `/Notes` folder, a subfolder is
 a notebook, and `tags`, `pinned`, `archived` and `color` live in the file's
-YAML frontmatter ([notes.md](notes.md)). Notes in a vault never show; another
-account's note id answers `404`.
+YAML frontmatter ([notes.md](notes.md)). Notes in a vault (an encrypted
+notebook) are never read by these routes; another account's note id answers
+`404`.
 
 A **card** is `{ id, title, notebook, snippet, checklist: { done, total }, tags, pinned, archived, color, size, modifiedAt, revision }`;
 a **note** is a card plus `body` (the Markdown without the frontmatter).
@@ -541,12 +542,13 @@ a **note** is a card plus `body` (the Markdown without the frontmatter).
 
 | Method | Path | Body / query | Answer |
 | --- | --- | --- | --- |
-| GET | `/` | `q?` (title, text, tags), `tag?`, `notebook?` (`''` for none), `archived?` (`true` lists the archive) | `{ notes: [card], notebooks: [path], tags: [{ name, count }] }`, pinned first, then newest |
+| GET | `/` | `q?` (title, text, tags), `tag?`, `notebook?` (`''` for none), `archived?` (`true` lists the archive) | `{ rootId, notes: [card], notebooks: [path], encryptedNotebooks: [{ vaultId, folderId, name }], tags: [{ name, count }] }`, pinned first, then newest. `rootId` is the `/Notes` folder (null before the first note); `encryptedNotebooks` are vault folders under it, whose notes the app reads and writes itself through the file and vault routes. |
 | POST | `/` | `{ title?, body?, notebook?, tags?, pinned?, color? }` | `201` note. No title: the first line of the text. A taken title gets ` (2)`. |
 | GET | `/:id` | | note |
 | PATCH | `/:id` | `{ body?, title?, notebook?, tags?, pinned?, archived?, color?, baseRevision? }` | note. `title` renames the file, `notebook` moves it (made when missing). A stale `baseRevision` → `409 CONFLICT`. Frontmatter keys NeoCloud doesn't use are kept. |
 | DELETE | `/:id` | | `{ trashed: true }` (the note goes to the trash) |
 | POST | `/notebooks` | `{ name }` | `{ name, created }` (idempotent) |
+| POST | `/root` | | `{ id }`: the `/Notes` folder, made when missing (the parent for a new encrypted notebook, `POST /api/vaults`) |
 | POST | `/:id/ai` | `{ action, selection?, question? }` | `{ text, model }`, `{ title, model }` or `{ tags, model }` |
 
 AI actions: `summarize`, `actionItems` (a `- [ ]` checklist), `improve`,

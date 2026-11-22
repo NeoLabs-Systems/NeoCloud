@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../api/backend_client.dart';
 import 'note_models.dart';
+import 'note_store.dart';
 
 enum NoteSaveState { saved, unsaved, saving, failed, conflict }
 
@@ -11,9 +12,10 @@ enum NoteSaveState { saved, unsaved, saving, failed, conflict }
 /// time, each sent with the revision it was based on so a change made
 /// elsewhere is never overwritten without asking.
 class NoteSession extends ChangeNotifier {
-  NoteSession(this._client, Note note, {this.delay = const Duration(milliseconds: 900)}) : _note = note;
+  NoteSession(this.store, Note note, {this.delay = const Duration(milliseconds: 900)}) : _note = note;
 
-  final BackendClient _client;
+  /// The server, or the app's vault crypto for an encrypted notebook.
+  final NoteStore store;
   final Duration delay;
 
   Note _note;
@@ -52,7 +54,7 @@ class NoteSession extends ChangeNotifier {
       if (body == null && title == null) return;
       _pendingBody = null;
       _pendingTitle = null;
-      await _send(() => _client.updateNote(_note.id, body: body, title: title, baseRevision: _note.revision), restore: () {
+      await _send(() => store.update(_note.id, NoteChange(body: body, title: title), revision: _note.revision), restore: () {
         _pendingBody ??= body;
         _pendingTitle ??= title;
       });
@@ -62,21 +64,17 @@ class NoteSession extends ChangeNotifier {
   /// Pin, archive, color, tags or notebook: saved right away, after any typing.
   Future<void> setProperties({bool? pinned, bool? archived, NoteColor? color, List<String>? tags, String? notebook}) async {
     await flush();
-    await _enqueue(() => _send(() => _client.updateNote(
+    await _enqueue(() => _send(() => store.update(
       _note.id,
-      pinned: pinned,
-      archived: archived,
-      color: color,
-      tags: tags,
-      notebook: notebook,
-      baseRevision: _note.revision,
+      NoteChange(pinned: pinned, archived: archived, color: color, tags: tags, notebook: notebook),
+      revision: _note.revision,
     )));
   }
 
   /// After a conflict: saves this text over the newer version (which stays
   /// in the version history).
   Future<void> overwrite() => _enqueue(() async {
-    final latest = await _client.note(_note.id);
+    final latest = await store.load(_note.id);
     _note = _note.withRevision(latest.revision);
     _setState(NoteSaveState.unsaved);
   }).then((_) => flush());
@@ -85,7 +83,7 @@ class NoteSession extends ChangeNotifier {
   Future<void> reload() => _enqueue(() async {
     _pendingBody = null;
     _pendingTitle = null;
-    _note = await _client.note(_note.id);
+    _note = await store.load(_note.id);
     _setState(NoteSaveState.saved);
   });
 

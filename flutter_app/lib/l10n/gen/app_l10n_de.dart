@@ -1918,11 +1918,6 @@ class AppL10nDe extends AppL10n {
   }
 
   @override
-  String vaultHintTooShort(int count) {
-    return 'Mindestens $count Zeichen, oder erzeuge eine Passphrase.';
-  }
-
-  @override
   String get vaultHintTooWeak =>
       'Leicht zu erraten. Füge Wörter oder Zeichen hinzu, vermeide Namen, Jahreszahlen und gängige Passwörter.';
 
@@ -8935,4 +8930,21 @@ class AppL10nDe extends AppL10n {
   String notesAiBy(String model) {
     return 'Geschrieben von $model';
   }
+
+  @override
+  String get vaultPassphraseRequired => 'Wähle eine Passphrase.';
+
+  @override
+  String vaultShortPassphraseWarning(int count) {
+    return 'Kürzer als $count Zeichen: dringend abgeraten. Niemand kann eine Tresor-Passphrase zurücksetzen, und eine kurze ist viel leichter zu erraten.';
+  }
+
+  @override
+  String get notesDone => 'Fertig';
+
+  @override
+  String get notesNewEncryptedChip => 'Verschlüsseltes Notizbuch';
+
+  @override
+  String get notesEncrypted => 'Verschlüsselt';
 }

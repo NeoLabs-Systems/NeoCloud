@@ -36,6 +36,7 @@ class NoteCard {
     required this.color,
     required this.modifiedAt,
     required this.revision,
+    this.vaultId,
   });
 
   final String id;
@@ -51,6 +52,12 @@ class NoteCard {
   final NoteColor color;
   final DateTime? modifiedAt;
   final String revision;
+
+  /// Set for a note in an encrypted notebook (a vault): read and written
+  /// only in the app, never by the server or AI.
+  final String? vaultId;
+
+  bool get encrypted => vaultId != null;
 
   factory NoteCard.fromJson(Map<String, dynamic> json) => NoteCard(
     id: '${json['id']}',
@@ -80,6 +87,7 @@ class Note extends NoteCard {
     required super.color,
     required super.modifiedAt,
     required super.revision,
+    super.vaultId,
     required this.body,
   });
 
@@ -99,6 +107,7 @@ class Note extends NoteCard {
     color: color,
     modifiedAt: modifiedAt,
     revision: value,
+    vaultId: vaultId,
     body: body,
   );
 
@@ -128,12 +137,25 @@ class NoteTag {
   final int count;
 }
 
+/// A vault folder under /Notes: its notes are encrypted in the app.
+class EncryptedNotebook {
+  const EncryptedNotebook({required this.vaultId, required this.folderId, required this.name});
+
+  final String vaultId;
+  final String folderId;
+  final String name;
+}
+
 class NotesListing {
-  const NotesListing({required this.notes, required this.notebooks, required this.tags});
+  const NotesListing({required this.notes, required this.notebooks, required this.tags, this.encryptedNotebooks = const <EncryptedNotebook>[], this.rootId});
 
   final List<NoteCard> notes;
   final List<String> notebooks;
   final List<NoteTag> tags;
+  final List<EncryptedNotebook> encryptedNotebooks;
+
+  /// The /Notes folder, null before the first note.
+  final String? rootId;
 
   static const empty = NotesListing(notes: <NoteCard>[], notebooks: <String>[], tags: <NoteTag>[]);
 
@@ -141,6 +163,10 @@ class NotesListing {
     notes: _maps(json['notes']).map(NoteCard.fromJson).toList(),
     notebooks: _strings(json['notebooks']),
     tags: _maps(json['tags']).map((tag) => NoteTag('${tag['name']}', _int(tag['count']))).toList(),
+    encryptedNotebooks: _maps(json['encryptedNotebooks'])
+        .map((item) => EncryptedNotebook(vaultId: '${item['vaultId']}', folderId: '${item['folderId']}', name: '${item['name']}'))
+        .toList(),
+    rootId: json['rootId'] is String ? json['rootId'] as String : null,
   );
 }
 

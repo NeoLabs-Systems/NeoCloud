@@ -49,7 +49,8 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
   NoteSession get session => widget.session;
   NeoCloudController get controller => widget.controller;
 
-  bool get _aiOn => controller.aiReview.enabled && controller.settings.aiFeatureOn('summaries');
+  /// AI never reads a note in an encrypted notebook.
+  bool get _aiOn => session.store.aiAllowed && controller.aiReview.enabled && controller.settings.aiFeatureOn('summaries');
 
   @override
   void initState() {
@@ -311,7 +312,8 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
               if (color != null) unawaited(session.setProperties(color: color));
             },
             menu: <_FileAction>[
-              _FileAction(Icons.drive_file_move_outline, appStrings.notesMoveTo, () => unawaited(_moveToNotebook())),
+              // A note can't leave its vault, nor join one: the server refuses both.
+              if (!note.encrypted) _FileAction(Icons.drive_file_move_outline, appStrings.notesMoveTo, () => unawaited(_moveToNotebook())),
               _FileAction(note.archived ? Icons.unarchive_outlined : Icons.archive_outlined, note.archived ? appStrings.notesUnarchive : appStrings.notesArchive, () async {
                 await session.setProperties(archived: !note.archived, pinned: note.archived ? null : false);
                 if (!note.archived) widget.onClose();
@@ -368,7 +370,10 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
                               runSpacing: 6,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: <Widget>[
-                                if (note.notebook.isNotEmpty) _NoteChip(label: note.notebook, icon: Icons.book_outlined, small: true, onTap: () => unawaited(_moveToNotebook())),
+                                if (note.encrypted)
+                                  _NoteChip(label: note.notebook, icon: Icons.lock_outline_rounded, small: true, onTap: () {})
+                                else if (note.notebook.isNotEmpty)
+                                  _NoteChip(label: note.notebook, icon: Icons.book_outlined, small: true, onTap: () => unawaited(_moveToNotebook())),
                                 for (final tag in note.tags)
                                   _TagPill(tag, onRemove: () => unawaited(session.setProperties(tags: note.tags.where((item) => item != tag).toList()))),
                                 _NoteChip(label: appStrings.notesAddTagChip, icon: Icons.add_rounded, dashed: true, small: true, onTap: () => unawaited(_editTags())),

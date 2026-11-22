@@ -7,7 +7,8 @@ import 'bip39_words.dart';
 // count 11 bits, years and well-known passwords a few bits, repeats and
 // runs ("aaaa", "1234", "qwer") one bit per extra character.
 
-/// Shortest passphrase a person may choose. Generated ones are exempt.
+/// Shorter chosen passphrases are allowed but warned about as highly
+/// discouraged. Generated ones are exempt.
 const int minVaultPassphraseLength = 12;
 
 /// Bits a chosen passphrase needs to be accepted.

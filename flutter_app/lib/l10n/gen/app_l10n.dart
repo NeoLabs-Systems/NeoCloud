@@ -3319,12 +3319,6 @@ abstract class AppL10n {
   /// **'Strength: {label}'**
   String vaultStrengthLabel(String label);
 
-  /// No description provided for @vaultHintTooShort.
-  ///
-  /// In en, this message translates to:
-  /// **'Use at least {count} characters, or generate a passphrase.'**
-  String vaultHintTooShort(int count);
-
   /// No description provided for @vaultHintTooWeak.
   ///
   /// In en, this message translates to:
@@ -14555,6 +14549,36 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Written by {model}'**
   String notesAiBy(String model);
+
+  /// No description provided for @vaultPassphraseRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a passphrase.'**
+  String get vaultPassphraseRequired;
+
+  /// No description provided for @vaultShortPassphraseWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Shorter than {count} characters: highly discouraged. Nobody can reset a vault passphrase, and a short one is far easier to guess.'**
+  String vaultShortPassphraseWarning(int count);
+
+  /// No description provided for @notesDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get notesDone;
+
+  /// No description provided for @notesNewEncryptedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted notebook'**
+  String get notesNewEncryptedChip;
+
+  /// No description provided for @notesEncrypted.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted'**
+  String get notesEncrypted;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

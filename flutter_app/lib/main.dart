@@ -61,6 +61,7 @@ import 'src/navigation/app_route.dart';
 import 'src/notes/note_markdown.dart';
 import 'src/notes/note_models.dart';
 import 'src/notes/note_session.dart';
+import 'src/notes/note_store.dart';
 import 'src/office/editor_frame.dart';
 import 'src/office/office_editing.dart';
 import 'src/pairing/pairing_link.dart';

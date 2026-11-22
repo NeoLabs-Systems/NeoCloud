@@ -48,6 +48,9 @@ extension BackendNotesCalls on BackendClient {
 
   Future<void> deleteNote(String id) => _request('DELETE', '/api/notes/$id');
 
+  /// The /Notes folder (made when missing), where an encrypted notebook is created.
+  Future<String> notesRootId() async => '${_map(await _request('POST', '/api/notes/root'))['id']}';
+
   Future<void> createNotebook(String name) => _request('POST', '/api/notes/notebooks', json: <String, Object?>{'name': name});
 
   Future<NoteAiAnswer> noteAi(String id, NoteAiAction action, {String? selection, String? question}) async => NoteAiAnswer.fromJson(
