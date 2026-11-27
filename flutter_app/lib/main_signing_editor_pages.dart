@@ -1,12 +1,79 @@
 part of 'main.dart';
 
 // The middle of the editor: the pages with their field overlays, the zoom
-// bar and the thumbnail rail. Each page's overlay listens to the editor state
-// on its own, so dragging a box redraws the boxes of the pages in view and
-// never the PDF underneath.
+// and rotate bars and the thumbnail rail. Each page's overlay listens to the
+// editor state on its own, so dragging a box redraws the boxes of the pages
+// in view and never the PDF underneath. The editor and quick sign share all
+// of it, and the loading of the draft's PDF ([_DraftPages]).
+
+/// Turns pages: the page in view, or all of them with [allPages].
+typedef _RotatePages = void Function(int quarterTurns, {bool allPages});
+
+/// What the editor and quick sign share around the draft's PDF: loading it,
+/// loading it again when the server replaced it (pages were turned), and
+/// turning pages.
+mixin _DraftPages<T extends StatefulWidget> on State<T> {
+  NeoCloudController get draftController;
+  SigningEditorState get draftState;
+  SigningPageController get draftPages;
+
+  Uint8List? draftPdf;
+  String? draftPdfError;
+  String? _draftSha;
+  int _draftLoads = 0;
+
+  void watchDraftPdf() {
+    _draftSha = draftState.document.snapshotSha256;
+    draftState.addListener(_draftChanged);
+    unawaited(_loadDraftPdf());
+  }
+
+  void unwatchDraftPdf() => draftState.removeListener(_draftChanged);
+
+  void _draftChanged() {
+    final sha = draftState.document.snapshotSha256;
+    if (sha == _draftSha) return;
+    _draftSha = sha;
+    setState(() => draftPdf = null);
+    unawaited(_loadDraftPdf());
+  }
+
+  Future<void> _loadDraftPdf() async {
+    final load = ++_draftLoads;
+    try {
+      final bytes = await draftController.signing.pdf(draftState.document.id);
+      if (mounted && load == _draftLoads) {
+        setState(() {
+          draftPdf = bytes;
+          draftPdfError = null;
+        });
+      }
+    } catch (error) {
+      if (mounted && load == _draftLoads) setState(() => draftPdfError = signingErrorText(draftController, error, appStrings.signingPdfLoadFailed));
+    }
+  }
+
+  void rotateDraftPages(int quarterTurns, {bool allPages = false}) {
+    final pages = allPages ? null : <int>[draftPages.currentPage];
+    unawaited(
+      draftState.rotatePages(quarterTurns: quarterTurns, pages: pages).catchError((Object error) {
+        if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(signingErrorText(draftController, error, appStrings.signingRotateFailed))));
+      }),
+    );
+  }
+}
 
 class _PagesArea extends StatelessWidget {
-  const _PagesArea({required this.state, required this.pages, required this.pdf, required this.error, required this.pagesBuilder, this.boxContent, this.typeLabel});
+  const _PagesArea({
+    required this.state,
+    required this.pages,
+    required this.pdf,
+    required this.error,
+    required this.pagesBuilder,
+    this.boxContent,
+    this.typeLabel,
+    this.onRotate,
+  });
 
   final SigningEditorState state;
   final SigningPageController pages;
@@ -17,6 +84,9 @@ class _PagesArea extends StatelessWidget {
   /// What a box shows instead of its label (quick sign: the value itself).
   final _BoxContent? boxContent;
   final String Function(FieldType type)? typeLabel;
+
+  /// Shows the rotate bar while the draft can change.
+  final _RotatePages? onRotate;
 
   List<Widget> _overlay(BuildContext context, int pageIndex, Size pageSize) => <Widget>[
     Positioned.fill(child: _PageOverlay(state: state, pageIndex: pageIndex, pageSize: pageSize, boxContent: boxContent)),
@@ -38,7 +108,58 @@ class _PagesArea extends StatelessWidget {
         Positioned.fill(child: ColoredBox(color: _bgTertiary, child: body)),
         Positioned(left: 0, right: 0, top: 8, child: Center(child: _PlacingHint(state: state, typeLabel: typeLabel))),
         Positioned(right: 16, bottom: 16, child: _ZoomBar(pages: pages)),
+        if (onRotate != null) Positioned(left: 16, bottom: 16, child: _RotateBar(state: state, onRotate: onRotate!)),
       ],
+    );
+  }
+}
+
+/// Turns the page in view left or right, or every page from its menu.
+class _RotateBar extends StatelessWidget {
+  const _RotateBar({required this.state, required this.onRotate});
+
+  final SigningEditorState state;
+  final _RotatePages onRotate;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: state,
+      builder: (context, _) {
+        if (state.locked) return const SizedBox.shrink();
+        final busy = state.rotating;
+        return _FloatingPill(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              IconButton(
+                key: const ValueKey<String>('signing-rotate-left'),
+                tooltip: appStrings.signingRotateLeft,
+                onPressed: busy ? null : () => onRotate(-1),
+                icon: const Icon(Icons.rotate_left_rounded, size: 20),
+              ),
+              IconButton(
+                key: const ValueKey<String>('signing-rotate-right'),
+                tooltip: appStrings.signingRotateRight,
+                onPressed: busy ? null : () => onRotate(1),
+                icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.rotate_right_rounded, size: 20),
+              ),
+              PopupMenuButton<int>(
+                key: const ValueKey<String>('signing-rotate-all'),
+                tooltip: appStrings.signingRotateAll,
+                enabled: !busy,
+                icon: Icon(Icons.more_vert_rounded, size: 20, color: _textSecondary),
+                onSelected: (turns) => onRotate(turns, allPages: true),
+                itemBuilder: (context) => <PopupMenuEntry<int>>[
+                  PopupMenuItem<int>(value: -1, child: Text(appStrings.signingRotateAllLeft)),
+                  PopupMenuItem<int>(value: 1, child: Text(appStrings.signingRotateAllRight)),
+                  PopupMenuItem<int>(value: 2, child: Text(appStrings.signingRotateAllHalf)),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

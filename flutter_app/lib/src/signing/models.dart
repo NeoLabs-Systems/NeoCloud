@@ -189,6 +189,7 @@ enum SigningEventType {
   expired,
   revoked,
   finalDownloaded,
+  pagesRotated,
   other;
 
   static SigningEventType parse(Object? raw) => _enum(values, raw, other, (value) => _snake(value.name));

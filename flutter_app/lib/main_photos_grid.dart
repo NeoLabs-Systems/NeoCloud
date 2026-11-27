@@ -485,8 +485,12 @@ class _PhotoSectionHeader extends StatelessWidget {
 }
 
 /// How wide a blurred thumbnail is decoded, in pixels, whatever the tile's
-/// size: colours and shapes show, faces and text do not.
-const int _blurredThumbnailPixels = 16;
+/// size: the blur hides the detail anyway, so a small decode is enough.
+const int _blurredThumbnailPixels = 48;
+
+/// The blur's strength as a share of the tile: colours and shapes show,
+/// faces and text do not.
+const double _blurSigmaPerExtent = 0.06;
 
 /// One square of the grid: the thumbnail, a video's length, the selection.
 class _PhotoTile extends StatefulWidget {
@@ -569,9 +573,8 @@ class _PhotoTileState extends State<_PhotoTile> {
     final item = widget.item;
     final bytes = _bytes;
     final blurred = widget.blurred;
-    // Blurred, the thumbnail is decoded a few pixels wide and drawn smoothly
-    // scaled up: as soft as a blur filter, but no extra layer per tile while
-    // scrolling, and a smaller decode.
+    // Blurred, a small decode goes through a Gaussian blur: smooth, and cheap
+    // because the picture it blurs is tiny.
     final pixels = blurred ? _blurredThumbnailPixels : (widget.extent * MediaQuery.devicePixelRatioOf(context)).round();
     Widget picture = ColoredBox(color: _bgTertiary);
     if (bytes != null) {
@@ -582,12 +585,16 @@ class _PhotoTileState extends State<_PhotoTile> {
         height: widget.extent,
         cacheWidth: pixels,
         gaplessPlayback: true,
-        filterQuality: blurred ? FilterQuality.high : FilterQuality.medium,
+        filterQuality: FilterQuality.medium,
         // A quick fade the first time, none when it was already decoded.
         frameBuilder: (context, child, frame, synchronous) => synchronous
             ? child
             : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 140), child: child),
       );
+      if (blurred) {
+        final sigma = widget.extent * _blurSigmaPerExtent;
+        picture = ClipRect(child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma, tileMode: TileMode.clamp), child: picture));
+      }
     } else if (item != null && item.isVideo) {
       picture = DecoratedBox(
         decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[_bgTertiary, _bgSecondary], begin: Alignment.topLeft, end: Alignment.bottomRight)),

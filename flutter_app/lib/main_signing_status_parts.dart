@@ -230,6 +230,8 @@ String _eventText(SigningEvent event, String party) {
       return appStrings.signingEventExpired;
     case SigningEventType.finalDownloaded:
       return appStrings.signingEventFinalDownloaded;
+    case SigningEventType.pagesRotated:
+      return appStrings.signingEventPagesRotated;
     case SigningEventType.other:
       return appStrings.signingEventOther;
   }

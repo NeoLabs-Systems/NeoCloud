@@ -33,17 +33,22 @@ class SigningEditorPage extends StatefulWidget {
   State<SigningEditorPage> createState() => _SigningEditorPageState();
 }
 
-class _SigningEditorPageState extends State<SigningEditorPage> {
+class _SigningEditorPageState extends State<SigningEditorPage> with _DraftPages<SigningEditorPage> {
   late final SigningEditorState _state;
   final SigningPageController _pages = SigningPageController();
   final FocusNode _focus = FocusNode(debugLabel: 'signing-editor');
   final FocusNode _titleFocus = FocusNode();
   late final TextEditingController _title;
-  Uint8List? _pdf;
-  String? _pdfError;
   bool _railOpen = true;
 
   NeoCloudController get _controller => widget.controller;
+
+  @override
+  NeoCloudController get draftController => widget.controller;
+  @override
+  SigningEditorState get draftState => _state;
+  @override
+  SigningPageController get draftPages => _pages;
 
   @override
   void initState() {
@@ -61,11 +66,12 @@ class _SigningEditorPageState extends State<SigningEditorPage> {
     _titleFocus.addListener(() {
       if (!_titleFocus.hasFocus) _commitTitle();
     });
-    unawaited(_loadPdf());
+    watchDraftPdf();
   }
 
   @override
   void dispose() {
+    unwatchDraftPdf();
     // Whatever is still unsaved goes out before the state is released.
     unawaited(_state.flush().whenComplete(_state.dispose));
     _pages.dispose();
@@ -73,15 +79,6 @@ class _SigningEditorPageState extends State<SigningEditorPage> {
     _titleFocus.dispose();
     _title.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadPdf() async {
-    try {
-      final bytes = await _controller.signing.pdf(widget.detail.document.id);
-      if (mounted) setState(() => _pdf = bytes);
-    } catch (error) {
-      if (mounted) setState(() => _pdfError = signingErrorText(_controller, error, appStrings.signingPdfLoadFailed));
-    }
   }
 
   void _commitTitle() {
@@ -129,7 +126,7 @@ class _SigningEditorPageState extends State<SigningEditorPage> {
 
   Future<void> _autodetect() async {
     try {
-      final count = await _state.importFields();
+      final count = await _state.detectFields();
       if (mounted) _toast(count == 0 ? appStrings.signingAutodetectNone : appStrings.signingAutodetectDone('$count'));
     } catch (error) {
       if (mounted) _toast(signingErrorText(_controller, error, appStrings.signingLoadFailed));
@@ -215,9 +212,10 @@ class _SigningEditorPageState extends State<SigningEditorPage> {
     final pagesArea = _PagesArea(
       state: _state,
       pages: _pages,
-      pdf: _pdf,
-      error: _pdfError,
+      pdf: draftPdf,
+      error: draftPdfError,
       pagesBuilder: widget.pagesBuilder,
+      onRotate: rotateDraftPages,
     );
     return Focus(
       focusNode: _focus,

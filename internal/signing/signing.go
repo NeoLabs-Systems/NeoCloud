@@ -290,6 +290,7 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	call("PUT /documents/{id}/fields", 200, h.saveFields)
 	call("PUT /documents/{id}/parties", 200, h.saveParties)
 	call("POST /documents/{id}/import-fields", 200, h.importFields, heavy)
+	call("POST /documents/{id}/rotate", 200, h.rotatePages, heavy)
 	call("POST /documents/{id}/send", 200, h.sendRoute, heavy)
 	call("POST /documents/{id}/cancel", 200, h.cancelDocument)
 	call("POST /documents/{id}/duplicate", 201, h.duplicateDocument, heavy)

@@ -496,6 +496,9 @@ void main() {
       final controller = await _controller(_FakeAi(), listing: listing);
       await _pumpApp(tester, controller);
       await openMenu(tester, 'IMG_2041.pdf');
+      expect(find.text('Suggest a name'), findsNothing, reason: 'AI is a submenu');
+      await tester.tap(find.widgetWithText(SubmenuButton, 'AI'));
+      await tester.pumpAndSettle();
       expect(find.text('Suggest a name'), findsOneWidget);
       expect(find.text('Suggest a folder'), findsOneWidget);
       expect(find.text('Summarize'), findsOneWidget);
@@ -503,11 +506,15 @@ void main() {
       await tester.pumpAndSettle();
 
       await openMenu(tester, 'Inbox');
+      await tester.tap(find.widgetWithText(SubmenuButton, 'AI'));
+      await tester.pumpAndSettle();
       expect(find.text('Organize this folder…'), findsOneWidget);
+      expect(find.text('Exclude from AI'), findsOneWidget);
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
 
       await openMenu(tester, 'Vault');
+      expect(find.widgetWithText(SubmenuButton, 'AI'), findsNothing);
       expect(find.text('Organize this folder…'), findsNothing);
       expect(find.text('Exclude from AI'), findsNothing);
       await _finish(tester, controller);

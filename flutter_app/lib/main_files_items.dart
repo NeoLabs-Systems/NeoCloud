@@ -156,8 +156,8 @@ class _FileRowState extends State<_FileRow> {
       builder: (context, dropHover) => MouseRegion(
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
-        child: GestureDetector(
-          onSecondaryTapDown: (details) => unawaited(_showContextMenu(context, details.globalPosition, actions)),
+        child: _FileContextMenu(
+          actions: actions,
           child: Container(
             foregroundDecoration: _itemForeground(focused: focused, cut: callbacks.isCut?.call(node.id) ?? false, radius: 6),
             decoration: BoxDecoration(border: widget.first ? null : Border(top: BorderSide(color: _border))),
@@ -235,7 +235,7 @@ class _FileRowState extends State<_FileRow> {
                             ? Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: <Widget>[
-                                  for (final action in actions.where((a) => a.quick).take(3))
+                                  for (final action in _leafActions(actions).where((a) => a.quick).take(3))
                                     IconButton(
                                       tooltip: action.label,
                                       visualDensity: VisualDensity.compact,
@@ -274,8 +274,8 @@ class _FileTile extends StatelessWidget {
     return _DragDrop(
       node: node,
       callbacks: callbacks,
-      builder: (context, dropHover) => GestureDetector(
-        onSecondaryTapDown: (details) => unawaited(_showContextMenu(context, details.globalPosition, actions)),
+      builder: (context, dropHover) => _FileContextMenu(
+        actions: actions,
         child: Container(
           foregroundDecoration: _itemForeground(
             focused: callbacks.focusedId == node.id,

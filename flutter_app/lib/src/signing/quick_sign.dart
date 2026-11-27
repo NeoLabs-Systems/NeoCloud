@@ -6,6 +6,10 @@ import 'models.dart';
 /// The field types quick sign places.
 const List<FieldType> quickSignTypes = <FieldType>[FieldType.signature, FieldType.initials, FieldType.date, FieldType.text];
 
+/// The detected spots quick sign fills: the saved signature and initials,
+/// today's date and the signer's name.
+const Set<String> quickSignRoles = <String>{'signature', 'initials', 'date', 'name'};
+
 /// The most fields one quick sign takes (the server's limit).
 const int quickSignMaxFields = 50;
 

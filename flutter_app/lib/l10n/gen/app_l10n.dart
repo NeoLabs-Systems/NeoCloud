@@ -5323,6 +5323,24 @@ abstract class AppL10n {
   /// **'More actions'**
   String get filesMoreActions;
 
+  /// No description provided for @filesMenuShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share and send'**
+  String get filesMenuShare;
+
+  /// No description provided for @filesMenuOrganize.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize'**
+  String get filesMenuOrganize;
+
+  /// No description provided for @filesMenuSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign'**
+  String get filesMenuSign;
+
   /// No description provided for @filesMemberRemoveConfirm.
   ///
   /// In en, this message translates to:
@@ -10366,14 +10384,80 @@ abstract class AppL10n {
   /// No description provided for @signingAutodetectNone.
   ///
   /// In en, this message translates to:
-  /// **'No form fields found in this PDF.'**
+  /// **'No fields found in this document.'**
   String get signingAutodetectNone;
 
   /// No description provided for @signingAutodetectDone.
   ///
   /// In en, this message translates to:
-  /// **'{count} form fields found and added for the first party.'**
+  /// **'{count} fields found and added for the first party.'**
   String signingAutodetectDone(String count);
+
+  /// No description provided for @signingRotateLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate page left'**
+  String get signingRotateLeft;
+
+  /// No description provided for @signingRotateRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate page right'**
+  String get signingRotateRight;
+
+  /// No description provided for @signingRotateAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate all pages'**
+  String get signingRotateAll;
+
+  /// No description provided for @signingRotateAllLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate all pages left'**
+  String get signingRotateAllLeft;
+
+  /// No description provided for @signingRotateAllRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate all pages right'**
+  String get signingRotateAllRight;
+
+  /// No description provided for @signingRotateAllHalf.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn all pages upside down'**
+  String get signingRotateAllHalf;
+
+  /// No description provided for @signingRotateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The pages couldn\'t be rotated.'**
+  String get signingRotateFailed;
+
+  /// No description provided for @signingQuickDetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Find spots to sign'**
+  String get signingQuickDetect;
+
+  /// No description provided for @signingQuickDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} spots found and filled in. Remove any you don\'t need.'**
+  String signingQuickDetected(String count);
+
+  /// No description provided for @signingQuickDetectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No spots found. Tap the page to place boxes yourself.'**
+  String get signingQuickDetectNone;
+
+  /// No description provided for @signingEventPagesRotated.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages rotated'**
+  String get signingEventPagesRotated;
 
   /// No description provided for @signingPlaceHint.
   ///

@@ -105,8 +105,15 @@ document. Hidden for vault files and shared files.
 | `src/signing/field_problems.dart`, `send_check.dart`, `signable.dart` | Settings the server would refuse, what sending would run into, which files can be signed. |
 | `main_signing_list.dart` | List (`SigningListScreen`), `SigningDocumentPage` (editor or progress), file picker, `startSigningFromFile`. |
 | `main_signing_editor*.dart`, `main_signing_inspector.dart` | Editor frame and shortcuts, pages with per-page overlays and the thumbnail rail, parties, palette and inspector. |
+| `main_signing_editor_pages.dart` | Shared by the editor and quick sign: `_PagesArea` with the zoom bar and the rotate bar (turn the page in view left or right, or every page from its menu), and `_DraftPages`, which loads the draft's PDF and loads it again when `snapshotSha256` changes (pages were turned). |
 | `main_signing_send.dart` | Recipients dialog and the one-time links (copy, QR). Links live only in the dialog's state. |
 | `main_signing_status*.dart` | Progress page: party cards, link actions, preview with all values, audit trail, signed file. |
+
+"Autodetect fields" (`SigningEditorState.detectFields`) adds the form fields
+and the spots the server finds (`import-fields`) for the first party as one
+undo step. Turning pages (`SigningEditorState.rotatePages`, `rotate`) saves
+what is pending, adopts the server's answer (the boxes on turned pages have
+moved) and starts a fresh undo history.
 
 `signing:updated` (socket) and the poll on phones bump
 `controller.signingRevision`; the list and the progress page reload on it.
@@ -164,5 +171,5 @@ All mail UI is drawn only when `GET /api/signing/capabilities` says `email.confi
 - **Progress page**: delivery chip, last sent, reminder counter, next automatic reminder, "Send reminder" (countdown on `REMINDER_TOO_SOON`, a sentence for `PARTY_NOT_ACTIVE`, `NO_EMAIL`, `EMAIL_NOT_CONFIGURED`, `REMINDER_LIMIT`), "Remind everyone", failed-mail banner with "Send again", completion note.
 - **Signer with an account** (`main_signing_claim.dart`): banner on the first step calls `POST /api/signing/claim {token, apply:true}`, reloads the view, marks values "From your profile"; the consent stays, and the flow jumps to review when everything is filled. After completion the saved copy is found through the inbox (`savedNodeId`). Signed-out visitors get one quiet sign-in line; the link is held only in memory (`controller.signingToken`).
 - **Settings > Signing profile** (`main_signing_profile.dart`): details, up to 5 signatures and 5 initials (immediate), saved details, switches and folder; one Save.
-- **Sign yourself** (`main_signing_quick.dart`, `src/signing/quick_sign.dart`): "Sign yourself" on the Signing page (pick a file or upload one into the folder shown) and "Sign it yourself…" in a signable file's menu make a draft and open `QuickSignPage` full screen. It reuses the editor's `SigningEditorState`, pages and palette tiles (signature, initials, date, name) with each box showing what it will carry; the default saved signature and initials of the profile are used, others can be picked, and a new one is drawn with `showSignatureDialog` and then offered for the profile ("Keep it" / "Only this time"). "Sign and save" sends one `quickSign` request and opens the progress page; leaving without signing deletes the draft.
+- **Sign yourself** (`main_signing_quick.dart`, `src/signing/quick_sign.dart`): "Sign yourself" on the Signing page (pick a file or upload one into the folder shown) and "Sign it yourself…" in a signable file's menu make a draft and open `QuickSignPage` full screen. It reuses the editor's `SigningEditorState`, pages (with the rotate bar) and palette tiles (signature, initials, date, name) with each box showing what it will carry. Once the profile is loaded, an empty draft asks the server for the spots to sign (`detectFields(roles: quickSignRoles)`: signature, initials, date, name) and shows them filled in; any box can be removed, and "Find spots to sign" asks again; the default saved signature and initials of the profile are used, others can be picked, and a new one is drawn with `showSignatureDialog` and then offered for the profile ("Keep it" / "Only this time"). "Sign and save" sends one `quickSign` request and opens the progress page; leaving without signing deletes the draft.
 - **Inbox** (`main_signing_inbox.dart`): tabs "My documents / To sign / Signed by me" on the Signing page (when mail is on), badge from `counts.todo` on the sidebar and phone chip, open through `POST /inbox/:partyId/open`.

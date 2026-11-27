@@ -31,6 +31,7 @@ type formField struct {
 	kind, da     string
 	flags, align int
 	maxLen       int
+	tooltip      string
 	value, opt   types.Object
 	widgets      []types.IndirectRef
 }
@@ -73,6 +74,9 @@ func (d *document) formFields() []formField {
 		}
 		if v, ok := dict["MaxLen"]; ok {
 			f.maxLen = int(d.number(v))
+		}
+		if v := d.text(dict["TU"]); v != "" {
+			f.tooltip = v
 		}
 		if v := d.text(dict["DA"]); v != "" {
 			f.da = v
@@ -195,13 +199,20 @@ func prefsFromDA(da string) map[string]any {
 	return prefs
 }
 
-// ImportedField is an AcroForm field as a draft signing field. Its preference
-// values are what a JSON decoder would produce.
+// ImportedField is a field found in the PDF as a draft signing field: an
+// AcroForm field (Source "form") or a spot the page layout marks for one
+// (Source "layout"). Its preference values are what a JSON decoder would
+// produce. Role says what it is for: signature, initials, date, name, place,
+// text, checkbox, radio, select, multiple or cells. Confidence runs from 0 to
+// 1; form fields have 1.
 type ImportedField struct {
 	Type, Name string
 	Required   bool
 	Prefs      map[string]any
 	Areas      []Area
+	Role       string
+	Confidence float64
+	Source     string
 }
 
 // ImportFields lists the form fields of a PDF in reading order. Read-only
@@ -211,13 +222,24 @@ func ImportFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 	if err != nil {
 		return nil, err
 	}
-	pages := doc.widgetPages()
+	out := doc.importForm()
+	for i := range out {
+		if out[i].Role == "" {
+			out[i].Role = "text"
+		}
+	}
+	sortReading(out)
+	return out, nil
+}
+
+func (d *document) importForm() []ImportedField {
+	pages := d.widgetPages()
 	var out []ImportedField
-	for _, f := range doc.formFields() {
+	for _, f := range d.formFields() {
 		if f.flags&flagReadOnly != 0 {
 			continue
 		}
-		spec := ImportedField{Name: f.name, Required: f.flags&flagRequired != 0, Prefs: map[string]any{}}
+		spec := ImportedField{Name: f.name, Required: f.flags&flagRequired != 0, Prefs: map[string]any{}, Confidence: 1, Source: "form"}
 		var options []string
 		switch f.kind {
 		case "Tx":
@@ -239,7 +261,7 @@ func ImportFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 				continue
 			case f.flags&flagRadio != 0:
 				spec.Type = "radio"
-				options = doc.options(f.opt)
+				options = d.options(f.opt)
 			default:
 				spec.Type = "checkbox"
 			}
@@ -248,31 +270,43 @@ func ImportFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 			if f.flags&flagMultiSelect != 0 {
 				spec.Type = "multiple"
 			}
-			options = doc.options(f.opt)
+			options = d.options(f.opt)
 		case "Sig":
 			spec.Type = "signature"
 		default:
 			continue
 		}
+		spec.Role = spec.Type
+		if spec.Type == "text" {
+			spec.Role = ""
+			if roles := labelRoles(fieldNameWords(f.name + " " + f.tooltip)); len(roles) > 0 {
+				spec.Role = roles[0].role
+				for _, r := range roles {
+					if r.role == "date" {
+						spec.Role = "date"
+					}
+				}
+			}
+		}
 		radioOptions := slices.Clone(options)
 		for _, ref := range f.widgets {
-			widget := doc.dict(ref)
+			widget := d.dict(ref)
 			index, onPage := pages[ref.ObjectNumber.Value()]
-			if widget == nil || !onPage || !doc.visible(widget) {
+			if widget == nil || !onPage || !d.visible(widget) {
 				continue
 			}
-			box, ok := doc.rectangle(widget["Rect"])
+			box, ok := d.rectangle(widget["Rect"])
 			if !ok {
 				continue
 			}
-			area := doc.pages[index].area(box)
+			area := d.pages[index].area(box)
 			if area.W < 0.001 || area.H < 0.001 {
 				continue
 			}
 			area.Page = index
 			if spec.Type == "radio" {
 				// A widget's on state is the option itself, or its index into /Opt.
-				on := doc.onState(widget)
+				on := d.onState(widget)
 				option := on
 				if n, err := strconv.Atoi(on); err == nil && n >= 0 && n < len(radioOptions) && !slices.Contains(radioOptions, on) {
 					option = radioOptions[n]
@@ -304,12 +338,38 @@ func ImportFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 		}
 		out = append(out, spec)
 	}
+	return out
+}
+
+// retype makes a form text field the kind its role asks for: a text box a
+// form calls "Signature" becomes a signature field.
+func (f *ImportedField) retype() {
+	if f.Type != "text" {
+		return
+	}
+	switch f.Role {
+	case "signature", "initials":
+		f.Type, f.Prefs = f.Role, map[string]any{}
+	case "date":
+		prefs := map[string]any{}
+		for _, key := range []string{"fontSize", "color", "align"} {
+			if v, ok := f.Prefs[key]; ok {
+				prefs[key] = v
+			}
+		}
+		f.Type, f.Prefs = "date", prefs
+	case "":
+		f.Role = "text"
+	}
+}
+
+func sortReading(out []ImportedField) {
 	slices.SortStableFunc(out, func(a, b ImportedField) int {
 		x, y := a.Areas[0], b.Areas[0]
 		if x.Page != y.Page {
 			return x.Page - y.Page
 		}
-		if x.Y != y.Y {
+		if math.Abs(x.Y-y.Y) > 0.004 {
 			if x.Y < y.Y {
 				return -1
 			}
@@ -322,7 +382,6 @@ func ImportFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 		}
 		return 0
 	})
-	return out, nil
 }
 
 // stripActiveContent removes what a sealed document must not carry from its

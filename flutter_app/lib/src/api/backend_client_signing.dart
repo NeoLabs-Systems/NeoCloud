@@ -76,7 +76,13 @@ class BackendSigningApi implements SigningApi {
   }
 
   @override
-  Future<int> importFields(String id) async => int.tryParse('${(await _json('POST', '${_doc(id)}/import-fields'))['imported']}') ?? 0;
+  Future<SigningDetection> detectFields(String id, {Set<String>? roles, double? minConfidence}) async => SigningDetection.fromJson(
+    await _json('POST', '${_doc(id)}/import-fields', body: <String, Object?>{'roles': ?roles?.toList(), 'minConfidence': ?minConfidence}),
+  );
+
+  @override
+  Future<SigningDetail> rotatePages(String id, {required int quarterTurns, List<int>? pages}) async =>
+      SigningDetail.fromJson(await _json('POST', '${_doc(id)}/rotate', body: <String, Object?>{'angle': quarterTurns * 90, 'pages': ?pages}));
 
   @override
   Future<SigningSendResult> send(String id, {SendOptions? options}) async =>

@@ -540,7 +540,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.photosBlurred.value, isTrue);
       expect(preferences.getBool('photos.blurred'), isTrue);
-      expect(decodedWidths(tester), everyElement(lessThan(32)));
+      expect(decodedWidths(tester), everyElement(lessThan(64)));
+      expect(find.byType(ImageFiltered), findsWidgets);
       expect(find.byTooltip('Show photos sharp'), findsOneWidget);
 
       // After a restart the grid starts blurred.
@@ -556,7 +557,8 @@ void main() {
       final timeline = await _loadedTimeline(_FakeSource.generate(days: 3, perDay: 6));
       final key = await _pumpGrid(tester, timeline, blurred: true, thumbnails: PhotoThumbnailCache(fetch: (_, _) async => tinyPng));
       expect(decodedWidths(tester), isNotEmpty);
-      expect(decodedWidths(tester), everyElement(lessThan(32)));
+      expect(decodedWidths(tester), everyElement(lessThan(64)));
+      expect(find.byType(ImageFiltered), findsWidgets);
       await tester.tap(find.byType(Image).first);
       await tester.pumpAndSettle();
       expect(key.currentState!.opened, hasLength(1));

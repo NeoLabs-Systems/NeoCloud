@@ -3,6 +3,7 @@ package signing
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"math"
 	"strconv"
@@ -192,22 +193,46 @@ func replaceFields(ctx context.Context, tx *sql.Tx, d document, input any) error
 	return nil
 }
 
-// addImported adds the PDF's form fields as fields of the first party.
-// Entries that don't pass validation are skipped.
-func addImported(ctx context.Context, tx *sql.Tx, d document, found []signpdf.ImportedField) (int, error) {
+// areas are a stored field's boxes.
+func (f field) areas() []signpdf.Area {
+	var out []signpdf.Area
+	if err := json.Unmarshal([]byte(f.AreasJSON), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+// detectedField is one field a detection added, with what it was found as.
+type detectedField struct {
+	ID         string  `json:"id"`
+	Role       string  `json:"role"`
+	Confidence float64 `json:"confidence"`
+	Source     string  `json:"source"`
+}
+
+// addImported adds found fields to the first party. Entries that don't pass
+// validation, or cover a field that is already there, are skipped.
+func addImported(ctx context.Context, tx *sql.Tx, d document, found []signpdf.ImportedField) ([]detectedField, error) {
 	parties, err := listParties(ctx, tx, d.ID)
 	if err != nil || len(parties) == 0 {
-		return 0, err
+		return nil, err
 	}
 	existing, err := listFields(ctx, tx, d.ID)
 	if err != nil {
-		return 0, err
+		return nil, err
+	}
+	taken := make([]signpdf.ImportedField, 0, len(existing))
+	for _, f := range existing {
+		taken = append(taken, signpdf.ImportedField{Areas: f.areas()})
 	}
 	first := map[string]bool{parties[0].ID: true}
-	count := 0
+	var added []detectedField
 	for _, draft := range found {
-		if len(existing)+count >= maxFields {
+		if len(existing)+len(added) >= maxFields {
 			break
+		}
+		if signpdf.Overlaps(draft.Areas, taken) {
+			continue
 		}
 		areas := make([]any, len(draft.Areas))
 		for i, a := range draft.Areas {
@@ -216,7 +241,7 @@ func addImported(ctx context.Context, tx *sql.Tx, d document, found []signpdf.Im
 		f, err := normalizeField(map[string]any{"type": draft.Type, "partyId": parties[0].ID, "name": truncate(draft.Name, maxNameLength),
 			"required": draft.Required, "prefs": draft.Prefs, "areas": areas}, d.PageCount, first)
 		if err != nil {
-			slog.Debug("skipped an imported form field", "reason", err)
+			slog.Debug("skipped a detected field", "reason", err)
 			continue
 		}
 		// A radio group's boxes keep the option each of them stands for.
@@ -227,11 +252,37 @@ func addImported(ctx context.Context, tx *sql.Tx, d document, found []signpdf.Im
 				f.AreasJSON = encodeJSON(stored)
 			}
 		}
-		f.ID, f.DocumentID, f.Position = uuid.NewString(), d.ID, len(existing)+count
+		f.ID, f.DocumentID, f.Position = uuid.NewString(), d.ID, len(existing)+len(added)
 		if err := insertField(ctx, tx, f); err != nil {
-			return count, err
+			return added, err
 		}
-		count++
+		taken = append(taken, draft)
+		added = append(added, detectedField{ID: f.ID, Role: draft.Role, Confidence: draft.Confidence, Source: draft.Source})
 	}
-	return count, nil
+	return added, nil
+}
+
+// rotateFields moves the boxes on turned pages with their page. sizes are the
+// displayed page sizes before the turn.
+func rotateFields(ctx context.Context, tx *sql.Tx, documentID string, turns map[int]int, sizes []signpdf.Page) error {
+	fields, err := listFields(ctx, tx, documentID)
+	if err != nil {
+		return err
+	}
+	for _, f := range fields {
+		areas, changed := f.areas(), false
+		for i, a := range areas {
+			if n, ok := turns[a.Page]; ok && a.Page < len(sizes) {
+				areas[i] = signpdf.RotateArea(a, n, sizes[a.Page].Width, sizes[a.Page].Height)
+				changed = true
+			}
+		}
+		if !changed {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE sign_fields SET areas_json=? WHERE id=?`, encodeJSON(areas), f.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

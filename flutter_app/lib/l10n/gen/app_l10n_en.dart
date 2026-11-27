@@ -3234,6 +3234,15 @@ class AppL10nEn extends AppL10n {
   String get filesMoreActions => 'More actions';
 
   @override
+  String get filesMenuShare => 'Share and send';
+
+  @override
+  String get filesMenuOrganize => 'Organize';
+
+  @override
+  String get filesMenuSign => 'Sign';
+
+  @override
   String filesMemberRemoveConfirm(String name, String item) {
     return '$name will no longer be able to open “$item”.';
   }
@@ -6285,12 +6294,48 @@ class AppL10nEn extends AppL10n {
   String get signingAutodetect => 'Autodetect fields';
 
   @override
-  String get signingAutodetectNone => 'No form fields found in this PDF.';
+  String get signingAutodetectNone => 'No fields found in this document.';
 
   @override
   String signingAutodetectDone(String count) {
-    return '$count form fields found and added for the first party.';
+    return '$count fields found and added for the first party.';
   }
+
+  @override
+  String get signingRotateLeft => 'Rotate page left';
+
+  @override
+  String get signingRotateRight => 'Rotate page right';
+
+  @override
+  String get signingRotateAll => 'Rotate all pages';
+
+  @override
+  String get signingRotateAllLeft => 'Rotate all pages left';
+
+  @override
+  String get signingRotateAllRight => 'Rotate all pages right';
+
+  @override
+  String get signingRotateAllHalf => 'Turn all pages upside down';
+
+  @override
+  String get signingRotateFailed => 'The pages couldn\'t be rotated.';
+
+  @override
+  String get signingQuickDetect => 'Find spots to sign';
+
+  @override
+  String signingQuickDetected(String count) {
+    return '$count spots found and filled in. Remove any you don\'t need.';
+  }
+
+  @override
+  String get signingQuickDetectNone =>
+      'No spots found. Tap the page to place boxes yourself.';
+
+  @override
+  String get signingEventPagesRotated => 'Pages rotated';
 
   @override
   String get signingPlaceHint =>

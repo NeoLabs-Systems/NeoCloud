@@ -66,6 +66,7 @@ var certificateText = map[string]certificateStrings{
 		},
 		events: map[string]string{
 			"created":          "Document created",
+			"pages_rotated":    "Pages rotated",
 			"sent":             "Sent for signing",
 			"link_regenerated": "Signing link renewed",
 			"opened":           "Opened",
@@ -144,6 +145,7 @@ var certificateText = map[string]certificateStrings{
 		},
 		events: map[string]string{
 			"created":          "Dokument erstellt",
+			"pages_rotated":    "Seiten gedreht",
 			"sent":             "Zur Unterschrift versendet",
 			"link_regenerated": "Link erneuert",
 			"opened":           "Geöffnet",

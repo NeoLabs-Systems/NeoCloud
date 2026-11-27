@@ -445,6 +445,7 @@ class SigningEditorState extends ChangeNotifier {
     pageCount: _document.pageCount,
     sourceNodeId: _document.sourceNodeId,
     finalNodeId: _document.finalNodeId,
+    snapshotSha256: _document.snapshotSha256,
     pageSizes: _document.pageSizes,
     createdAt: _document.createdAt,
     updatedAt: _document.updatedAt,
@@ -561,19 +562,40 @@ class SigningEditorState extends ChangeNotifier {
     if (_selectedId != null && ids[_selectedId] != null) _selectedId = ids[_selectedId];
   }
 
-  /// Imports the PDF's own form fields; resolves with how many were found.
-  Future<int> importFields() async {
+  /// Adds the fields the server finds in the PDF (its form fields, and the
+  /// places its pages mark for a signature, date, name, initials or a tick)
+  /// for the first party, as one undo step; resolves with how many. [roles]
+  /// keeps only those (see [DetectedField.role]).
+  Future<int> detectFields({Set<String>? roles}) async {
     if (locked) return 0;
     if (!await flush()) return 0;
-    final count = await api.importFields(_document.id);
-    if (count > 0) {
-      final detail = await api.get(_document.id);
+    final detection = await api.detectFields(_document.id, roles: roles);
+    if (detection.imported > 0) {
       _remember();
-      _fields = List<SigningField>.of(detail.fields);
-      _parties = List<SigningParty>.of(detail.parties);
+      _fields = List<SigningField>.of(detection.fields);
       notifyListeners();
     }
-    return count;
+    return detection.imported;
+  }
+
+  /// Whether pages are being turned right now.
+  bool rotating = false;
+
+  /// Turns [pages] (all when null) by [quarterTurns] clockwise. The server
+  /// writes the turned PDF and moves the boxes on those pages; the result is
+  /// adopted, which also starts a fresh undo history (the old steps refer to
+  /// the unturned pages).
+  Future<void> rotatePages({required int quarterTurns, List<int>? pages}) async {
+    if (locked || rotating || quarterTurns % 4 == 0) return;
+    rotating = true;
+    notifyListeners();
+    try {
+      if (!await flush()) throw lastError ?? const SigningException(SigningErrorKind.server);
+      adopt(await api.rotatePages(_document.id, quarterTurns: quarterTurns, pages: pages));
+    } finally {
+      rotating = false;
+      notifyListeners();
+    }
   }
 
   /// Adopts the server's current state (after a conflict, or a reload).

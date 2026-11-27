@@ -235,14 +235,14 @@ void main() {
       final draft = items.firstWhere((item) => item.title == 'Draft contract');
       final waiting = items.firstWhere((item) => item.title == 'Waiting lease');
 
-      await tester.tap(find.descendant(of: find.byKey(ValueKey<String>('signing-row-${waiting.id}')), matching: find.byType(PopupMenuButton<int>)));
+      await tester.tap(find.descendant(of: find.byKey(ValueKey<String>('signing-row-${waiting.id}')), matching: find.byTooltip('More actions')));
       await tester.pumpAndSettle();
       expect(find.text('Cancel signing'), findsOneWidget);
       expect(find.text('Delete'), findsNothing);
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.descendant(of: find.byKey(ValueKey<String>('signing-row-${draft.id}')), matching: find.byType(PopupMenuButton<int>)));
+      await tester.tap(find.descendant(of: find.byKey(ValueKey<String>('signing-row-${draft.id}')), matching: find.byTooltip('More actions')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();

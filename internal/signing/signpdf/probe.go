@@ -66,14 +66,18 @@ func Probe(ctx context.Context, data []byte) (Info, error) {
 	if err != nil {
 		return Info{}, err
 	}
+	return doc.info(), nil
+}
+
+func (d *document) info() Info {
 	info := Info{}
-	for _, p := range doc.pages {
+	for _, p := range d.pages {
 		w, h := p.size()
 		info.Pages = append(info.Pages, Page{Width: round2(w), Height: round2(h), Rotate: p.rotate})
 	}
-	form := doc.dict(doc.root["AcroForm"])
-	info.HasAcroForm = form != nil && len(doc.array(form["Fields"])) > 0
-	return info, nil
+	form := d.dict(d.root["AcroForm"])
+	info.HasAcroForm = form != nil && len(d.array(form["Fields"])) > 0
+	return info
 }
 
 func round2(v float64) float64 { return math.Round(v*100) / 100 }

@@ -376,23 +376,32 @@ mixin _FilesActions on _FilesBase {
     }
   }
 
-  /// The AI entries of a file's or folder's menu, when AI may look at it.
+  /// The AI entries of a file's or folder's menu: suggestions when AI may
+  /// look at it, and for a folder of the account's own the switch that
+  /// keeps AI out (shown while excluded too, to let it back in).
   List<_FileAction> aiActionsFor(FileNode node) {
-    if (!aiAllowedFor(node)) return const <_FileAction>[];
     final settings = controller.settings;
-    if (node.isFolder) {
-      final any = <String>['names', 'folders', 'tags'].any(settings.aiFeatureOn);
+    final allowed = aiAllowedFor(node);
+    if (!node.isFolder) {
+      if (!allowed) return const <_FileAction>[];
       return <_FileAction>[
-        if (any) _FileAction(Icons.auto_awesome_outlined, appStrings.aiOrganizeFolder, () => unawaited(showAiOrganizeSheet(context, controller, node))),
+        if (settings.aiFeatureOn('names'))
+          _FileAction(Icons.auto_awesome_outlined, appStrings.aiSuggestName, () => unawaited(requestAi(subjectFor(node), const <String>['names']))),
+        if (settings.aiFeatureOn('folders'))
+          _FileAction(Icons.drive_file_move_outline, appStrings.aiSuggestFolder, () => unawaited(requestAi(subjectFor(node), const <String>['folders']))),
+        if (settings.aiFeatureOn('summaries'))
+          _FileAction(Icons.notes_rounded, appStrings.aiSummarize, () => unawaited(showAiSummarySheet(context, controller, node))),
       ];
     }
+    final organize = allowed && <String>['names', 'folders', 'tags'].any(settings.aiFeatureOn);
     return <_FileAction>[
-      if (settings.aiFeatureOn('names'))
-        _FileAction(Icons.auto_awesome_outlined, appStrings.aiSuggestName, () => unawaited(requestAi(subjectFor(node), const <String>['names']))),
-      if (settings.aiFeatureOn('folders'))
-        _FileAction(Icons.drive_file_move_outline, appStrings.aiSuggestFolder, () => unawaited(requestAi(subjectFor(node), const <String>['folders']))),
-      if (settings.aiFeatureOn('summaries'))
-        _FileAction(Icons.notes_rounded, appStrings.aiSummarize, () => unawaited(showAiSummarySheet(context, controller, node))),
+      if (organize) _FileAction(Icons.auto_awesome_outlined, appStrings.aiOrganizeFolder, () => unawaited(showAiOrganizeSheet(context, controller, node))),
+      if (!inShare && !node.inVault)
+        _FileAction(
+          node.aiExcluded ? Icons.auto_awesome_outlined : Icons.do_not_disturb_on_outlined,
+          node.aiExcluded ? appStrings.aiFolderInclude : appStrings.aiFolderExclude,
+          () => unawaited(setAiExcluded(node, !node.aiExcluded)),
+        ),
     ];
   }
 
@@ -426,56 +435,58 @@ mixin _FilesActions on _FilesBase {
     return <FileNode>[node];
   }
 
-  /// What can be done to [node]. In a shared folder: no links, stars or
-  /// versions (they stay the owner's), changes only with write access, and
-  /// a copy into the account's own files instead of "Move to".
+  /// What can be done to [node]: the everyday actions first, the rest in
+  /// groups (Share and send, Organize, Sign, AI, Details) that only show
+  /// when they hold something, and Move to trash last. In a shared folder:
+  /// no links, stars or versions (they stay the owner's), changes only with
+  /// write access, and a copy into the account's own files instead of
+  /// "Move to".
   List<_FileAction> actionsFor(FileNode node) {
     final vault = node.inVault;
     final own = !inShare;
+    final file = !node.isFolder;
+    final signable = own && file && !vault && signableKindOf(node.name, node.mime).isSignable;
     return <_FileAction>[
-      _FileAction(node.isFolder ? Icons.folder_open_outlined : Icons.open_in_new_rounded, appStrings.open, () => open(node), shortcut: '↵'),
+      _FileAction(file ? Icons.open_in_new_rounded : Icons.folder_open_outlined, appStrings.open, () => open(node), shortcut: '↵'),
       if (canWrite && !vault && controller.office.canEdit(node)) _FileAction(Icons.edit_outlined, appStrings.officeEdit, () => unawaited(showOfficeEditor(context, controller, node))),
       if (searching) _FileAction(Icons.drive_folder_upload_outlined, appStrings.searchOpenFolder, () => openContainingFolder(node), quick: true),
-      if (!vault || !node.isFolder)
-        _FileAction(Icons.download_rounded, node.isFolder ? appStrings.downloadZip : appStrings.download, () => download(subjectFor(node)), quick: true),
-      if (node.signed && !node.isFolder && own)
-        _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(guard(() => controller.downloadSignedWithoutCertificate(node)))),
-      if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
-      if (own && !vault && !node.isFolder)
-        _FileAction(Icons.send_to_mobile_rounded, appStrings.handoffTitle, () => unawaited(sendToDevice(subjectFor(node))), quick: true),
-      if (own && node.isFolder && !vault)
-        _FileAction(Icons.inbox_outlined, appStrings.requestFiles, () => unawaited(requestFilesInto(context, controller, node)), quick: true),
-      if (own)
-        _FileAction(
-          node.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
-          node.favorite ? appStrings.filesUnstar : appStrings.filesStar,
-          () => unawaited(toggleFavorite(subjectFor(node))),
-          quick: true,
-        ),
+      if (!vault || file) _FileAction(Icons.download_rounded, file ? appStrings.download : appStrings.downloadZip, () => download(subjectFor(node)), quick: true),
       if (canWrite) _FileAction(Icons.drive_file_rename_outline_rounded, appStrings.rename, () => unawaited(rename(node)), shortcut: 'F2'),
-      if (own) _FileAction(Icons.drive_file_move_outline, appStrings.moveTo, () => unawaited(move(subjectFor(node)))),
-      if (canWrite) _FileAction(Icons.content_cut_rounded, appStrings.filesCutAction, () => cut(subjectFor(node)), shortcut: _shortcutLabel('X')),
-      if (canWrite) _FileAction(Icons.copy_rounded, appStrings.makeCopy, () => unawaited(copy(node))),
       if (!own) _FileAction(Icons.drive_file_move_rtl_outlined, appStrings.sharedSaveToMyFiles, () => unawaited(saveToMyFiles(node))),
-      if (own && node.isFolder && !vault)
-        _FileAction(
-          node.aiExcluded ? Icons.auto_awesome_outlined : Icons.do_not_disturb_on_outlined,
-          node.aiExcluded ? appStrings.aiFolderInclude : appStrings.aiFolderExclude,
-          () => unawaited(setAiExcluded(node, !node.aiExcluded)),
-        ),
-      if (own && node.isFolder && !vault)
-        _FileAction(
-          Icons.enhanced_encryption_outlined,
-          vaultConversionPending(controller, node.id) ? appStrings.vaultConvertResumeAction : appStrings.vaultConvertAction,
-          () => unawaited(convertToVault(node)),
-        ),
-      if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
-        _FileAction(AppSection.signing.icon, appStrings.signingPrepare, () => unawaited(startSigningFromFile(context, controller, node))),
-      if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
-        _FileAction(Icons.draw_outlined, appStrings.signingQuickAction, () => unawaited(startQuickSign(context, controller, node))),
-      if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
-      if (!vault) _FileAction(Icons.forum_outlined, appStrings.nodeDetailsAction, () => unawaited(showNodeDetails(context, controller, node))),
-      ...aiActionsFor(node),
+      _FileAction.group(Icons.share_outlined, appStrings.filesMenuShare, <_FileAction>[
+        if (own && !vault) _FileAction(Icons.share_outlined, appStrings.shareLink, () => unawaited(showShareLinkDialog(context, controller, node)), quick: true),
+        if (own && !vault && file) _FileAction(Icons.send_to_mobile_rounded, appStrings.handoffTitle, () => unawaited(sendToDevice(subjectFor(node))), quick: true),
+        if (own && !vault && !file) _FileAction(Icons.inbox_outlined, appStrings.requestFiles, () => unawaited(requestFilesInto(context, controller, node)), quick: true),
+      ]),
+      _FileAction.group(Icons.drive_file_move_outline, appStrings.filesMenuOrganize, <_FileAction>[
+        if (own) _FileAction(Icons.drive_file_move_outline, appStrings.moveTo, () => unawaited(move(subjectFor(node)))),
+        if (canWrite) _FileAction(Icons.content_cut_rounded, appStrings.filesCutAction, () => cut(subjectFor(node)), shortcut: _shortcutLabel('X')),
+        if (canWrite) _FileAction(Icons.copy_rounded, appStrings.makeCopy, () => unawaited(copy(node))),
+        if (own)
+          _FileAction(
+            node.favorite ? Icons.star_rounded : Icons.star_outline_rounded,
+            node.favorite ? appStrings.filesUnstar : appStrings.filesStar,
+            () => unawaited(toggleFavorite(subjectFor(node))),
+            quick: true,
+          ),
+        if (own && !file && !vault)
+          _FileAction(
+            Icons.enhanced_encryption_outlined,
+            vaultConversionPending(controller, node.id) ? appStrings.vaultConvertResumeAction : appStrings.vaultConvertAction,
+            () => unawaited(convertToVault(node)),
+          ),
+      ]),
+      _FileAction.group(AppSection.signing.icon, appStrings.filesMenuSign, <_FileAction>[
+        if (signable) _FileAction(AppSection.signing.icon, appStrings.signingPrepare, () => unawaited(startSigningFromFile(context, controller, node))),
+        if (signable) _FileAction(Icons.draw_outlined, appStrings.signingQuickAction, () => unawaited(startQuickSign(context, controller, node))),
+        if (own && file && node.signed)
+          _FileAction(Icons.description_outlined, appStrings.signingDownloadWithoutCertificate, () => unawaited(guard(() => controller.downloadSignedWithoutCertificate(node)))),
+      ]),
+      _FileAction.group(Icons.auto_awesome_outlined, appStrings.aiMenu, aiActionsFor(node)),
+      _FileAction.group(Icons.info_outline_rounded, appStrings.details, <_FileAction>[
+        if (own && file && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
+        if (!vault) _FileAction(Icons.forum_outlined, appStrings.nodeDetailsAction, () => unawaited(showNodeDetails(context, controller, node))),
+      ]),
       if (canWrite) _FileAction(Icons.delete_outline_rounded, appStrings.moveToTrash, () => unawaited(trash(subjectFor(node))), danger: true, quick: true, shortcut: 'Del'),
     ];
   }

@@ -3263,6 +3263,15 @@ class AppL10nDe extends AppL10n {
   String get filesMoreActions => 'Weitere Aktionen';
 
   @override
+  String get filesMenuShare => 'Teilen und senden';
+
+  @override
+  String get filesMenuOrganize => 'Organisieren';
+
+  @override
+  String get filesMenuSign => 'Signieren';
+
+  @override
   String filesMemberRemoveConfirm(String name, String item) {
     return '$name kann „$item“ danach nicht mehr öffnen.';
   }
@@ -6350,12 +6359,48 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get signingAutodetectNone =>
-      'In diesem PDF wurden keine Formularfelder gefunden.';
+      'In diesem Dokument wurden keine Felder gefunden.';
 
   @override
   String signingAutodetectDone(String count) {
-    return '$count Formularfelder gefunden und der ersten Partei zugeordnet.';
+    return '$count Felder gefunden und der ersten Partei zugeordnet.';
   }
+
+  @override
+  String get signingRotateLeft => 'Seite nach links drehen';
+
+  @override
+  String get signingRotateRight => 'Seite nach rechts drehen';
+
+  @override
+  String get signingRotateAll => 'Alle Seiten drehen';
+
+  @override
+  String get signingRotateAllLeft => 'Alle Seiten nach links drehen';
+
+  @override
+  String get signingRotateAllRight => 'Alle Seiten nach rechts drehen';
+
+  @override
+  String get signingRotateAllHalf => 'Alle Seiten auf den Kopf stellen';
+
+  @override
+  String get signingRotateFailed => 'Die Seiten konnten nicht gedreht werden.';
+
+  @override
+  String get signingQuickDetect => 'Stellen zum Unterschreiben finden';
+
+  @override
+  String signingQuickDetected(String count) {
+    return '$count Stellen gefunden und ausgefüllt. Entferne, was du nicht brauchst.';
+  }
+
+  @override
+  String get signingQuickDetectNone =>
+      'Keine Stellen gefunden. Tippe auf die Seite, um selbst Felder zu setzen.';
+
+  @override
+  String get signingEventPagesRotated => 'Seiten gedreht';
 
   @override
   String get signingPlaceHint =>

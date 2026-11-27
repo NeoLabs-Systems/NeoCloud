@@ -135,6 +135,51 @@ class SigningCapabilities {
   final bool emailConfigured;
 }
 
+/// One field a detection added: what it was found as and how sure it is.
+class DetectedField {
+  const DetectedField({required this.id, required this.role, this.confidence = 1, this.source = 'layout'});
+
+  factory DetectedField.fromJson(Map<String, dynamic> json) => DetectedField(
+    id: '${json['id'] ?? ''}',
+    role: '${json['role'] ?? ''}',
+    confidence: json['confidence'] is num ? (json['confidence'] as num).toDouble() : 1,
+    source: '${json['source'] ?? 'layout'}',
+  );
+
+  final String id;
+
+  /// signature, initials, date, name, place, text, checkbox, radio, select,
+  /// multiple or cells.
+  final String role;
+
+  /// 0..1; the PDF's own form fields have 1.
+  final double confidence;
+
+  /// `form` (the PDF's form field) or `layout` (read from the page).
+  final String source;
+}
+
+/// `POST /documents/:id/import-fields`: what was added, and all fields now.
+class SigningDetection {
+  const SigningDetection({required this.fields, this.detected = const <DetectedField>[]});
+
+  factory SigningDetection.fromJson(Map<String, dynamic> json) => SigningDetection(
+    fields: <SigningField>[
+      for (final row in json['fields'] is List ? json['fields'] as List : const <Object?>[])
+        if (row is Map) SigningField.fromJson(row.cast<String, dynamic>()),
+    ],
+    detected: <DetectedField>[
+      for (final row in json['detected'] is List ? json['detected'] as List : const <Object?>[])
+        if (row is Map) DetectedField.fromJson(row.cast<String, dynamic>()),
+    ],
+  );
+
+  final List<SigningField> fields;
+  final List<DetectedField> detected;
+
+  int get imported => detected.length;
+}
+
 abstract class SigningApi {
   /// What the server can turn into a signable document.
   Future<SigningCapabilities> capabilities();
@@ -162,8 +207,17 @@ abstract class SigningApi {
   /// Replace-all save of 1..20 parties; returns them as stored.
   Future<List<SigningParty>> saveParties(String id, List<PartyDraft> parties);
 
-  /// Turns the PDF's form fields into draft fields; returns how many.
-  Future<int> importFields(String id);
+  /// Finds the PDF's form fields and the places its pages mark for a
+  /// signature, initials, a date, a name or a tick, and adds them to the
+  /// first party (draft only). [roles] keeps only those roles (see
+  /// [DetectedField.role]); [minConfidence] only the more certain finds.
+  /// Spots already covered by a field are skipped.
+  Future<SigningDetection> detectFields(String id, {Set<String>? roles, double? minConfidence});
+
+  /// Turns pages by [quarterTurns] clockwise (negative: the other way), all
+  /// of them when [pages] (0-based) is null. Draft, or sent and unopened. The
+  /// frozen PDF is replaced and the boxes on the turned pages move with them.
+  Future<SigningDetail> rotatePages(String id, {required int quarterTurns, List<int>? pages});
 
   /// Freezes the PDF and makes the links. This is the only time the links
   /// are returned (besides [regenerateLink]). The server refuses a party

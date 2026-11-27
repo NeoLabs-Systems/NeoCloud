@@ -1,10 +1,12 @@
 part of 'main.dart';
 
 // Quick sign: the owner signs a file of their own without parties or links.
-// A draft is made from the file, the editor's own placement puts signature,
-// initials, date and name boxes on the pages, and one request signs it
-// (POST /documents/:id/quick-sign). The signed copy is sealed, audited and
-// saved beside the original like any signed document.
+// A draft is made from the file, detection finds the places to sign, date and
+// name (filled at once with the saved signature, initials, today and the
+// name; any box can be removed), the editor's own placement adds more, pages
+// can be turned, and one request signs it (POST /documents/:id/quick-sign).
+// The signed copy is sealed, audited and saved beside the original like any
+// signed document.
 
 /// Makes [node] a draft and opens quick sign on it.
 Future<void> startQuickSign(BuildContext context, NeoCloudController controller, FileNode node) async {
@@ -50,7 +52,7 @@ class QuickSignPage extends StatefulWidget {
   State<QuickSignPage> createState() => _QuickSignPageState();
 }
 
-class _QuickSignPageState extends State<QuickSignPage> {
+class _QuickSignPageState extends State<QuickSignPage> with _DraftPages<QuickSignPage> {
   late final SigningEditorState _state;
   final SigningPageController _pages = SigningPageController();
   final FocusNode _pagesFocus = FocusNode(debugLabel: 'quick-sign-pages');
@@ -60,12 +62,18 @@ class _QuickSignPageState extends State<QuickSignPage> {
   final Set<SavedKind> _asked = <SavedKind>{};
   final DateTime _today = DateTime.now();
   List<ProfileImage> _saved = const <ProfileImage>[];
-  Uint8List? _pdf;
-  String? _pdfError;
   bool _busy = false;
+  bool _detecting = false;
   bool _signed = false;
 
   NeoCloudController get _controller => widget.controller;
+
+  @override
+  NeoCloudController get draftController => widget.controller;
+  @override
+  SigningEditorState get draftState => _state;
+  @override
+  SigningPageController get draftPages => _pages;
   SigningDocument get _document => widget.detail.document;
   String get _isoToday => toSigningIsoDate(_today);
   String get _dateFormat => DateFormats.defaultFor(_document.locale);
@@ -84,12 +92,16 @@ class _QuickSignPageState extends State<QuickSignPage> {
     _state.addListener(_fieldsChanged);
     final me = _controller.user;
     _name.text = me == null ? '' : ((me.displayName ?? '').trim().isEmpty ? me.username : me.displayName!.trim());
-    unawaited(_loadPdf());
-    unawaited(_loadProfile());
+    watchDraftPdf();
+    // The saved pictures first, so the spots found are filled with them.
+    unawaited(_loadProfile().whenComplete(() {
+      if (mounted && _state.fields.isEmpty) unawaited(_detect(quiet: true));
+    }));
   }
 
   @override
   void dispose() {
+    unwatchDraftPdf();
     _state.removeListener(_fieldsChanged);
     // The draft was only made for this page: whatever is still being saved
     // goes out first, then an unsigned draft is deleted.
@@ -111,12 +123,23 @@ class _QuickSignPageState extends State<QuickSignPage> {
     super.dispose();
   }
 
-  Future<void> _loadPdf() async {
+  /// Finds the places to sign, initial, date and name and puts boxes there;
+  /// [quiet] (on opening) says nothing when there are none.
+  Future<void> _detect({bool quiet = false}) async {
+    if (_detecting) return;
+    setState(() => _detecting = true);
     try {
-      final bytes = await _controller.signing.pdf(_document.id);
-      if (mounted) setState(() => _pdf = bytes);
+      final count = await _state.detectFields(roles: quickSignRoles);
+      if (!mounted) return;
+      if (count > 0) {
+        _toast(appStrings.signingQuickDetected('$count'));
+      } else if (!quiet) {
+        _toast(appStrings.signingQuickDetectNone);
+      }
     } catch (error) {
-      if (mounted) setState(() => _pdfError = signingErrorText(_controller, error, appStrings.signingPdfLoadFailed));
+      if (mounted && !quiet) _toast(signingErrorText(_controller, error, appStrings.signingLoadFailed));
+    } finally {
+      if (mounted) setState(() => _detecting = false);
     }
   }
 
@@ -326,7 +349,16 @@ class _QuickSignPageState extends State<QuickSignPage> {
         },
         child: Focus(
           focusNode: _pagesFocus,
-          child: _PagesArea(state: _state, pages: _pages, pdf: _pdf, error: _pdfError, pagesBuilder: widget.pagesBuilder, boxContent: _boxContent, typeLabel: _QuickSignPanel.label),
+          child: _PagesArea(
+            state: _state,
+            pages: _pages,
+            pdf: draftPdf,
+            error: draftPdfError,
+            pagesBuilder: widget.pagesBuilder,
+            boxContent: _boxContent,
+            typeLabel: _QuickSignPanel.label,
+            onRotate: rotateDraftPages,
+          ),
         ),
       ),
     );
@@ -336,6 +368,8 @@ class _QuickSignPageState extends State<QuickSignPage> {
       pictures: _pictures,
       signedName: _signedName,
       busy: _busy,
+      detecting: _detecting,
+      onDetect: () => unawaited(_detect()),
       onPicture: (kind) => unawaited(_choosePicture(kind)),
       onNameChanged: () => setState(() {}),
       onSign: () => unawaited(_sign()),
@@ -394,6 +428,8 @@ class _QuickSignPanel extends StatelessWidget {
     required this.pictures,
     required this.signedName,
     required this.busy,
+    required this.detecting,
+    required this.onDetect,
     required this.onPicture,
     required this.onNameChanged,
     required this.onSign,
@@ -404,6 +440,8 @@ class _QuickSignPanel extends StatelessWidget {
   final Map<SavedKind, QuickSignPicture> pictures;
   final String signedName;
   final bool busy;
+  final bool detecting;
+  final VoidCallback onDetect;
   final ValueChanged<SavedKind> onPicture;
   final VoidCallback onNameChanged;
   final VoidCallback onSign;
@@ -442,6 +480,13 @@ class _QuickSignPanel extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey<String>('quick-detect'),
+          onPressed: busy || detecting ? null : onDetect,
+          icon: detecting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_fix_high_rounded, size: 18),
+          label: Text(appStrings.signingQuickDetect),
         ),
         const SizedBox(height: 16),
         TextField(

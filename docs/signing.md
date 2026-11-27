@@ -9,13 +9,46 @@ The PDF engine is described in [signing-pdf.md](signing-pdf.md), the app in
 ## Flow
 
 1. **Create.** `POST /api/signing/documents` with a file id. A PDF is used as it is, an image becomes an A4 page, an office document is converted when LibreOffice is installed (`GET /capabilities`). The bytes are frozen at once: the document keeps its own reference on the blob, so editing, moving or deleting the original changes nothing and the field positions keep matching the pages. Not accepted: vault and trashed files, other accounts' files, encrypted PDFs, over 50 MB or 300 pages.
-2. **Prepare** (draft). Parties (1–20, each with a colour and an optional email), fields (types in `services/signing/field_types.js`, positions as page fractions), signing order `preserved` (one after another) or `random`, expiry (30 days by default), language. The PDF's own form fields can be imported.
+2. **Prepare** (draft). Parties (1–20, each with a colour and an optional email), fields (types in `services/signing/field_types.js`, positions as page fractions), signing order `preserved` (one after another) or `random`, expiry (30 days by default), language. Pages can be turned and fields found automatically (see [Preparing the pages](#preparing-the-pages)).
 3. **Send.** One link per party, shown once (`<origin>/app/sign/<token>`), and, when an admin configured service mail, an invitation to every party that has an address (see [Mail](#mail)). A link can be replaced or turned off at any time. Fields can still change until a party opens its link; then fields and parties are locked.
 4. **Sign.** The signer opens the link, agrees to sign electronically, fills in its own fields (each saved as it goes, validated on the server per type), and finishes. With `preserved` order the next party's link stays on "waiting" until the one before has finished. Any party can decline with a reason; the document then ends as `declined`.
 5. **Finalize.** After the last party finished, a background step draws all values onto the frozen PDF, appends the audit pages, applies the server's digital seal and saves `<name> (signed).pdf` (`<name> (signiert).pdf` for German documents) in the original's folder (root if that is gone, never into a vault), under the normal quota. Failures (no space left, engine errors) are recorded on the document and retried with growing pauses (30 s, up to 1 h); the owner can retry at once. One document is built at a time. The final file is built from the same inputs and times, so a rebuild is identical and saving it again finds the file it already made.
 6. **After.** Signers can download the signed file from their link while the owner's file is unchanged. Every download is offered with the certificate pages (the audit record) or without them (`?certificate=0`, also from the signed file in the library through `/api/signing/nodes/:nodeId/clean`). The clean file is the same document with the values drawn in and its own digital seal (its SHA-256 differs from the full file's); it is built on the first request, cached as a blob of the owner and deleted with the document. It counts against the owner's quota like any blob (`used_bytes` changes only in `blob_refs`), is never refused for lack of space and one build runs at a time per document. Attachments of `file` fields stay in both. The owner sees status, per-party times and the audit trail, and may delete the document (the signed file stays).
 
 States of a document: `draft → sent → in_progress → finalizing → completed`, or `declined`, `expired` (checked on every link visit and by a 30-second background pass), `canceled`.
+
+## Preparing the pages
+
+- **Turning pages.** `POST /documents/:id/rotate` turns one page, some or all
+  of them by quarter turns while the document can still change (a draft, or
+  sent and unopened). The frozen PDF is written again with each turned page's
+  new `/Rotate`; nothing on the page is redrawn, so the content stays as it
+  was and pages that already carried a `/Rotate` keep it added up. The pages
+  clients show, the final file and its seal all work on the turned file. A box
+  on a turned page keeps its size in points, stays upright and moves with the
+  spot it sat on. The document keeps the new file's SHA-256 as its original
+  hash; the audit trail records `pages_rotated` with the pages, the angle and
+  the hashes before and after, so the hash in the `created` entry still leads
+  to the file that was signed. The old file's blob is released (the library
+  file it came from stays). Signers cannot turn pages.
+- **Finding fields.** `POST /documents/:id/import-fields` adds what detection
+  finds to the first party (draft only): the PDF's form fields (signature
+  widgets included; a text field whose name or label says "Signature",
+  "Datum", "Initials" … becomes that kind of field) and the places the page
+  layout marks: labels such as Signature/Unterschrift, Date/Datum,
+  Name/Vor- und Nachname, Initials/Kürzel, Place/Ort beside, under or above a
+  drawn line, a run of underscores or dots, or an empty box; a label naming
+  several ("Ort, Datum", "Datum / Unterschrift") splits its line; a label with
+  a colon and nothing after it; drawn or typed check boxes (☐, ❏, `[ ]`)
+  named by the text beside them. Dates of birth, company names and the like
+  stay plain text fields. Every find has a role and a confidence (form fields
+  1); overlapping finds keep the most certain one, form fields always win, and
+  a find that would cover a field already there is skipped, so asking twice
+  adds nothing. It reads the text layer only: no AI, no OCR, so a scanned
+  page without text gives nothing, and text that does not read upright on the
+  displayed page is ignored (turn the page first). The same file always gives
+  the same fields. Quick sign asks for the roles signature, initials, date and
+  name and fills them at once with the saved pictures, today and the name.
 
 ## Data model (migrations 21, 23 and 25)
 
@@ -30,7 +63,7 @@ States of a document: `draft → sent → in_progress → finalizing → complet
 - **Names and text.** Direction overrides, line and paragraph separators, zero-width characters and line breaks are removed from names, titles, field labels and signed text before they are stored (`plain_text.js`), so a name cannot read reversed or fake a line on the certificate.
 - **PDFs.** Object and xref streams may inflate to 64 MB at most while a file loads (a 1.5 MB bomb used to take 3.8 GB); broken, nested and oversized files answer a plain `400`. The engine runs in the server process, one finalization at a time: a 44 MB / 300-page document takes about 1 s and 750 MB peak.
 - **Uploads.** Images are decoded and re-encoded as PNG with sharp (metadata dropped, pixel limit, size cap, SVG refused); attachments are stored under a cleaned name and only ever attached to the final PDF. Everything is encrypted with the owner's key and counts against the owner's quota.
-- **Audit trail.** Created, updated (after sending), sent, link replaced or turned off, opened, consented (with name, time zone, consent version), party completed or declined, completed, finalized, canceled, expired, final downloaded, claimed by an account, grant used, mail queued, sent or failed and reminder sent (masked address), saved to an account's cloud or not; each with time, address (`req.ip`, so set `TRUST_PROXY` behind a proxy) and a shortened user agent. Each entry's hash covers the previous one: `GET …/events` re-computes the chain and reports `chainValid`. Saving a value is not an event; downloads of the signed file are logged once per person and minute.
+- **Audit trail.** Created, updated (after sending), pages rotated (with the file's hash before and after), sent, link replaced or turned off, opened, consented (with name, time zone, consent version), party completed or declined, completed, finalized, canceled, expired, final downloaded, claimed by an account, grant used, mail queued, sent or failed and reminder sent (masked address), saved to an account's cloud or not; each with time, address (`req.ip`, so set `TRUST_PROXY` behind a proxy) and a shortened user agent. Each entry's hash covers the previous one: `GET …/events` re-computes the chain and reports `chainValid`. Saving a value is not an event; downloads of the signed file are logged once per person and minute.
 - **Seal.** The final PDF carries a detached PKCS#7 signature made with a self-signed certificate generated on first use (`NEOCLOUD_SIGNING_SEAL=false` turns it off). Viewers show an unknown signer; the seal shows that the file has not changed since NeoCloud made it. It is a digital seal, not a qualified or advanced signature.
 
 ## Mail
@@ -140,7 +173,8 @@ needed to sign: the public routes stay cookie-free and unchanged.
   `open-as-owner` opens it in the editor flow through a grant.
 
 - **Quick sign.** `POST /documents/:id/quick-sign` signs a draft of the owner
-  in one request: the owner becomes its only party (`isSelf`), the given
+  in one request (before it, the app finds the places to sign with
+  `import-fields` and may turn pages with `rotate`): the owner becomes its only party (`isSelf`), the given
   signature, initials, date and text boxes become its fields, and the server
   runs the normal steps on it (sent without mail, opened, consented with the
   given name, values saved, completed). The signature and initials come from

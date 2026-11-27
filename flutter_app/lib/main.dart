@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
@@ -159,6 +160,7 @@ part 'main_files_actions.dart';
 part 'main_files_dialogs.dart';
 part 'main_files_items.dart';
 part 'main_files_keyboard.dart';
+part 'main_files_menu.dart';
 part 'main_files_pages.dart';
 part 'main_files_placeholders.dart';
 part 'main_files_search.dart';

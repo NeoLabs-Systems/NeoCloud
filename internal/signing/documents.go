@@ -705,9 +705,17 @@ func (h *Handler) setFields(ctx context.Context, userID int64, documentID string
 	return map[string]any{"fields": fieldViews(fields)}, nil
 }
 
-// importFields adds the PDF's own form fields to the first party. Draft only.
-func (h *Handler) importFields(r *http.Request, userID int64, _ body) (any, error) {
+// importFields adds the fields detection finds (the PDF's form fields and
+// the places its pages mark for a signature, date, name, initials or a tick)
+// to the first party. Draft only. "roles" keeps only fields of those roles,
+// "minConfidence" (0..1, default 0.5) only the more certain finds. Fields that
+// would cover one already there are skipped, so asking twice adds nothing new.
+func (h *Handler) importFields(r *http.Request, userID int64, input body) (any, error) {
 	ctx := r.Context()
+	roles, minConfidence, err := detectOptions(input)
+	if err != nil {
+		return nil, err
+	}
 	d, err := ownedDocument(ctx, h.db, userID, r.PathValue("id"))
 	if err != nil {
 		return nil, err
@@ -719,17 +727,23 @@ func (h *Handler) importFields(r *http.Request, userID int64, _ body) (any, erro
 	if err != nil {
 		return nil, err
 	}
-	found, err := signpdf.ImportFields(ctx, pdf)
+	found, err := signpdf.DetectFields(ctx, pdf)
 	if err != nil {
 		return nil, pdfRefusal(err)
 	}
-	imported := 0
+	kept := found[:0]
+	for _, f := range found {
+		if f.Confidence >= minConfidence && (roles == nil || roles[f.Role]) {
+			kept = append(kept, f)
+		}
+	}
+	var added []detectedField
 	var fields []field
 	_, err = h.change(ctx, userID, d.ID, func(tx *sql.Tx, d document) error {
 		if d.Status != statusDraft {
 			return lockedError()
 		}
-		imported, err = addImported(ctx, tx, d, found)
+		added, err = addImported(ctx, tx, d, kept)
 		if err != nil {
 			return err
 		}
@@ -743,7 +757,40 @@ func (h *Handler) importFields(r *http.Request, userID int64, _ body) (any, erro
 		return nil, err
 	}
 	h.notifyOwner(ctx, userID, d.ID, d.Status)
-	return map[string]any{"imported": imported, "fields": fieldViews(fields)}, nil
+	if added == nil {
+		added = []detectedField{}
+	}
+	return map[string]any{"imported": len(added), "detected": added, "fields": fieldViews(fields)}, nil
+}
+
+var detectRoles = []string{"signature", "initials", "date", "name", "place", "text", "checkbox", "radio", "select", "multiple", "cells"}
+
+func detectOptions(input body) (map[string]bool, float64, error) {
+	minConfidence := 0.5
+	if v, ok := input["minConfidence"]; ok && v != nil {
+		n, ok := v.(float64)
+		if !ok || n < 0 || n > 1 {
+			return nil, 0, badRequest("minConfidence is a number from 0 to 1.")
+		}
+		minConfidence = n
+	}
+	raw, ok := input["roles"]
+	if !ok || raw == nil {
+		return nil, minConfidence, nil
+	}
+	list, ok := raw.([]any)
+	if !ok || len(list) == 0 {
+		return nil, 0, badRequest("roles lists at least one of: " + strings.Join(detectRoles, ", ") + ".")
+	}
+	roles := map[string]bool{}
+	for _, item := range list {
+		role, _ := item.(string)
+		if !slices.Contains(detectRoles, role) {
+			return nil, 0, badRequest("roles lists at least one of: " + strings.Join(detectRoles, ", ") + ".")
+		}
+		roles[role] = true
+	}
+	return roles, minConfidence, nil
 }
 
 // duplicateDocument makes a new draft with the same pages, parties and

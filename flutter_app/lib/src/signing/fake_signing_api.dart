@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' show Size;
 
 import 'field_types.dart';
 import 'models.dart';
@@ -194,10 +195,14 @@ class FakeSigningApi implements SigningApi {
     return _detail(id);
   }
 
+  /// How often the frozen PDF was fetched.
+  int pdfRequests = 0;
+
   @override
   Future<Uint8List> pdf(String id) async {
     _maybeFail();
     _document(id);
+    pdfRequests++;
     return _pdf;
   }
 
@@ -253,11 +258,60 @@ class FakeSigningApi implements SigningApi {
     return List<SigningParty>.of(stored);
   }
 
+  /// Test hook: what [detectFields] finds, as fields of the first party.
+  List<({SigningField field, String role})> detectable = <({SigningField field, String role})>[];
+
+  /// The roles the last [detectFields] asked for.
+  Set<String>? lastDetectRoles;
+
   @override
-  Future<int> importFields(String id) async {
+  Future<SigningDetection> detectFields(String id, {Set<String>? roles, double? minConfidence}) async {
     _maybeFail();
     _requireEditable(id);
-    return 0;
+    lastDetectRoles = roles;
+    final party = (_parties[id] ?? const <SigningParty>[]).firstOrNull;
+    final detected = <DetectedField>[];
+    if (party != null) {
+      for (final found in detectable) {
+        if (roles != null && !roles.contains(found.role)) continue;
+        final stored = found.field.copyWith(id: _id('f'), partyId: party.id);
+        (_fields[id] ??= <SigningField>[]).add(stored);
+        detected.add(DetectedField(id: stored.id, role: found.role, confidence: 0.9));
+      }
+    }
+    return SigningDetection(fields: List<SigningField>.of(_fields[id] ?? const <SigningField>[]), detected: detected);
+  }
+
+  /// The last [rotatePages] call.
+  ({int quarterTurns, List<int>? pages})? lastRotation;
+
+  /// Turns the page sizes and gives the file a new hash; the boxes stay where
+  /// they are (the server moves them).
+  @override
+  Future<SigningDetail> rotatePages(String id, {required int quarterTurns, List<int>? pages}) async {
+    _maybeFail();
+    _requireEditable(id);
+    lastRotation = (quarterTurns: quarterTurns, pages: pages);
+    final d = _document(id);
+    final sizes = <Size>[
+      for (final (index, size) in d.pageSizes.indexed) (pages == null || pages.contains(index)) && quarterTurns.isOdd ? Size(size.height, size.width) : size,
+    ];
+    _documents[id] = SigningDocument(
+      id: d.id,
+      title: d.title,
+      status: d.status,
+      signingOrder: d.signingOrder,
+      locale: d.locale,
+      expiresAt: d.expiresAt,
+      pageCount: d.pageCount,
+      sourceNodeId: d.sourceNodeId,
+      snapshotSha256: 'sha${_counter++}',
+      pageSizes: sizes,
+      createdAt: d.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    _log(id, SigningEventType.pagesRotated);
+    return _detail(id);
   }
 
   @override
