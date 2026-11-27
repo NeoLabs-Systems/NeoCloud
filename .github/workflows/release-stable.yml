@@ -65,7 +65,12 @@ jobs:
 
       - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
 
-      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
+      # 3.35: pdfrx, the PDF viewer, does not build on newer Flutter before 3.50.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.5'
+          cache: true
 
       - name: Configure Git identity
         run: |
