@@ -299,6 +299,7 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	call("POST /documents/{id}/parties/{partyId}/remind", 202, h.remindParty, remind)
 	call("POST /documents/{id}/remind-all", 202, h.remindAll, remind)
 	call("POST /documents/{id}/parties/{partyId}/open-as-owner", 200, h.openAsOwner)
+	call("POST /documents/{id}/quick-sign", 200, h.quickSign, heavy)
 	route("GET /documents/{id}/pdf", h.ownerPDF)
 	call("GET /documents/{id}/preview-values", 200, h.previewValues)
 	route("GET /documents/{id}/values/{fieldId}/image", h.ownerValueImage)

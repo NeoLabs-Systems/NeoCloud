@@ -6,7 +6,7 @@ part of 'main.dart';
 // never the PDF underneath.
 
 class _PagesArea extends StatelessWidget {
-  const _PagesArea({required this.state, required this.pages, required this.pdf, required this.error, required this.pagesBuilder});
+  const _PagesArea({required this.state, required this.pages, required this.pdf, required this.error, required this.pagesBuilder, this.boxContent, this.typeLabel});
 
   final SigningEditorState state;
   final SigningPageController pages;
@@ -14,8 +14,12 @@ class _PagesArea extends StatelessWidget {
   final String? error;
   final SigningPagesBuilder pagesBuilder;
 
+  /// What a box shows instead of its label (quick sign: the value itself).
+  final _BoxContent? boxContent;
+  final String Function(FieldType type)? typeLabel;
+
   List<Widget> _overlay(BuildContext context, int pageIndex, Size pageSize) => <Widget>[
-    Positioned.fill(child: _PageOverlay(state: state, pageIndex: pageIndex, pageSize: pageSize)),
+    Positioned.fill(child: _PageOverlay(state: state, pageIndex: pageIndex, pageSize: pageSize, boxContent: boxContent)),
   ];
 
   @override
@@ -32,7 +36,7 @@ class _PagesArea extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Positioned.fill(child: ColoredBox(color: _bgTertiary, child: body)),
-        Positioned(left: 0, right: 0, top: 8, child: Center(child: _PlacingHint(state: state))),
+        Positioned(left: 0, right: 0, top: 8, child: Center(child: _PlacingHint(state: state, typeLabel: typeLabel))),
         Positioned(right: 16, bottom: 16, child: _ZoomBar(pages: pages)),
       ],
     );
@@ -61,9 +65,10 @@ class _FloatingPill extends StatelessWidget {
 
 /// "Tap the page to place …" while a palette tile is armed.
 class _PlacingHint extends StatelessWidget {
-  const _PlacingHint({required this.state});
+  const _PlacingHint({required this.state, this.typeLabel});
 
   final SigningEditorState state;
+  final String Function(FieldType type)? typeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +85,7 @@ class _PlacingHint extends StatelessWidget {
               children: <Widget>[
                 Icon(FieldTypes.of(type).icon, size: 16, color: _textSecondary),
                 const SizedBox(width: 8),
-                Flexible(child: Text(appStrings.signingPlaceArmed(FieldTypes.of(type).label(appStrings)), style: TextStyle(color: _textPrimary, fontSize: 13))),
+                Flexible(child: Text(appStrings.signingPlaceArmed(typeLabel?.call(type) ?? FieldTypes.of(type).label(appStrings)), style: TextStyle(color: _textPrimary, fontSize: 13))),
                 IconButton(visualDensity: VisualDensity.compact, onPressed: () => state.arm(null), icon: const Icon(Icons.close_rounded, size: 18)),
               ],
             ),
@@ -130,14 +135,17 @@ String? _boxPreview(SigningField field) {
   return null;
 }
 
+typedef _BoxContent = Widget Function(SigningField field);
+
 /// One page's boxes, a drop target for palette tiles and a tap target for
 /// placing the armed type or clearing the selection.
 class _PageOverlay extends StatelessWidget {
-  const _PageOverlay({required this.state, required this.pageIndex, required this.pageSize});
+  const _PageOverlay({required this.state, required this.pageIndex, required this.pageSize, this.boxContent});
 
   final SigningEditorState state;
   final int pageIndex;
   final Size pageSize;
+  final _BoxContent? boxContent;
 
   void _place(FieldType type, Offset local) {
     final center = pixelsToFractionPoint(local, pageSize);
@@ -173,6 +181,7 @@ class _PageOverlay extends StatelessWidget {
                         pageSize: pageSize,
                         selected: field.id == selected,
                         hasProblem: problems.contains(field.id),
+                        content: boxContent?.call(field),
                       ),
                     ),
                   );
@@ -254,6 +263,7 @@ class _EditableFieldBox extends StatefulWidget {
     required this.pageSize,
     required this.selected,
     required this.hasProblem,
+    this.content,
   });
 
   final SigningEditorState state;
@@ -262,6 +272,9 @@ class _EditableFieldBox extends StatefulWidget {
   final Size pageSize;
   final bool selected;
   final bool hasProblem;
+
+  /// Shown inside the box in place of the label chip and preview text.
+  final Widget? content;
 
   @override
   State<_EditableFieldBox> createState() => _EditableFieldBoxState();
@@ -316,6 +329,7 @@ class _EditableFieldBoxState extends State<_EditableFieldBox> {
           hasError: widget.hasProblem,
           readonly: locked,
           showHandles: !locked,
+          showLabel: widget.content == null,
           handleHitSize: MediaQuery.sizeOf(context).width < 700 ? 36 : 24,
           onResizeStart: (_) {
             _beginGesture();
@@ -325,8 +339,8 @@ class _EditableFieldBoxState extends State<_EditableFieldBox> {
             _state.dragResize(field.id, widget.areaIndex, _start, handle, _fractions(_travel), widget.pageSize);
           },
           onResizeEnd: _state.endGesture,
-          child: preview == null
-              ? null
+          child: widget.content != null || preview == null
+              ? widget.content
               : Align(
                   alignment: Alignment.centerLeft,
                   child: Text(preview, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0x99000000), fontSize: 11)),

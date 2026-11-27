@@ -9241,6 +9241,18 @@ abstract class AppL10n {
   /// **'Select all here'**
   String get photosSelectGroup;
 
+  /// No description provided for @photosBlurOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Blur photos'**
+  String get photosBlurOn;
+
+  /// No description provided for @photosBlurOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show photos sharp'**
+  String get photosBlurOff;
+
   /// No description provided for @photosShareOne.
   ///
   /// In en, this message translates to:
@@ -9978,6 +9990,180 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'No PDF or image in this folder.'**
   String get signingPickerEmpty;
+
+  /// No description provided for @signingQuickAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign it yourself…'**
+  String get signingQuickAction;
+
+  /// No description provided for @signingQuickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign yourself'**
+  String get signingQuickTitle;
+
+  /// No description provided for @signingQuickPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file to sign yourself'**
+  String get signingQuickPickerTitle;
+
+  /// No description provided for @signingQuickUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a file here'**
+  String get signingQuickUpload;
+
+  /// No description provided for @signingQuickUploadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved in this folder; the signed copy goes next to it.'**
+  String get signingQuickUploadHint;
+
+  /// No description provided for @signingQuickUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get signingQuickUploading;
+
+  /// No description provided for @signingQuickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what to add, then tap the page where it goes. Drag a box to move it.'**
+  String get signingQuickHint;
+
+  /// No description provided for @signingQuickName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get signingQuickName;
+
+  /// No description provided for @signingQuickYourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get signingQuickYourName;
+
+  /// No description provided for @signingQuickNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Goes into name boxes and the audit trail.'**
+  String get signingQuickNameHint;
+
+  /// No description provided for @signingQuickYourSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Your signature'**
+  String get signingQuickYourSignature;
+
+  /// No description provided for @signingQuickYourInitials.
+  ///
+  /// In en, this message translates to:
+  /// **'Your initials'**
+  String get signingQuickYourInitials;
+
+  /// No description provided for @signingQuickAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get signingQuickAdd;
+
+  /// No description provided for @signingQuickChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get signingQuickChange;
+
+  /// No description provided for @signingQuickFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'From your signing profile'**
+  String get signingQuickFromProfile;
+
+  /// No description provided for @signingQuickOnlyNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for this document'**
+  String get signingQuickOnlyNow;
+
+  /// No description provided for @signingQuickDrawNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new one'**
+  String get signingQuickDrawNew;
+
+  /// No description provided for @signingQuickKeepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it for next time?'**
+  String get signingQuickKeepTitle;
+
+  /// No description provided for @signingQuickKeepBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It is saved encrypted in your signing profile and offered whenever you sign. You can remove it in Settings › Signing profile.'**
+  String get signingQuickKeepBody;
+
+  /// No description provided for @signingQuickKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get signingQuickKeep;
+
+  /// No description provided for @signingQuickDontKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this time'**
+  String get signingQuickDontKeep;
+
+  /// No description provided for @signingQuickSavedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'The signed copy is saved as “{file}” next to the original, with a digital seal and an audit trail.'**
+  String signingQuickSavedTo(String file);
+
+  /// No description provided for @signingQuickConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'By choosing “Sign and save” you agree to sign this document electronically.'**
+  String get signingQuickConsent;
+
+  /// No description provided for @signingQuickSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign and save'**
+  String get signingQuickSubmit;
+
+  /// No description provided for @signingQuickNothingPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Place at least one box on the page first.'**
+  String get signingQuickNothingPlaced;
+
+  /// No description provided for @signingQuickNeedName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name.'**
+  String get signingQuickNeedName;
+
+  /// No description provided for @signingQuickTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing yourself takes at most {count} boxes.'**
+  String signingQuickTooMany(String count);
+
+  /// No description provided for @signingQuickDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed. The signed copy is being saved next to the original.'**
+  String get signingQuickDone;
+
+  /// No description provided for @signingQuickFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The document couldn\'t be signed.'**
+  String get signingQuickFailed;
 
   /// No description provided for @signingOpen.
   ///

@@ -673,22 +673,31 @@ func (h *Handler) prepareUpload(r *http.Request, f field) ([]byte, map[string]an
 	if query.Has("method") {
 		method = query.Get("method")
 	}
+	if err := signatureMeta(f, method, query.Get("text"), meta); err != nil {
+		return nil, nil, err
+	}
+	return png, meta, nil
+}
+
+// signatureMeta checks how a signature or initials came about against the
+// ways the field allows and records it (and a typed signature's text) in meta.
+func signatureMeta(f field, method, typed string, meta map[string]any) error {
 	allowed := prefStrings(f.prefs(), "methods")
 	if len(allowed) == 0 {
 		allowed = signingMethods
 	}
 	if !contains(signingMethods, method) || !contains(allowed, method) {
-		return nil, nil, httpError(400, "This way of signing is not allowed for this field.", "INVALID_UPLOAD")
+		return httpError(400, "This way of signing is not allowed for this field.", "INVALID_UPLOAD")
 	}
 	meta["method"] = method
 	if method == "type" {
-		typed := singleLine(query.Get("text"))
+		typed = singleLine(typed)
 		if typed == "" || length(typed) > maxNameLength {
-			return nil, nil, httpError(400, "Typed signatures need the typed text.", "INVALID_UPLOAD")
+			return httpError(400, "Typed signatures need the typed text.", "INVALID_UPLOAD")
 		}
 		meta["text"] = typed
 	}
-	return png, meta, nil
+	return nil
 }
 
 // saveBlobValue records a stored upload as the field's value, replacing an

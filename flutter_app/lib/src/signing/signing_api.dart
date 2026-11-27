@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'models.dart';
+import 'quick_sign.dart';
 
 /// The two faces of the signing API, as interfaces so the editor, the status
 /// page and the public flow can be built and tested against
@@ -183,6 +184,12 @@ abstract class SigningApi {
   Future<void> delete(String id);
 
   Future<SigningDetail> duplicate(String id);
+
+  /// Signs the draft [id] as its owner in one step: the owner becomes its
+  /// only party, the fields are placed and filled, and the document goes on
+  /// to `finalizing`; the signed file is saved beside the original. A refusal
+  /// before anything was signed leaves the draft; a failure later removes it.
+  Future<SigningDetail> quickSign(String id, QuickSignRequest request);
 
   /// The picture a signer uploaded for [fieldId], for the progress preview.
   Future<Uint8List> valueImage(String id, String fieldId);

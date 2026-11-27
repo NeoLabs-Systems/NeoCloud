@@ -13,10 +13,13 @@ import 'package:neocloud/src/mobile/camera_upload_stub.dart';
 import 'package:neocloud/src/mobile/share_intake_stub.dart';
 import 'package:neocloud/src/navigation/app_route.dart';
 import 'package:neocloud/src/photos/photo_layout.dart';
+import 'package:neocloud/src/photos/photo_library.dart';
 import 'package:neocloud/src/photos/photo_models.dart';
 import 'package:neocloud/src/photos/photo_thumbnails.dart';
 import 'package:neocloud/src/photos/photo_timeline.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'helpers/public_signing_harness.dart' show tinyPng;
 
 /// A timeline of [days] days with [perDay] photos each (older days first
 /// in the list's tail), served in pages like the server does.
@@ -116,10 +119,11 @@ Future<PhotoTimeline> _loadedTimeline(_FakeSource source, {int pageSize = 200}) 
 
 /// The Photos grid on its own, with the page's selection and zoom.
 class _GridHarness extends StatefulWidget {
-  const _GridHarness({super.key, required this.timeline, required this.thumbnails});
+  const _GridHarness({super.key, required this.timeline, required this.thumbnails, this.blurred = false});
 
   final PhotoTimeline timeline;
   final PhotoThumbnailCache thumbnails;
+  final bool blurred;
 
   @override
   State<_GridHarness> createState() => _GridHarnessState();
@@ -165,11 +169,12 @@ class _GridHarnessState extends State<_GridHarness> {
       }),
       onRefresh: () => widget.timeline.refresh(reloadItems: true),
       onZoom: (zoom) => setState(() => widget.timeline.zoom = zoom),
+      blurred: widget.blurred,
     );
   }
 }
 
-Future<GlobalKey<_GridHarnessState>> _pumpGrid(WidgetTester tester, PhotoTimeline timeline, {PhotoThumbnailCache? thumbnails}) async {
+Future<GlobalKey<_GridHarnessState>> _pumpGrid(WidgetTester tester, PhotoTimeline timeline, {PhotoThumbnailCache? thumbnails, bool blurred = false}) async {
   tester.view.physicalSize = const Size(412, 915);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -180,6 +185,7 @@ Future<GlobalKey<_GridHarnessState>> _pumpGrid(WidgetTester tester, PhotoTimelin
         key: key,
         timeline: timeline,
         thumbnails: thumbnails ?? PhotoThumbnailCache(fetch: (_, _) async => null),
+        blurred: blurred,
       ),
     ),
   ));
@@ -493,6 +499,67 @@ void main() {
       print('photos grid: ${frames.length} frames over ${source.items.length} photos, '
           'median ${median / 1000} ms, p95 ${p95 / 1000} ms per frame (test binding, no raster), '
           '${source.requests.length} page loads, $thumbnailsAsked thumbnails asked for');
+    });
+  });
+
+  group('privacy blur', () {
+    /// How wide each grid thumbnail is decoded.
+    List<int?> decodedWidths(WidgetTester tester) => tester
+        .widgetList<Image>(find.byType(Image))
+        .map((image) => image.image is ResizeImage ? (image.image as ResizeImage).width : null)
+        .toList();
+
+    testWidgets('the toolbar toggle blurs the grid and is remembered on the device', (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues(const <String, Object>{});
+      final preferences = await SharedPreferences.getInstance();
+      final client = BackendClient(baseUrl: 'http://localhost:1');
+      NeoCloudController controllerOf() => NeoCloudController(
+        client: client,
+        preferences: preferences,
+        deviceSessions: createDeviceSessions(),
+        cameraUploads: NoCameraUploads(),
+        shareIntake: NoShareIntake(),
+        photoLibrary: PhotoLibrary(
+          client,
+          source: _FakeSource.generate(days: 3, perDay: 6),
+          fetchThumbnail: (_, _) async => tinyPng,
+          keepOnDisk: false,
+        ),
+      );
+      final controller = controllerOf();
+      expect(controller.photosBlurred.value, isFalse);
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: PhotosPage(controller: controller))));
+      await tester.pumpAndSettle();
+      expect(decodedWidths(tester), isNotEmpty);
+      expect(decodedWidths(tester), everyElement(greaterThan(64)));
+
+      await tester.tap(find.byKey(const ValueKey<String>('photos-blur-toggle')));
+      await tester.pumpAndSettle();
+      expect(controller.photosBlurred.value, isTrue);
+      expect(preferences.getBool('photos.blurred'), isTrue);
+      expect(decodedWidths(tester), everyElement(lessThan(32)));
+      expect(find.byTooltip('Show photos sharp'), findsOneWidget);
+
+      // After a restart the grid starts blurred.
+      expect(controllerOf().photosBlurred.value, isTrue);
+
+      await tester.tap(find.byKey(const ValueKey<String>('photos-blur-toggle')));
+      await tester.pumpAndSettle();
+      expect(preferences.getBool('photos.blurred'), isFalse);
+      expect(decodedWidths(tester), everyElement(greaterThan(64)));
+    });
+
+    testWidgets('a blurred photo still opens on tap', (tester) async {
+      final timeline = await _loadedTimeline(_FakeSource.generate(days: 3, perDay: 6));
+      final key = await _pumpGrid(tester, timeline, blurred: true, thumbnails: PhotoThumbnailCache(fetch: (_, _) async => tinyPng));
+      expect(decodedWidths(tester), isNotEmpty);
+      expect(decodedWidths(tester), everyElement(lessThan(32)));
+      await tester.tap(find.byType(Image).first);
+      await tester.pumpAndSettle();
+      expect(key.currentState!.opened, hasLength(1));
     });
   });
 }

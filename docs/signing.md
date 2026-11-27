@@ -139,6 +139,17 @@ needed to sign: the public routes stay cookie-free and unchanged.
   email defaults to the owner's, nothing is mailed for it, and
   `open-as-owner` opens it in the editor flow through a grant.
 
+- **Quick sign.** `POST /documents/:id/quick-sign` signs a draft of the owner
+  in one request: the owner becomes its only party (`isSelf`), the given
+  signature, initials, date and text boxes become its fields, and the server
+  runs the normal steps on it (sent without mail, opened, consented with the
+  given name, values saved, completed). The signature and initials come from
+  the signing profile's saved pictures or are sent along for this document
+  only. Everything after (finalizing, seal, `<name> (signed).pdf` beside the
+  original, audit trail, the owner's completion mail) is the same as for any
+  request. Input is checked before anything changes; a failure after sending
+  cancels and deletes the document so no open request is left behind.
+
 **Grants.** Opening an inbox request or the owner's own party returns
 `/app/sign/<grant>`. A grant is a short-lived stand-in for the party's token that
 the public routes accept with identical permissions: 256 random bits, only the

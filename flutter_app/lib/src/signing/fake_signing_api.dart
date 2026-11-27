@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'field_types.dart';
 import 'models.dart';
+import 'quick_sign.dart';
 import 'signing_api.dart';
 
 /// In-memory stand-ins for the two signing APIs, so the editor, the status
@@ -332,6 +333,25 @@ class FakeSigningApi implements SigningApi {
       for (final field in source.fields) SigningField.local(partyId: idByPosition[field.partyId]!, type: field.type, areas: field.areas, name: field.name, required: field.required, prefs: field.prefs),
     ]);
     return _detail(copyId);
+  }
+
+  /// What the last quick sign carried.
+  QuickSignRequest? lastQuickSign;
+
+  @override
+  Future<SigningDetail> quickSign(String id, QuickSignRequest request) async {
+    _maybeFail();
+    if (_document(id).status != SigningStatus.draft) throw const SigningException(SigningErrorKind.conflict, statusCode: 409);
+    lastQuickSign = request;
+    final party = SigningParty(id: _id('p'), name: request.signerName, position: 0, color: '', isSelf: true, status: PartyStatus.completed, signerName: request.signerName);
+    _parties[id] = <SigningParty>[party];
+    _fields[id] = <SigningField>[
+      for (final (index, field) in request.fields.indexed)
+        SigningField.local(partyId: party.id, type: field.type, areas: field.areas).copyWith(id: _id('f'), position: index),
+    ];
+    _documents[id] = _copy(_document(id), status: SigningStatus.finalizing);
+    _log(id, SigningEventType.completed, partyId: party.id);
+    return _detail(id);
   }
 
   final Map<String, Uint8List> _valueImages = <String, Uint8List>{};

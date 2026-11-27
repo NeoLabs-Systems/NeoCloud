@@ -105,6 +105,10 @@ class BackendSigningApi implements SigningApi {
   Future<SigningDetail> duplicate(String id) async => SigningDetail.fromJson(await _json('POST', '${_doc(id)}/duplicate'));
 
   @override
+  Future<SigningDetail> quickSign(String id, QuickSignRequest request) async =>
+      SigningDetail.fromJson(await _json('POST', '${_doc(id)}/quick-sign', body: request.toJson()));
+
+  @override
   Future<Uint8List> valueImage(String id, String fieldId) => _guard(() => _client._bytes('${_doc(id)}/values/${Uri.encodeComponent(fieldId)}/image'));
 
   @override

@@ -471,6 +471,8 @@ mixin _FilesActions on _FilesBase {
         ),
       if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
         _FileAction(AppSection.signing.icon, appStrings.signingPrepare, () => unawaited(startSigningFromFile(context, controller, node))),
+      if (own && !node.isFolder && !vault && signableKindOf(node.name, node.mime).isSignable)
+        _FileAction(Icons.draw_outlined, appStrings.signingQuickAction, () => unawaited(startQuickSign(context, controller, node))),
       if (own && !node.isFolder && !vault) _FileAction(Icons.history_rounded, appStrings.versions, () => unawaited(showVersionsDialog(context, controller, node))),
       if (!vault) _FileAction(Icons.forum_outlined, appStrings.nodeDetailsAction, () => unawaited(showNodeDetails(context, controller, node))),
       ...aiActionsFor(node),

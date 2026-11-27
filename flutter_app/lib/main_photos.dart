@@ -72,6 +72,7 @@ class _PhotosPageState extends State<PhotosPage> {
     super.initState();
     library.attach(controller.photoCacheOwner);
     timeline.addListener(_changed);
+    controller.photosBlurred.addListener(_changed);
     controller.filesRevision.addListener(_filesChanged);
     unawaited(timeline.refresh());
   }
@@ -80,6 +81,7 @@ class _PhotosPageState extends State<PhotosPage> {
   void dispose() {
     _refreshSoon?.cancel();
     timeline.removeListener(_changed);
+    controller.photosBlurred.removeListener(_changed);
     controller.filesRevision.removeListener(_filesChanged);
     super.dispose();
   }
@@ -169,6 +171,7 @@ class _PhotosPageState extends State<PhotosPage> {
         onSelect: _setSelection,
         onRefresh: () => timeline.refresh(reloadItems: true),
         onZoom: (zoom) => setState(() => timeline.zoom = zoom),
+        blurred: controller.photosBlurred.value,
       );
     }
     return Column(
@@ -235,8 +238,33 @@ class _PhotosHeader extends StatelessWidget {
               ],
             ),
           ),
+          _PhotosBlurToggle(controller: controller),
+          const SizedBox(width: 4),
           _PhotosBackupStatus(controller: controller),
         ],
+      ),
+    );
+  }
+}
+
+/// Blurs or sharpens every thumbnail of the grid, remembered on this
+/// device (opened photos always show sharp).
+class _PhotosBlurToggle extends StatelessWidget {
+  const _PhotosBlurToggle({required this.controller});
+
+  final NeoCloudController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: controller.photosBlurred,
+      builder: (context, blurred, _) => IconButton(
+        key: const ValueKey<String>('photos-blur-toggle'),
+        tooltip: blurred ? appStrings.photosBlurOff : appStrings.photosBlurOn,
+        isSelected: blurred,
+        onPressed: () => controller.setPhotosBlurred(!blurred),
+        icon: Icon(Icons.blur_on_rounded, color: _textSecondary),
+        selectedIcon: Icon(Icons.blur_on_rounded, color: _accent),
       ),
     );
   }

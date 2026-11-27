@@ -10,6 +10,7 @@ export 'field_types.dart';
 export 'geometry.dart';
 export 'models.dart';
 export 'public_flow.dart';
+export 'quick_sign.dart';
 export 'saved_signatures.dart';
 export 'send_check.dart';
 export 'signable.dart';

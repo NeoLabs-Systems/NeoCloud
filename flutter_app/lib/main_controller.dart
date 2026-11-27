@@ -79,6 +79,7 @@ class NeoCloudController extends ChangeNotifier {
   /// `settings/security` …); older versions stored the bare section name,
   /// which parses the same way.
   static const String _routePreferenceKey = 'app.section';
+  static const String _photosBlurredPreferenceKey = 'photos.blurred';
 
   final BackendClient client;
 
@@ -117,6 +118,16 @@ class NeoCloudController extends ChangeNotifier {
   /// The Photos tab's timeline and thumbnails, kept across tab switches; a
   /// fake in tests.
   final PhotoLibrary photoLibrary;
+
+  /// Whether the Photos grid shows its thumbnails blurred (opened photos
+  /// stay sharp). Kept on this device only: it is about who can see this
+  /// screen, so it does not follow the account to other devices.
+  late final ValueNotifier<bool> photosBlurred = ValueNotifier<bool>(_preferences.getBool(_photosBlurredPreferenceKey) ?? false);
+
+  void setPhotosBlurred(bool blurred) {
+    photosBlurred.value = blurred;
+    unawaited(_preferences.setBool(_photosBlurredPreferenceKey, blurred));
+  }
 
   /// Changes made elsewhere (another tab, a device, WebDAV, the sync
   /// client), batched; pages refresh what they show from it.

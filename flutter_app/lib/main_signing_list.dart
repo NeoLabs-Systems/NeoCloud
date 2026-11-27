@@ -348,10 +348,22 @@ class _SigningListScreenState extends State<SigningListScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _visible;
-    final chooseFile = FilledButton.icon(
-      onPressed: () => unawaited(showSigningFilePicker(context, _controller)),
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Text(appStrings.signingChooseFile),
+    final chooseFile = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        OutlinedButton.icon(
+          key: const ValueKey<String>('signing-quick'),
+          onPressed: () => unawaited(showSigningFilePicker(context, _controller, quick: true)),
+          icon: const Icon(Icons.draw_outlined, size: 18),
+          label: Text(appStrings.signingQuickTitle),
+        ),
+        FilledButton.icon(
+          onPressed: () => unawaited(showSigningFilePicker(context, _controller)),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text(appStrings.signingChooseFile),
+        ),
+      ],
     );
     return _PageScaffold(
       onRefresh: _load,
@@ -543,36 +555,46 @@ class _SigningDocumentPageState extends State<SigningDocumentPage> {
 
 /// Makes [node] a signing draft and opens the editor.
 Future<void> startSigningFromFile(BuildContext context, NeoCloudController controller, FileNode node) async {
+  final detail = await _makeSigningDraft(context, controller, node);
+  if (detail != null) controller.openSigning(detail.document.id);
+}
+
+/// Makes [node] a signing draft, saying on the way what goes wrong; null
+/// when it could not be made.
+Future<SigningDetail?> _makeSigningDraft(BuildContext context, NeoCloudController controller, FileNode node) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final kind = signableKindOf(node.name, node.mime);
   if (!kind.isSignable) {
     messenger?.showSnackBar(SnackBar(content: Text(appStrings.signingUnsupportedFile)));
-    return;
+    return null;
   }
   try {
     if (kind == SignableKind.office && !(await controller.signing.capabilities()).office) {
       messenger?.showSnackBar(SnackBar(content: Text(appStrings.signingOfficeUnavailable)));
-      return;
+      return null;
     }
     messenger?.showSnackBar(SnackBar(content: Text(appStrings.signingPreparing), duration: const Duration(seconds: 30)));
     final detail = await controller.signing.createDocument(nodeId: node.id, locale: currentAppLanguage.code);
     messenger?.hideCurrentSnackBar();
-    controller.openSigning(detail.document.id);
     if (detail.warnings.contains('FORM_FIELDS_FLATTENED')) {
       messenger?.showSnackBar(SnackBar(content: Text(appStrings.signingFlattened), duration: const Duration(seconds: 10)));
     }
+    return detail;
   } catch (error) {
     messenger?.hideCurrentSnackBar();
     messenger?.showSnackBar(SnackBar(content: Text(signingErrorText(controller, error, appStrings.signingPrepareFailed))));
+    return null;
   }
 }
 
-/// A small browser for the library: folders and the files that can be signed.
-Future<void> showSigningFilePicker(BuildContext context, NeoCloudController controller) {
+/// A small browser for the library: folders and the files that can be
+/// signed. With [quick] the picked file is signed right away by the account
+/// itself, and a file can also be uploaded into the folder shown.
+Future<void> showSigningFilePicker(BuildContext context, NeoCloudController controller, {bool quick = false}) {
   return showAdaptiveSheet<void>(
     context: context,
     builder: (dialogContext) => _AdaptiveDialog(
-      title: Text(appStrings.signingPickerTitle),
+      title: Text(quick ? appStrings.signingQuickPickerTitle : appStrings.signingPickerTitle),
       content: SizedBox(
         width: 460,
         height: 380,
@@ -580,8 +602,14 @@ Future<void> showSigningFilePicker(BuildContext context, NeoCloudController cont
           controller: controller,
           onPick: (node) {
             Navigator.of(dialogContext).pop();
-            unawaited(startSigningFromFile(context, controller, node));
+            unawaited(quick ? startQuickSign(context, controller, node) : startSigningFromFile(context, controller, node));
           },
+          onUpload: !quick
+              ? null
+              : (folderId) {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(_uploadAndQuickSign(context, controller, folderId));
+                },
         ),
       ),
       actions: <Widget>[TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.cancel))],
@@ -590,10 +618,13 @@ Future<void> showSigningFilePicker(BuildContext context, NeoCloudController cont
 }
 
 class _SigningFileBrowser extends StatefulWidget {
-  const _SigningFileBrowser({required this.controller, required this.onPick});
+  const _SigningFileBrowser({required this.controller, required this.onPick, this.onUpload});
 
   final NeoCloudController controller;
   final ValueChanged<FileNode> onPick;
+
+  /// Uploads a file from the device into the folder shown (its id).
+  final ValueChanged<String>? onUpload;
 
   @override
   State<_SigningFileBrowser> createState() => _SigningFileBrowserState();
@@ -631,8 +662,17 @@ class _SigningFileBrowserState extends State<_SigningFileBrowser> {
     if (listing == null) return const Center(child: CircularProgressIndicator());
     final entries = listing.items.where((node) => !node.inVault && (node.isFolder || signableKindOf(node.name, node.mime).isSignable)).toList();
     final parent = listing.folder.parentId;
+    final onUpload = widget.onUpload;
     return ListView(
       children: <Widget>[
+        if (onUpload != null)
+          ListTile(
+            key: const ValueKey<String>('signing-pick-upload'),
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(appStrings.signingQuickUpload),
+            subtitle: Text(appStrings.signingQuickUploadHint),
+            onTap: () => onUpload(_folderId),
+          ),
         if (parent != null && _folderId != 'root')
           ListTile(
             leading: const Icon(Icons.arrow_upward_rounded),

@@ -92,9 +92,10 @@ class _MobileTopBar extends StatelessWidget {
                 ),
               ),
               // On Photos, backup's status includes "off · Turn on".
-              if (controller.selectedSection == AppSection.photos)
-                Padding(padding: const EdgeInsets.only(right: 8), child: _PhotosBackupStatus(controller: controller))
-              else
+              if (controller.selectedSection == AppSection.photos) ...<Widget>[
+                _PhotosBlurToggle(controller: controller),
+                Padding(padding: const EdgeInsets.only(right: 8), child: _PhotosBackupStatus(controller: controller)),
+              ] else
                 _CameraStatusChip(controller: controller),
               if (qrScannerSupported && controller.usesDeviceLogin)
                 IconButton(

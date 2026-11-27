@@ -253,9 +253,12 @@ class _Palette extends StatelessWidget {
 }
 
 class _PaletteTile extends StatelessWidget {
-  const _PaletteTile({super.key, required this.spec, required this.armed, required this.enabled, required this.longPressToDrag, required this.color, required this.onTap});
+  const _PaletteTile({super.key, required this.spec, required this.armed, required this.enabled, required this.longPressToDrag, required this.color, required this.onTap, this.label});
 
   final FieldTypeSpec spec;
+
+  /// In place of the type's own name.
+  final String? label;
   final bool armed;
   final bool enabled;
   final bool longPressToDrag;
@@ -278,7 +281,7 @@ class _PaletteTile extends StatelessWidget {
             children: <Widget>[
               Icon(spec.icon, size: 24, color: color),
               const SizedBox(height: 6),
-              Text(spec.label(appStrings), maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textPrimary, fontSize: 12, height: 1.2)),
+              Text(label ?? spec.label(appStrings), maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: TextStyle(color: _textPrimary, fontSize: 12, height: 1.2)),
             ],
           ),
         ),
@@ -290,7 +293,7 @@ class _PaletteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tile = Semantics(
       button: true,
-      label: spec.label(appStrings),
+      label: label ?? spec.label(appStrings),
       child: InkWell(borderRadius: BorderRadius.circular(AppRadius.control), onTap: enabled ? onTap : null, child: _face()),
     );
     if (!enabled) return Opacity(opacity: 0.5, child: tile);

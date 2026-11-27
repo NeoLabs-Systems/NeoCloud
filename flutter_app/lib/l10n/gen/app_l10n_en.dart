@@ -5611,6 +5611,12 @@ class AppL10nEn extends AppL10n {
   String get photosSelectGroup => 'Select all here';
 
   @override
+  String get photosBlurOn => 'Blur photos';
+
+  @override
+  String get photosBlurOff => 'Show photos sharp';
+
+  @override
   String get photosShareOne => 'Pick one photo to share a link to it.';
 
   @override
@@ -6071,6 +6077,104 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get signingPickerEmpty => 'No PDF or image in this folder.';
+
+  @override
+  String get signingQuickAction => 'Sign it yourself…';
+
+  @override
+  String get signingQuickTitle => 'Sign yourself';
+
+  @override
+  String get signingQuickPickerTitle => 'Choose a file to sign yourself';
+
+  @override
+  String get signingQuickUpload => 'Upload a file here';
+
+  @override
+  String get signingQuickUploadHint =>
+      'Saved in this folder; the signed copy goes next to it.';
+
+  @override
+  String get signingQuickUploading => 'Uploading…';
+
+  @override
+  String get signingQuickHint =>
+      'Choose what to add, then tap the page where it goes. Drag a box to move it.';
+
+  @override
+  String get signingQuickName => 'Name';
+
+  @override
+  String get signingQuickYourName => 'Your name';
+
+  @override
+  String get signingQuickNameHint =>
+      'Goes into name boxes and the audit trail.';
+
+  @override
+  String get signingQuickYourSignature => 'Your signature';
+
+  @override
+  String get signingQuickYourInitials => 'Your initials';
+
+  @override
+  String get signingQuickAdd => 'Add';
+
+  @override
+  String get signingQuickChange => 'Change';
+
+  @override
+  String get signingQuickFromProfile => 'From your signing profile';
+
+  @override
+  String get signingQuickOnlyNow => 'Only for this document';
+
+  @override
+  String get signingQuickDrawNew => 'Make a new one';
+
+  @override
+  String get signingQuickKeepTitle => 'Keep it for next time?';
+
+  @override
+  String get signingQuickKeepBody =>
+      'It is saved encrypted in your signing profile and offered whenever you sign. You can remove it in Settings › Signing profile.';
+
+  @override
+  String get signingQuickKeep => 'Keep it';
+
+  @override
+  String get signingQuickDontKeep => 'Only this time';
+
+  @override
+  String signingQuickSavedTo(String file) {
+    return 'The signed copy is saved as “$file” next to the original, with a digital seal and an audit trail.';
+  }
+
+  @override
+  String get signingQuickConsent =>
+      'By choosing “Sign and save” you agree to sign this document electronically.';
+
+  @override
+  String get signingQuickSubmit => 'Sign and save';
+
+  @override
+  String get signingQuickNothingPlaced =>
+      'Place at least one box on the page first.';
+
+  @override
+  String get signingQuickNeedName => 'Enter your name.';
+
+  @override
+  String signingQuickTooMany(String count) {
+    return 'Signing yourself takes at most $count boxes.';
+  }
+
+  @override
+  String get signingQuickDone =>
+      'Signed. The signed copy is being saved next to the original.';
+
+  @override
+  String get signingQuickFailed => 'The document couldn\'t be signed.';
 
   @override
   String get signingOpen => 'Open';

@@ -14,6 +14,7 @@ import '../notes/note_models.dart';
 import '../photos/photo_models.dart';
 import '../signing/account_api.dart';
 import '../signing/models.dart';
+import '../signing/quick_sign.dart';
 import '../signing/saved_signatures.dart';
 import '../signing/signing_api.dart';
 import 'models.dart';

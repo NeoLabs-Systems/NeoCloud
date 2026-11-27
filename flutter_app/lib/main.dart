@@ -211,6 +211,7 @@ part 'main_signing_list.dart';
 part 'main_signing_public.dart';
 part 'main_signing_public_fields.dart';
 part 'main_signing_public_states.dart';
+part 'main_signing_quick.dart';
 part 'main_signing_profile.dart';
 part 'main_signing_send.dart';
 part 'main_signing_status.dart';

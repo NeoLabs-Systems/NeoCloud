@@ -5664,6 +5664,12 @@ class AppL10nDe extends AppL10n {
   String get photosSelectGroup => 'Alle hier auswählen';
 
   @override
+  String get photosBlurOn => 'Fotos verschwommen zeigen';
+
+  @override
+  String get photosBlurOff => 'Fotos scharf zeigen';
+
+  @override
   String get photosShareOne =>
       'Wähle ein Foto aus, um einen Link dazu zu teilen.';
 
@@ -6133,6 +6139,105 @@ class AppL10nDe extends AppL10n {
 
   @override
   String get signingPickerEmpty => 'Kein PDF oder Bild in diesem Ordner.';
+
+  @override
+  String get signingQuickAction => 'Selbst unterschreiben…';
+
+  @override
+  String get signingQuickTitle => 'Selbst unterschreiben';
+
+  @override
+  String get signingQuickPickerTitle =>
+      'Datei zum Selbst-Unterschreiben wählen';
+
+  @override
+  String get signingQuickUpload => 'Datei hierher hochladen';
+
+  @override
+  String get signingQuickUploadHint =>
+      'Wird in diesem Ordner gespeichert, die unterschriebene Kopie daneben.';
+
+  @override
+  String get signingQuickUploading => 'Wird hochgeladen…';
+
+  @override
+  String get signingQuickHint =>
+      'Wähle aus, was du hinzufügen willst, und tippe dann auf die Stelle im Dokument. Ziehe ein Feld, um es zu verschieben.';
+
+  @override
+  String get signingQuickName => 'Name';
+
+  @override
+  String get signingQuickYourName => 'Dein Name';
+
+  @override
+  String get signingQuickNameHint => 'Kommt in Namensfelder und ins Protokoll.';
+
+  @override
+  String get signingQuickYourSignature => 'Deine Unterschrift';
+
+  @override
+  String get signingQuickYourInitials => 'Deine Initialen';
+
+  @override
+  String get signingQuickAdd => 'Hinzufügen';
+
+  @override
+  String get signingQuickChange => 'Ändern';
+
+  @override
+  String get signingQuickFromProfile => 'Aus deinem Signaturprofil';
+
+  @override
+  String get signingQuickOnlyNow => 'Nur für dieses Dokument';
+
+  @override
+  String get signingQuickDrawNew => 'Neu erstellen';
+
+  @override
+  String get signingQuickKeepTitle => 'Für das nächste Mal behalten?';
+
+  @override
+  String get signingQuickKeepBody =>
+      'Sie wird verschlüsselt in deinem Signaturprofil gespeichert und beim Unterschreiben angeboten. Du kannst sie unter Einstellungen › Signaturprofil entfernen.';
+
+  @override
+  String get signingQuickKeep => 'Behalten';
+
+  @override
+  String get signingQuickDontKeep => 'Nur dieses Mal';
+
+  @override
+  String signingQuickSavedTo(String file) {
+    return 'Die unterschriebene Kopie wird als „$file“ neben dem Original gespeichert, mit digitalem Siegel und Protokoll.';
+  }
+
+  @override
+  String get signingQuickConsent =>
+      'Mit „Unterschreiben und speichern“ bist du einverstanden, dieses Dokument elektronisch zu unterschreiben.';
+
+  @override
+  String get signingQuickSubmit => 'Unterschreiben und speichern';
+
+  @override
+  String get signingQuickNothingPlaced =>
+      'Platziere zuerst mindestens ein Feld im Dokument.';
+
+  @override
+  String get signingQuickNeedName => 'Gib deinen Namen ein.';
+
+  @override
+  String signingQuickTooMany(String count) {
+    return 'Beim Selbst-Unterschreiben gehen höchstens $count Felder.';
+  }
+
+  @override
+  String get signingQuickDone =>
+      'Unterschrieben. Die unterschriebene Kopie wird neben dem Original gespeichert.';
+
+  @override
+  String get signingQuickFailed =>
+      'Das Dokument konnte nicht unterschrieben werden.';
 
   @override
   String get signingOpen => 'Öffnen';

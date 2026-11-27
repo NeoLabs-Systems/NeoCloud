@@ -18,6 +18,7 @@ class PhotoGrid extends StatefulWidget {
     required this.onSelect,
     required this.onRefresh,
     required this.onZoom,
+    this.blurred = false,
   });
 
   final PhotoTimeline timeline;
@@ -28,6 +29,9 @@ class PhotoGrid extends StatefulWidget {
   final ValueChanged<Set<String>> onSelect;
   final Future<void> Function() onRefresh;
   final ValueChanged<PhotoZoom> onZoom;
+
+  /// Thumbnails show blurred, for privacy (the toggle on the Photos page).
+  final bool blurred;
 
   @override
   State<PhotoGrid> createState() => _PhotoGridState();
@@ -298,6 +302,7 @@ class _PhotoGridState extends State<PhotoGrid> {
           thumbnails: widget.thumbnails,
           selecting: _selecting,
           selected: item != null && widget.selected.contains(item.id),
+          blurred: widget.blurred,
           onTap: () => widget.onOpen(itemIndex),
         ),
       ));
@@ -358,6 +363,7 @@ class _PhotoGridState extends State<PhotoGrid> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       // Rows just beyond the screen are built (and their
                       // thumbnails asked for) before they scroll in.
+                      // ignore: deprecated_member_use, the replacement does not exist in older Flutter releases.
                       cacheExtent: constraints.maxHeight,
                       itemCount: layout.rows.length,
                       itemExtentBuilder: (index, _) => index < layout.rows.length ? layout.rows[index].extent : null,
@@ -478,6 +484,10 @@ class _PhotoSectionHeader extends StatelessWidget {
   }
 }
 
+/// How wide a blurred thumbnail is decoded, in pixels, whatever the tile's
+/// size: colours and shapes show, faces and text do not.
+const int _blurredThumbnailPixels = 16;
+
 /// One square of the grid: the thumbnail, a video's length, the selection.
 class _PhotoTile extends StatefulWidget {
   const _PhotoTile({
@@ -489,6 +499,7 @@ class _PhotoTile extends StatefulWidget {
     required this.selecting,
     required this.selected,
     required this.onTap,
+    this.blurred = false,
   });
 
   final PhotoItem? item;
@@ -498,6 +509,7 @@ class _PhotoTile extends StatefulWidget {
   final bool selecting;
   final bool selected;
   final VoidCallback onTap;
+  final bool blurred;
 
   @override
   State<_PhotoTile> createState() => _PhotoTileState();
@@ -556,7 +568,11 @@ class _PhotoTileState extends State<_PhotoTile> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final bytes = _bytes;
-    final pixels = (widget.extent * MediaQuery.devicePixelRatioOf(context)).round();
+    final blurred = widget.blurred;
+    // Blurred, the thumbnail is decoded a few pixels wide and drawn smoothly
+    // scaled up: as soft as a blur filter, but no extra layer per tile while
+    // scrolling, and a smaller decode.
+    final pixels = blurred ? _blurredThumbnailPixels : (widget.extent * MediaQuery.devicePixelRatioOf(context)).round();
     Widget picture = ColoredBox(color: _bgTertiary);
     if (bytes != null) {
       picture = Image.memory(
@@ -566,7 +582,7 @@ class _PhotoTileState extends State<_PhotoTile> {
         height: widget.extent,
         cacheWidth: pixels,
         gaplessPlayback: true,
-        filterQuality: FilterQuality.medium,
+        filterQuality: blurred ? FilterQuality.high : FilterQuality.medium,
         // A quick fade the first time, none when it was already decoded.
         frameBuilder: (context, child, frame, synchronous) => synchronous
             ? child
