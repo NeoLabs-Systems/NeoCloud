@@ -1,0 +1,86 @@
+# The gate for the container: builds the image from the change and proves that
+# it boots, serves the app, keeps the commands and uid of earlier images, and
+# adopts their data volume. Publishing belongs to the release workflows
+# (_publish-docker-image.yml).
+name: Docker
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - compose.yaml
+      - scripts/docker-entrypoint.sh
+      - scripts/node-healthcheck.sh
+      - cmd/**
+      - internal/**
+      - go.mod
+      - .github/workflows/docker.yml
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - compose.yaml
+      - scripts/docker-entrypoint.sh
+      - scripts/node-healthcheck.sh
+      - cmd/**
+      - internal/**
+      - go.mod
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    name: Build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - uses: ./.github/actions/build-web
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: .
+          load: true
+          tags: neocloud:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          docker volume create neocloud-ci
+          start() {
+            docker run -d --name neocloud-ci -p 127.0.0.1:3344:3344 -e ANALYTICS_ENABLED=false -v neocloud-ci:/data neocloud:ci "$@"
+            for attempt in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3344/api/health; then return 0; fi
+              if [ "$attempt" = 30 ]; then docker logs neocloud-ci; return 1; fi
+              sleep 2
+            done
+          }
+          start
+          curl -fsS http://127.0.0.1:3344/app/ | grep -q '<base href="/app/">'
+          curl -fsS http://127.0.0.1:3344/ >/dev/null
+          test "$(docker exec neocloud-ci id -u)" = 1000
+          docker exec neocloud-ci neocloud healthcheck
+          docker exec neocloud-ci neocloud keys export | grep -q NEOCLOUD_MASTER_KEY=
+          docker exec neocloud-ci node -e "fetch('http://127.0.0.1:3344/api/health')"
+          docker stop neocloud-ci && docker rm neocloud-ci
+          # The command older compose files may pin, over the same volume.
+          start node server/index.js
+          docker rm -f neocloud-ci
+          docker run --rm -v neocloud-ci:/data neocloud:ci neocloud backup | grep -q 'Backup targets'

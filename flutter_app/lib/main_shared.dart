@@ -77,7 +77,7 @@ class _PageScaffold extends StatelessWidget {
   }
 }
 
-/// Flat page backdrop for the app shell and the sign-in screen.
+/// Flat page backdrop for the app shell and the signing page.
 class _ControlSurfaceBackdrop extends StatelessWidget {
   const _ControlSurfaceBackdrop({required this.child});
 
@@ -89,14 +89,11 @@ class _ControlSurfaceBackdrop extends StatelessWidget {
   }
 }
 
-/// A short fade-in for content that appears after loading. With [rise],
-/// NeoAgent's entrance for the phone's server and sign-in screens: a slower
-/// fade while sliding up a little.
+/// A short fade-in for content that appears after loading.
 class _EntranceMotion extends StatefulWidget {
-  const _EntranceMotion({required this.child, this.rise = false});
+  const _EntranceMotion({required this.child});
 
   final Widget child;
-  final bool rise;
 
   @override
   State<_EntranceMotion> createState() => _EntranceMotionState();
@@ -115,42 +112,26 @@ class _EntranceMotionState extends State<_EntranceMotion> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.rise) {
-      return AnimatedOpacity(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        opacity: _visible ? 1 : 0,
-        child: widget.child,
-      );
-    }
-    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
-    return AnimatedSlide(
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOutCubic,
-      offset: _visible ? Offset.zero : const Offset(0, 0.035),
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeOutCubic,
-        opacity: _visible ? 1 : 0,
-        child: widget.child,
-      ),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      opacity: _visible ? 1 : 0,
+      child: widget.child,
     );
   }
 }
 
-/// Raised card for standalone forms (sign-in) and floating panels.
+/// Raised card for floating panels.
 class _GlassSurface extends StatelessWidget {
-  const _GlassSurface({required this.child, this.width, this.padding});
+  const _GlassSurface({required this.child, this.width});
 
   final Widget child;
   final double? width;
-  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      padding: padding,
       decoration: BoxDecoration(
         color: _bgSecondary,
         borderRadius: BorderRadius.circular(AppRadius.panel),
@@ -325,7 +306,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Text(text, style: _sectionTitleStyle());
 }
 
-class _SidebarButton extends StatefulWidget {
+class _SidebarButton extends StatelessWidget {
   const _SidebarButton({
     required this.label,
     required this.icon,
@@ -343,61 +324,16 @@ class _SidebarButton extends StatefulWidget {
   final Widget? trailing;
 
   @override
-  State<_SidebarButton> createState() => _SidebarButtonState();
-}
-
-class _SidebarButtonState extends State<_SidebarButton> {
-  bool _hovering = false;
-
-  @override
   Widget build(BuildContext context) {
-    final active = widget.active;
-    final radius = BorderRadius.circular(widget.compact ? 12 : 14);
-    // Flat finish: the active row is one accent wash plus a gold glyph, no
-    // gradient, shadow or rail bar.
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovering = true),
-        onExit: (_) => setState(() => _hovering = false),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: radius,
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOutCubic,
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: widget.compact ? 10 : 11, vertical: widget.compact ? 7 : 9),
-              decoration: BoxDecoration(
-                color: active ? _accentMuted : (_hovering ? _bgTertiary.withValues(alpha: 0.66) : Colors.transparent),
-                borderRadius: radius,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(widget.icon, size: widget.compact ? 16 : 18, color: active ? _accent : _textMuted),
-                  SizedBox(width: widget.compact ? 9 : 11),
-                  Expanded(
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.geist(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.1,
-                        color: active ? _textPrimary : _textSecondary,
-                      ),
-                    ),
-                  ),
-                  if (widget.trailing != null) ...<Widget>[const SizedBox(width: 8), widget.trailing!],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    return NeoSidebarButton(
+      label: label,
+      icon: icon,
+      active: active,
+      compact: compact,
+      iconSize: compact ? 16 : 18,
+      trailing: trailing,
+      onTap: onTap,
+      palette: _palette,
     );
   }
 }

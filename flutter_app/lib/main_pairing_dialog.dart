@@ -114,20 +114,14 @@ class _PairPhoneDialogState extends State<PairPhoneDialog> {
   }
 
   Widget _qr(PairingTicket ticket) {
-    // Scanners want dark modules on a light ground, in either theme.
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: lightPalette.bgCard, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: _border)),
-      child: Opacity(
-        opacity: _expired ? 0.15 : (_paired ? 0.35 : 1),
-        child: QrImageView(
-          data: ticket.qrPayload,
-          size: 208,
-          padding: EdgeInsets.zero,
-          backgroundColor: lightPalette.bgCard,
-          eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: lightPalette.textPrimary),
-          dataModuleStyle: QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: lightPalette.textPrimary),
-          semanticsLabel: appStrings.pairQrSemantics,
+    return Opacity(
+      opacity: _expired ? 0.15 : (_paired ? 0.35 : 1),
+      child: Semantics(
+        label: appStrings.pairQrSemantics,
+        child: NeoAuthQrPlate(
+          size: 232,
+          payload: ticket.qrPayload,
+          preparing: false,
         ),
       ),
     );

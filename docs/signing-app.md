@@ -84,7 +84,7 @@ boxes). Validation: `min`, `max`, `decimals`, `minLength`, `maxLength`,
 `minSelect`, `maxSelect`, `charset`, `options`, `placeholder`, `autoToday`.
 `test/signing_server_schema_test.dart` compares the registry with
 `test/fixtures/signing_server_schema.json`, which
-`node scripts/dump_signing_schema.js` writes from the server.
+`UPDATE_SIGNING_SCHEMA=1 go test -run TestFieldSchemaFixture ./internal/signing` writes from the server.
 
 ## Wording
 

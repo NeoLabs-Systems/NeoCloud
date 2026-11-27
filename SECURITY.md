@@ -49,7 +49,7 @@ database:
   anyway; the index adds the vocabulary of the contents.
 - The text kept for result snippets is deflated and encrypted with the
   account's data key (AES-256-GCM, bound to the file's id), like the blobs.
-- Extraction happens in memory (a worker thread, or `pdftotext` reading
+- Extraction happens in memory (in the server, or `pdftotext` reading
   stdin); no plaintext is written to disk for it.
 - Database backups sent to backup targets are encrypted with the backup key,
   so the index leaves the server only in that form.
@@ -60,7 +60,7 @@ form, leave full-text search off or opt out; vault folders are never indexed.
 ## Sharing between accounts
 
 Every file route that takes a node id from a member resolves it in one place
-(`server/services/members/access.js`): a node someone else owns is reachable
+(`internal/files`, the grant resolver): a node someone else owns is reachable
 only when a live, unexpired grant to the caller sits on it or on a folder
 above it, with nothing up to the owner's root in the trash, and never when
 it is in a vault. Anything else answers the same `404` as a missing node.
@@ -107,7 +107,7 @@ capped at 16 MB and parsed in linear time, and a scan stops the job past
 A personal base URL (bring your own key, a custom endpoint, one's own
 Ollama) or one's own NeoRouter is an address someone typed that the server
 will call. It is checked when it is saved, and again on every connection:
-AI requests to it go through a dispatcher that resolves the name once,
+AI requests to it go through a client that resolves the name once,
 refuses loopback, private, link-local, CGNAT and multicast addresses (IP
 literals too) and connects to exactly the address it checked. A redirect
 hop is checked the same way, and a name that later starts answering a
@@ -168,7 +168,7 @@ username can cause it), and a pending two-factor sign-in takes at most 5
 codes. Replacing an enrolled second factor needs a current code. A password
 change signs out every other session and revokes all device tokens and WebDAV
 app passwords; an admin password reset does the same for every session.
-Ending a session also closes its live socket.io connections. With an https
+Ending a session also closes its live event streams. With an https
 `PUBLIC_URL` and no `TRUST_PROXY`, only proxies on loopback or private
 addresses may set `X-Forwarded-For` (the server warns at startup); set
 `TRUST_PROXY` to the proxy's address and keep port 3344 reachable from the

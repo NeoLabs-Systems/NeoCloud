@@ -111,9 +111,6 @@ class AppL10nEn extends AppL10n {
   String get needANewAccount => 'Need a new account? Register';
 
   @override
-  String get verification => 'Verification';
-
-  @override
   String get enter2faCode => 'Enter your 2FA code';
 
   @override
@@ -4146,9 +4143,6 @@ class AppL10nEn extends AppL10n {
   @override
   String get approvalNeedsPhone =>
       'Approve sign-ins from the NeoCloud phone app or a browser where you\'re signed in.';
-
-  @override
-  String get connectWelcome => 'WELCOME TO NEOCLOUD';
 
   @override
   String get connectReadyToSignIn => 'Ready to sign in';
@@ -8873,4 +8867,110 @@ class AppL10nEn extends AppL10n {
   @override
   String get notesEncryptedDone =>
       'Note encrypted. Its unencrypted copy is in the trash until you empty it.';
+
+  @override
+  String get updatesTitle => 'Updates';
+
+  @override
+  String get updatesHint =>
+      'NeoCloud updates itself from GitHub. Your settings, accounts and files are kept.';
+
+  @override
+  String get updateVersionLabel => 'Version';
+
+  @override
+  String get updateChannel => 'Channel';
+
+  @override
+  String get updateChannelHint =>
+      'Stable follows main. Beta gets new features first.';
+
+  @override
+  String get updateChannelStable => 'Stable';
+
+  @override
+  String get updateChannelBeta => 'Beta';
+
+  @override
+  String get updateCheckNow => 'Check now';
+
+  @override
+  String get updateNeverChecked => 'Not checked yet';
+
+  @override
+  String updateLastChecked(String time) {
+    return 'Checked $time';
+  }
+
+  @override
+  String get updateUpToDate => 'You have the latest version';
+
+  @override
+  String get updateCheckFailed =>
+      'Couldn\'t reach GitHub. Showing the last result.';
+
+  @override
+  String get updateContainerTitle => 'Runs from a container image';
+
+  @override
+  String get updateContainerHint =>
+      'Update the image instead of the code inside it. Data on the volume is kept.';
+
+  @override
+  String get updateDetails => 'Details of the last update';
+
+  @override
+  String updateReadyTitle(String version) {
+    return 'Version $version is ready';
+  }
+
+  @override
+  String updateReadySubtitle(String current, String channel) {
+    return 'You have $current · $channel channel';
+  }
+
+  @override
+  String get updateNow => 'Update now';
+
+  @override
+  String get updateWhatsNew => 'What\'s new';
+
+  @override
+  String updateConfirmTitle(String version) {
+    return 'Update to $version?';
+  }
+
+  @override
+  String get updateConfirmMessage =>
+      'NeoCloud saves a backup, installs the new version and restarts. This takes a few minutes. If anything fails, it goes back to the current version.';
+
+  @override
+  String get updatingTitle => 'Updating NeoCloud';
+
+  @override
+  String updatingToTitle(String version) {
+    return 'Updating to $version';
+  }
+
+  @override
+  String get updateReconnecting => 'Restarting NeoCloud…';
+
+  @override
+  String get updateHandsOff =>
+      'Nothing to do here. This page reconnects by itself when NeoCloud is back.';
+
+  @override
+  String updateDoneTitle(String version) {
+    return 'Updated to $version';
+  }
+
+  @override
+  String get updateDoneReloading =>
+      'Reloading the app to load the new version…';
+
+  @override
+  String get updateReload => 'Reload';
+
+  @override
+  String get updateFailedTitle => 'The update did not finish';
 }

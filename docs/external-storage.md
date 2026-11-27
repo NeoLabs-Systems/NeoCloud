@@ -52,7 +52,6 @@ admin-defined mounts and no server paths or local disks.
 
 ## Adding a provider
 
-A provider is one module in `server/services/external_storage/adapters/` that
-exports `type`, `fields`, optional `validate`, `hostOf` and `create`, and is
-listed in `adapters/index.js` (the adapter interface is described there). The
-settings form on the clients is the only other place to add.
+A provider is one adapter in `internal/externalstorage` (see `s3.go`, `sftp.go`
+and `webdav.go`) registered with the others in `config.go`. The settings form
+on the clients is the only other place to add.

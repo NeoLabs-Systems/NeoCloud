@@ -1,19 +1,42 @@
 part of 'main.dart';
 
-// The sign-in cards' mail pieces, copied from NeoAgent's login screen: the
-// "Reset password" dialog behind "Forgot password?", the notice above the
+// The sign-in card's mail pieces: the "Reset password" dialog behind
+// "Forgot password?", the notice above the
 // form once a link is on its way, and (NeoCloud's own) a way to send the
 // sign-up confirmation again. None of it exists unless the server can send
 // mail (NeoCloudController.emailConfigured).
 
-/// "Forgot password?": NeoAgent's request dialog (a bottom sheet on phones)
-/// with the username field's text filled in, or the plain "ask the person who
-/// runs your NeoCloud" dialog where the server has no mail.
-Future<void> _showForgotPasswordDialog(BuildContext context, NeoCloudController controller, {String initialAccount = ''}) async {
+/// "Forgot password?": the shared request dialog with the username field's
+/// text filled in, or the plain "ask the person who runs your NeoCloud" dialog
+/// where the server has no mail.
+Future<void> _showForgotPasswordDialog(
+  BuildContext context,
+  NeoCloudController controller, {
+  String initialAccount = '',
+}) async {
   if (!controller.emailConfigured) return _showAskAdminDialog(context);
-  await showAdaptiveSheet<void>(
+  final messenger = ScaffoldMessenger.of(context);
+  await showDialog<void>(
     context: context,
-    builder: (dialogContext) => _ForgotPasswordDialog(controller: controller, initialAccount: initialAccount.trim()),
+    builder: (_) => NeoForgotPasswordDialog(
+      initialAccount: initialAccount.trim(),
+      title: appStrings.emailResetTitle,
+      description: appStrings.emailResetBody,
+      accountLabel: appStrings.usernameOrEmail,
+      emptyError: appStrings.enterYourUsernameOrEmail,
+      cancelLabel: appStrings.cancel,
+      submitLabel: appStrings.emailSendLink,
+      onSubmit: (account) async {
+        final error = await controller.requestPasswordReset(account);
+        if (error != null) {
+          messenger.showSnackBar(SnackBar(content: Text(error)));
+        }
+        return error == null;
+      },
+      errorBuilder: (message) => _InlineError(message: message),
+      backgroundColor: _bgCard,
+      textColor: _textSecondary,
+    ),
   );
 }
 
@@ -35,92 +58,7 @@ Future<void> _showAskAdminDialog(BuildContext context) async {
   );
 }
 
-class _ForgotPasswordDialog extends StatefulWidget {
-  const _ForgotPasswordDialog({required this.controller, required this.initialAccount});
-
-  final NeoCloudController controller;
-  final String initialAccount;
-
-  @override
-  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
-}
-
-class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
-  late final TextEditingController _account = TextEditingController(text: widget.initialAccount);
-  bool _sending = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _account.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    if (_sending) return;
-    final account = _account.text.trim();
-    if (account.isEmpty) {
-      setState(() => _error = appStrings.enterYourUsernameOrEmail);
-      return;
-    }
-    setState(() {
-      _sending = true;
-      _error = null;
-    });
-    final error = await widget.controller.requestPasswordReset(account);
-    if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop();
-      return;
-    }
-    setState(() {
-      _sending = false;
-      _error = error;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final error = _error;
-    return _AdaptiveDialog(
-      title: Text(appStrings.emailResetTitle),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(appStrings.emailResetBody, style: TextStyle(color: _textSecondary, height: 1.45)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _account,
-              autofocus: true,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              enableSuggestions: false,
-              textInputAction: TextInputAction.done,
-              onChanged: (_) {
-                if (_error != null) setState(() => _error = null);
-              },
-              onSubmitted: (_) => unawaited(_send()),
-              decoration: InputDecoration(labelText: appStrings.usernameOrEmail),
-            ),
-            if (error != null) ...<Widget>[const SizedBox(height: 12), _InlineError(message: error)],
-          ],
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(onPressed: _sending ? null : () => Navigator.of(context).pop(), child: Text(appStrings.cancel)),
-        FilledButton(
-          onPressed: _sending ? null : () => unawaited(_send()),
-          child: _sending ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _onAccent)) : Text(appStrings.emailSendLink),
-        ),
-      ],
-    );
-  }
-}
-
-/// The mail notice of both sign-in cards: NeoAgent's green banner (reset
+/// The sign-in card's mail notice: NeoAgent's green banner (reset
 /// link sent, or "check your inbox") and, while an account waits for its
 /// confirmation, the action that sends that link again.
 class _AuthEmailNotices extends StatefulWidget {

@@ -1,52 +1,89 @@
 name: Reusable release assets
 
-# Publishes a checksum list and the download buttons after all client
-# builds have completed.
-# The builds attach their own assets as soon as they finish.
+# Completes a draft release once its builds are in: the checksum list, the
+# download buttons, and publishing it. A release without the whole signed
+# server set is never published, because installs update from it.
 
 on:
   workflow_call:
     inputs:
       release_tag:
-        description: Release tag to attach the assets to
+        description: Draft release to complete
         required: true
         type: string
+      release_sha:
+        description: Commit the release tag must resolve to
+        required: true
+        type: string
+      prerelease:
+        description: Publish as a prerelease
+        required: true
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
-  attach:
-    name: Publish release checksums
+  publish:
+    name: Complete the GitHub release
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      GOWORK: 'off'
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: scripts
-      # Only the client builds: docker/build-push-action can upload its own
-      # build-record artifacts, which are not release assets.
+          ref: ${{ inputs.release_tag }}
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-bundle
+          path: dist
       - uses: actions/download-artifact@v4
         with:
           pattern: lite-*
           path: dist
           merge-multiple: true
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: android-apk
           path: dist
-      - name: Upload checksums to the release
-        working-directory: dist
+
+      - name: Verify the release and its server assets
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_TAG}" --jq .sha)" = "$RELEASE_SHA"
+          version="${RELEASE_TAG#v}"
+          attached="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for target in linux-x64 linux-arm64 macos-x64 macos-arm64; do
+            for name in "neocloud-cli-${target}" "neocloud-runtime-${target}-${version}.zip"; do
+              grep -qxF "$name" <<< "$attached" || { echo "::error::Release is missing $name."; exit 1; }
+            done
+          done
+          for name in "neocloud-runtime-manifest-${version}.json" "neocloud-runtime-manifest-${version}.json.sig"; do
+            grep -qxF "$name" <<< "$attached" || { echo "::error::Release is missing $name."; exit 1; }
+          done
+
+      - name: Upload checksums
+        working-directory: dist
         run: |
           sha256sum -- * > SHA256SUMS.txt
-          gh release upload --clobber --repo "$REPOSITORY" "$RELEASE_TAG" SHA256SUMS.txt
+          gh release upload --clobber --repo "$GITHUB_REPOSITORY" "$RELEASE_TAG" SHA256SUMS.txt
 
-      # Every build has attached its file by now: the buttons link to them.
-      - name: Refresh the download buttons in the release notes
+      - name: Refresh the download buttons
+        run: go run ./cmd/neocloud-release release-download --tag "$RELEASE_TAG"
+
+      - name: Publish the release
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/release_download_notes.js --tag "${{ inputs.release_tag }}"
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+          else
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          fi

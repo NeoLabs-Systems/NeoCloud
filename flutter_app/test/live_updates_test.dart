@@ -179,6 +179,29 @@ void main() {
       live.stop();
     });
 
+    test('imports:changed and ai:suggestions are reported', () {
+      var imports = 0;
+      final counts = <Map<Object?, Object?>>[];
+      final sockets = <_FakeSocket>[];
+      final live = LiveFileUpdates(
+        feed: FileChangeFeed(),
+        fetchChanges: (_) async => const <String, dynamic>{},
+        openSocket: (url, handlers) {
+          final socket = _FakeSocket(handlers);
+          sockets.add(socket);
+          return socket;
+        },
+        socketUrl: () => Uri.parse('ws://x/socket.io/'),
+        onImportsChanged: () => imports += 1,
+        onAiSuggestions: counts.add,
+      )..start();
+      sockets.single.handlers.onEvent('imports:changed', <String, dynamic>{'id': 'job'});
+      sockets.single.handlers.onEvent('ai:suggestions', <String, dynamic>{'high': 1});
+      expect(imports, 1);
+      expect(counts.single['high'], 1);
+      live.stop();
+    });
+
     test('backoff doubles up to the cap', () {
       final live = LiveFileUpdates(feed: FileChangeFeed(), fetchChanges: (_) async => const <String, dynamic>{});
       expect(<int>[for (var i = 0; i < 7; i++) live.backoff(i).inSeconds], <int>[1, 2, 4, 8, 16, 30, 30]);

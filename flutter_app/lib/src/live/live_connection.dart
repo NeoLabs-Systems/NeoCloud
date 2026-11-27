@@ -45,6 +45,7 @@ class LiveFileUpdates {
     this.socketUrl,
     this.onSharesChanged,
     this.onAiSuggestions,
+    this.onImportsChanged,
     this.onSigningUpdated,
     this.onCommentsChanged,
     this.onHandoffEvent,
@@ -63,6 +64,9 @@ class LiveFileUpdates {
   final Uri Function()? socketUrl;
   final void Function()? onSharesChanged;
   final void Function(Map<Object?, Object?> counts)? onAiSuggestions;
+  /// An import job's status or transfer progress changed (`imports:changed`).
+  final void Function()? onImportsChanged;
+
   /// A signing document of the account changed (`signing:updated`).
   final void Function()? onSigningUpdated;
 
@@ -137,6 +141,7 @@ class LiveFileUpdates {
           if (event == 'ai:suggestions' && data is Map) onAiSuggestions?.call(data);
           if (event == 'signing:updated' || event == 'signing:inbox') onSigningUpdated?.call();
           if (event == 'comments:changed') onCommentsChanged?.call();
+          if (event == 'imports:changed') onImportsChanged?.call();
           if (event.startsWith('handoff:')) onHandoffEvent?.call(event, data);
           if (event != 'files:changed' || data is! Map) return;
           final ids = data['folderIds'];

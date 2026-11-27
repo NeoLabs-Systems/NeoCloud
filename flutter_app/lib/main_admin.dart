@@ -82,6 +82,7 @@ List<_AdminSearchEntry> _adminSearchIndex() => <_AdminSearchEntry>[
   _AdminSearchEntry(appStrings.aiProvidersTitle, _AdminTab.providers, 'ai ki providers anbieter keys schlüssel api openai anthropic google gemini openrouter ollama neorouter'),
   _AdminSearchEntry(appStrings.aiModelAvailability, _AdminTab.models, 'ai ki models modelle availability verfügbarkeit enable disable'),
   _AdminSearchEntry(appStrings.adminServerTitle, _AdminTab.server, 'version uptime database datenbank disk health node previews libreoffice'),
+  _AdminSearchEntry(appStrings.updatesTitle, _AdminTab.server, 'update upgrade aktualisieren version channel kanal beta stable stabil release'),
   _AdminSearchEntry(appStrings.adminSearchTitle, _AdminTab.server, 'search suche full-text volltext index rebuild'),
   _AdminSearchEntry(appStrings.adminMasterKey, _AdminTab.server, 'master key schlüssel encryption verschlüsselung export'),
   _AdminSearchEntry(appStrings.adminLogs, _AdminTab.server, 'logs protokoll errors fehler'),
@@ -89,12 +90,22 @@ List<_AdminSearchEntry> _adminSearchIndex() => <_AdminSearchEntry>[
 
 class _AdminPanelState extends State<AdminPanel> {
   final TextEditingController _search = TextEditingController();
+  late final NeoUpdateController _updates = _updateController(
+    widget.controller,
+  );
 
   /// Kept by the controller, so the address and a reload keep the tab.
   _AdminTab get _tab => widget.controller._adminTab;
 
   @override
+  void initState() {
+    super.initState();
+    unawaited(_updates.load());
+  }
+
+  @override
   void dispose() {
+    _updates.dispose();
     _search.dispose();
     super.dispose();
   }
@@ -112,7 +123,18 @@ class _AdminPanelState extends State<AdminPanel> {
     return _PageScaffold(
       children: <Widget>[
         _PageTitle(title: appStrings.adminTitle, subtitle: appStrings.adminSubtitle),
-        _AdminSafetyCard(controller: controller, onOpenBackups: () => _open(_AdminTab.backups)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            NeoUpdateBanner(
+              palette: _palette,
+              controller: _updates,
+              strings: _updateStrings(),
+              onReload: kIsWeb ? reloadPage : null,
+            ),
+            _AdminSafetyCard(controller: controller, onOpenBackups: () => _open(_AdminTab.backups)),
+          ],
+        ),
         TextField(
           controller: _search,
           onChanged: (_) => setState(() {}),
@@ -164,7 +186,7 @@ class _AdminPanelState extends State<AdminPanel> {
             _AdminTab.access => _AdminAccessTab(controller: controller),
             _AdminTab.providers => AdminAiProvidersTab(controller: controller),
             _AdminTab.models => AdminAiModelsTab(controller: controller),
-            _AdminTab.server => _AdminServerTab(controller: controller),
+            _AdminTab.server => _AdminServerTab(controller: controller, updates: _updates),
           },
         ),
       ],
@@ -688,9 +710,10 @@ class _AdminAccessTabState extends State<_AdminAccessTab> with _PageLoad {
 }
 
 class _AdminServerTab extends StatefulWidget {
-  const _AdminServerTab({required this.controller});
+  const _AdminServerTab({required this.controller, required this.updates});
 
   final NeoCloudController controller;
+  final NeoUpdateController updates;
 
   @override
   State<_AdminServerTab> createState() => _AdminServerTabState();
@@ -761,7 +784,7 @@ class _AdminServerTabState extends State<_AdminServerTab> with _PageLoad {
             children: <Widget>[
               _SettingsRow(
                 label: appStrings.adminVersion,
-                control: Text('${health['version']} · Node ${health['node']}', style: GoogleFonts.geistMono(color: _textSecondary, fontSize: 13)),
+                control: Text('${health['version']} · ${health['runtime']}', style: GoogleFonts.geistMono(color: _textSecondary, fontSize: 13)),
               ),
               _SettingsRow(label: appStrings.adminUptime, control: value(_uptime(health['uptimeSeconds'] as num?))),
               _SettingsRow(
@@ -786,6 +809,11 @@ class _AdminServerTabState extends State<_AdminServerTab> with _PageLoad {
                 ),
             ],
           ),
+        NeoUpdateSettings(
+          palette: _palette,
+          controller: widget.updates,
+          strings: _updateStrings(),
+        ),
         _AdminSearchGroup(controller: _controller),
         _SettingsGroup(
           title: appStrings.adminMasterKey,

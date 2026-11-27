@@ -295,12 +295,6 @@ abstract class AppL10n {
   /// **'Need a new account? Register'**
   String get needANewAccount;
 
-  /// No description provided for @verification.
-  ///
-  /// In en, this message translates to:
-  /// **'Verification'**
-  String get verification;
-
   /// No description provided for @enter2faCode.
   ///
   /// In en, this message translates to:
@@ -6852,12 +6846,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Approve sign-ins from the NeoCloud phone app or a browser where you\'re signed in.'**
   String get approvalNeedsPhone;
-
-  /// No description provided for @connectWelcome.
-  ///
-  /// In en, this message translates to:
-  /// **'WELCOME TO NEOCLOUD'**
-  String get connectWelcome;
 
   /// No description provided for @connectReadyToSignIn.
   ///
@@ -14609,6 +14597,180 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Note encrypted. Its unencrypted copy is in the trash until you empty it.'**
   String get notesEncryptedDone;
+
+  /// No description provided for @updatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get updatesTitle;
+
+  /// No description provided for @updatesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud updates itself from GitHub. Your settings, accounts and files are kept.'**
+  String get updatesHint;
+
+  /// No description provided for @updateVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get updateVersionLabel;
+
+  /// No description provided for @updateChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get updateChannel;
+
+  /// No description provided for @updateChannelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Stable follows main. Beta gets new features first.'**
+  String get updateChannelHint;
+
+  /// No description provided for @updateChannelStable.
+  ///
+  /// In en, this message translates to:
+  /// **'Stable'**
+  String get updateChannelStable;
+
+  /// No description provided for @updateChannelBeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta'**
+  String get updateChannelBeta;
+
+  /// No description provided for @updateCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get updateCheckNow;
+
+  /// No description provided for @updateNeverChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get updateNeverChecked;
+
+  /// No description provided for @updateLastChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked {time}'**
+  String updateLastChecked(String time);
+
+  /// No description provided for @updateUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You have the latest version'**
+  String get updateUpToDate;
+
+  /// No description provided for @updateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach GitHub. Showing the last result.'**
+  String get updateCheckFailed;
+
+  /// No description provided for @updateContainerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs from a container image'**
+  String get updateContainerTitle;
+
+  /// No description provided for @updateContainerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the image instead of the code inside it. Data on the volume is kept.'**
+  String get updateContainerHint;
+
+  /// No description provided for @updateDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details of the last update'**
+  String get updateDetails;
+
+  /// No description provided for @updateReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is ready'**
+  String updateReadyTitle(String version);
+
+  /// No description provided for @updateReadySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {current} · {channel} channel'**
+  String updateReadySubtitle(String current, String channel);
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update now'**
+  String get updateNow;
+
+  /// No description provided for @updateWhatsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s new'**
+  String get updateWhatsNew;
+
+  /// No description provided for @updateConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update to {version}?'**
+  String updateConfirmTitle(String version);
+
+  /// No description provided for @updateConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'NeoCloud saves a backup, installs the new version and restarts. This takes a few minutes. If anything fails, it goes back to the current version.'**
+  String get updateConfirmMessage;
+
+  /// No description provided for @updatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating NeoCloud'**
+  String get updatingTitle;
+
+  /// No description provided for @updatingToTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating to {version}'**
+  String updatingToTitle(String version);
+
+  /// No description provided for @updateReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarting NeoCloud…'**
+  String get updateReconnecting;
+
+  /// No description provided for @updateHandsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to do here. This page reconnects by itself when NeoCloud is back.'**
+  String get updateHandsOff;
+
+  /// No description provided for @updateDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated to {version}'**
+  String updateDoneTitle(String version);
+
+  /// No description provided for @updateDoneReloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reloading the app to load the new version…'**
+  String get updateDoneReloading;
+
+  /// No description provided for @updateReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get updateReload;
+
+  /// No description provided for @updateFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The update did not finish'**
+  String get updateFailedTitle;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

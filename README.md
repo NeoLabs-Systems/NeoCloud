@@ -7,14 +7,14 @@
 
 <p align="center">
   Self-hosted file storage for the whole household or team.<br>
-  One process, one database, every file encrypted.
+  One binary, one database, every file encrypted.
 </p>
 
 <p align="center">
   <a href="https://github.com/NeoLabs-Systems/NeoCloud/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/NeoLabs-Systems/NeoCloud?style=flat-square&label=release&color=111827&include_prereleases"></a>
   <a href="LICENSE"><img alt="AGPL-3.0 license" src="https://img.shields.io/badge/license-AGPL--3.0-a855f7?style=flat-square"></a>
   <a href="docs/getting-started.md#docker"><img alt="Docker image" src="https://img.shields.io/badge/docker-ghcr.io-2496ed?style=flat-square&logo=docker&logoColor=white"></a>
-  <a href="https://nodejs.org"><img alt="Node.js 22 or newer" src="https://img.shields.io/badge/node-22%2B-5fa04e?style=flat-square&logo=nodedotjs&logoColor=white"></a>
+  <a href="https://go.dev"><img alt="Written in Go" src="https://img.shields.io/badge/go-1.27-00ADD8?style=flat-square&logo=go&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>🪶 Lightweight</h3>
-      One Node process, one SQLite file.<br>
+      One Go binary, one SQLite file.<br>
       No PHP, no plugin store.
     </td>
     <td width="33%" valign="top">
@@ -55,7 +55,7 @@
 | | | |
 | --- | --- | --- |
 | 🐳 **Docker** | Home servers, NAS boxes and VPS. | [Guide](docs/getting-started.md#docker) |
-| 📜 **Script** | Linux or macOS with Git and Node.js 22+. | [Guide](docs/getting-started.md#script) |
+| 📜 **Script** | Linux or macOS, nothing else to install. | [Guide](docs/getting-started.md#script) |
 
 **Docker**
 

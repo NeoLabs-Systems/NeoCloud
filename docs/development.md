@@ -7,10 +7,10 @@ the contracts the clients rely on.
 ## Server
 
 ```bash
-npm install
-npm run dev     # server with --watch on port 3344
-npm test        # unit, integration and security tests (temporary data dir)
-npm run check   # syntax check every server file
+go run ./cmd/neocloud serve   # server on port 3344; set NEOCLOUD_HOME to a temporary folder
+gofmt -l cmd internal         # must be empty
+go vet ./...
+go test -race ./...           # temporary data directories
 ```
 
 ## Web and mobile app
@@ -24,7 +24,7 @@ flutter run -d chrome --dart-define=NEOCLOUD_BACKEND_URL=http://localhost:3344
 flutter analyze && flutter test
 ```
 
-Production serves the web build under `/app` from `server/public`. It is
+Production serves the web build under `/app` from `flutter_app/build/web`. It is
 generated: every release builds it from the released source and commits it
 with the release, so each tag carries its own bundle. *Build Web Client*
 (run by hand) rebuilds it on a branch outside a release.
@@ -106,9 +106,8 @@ then unplug and replug it while `neocloud-lite run --headless` is running.
   images tagged `beta`.
 - `main` is stable. *Release Stable* (run by hand) merges `beta` into
   `main`, cuts `vX.Y.Z` from the conventional commits and moves `latest`.
-- The release commit carries the version stamp and `server/public`, so a
-  tag is complete for a git install (`install.sh`, `neocloud update --tag`)
-  and matches the Docker image built from it.
+- The release commit carries the version stamp and `flutter_app/build/web`,
+  so a tag matches the signed archives and the Docker image built from it.
 - Pushes that change only `docs/` or Markdown files run no release and skip
   the CI test jobs. *CI result* is the one check to mark as required.
 - *Release Stable* has a dry-run input that prints the next version without

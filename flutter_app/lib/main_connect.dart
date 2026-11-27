@@ -161,16 +161,20 @@ class _ConnectViewState extends State<ConnectView> {
           subtitle: Text(appStrings.connectEnterAddressHint),
           children: <Widget>[
             const SizedBox(height: 8),
-            TextField(
-              controller: _server,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              textInputAction: TextInputAction.done,
-              onChanged: (_) => _controller.clearInlineError(),
-              onSubmitted: (_) => _connect(),
-              decoration: InputDecoration(
-                labelText: appStrings.connectServerAddress,
-                prefixIcon: const Icon(Icons.dns_outlined),
+            NeoLabeledField(
+              palette: _palette,
+              label: appStrings.connectServerAddress,
+              field: TextField(
+                controller: _server,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                textInputAction: TextInputAction.done,
+                onChanged: (_) => _controller.clearInlineError(),
+                onSubmitted: (_) => _connect(),
+                decoration: neoAuthInputDecoration(
+                  _palette,
+                  suffixIcon: const Icon(Icons.dns_outlined),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -202,7 +206,7 @@ class _ConnectViewState extends State<ConnectView> {
         ),
         child: Column(
           children: <Widget>[
-            Text(appStrings.deviceCodeLabel.toUpperCase(), style: _entryEyebrowStyle()),
+            Text(appStrings.deviceCodeLabel.toUpperCase(), style: _sectionEyebrowStyle()),
             const SizedBox(height: 8),
             SelectableText(
               login.userCode,
@@ -245,81 +249,37 @@ class _ConnectViewState extends State<ConnectView> {
   @override
   Widget build(BuildContext context) {
     final login = _controller.pendingLogin;
-    return Theme(
-      data: _phoneEntryTheme(Theme.of(context)),
-      child: Builder(
-        builder: (context) => _ControlSurfaceBackdrop(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
-                    child: _EntranceMotion(
-                      rise: true,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _bgCard,
-                          borderRadius: BorderRadius.circular(34),
-                          border: Border.all(color: _border),
-                          boxShadow: _entryPanelShadow,
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(34, 32, 34, 30),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  const NeoCloudMark(size: 60),
-                                  const SizedBox(height: 18),
-                                  Text(
-                                    appStrings.appName,
-                                    style: GoogleFonts.geist(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w700,
-                                      color: _textPrimary,
-                                      letterSpacing: -0.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 22),
-                              Text(appStrings.connectWelcome, style: _entryEyebrowStyle()),
-                              const SizedBox(height: 10),
-                              Text(
-                                login == null ? appStrings.connectTitle : appStrings.connectApproveTitle,
-                                style: TextStyle(
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.08,
-                                  letterSpacing: -0.8,
-                                  color: _textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                login == null ? appStrings.connectSubtitle : appStrings.connectApproveSubtitle,
-                                style: TextStyle(color: _textSecondary, height: 1.55),
-                              ),
-                              const SizedBox(height: 24),
-                              if (login == null) ..._serverStep(context) else ..._approvalStep(login),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+    final compact = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    return NeoAuthPage(
+      palette: _palette,
+      compact: compact,
+      children: <Widget>[
+        NeoAuthCard(
+          palette: _palette,
+          compact: compact,
+          mark: const NeoCloudMark(size: 76),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              NeoAuthHeading(
+                palette: _palette,
+                title: login == null
+                    ? appStrings.connectTitle
+                    : appStrings.connectApproveTitle,
+                subtitle: login == null
+                    ? appStrings.connectSubtitle
+                    : appStrings.connectApproveSubtitle,
               ),
-            ),
+              const SizedBox(height: 24),
+              if (login == null)
+                ..._serverStep(context)
+              else
+                ..._approvalStep(login),
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

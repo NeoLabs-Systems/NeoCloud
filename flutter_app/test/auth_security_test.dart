@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:neocloud/main.dart';
+import 'package:neolabs_flutter/neolabs_flutter.dart' show NeoLabeledField;
 import 'package:neocloud/src/api/backend_client.dart';
 import 'package:neocloud/src/device/device_session.dart' hide createDeviceSessions;
 import 'package:neocloud/src/device/device_session_stub.dart';
@@ -69,6 +70,9 @@ Future<void> _pumpAuth(WidgetTester tester, NeoCloudController controller) async
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// A field of the sign-in card, found by the label above it.
+Finder _cardField(String label) => find.descendant(of: find.widgetWithText(NeoLabeledField, label), matching: find.byType(TextField));
+
 void main() {
   group('password strength (same rules as the server)', () {
     test('handles empty, weak, strong and personal passwords', () {
@@ -108,8 +112,8 @@ void main() {
     testWidgets('sign-in fields advertise credentials to autofill services', (tester) async {
       final controller = await _controller();
       await _pumpAuth(tester, controller);
-      final username = tester.widget<TextField>(find.widgetWithText(TextField, 'Username or email'));
-      final password = tester.widget<TextField>(find.widgetWithText(TextField, 'Password'));
+      final username = tester.widget<TextField>(_cardField('Username or email'));
+      final password = tester.widget<TextField>(_cardField('Password'));
       expect(username.autofillHints, contains(AutofillHints.username));
       expect(password.autofillHints, contains(AutofillHints.password));
       expect(password.autocorrect, isFalse);
@@ -157,7 +161,7 @@ void main() {
       expect(find.textContaining('Sign-up key'), findsNothing);
       expect(find.text('Use 8+ characters. Longer passphrases work well.'), findsOneWidget);
 
-      final password = find.widgetWithText(TextField, 'Password');
+      final password = _cardField('Password');
       await tester.enterText(password, 'short');
       await tester.pump();
       expect(find.text('Password strength: too weak, will be rejected'), findsOneWidget);
@@ -200,7 +204,7 @@ void main() {
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(home: PhoneAuthView(controller: await phone())));
+      await tester.pumpWidget(MaterialApp(home: AuthView(controller: await phone())));
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Scan QR code'), findsOneWidget);
       expect(find.text('Sign in with the browser'), findsOneWidget);

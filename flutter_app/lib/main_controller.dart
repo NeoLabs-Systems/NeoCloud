@@ -59,6 +59,7 @@ class NeoCloudController extends ChangeNotifier {
       socketUrl: () => socketIoUri(client.uri('/')),
       onSharesChanged: _handleSharesChanged,
       onAiSuggestions: (counts) => aiReview.applyCounts(AiSuggestionCounts.fromJson(counts)),
+      onImportsChanged: () => importsRevision.value += 1,
       onPolled: _handlePolled,
       onSigningUpdated: () => signingRevision.value += 1,
       onCommentsChanged: () => commentsRevision.value += 1,
@@ -319,6 +320,9 @@ class NeoCloudController extends ChangeNotifier {
 
   /// Bumped when a comment changed anywhere the account can see; comment lists and activity reload.
   final ValueNotifier<int> commentsRevision = ValueNotifier<int>(0);
+
+  /// Bumped when an import's status or transfer counters change on the server.
+  final ValueNotifier<int> importsRevision = ValueNotifier<int>(0);
 
   /// The folder the Files page shows; the root when null.
   String? openFolderId;

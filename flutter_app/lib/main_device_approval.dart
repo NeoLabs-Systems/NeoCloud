@@ -175,46 +175,42 @@ class _DeviceApprovalViewState extends State<DeviceApprovalView> {
   @override
   Widget build(BuildContext context) {
     final done = _state == _ApprovalState.approved || _state == _ApprovalState.denied;
-    return _ControlSurfaceBackdrop(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: _EntranceMotion(
-                child: _GlassSurface(
-                  width: 420,
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Center(child: _BrandLockup(logoSize: 44, showName: false)),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(appStrings.deviceApprovalTitle, style: _displayTitleStyle(24)),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        _state == _ApprovalState.entering || _state == _ApprovalState.loading
-                            ? appStrings.deviceApprovalEnterCode
-                            : appStrings.deviceApprovalSubtitle,
-                        style: TextStyle(color: _textSecondary, height: 1.45),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      if (_error != null) ...<Widget>[_InlineError(message: _error!), const SizedBox(height: AppSpacing.md)],
-                      ..._body(),
-                      if (!done) ...<Widget>[
-                        const SizedBox(height: AppSpacing.sm),
-                        TextButton(onPressed: _done, child: Text(appStrings.cancel)),
-                      ],
-                    ],
-                  ),
-                ),
+    final compact = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    return NeoAuthPage(
+      palette: _palette,
+      compact: compact,
+      children: <Widget>[
+        NeoAuthCard(
+          palette: _palette,
+          compact: compact,
+          mark: const NeoCloudMark(size: 76),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              NeoAuthHeading(
+                palette: _palette,
+                title: appStrings.deviceApprovalTitle,
+                subtitle:
+                    _state == _ApprovalState.entering ||
+                        _state == _ApprovalState.loading
+                    ? appStrings.deviceApprovalEnterCode
+                    : appStrings.deviceApprovalSubtitle,
               ),
-            ),
+              const SizedBox(height: AppSpacing.lg),
+              if (_error != null) ...<Widget>[
+                _InlineError(message: _error!),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              ..._body(),
+              if (!done) ...<Widget>[
+                const SizedBox(height: AppSpacing.sm),
+                TextButton(onPressed: _done, child: Text(appStrings.cancel)),
+              ],
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

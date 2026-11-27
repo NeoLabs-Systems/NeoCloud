@@ -271,23 +271,10 @@ class _SecuritySettingsPageState extends State<_SecuritySettingsPage>
                   if ((setup['otpauthUrl']?.toString() ?? '')
                       .isNotEmpty) ...<Widget>[
                     Center(
-                      child: Container(
-                        color: lightPalette.bgCard,
-                        padding: const EdgeInsets.all(12),
-                        child: QrImageView(
-                          data: setup['otpauthUrl'].toString(),
-                          version: QrVersions.auto,
-                          size: 220,
-                          backgroundColor: lightPalette.bgCard,
-                          eyeStyle: QrEyeStyle(
-                            eyeShape: QrEyeShape.square,
-                            color: lightPalette.textPrimary,
-                          ),
-                          dataModuleStyle: QrDataModuleStyle(
-                            dataModuleShape: QrDataModuleShape.square,
-                            color: lightPalette.textPrimary,
-                          ),
-                        ),
+                      child: NeoAuthQrPlate(
+                        size: 244,
+                        payload: setup['otpauthUrl'].toString(),
+                        preparing: false,
                       ),
                     ),
                     const SizedBox(height: 14),

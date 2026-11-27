@@ -6,8 +6,8 @@ part of 'backend_client.dart';
 extension BackendEmailCalls on BackendClient {
   /// "Forgot password?": always answers the same message, whether or not
   /// the account exists.
-  Future<Map<String, dynamic>> requestPasswordReset(String account) async =>
-      _map(await _request('POST', '/api/auth/password/forgot', json: {'account': account}, expireOn401: false));
+  Future<Map<String, dynamic>> requestPasswordReset(String account) =>
+      _neoAuth.forgotPassword(baseUrl, account);
 
   /// Sends the sign-up confirmation again (username or email); uniform too.
   Future<Map<String, dynamic>> resendConfirmation(String account) async =>

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' show PointMode;
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
@@ -15,9 +14,33 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:neolabs_flutter/neolabs_flutter.dart'
+    show
+        NeoAuthCard,
+        NeoAuthHeading,
+        NeoAuthPage,
+        NeoAuthQrPlate,
+        NeoCredentialField,
+        NeoCredentialFields,
+        NeoForgotPasswordDialog,
+        NeoLabeledField,
+        NeoOrDivider,
+        NeoQrSignInCard,
+        NeoSettingsCard,
+        NeoSettingsGroup,
+        NeoSettingsHeading,
+        NeoSettingsLayout,
+        NeoSettingsRow,
+        NeoSidebarButton,
+        NeoUpdateApi,
+        NeoUpdateBanner,
+        NeoUpdateController,
+        NeoUpdateSettings,
+        NeoUpdateStrings,
+        neoAuthInputDecoration,
+        neoAuthLinkStyle;
 import 'package:neocloud_background/neocloud_background.dart';
 import 'package:pdfrx/pdfrx.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -100,6 +123,7 @@ part 'main_admin_email.dart';
 part 'main_admin_office.dart';
 part 'main_admin_safety.dart';
 part 'main_admin_search.dart';
+part 'main_admin_update.dart';
 part 'main_adaptive_sheet.dart';
 part 'main_ai_byok.dart';
 part 'main_ai_cleanup.dart';
@@ -115,7 +139,6 @@ part 'main_ai_summary.dart';
 part 'main_ai_settings.dart';
 part 'main_auth.dart';
 part 'main_auth_email.dart';
-part 'main_auth_phone.dart';
 part 'main_background_permissions.dart';
 part 'main_camera_upload.dart';
 part 'main_comments.dart';
@@ -313,7 +336,7 @@ class NeoCloudRoot extends StatelessWidget {
       if (!controller.usesDeviceLogin) return AuthView(controller: controller);
       // A phone: the server, then the sign-in card for it; the browser
       // sign-in it offers continues on the connect screen.
-      if (controller.passwordLogin != null && controller.pendingLogin == null) return PhoneAuthView(controller: controller);
+      if (controller.passwordLogin != null && controller.pendingLogin == null) return AuthView(controller: controller);
       return ConnectView(controller: controller);
     }
     if (controller.pendingDeviceCode != null) return DeviceApprovalView(controller: controller);

@@ -14,6 +14,7 @@ on:
       - main
       - beta
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -60,24 +61,40 @@ jobs:
           fi
 
   server:
-    name: Server tests (Node ${{ matrix.node-version }})
+    name: Go server (format, vet, lint, test)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24]
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm test
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l cmd internal)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed:"; echo "$unformatted"; exit 1
+          fi
+      - run: go mod verify
+      - run: go mod tidy -diff
+      - run: go vet ./...
+      # staticcheck.conf decides the checks: error texts are part of the API.
+      - run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+      - name: Vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
+      # Includes the replay of the Node.js updater handing over to the binary.
+      - run: go test -race -count=1 ./...
+      - name: Static builds
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            GOOS="${target%/*}" GOARCH="${target#*/}" go build -o /dev/null ./cmd/neocloud
+          done
+      - name: Check shell scripts
+        run: shellcheck --severity=error install.sh scripts/*.sh
 
   flutter:
     name: Flutter analyze and tests
@@ -87,18 +104,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      # The neocloud_sync package tests start the real server (pairing e2e)
-      # and run a Node vault interop fixture.
+      # The neocloud_sync package tests build and start the real server (pairing
+      # e2e) and run a Node vault interop fixture.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
@@ -108,6 +120,11 @@ jobs:
       - name: App tests
         working-directory: flutter_app
         run: flutter test --no-pub
+      - name: Verify self-hosted Flutter web assets
+        working-directory: flutter_app
+        run: |
+          flutter build web --no-web-resources-cdn --output "$RUNNER_TEMP/neocloud-web"
+          cd .. && GOWORK=off go run ./cmd/neocloud-release check-web --web "$RUNNER_TEMP/neocloud-web"
       - name: neocloud_sync package tests
         working-directory: flutter_app/packages/neocloud_sync
         run: |
@@ -131,11 +148,7 @@ jobs:
           cache-dependency-path: |
             flutter_app/android/**/*.gradle*
             flutter_app/android/gradle/wrapper/gradle-wrapper.properties
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
       - name: Build debug APK (compiles the Kotlin share intake)
         working-directory: flutter_app
         run: flutter build apk --debug
@@ -171,41 +184,22 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+      # The tests build the server from the repository root, which needs the
+      # newer of the two Go versions.
       - uses: actions/setup-go@v5
         with:
-          go-version-file: clients/lite/go.mod
-          cache-dependency-path: clients/lite/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            clients/lite/go.sum
       - name: End-to-end against a real server
         working-directory: clients/lite
         run: go test -tags e2e ./e2e/...
 
-  docker:
-    name: Docker image builds
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   result:
     name: CI result
     if: always()
-    needs: [changes, server, flutter, android, lite-client, lite-client-e2e, docker]
+    needs: [changes, server, flutter, android, lite-client, lite-client-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

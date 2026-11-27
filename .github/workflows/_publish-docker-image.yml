@@ -1,9 +1,9 @@
 name: Reusable Docker image
 
 # Publishes the standard and the LibreOffice image for one ref. The bundled
-# web client is not built here: the release job commits server/public built
-# from the released source into the commit it tags, so the image, the tag and
-# a git install all serve the same bundle.
+# web client is not built here: the release job commits flutter_app/build/web
+# built from the released source into the commit it tags, so the image and the
+# runtime archives serve the same bundle.
 
 on:
   workflow_call:
@@ -39,8 +39,8 @@ jobs:
 
       - name: Check the bundled web client
         run: |
-          if [ ! -f server/public/main.dart.js ]; then
-            echo "::error::server/public has no web bundle at this ref; the release job builds and commits it."
+          if [ ! -f flutter_app/build/web/main.dart.js ]; then
+            echo "::error::flutter_app/build/web has no web bundle at this ref; the release job builds and commits it."
             exit 1
           fi
 
@@ -76,7 +76,9 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          build-args: WITH_LIBREOFFICE=${{ matrix.office }}
+          build-args: |
+            WITH_LIBREOFFICE=${{ matrix.office }}
+            NEOCLOUD_CHANNEL=${{ contains(inputs.release_tag, '-') && 'beta' || 'stable' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.variant }}

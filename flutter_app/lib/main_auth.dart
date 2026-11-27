@@ -1,10 +1,10 @@
 part of 'main.dart';
 
-// The sign-in and registration screen, ported 1:1 from NeoRouter's
-// main_auth.dart: one 420px card on the flat backdrop, the logo above a
-// left-aligned title, fields with floating labels, one gold button and two
-// quiet links. NeoCloud adds the 2FA step, and NeoAgent's password strength
-// meter and security key sign-in.
+// The NeoLabs sign-in screen (neolabs_flutter) for the web app and the phone.
+// The web adds the phone sign-in code and security keys. The phone signs in
+// through the session routes and swaps the session for a device token
+// (src/device/password_login.dart); it offers the pairing scanner, the browser
+// sign-in and the way back to the server step.
 
 class AuthView extends StatefulWidget {
   const AuthView({super.key, required this.controller});
@@ -16,34 +16,80 @@ class AuthView extends StatefulWidget {
 }
 
 class _AuthViewState extends State<AuthView> {
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _username = TextEditingController();
+  final TextEditingController _email = TextEditingController();
+  final TextEditingController _password = TextEditingController();
+  final TextEditingController _confirmPassword = TextEditingController();
+  final TextEditingController _code = TextEditingController();
+  final FocusNode _usernameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmPasswordFocus = FocusNode();
   bool _registerMode = false;
+  bool _obscurePassword = true;
 
   // The QR code is watched only while someone can see it: the card shows
   // it (or its dialog is open) and the tab is in front.
   late final AppLifecycleListener _lifecycle;
   bool _appInFront = true;
-  bool _qrShown = false;
+  bool _qrInline = false;
   bool _qrDialogOpen = false;
+
+  NeoCloudController get _controller => widget.controller;
+
+  bool get _bootstrap => !_controller.hasUser;
+
+  /// The first account of a new server, or a new one where sign-ups are open.
+  bool get _register => _registerMode || _bootstrap;
+
+  /// Phone sign-in is for the web card's own sign-in only: not registering,
+  /// not the second factor.
+  bool get _offersQrLogin =>
+      !_controller.usesDeviceLogin &&
+      !_controller.isAwaitingTwoFactor &&
+      !_register;
 
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onStateChange: (state) {
-      _appInFront = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
-      _applyQrVisibility();
-    });
+    _lifecycle = AppLifecycleListener(
+      onStateChange: (state) {
+        _appInFront =
+            state == AppLifecycleState.resumed ||
+            state == AppLifecycleState.inactive;
+        _applyQrVisibility();
+      },
+    );
   }
 
-  void _setQrShown(bool shown) {
-    if (_qrShown == shown) return;
-    _qrShown = shown;
-    // Called during build; start or pause after the frame.
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    _controller.qrLogin.pause();
+    for (final controller in <TextEditingController>[
+      _username,
+      _email,
+      _password,
+      _confirmPassword,
+      _code,
+    ]) {
+      controller.dispose();
+    }
+    for (final node in <FocusNode>[
+      _usernameFocus,
+      _emailFocus,
+      _passwordFocus,
+      _confirmPasswordFocus,
+    ]) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Called during layout, so polling starts or pauses after the frame.
+  void _setQrInline(bool inline) {
+    if (_qrInline == inline) return;
+    _qrInline = inline;
     WidgetsBinding.instance.addPostFrameCallback((_) => _applyQrVisibility());
   }
 
@@ -54,258 +100,373 @@ class _AuthViewState extends State<AuthView> {
 
   void _applyQrVisibility() {
     if (!mounted) return;
-    final flow = widget.controller.qrLogin;
-    if ((_qrShown || _qrDialogOpen) && _appInFront) {
+    final flow = _controller.qrLogin;
+    final onScreen =
+        _qrDialogOpen ||
+        (_offersQrLogin && (_qrInline || flow.scan != null));
+    if (onScreen && _appInFront) {
       unawaited(flow.prepare());
     } else {
       flow.pause();
     }
   }
 
-  /// Phone sign-in is for the web card's own sign-in only: not the first
-  /// account, not registering, not the second factor.
-  bool get _offersQrLogin =>
-      !widget.controller.usesDeviceLogin && !widget.controller.isAwaitingTwoFactor && !_bootstrap && !_registerMode;
-
-  @override
-  void dispose() {
-    _lifecycle.dispose();
-    widget.controller.qrLogin.pause();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    _emailController.dispose();
-    _confirmPasswordController.dispose();
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  bool get _bootstrap => !widget.controller.hasUser;
-
   Future<void> _submit() async {
-    final register = _registerMode || _bootstrap;
-    if (register) widget.controller.authInfoMessage = null;
+    if (_controller.isAwaitingTwoFactor) {
+      final code = _code.text.trim();
+      if (code.isEmpty) return;
+      await _controller.completeTwoFactorLogin(code: code);
+      if (_controller.isAuthenticated) TextInput.finishAutofillContext();
+      if (_controller.isAwaitingTwoFactor) _code.clear();
+      return;
+    }
+    final register = _register;
+    if (register) _controller.authInfoMessage = null;
     await _submitCredentials(
-      widget.controller,
+      _controller,
       register: register,
-      username: _usernameController.text,
-      email: _emailController.text,
-      password: _passwordController.text,
-      confirmPassword: _confirmPasswordController.text,
+      username: _username.text,
+      email: _email.text,
+      password: _password.text,
+      confirmPassword: _confirmPassword.text,
     );
     // Created, waiting for its confirmation link: back to sign-in.
-    if (mounted && register && _registrationAwaitsEmail(widget.controller)) {
-      _passwordController.clear();
-      _confirmPasswordController.clear();
+    if (mounted && register && _registrationAwaitsEmail(_controller)) {
+      _password.clear();
+      _confirmPassword.clear();
       setState(() => _registerMode = false);
     }
   }
 
-  Future<void> _submitCode() async {
-    final code = _codeController.text.trim();
-    if (code.isEmpty) return;
-    await widget.controller.completeTwoFactorLogin(code: code);
-    if (widget.controller.isAuthenticated) TextInput.finishAutofillContext();
-    if (widget.controller.isAwaitingTwoFactor) _codeController.clear();
-  }
-
-  _PasswordStrengthInfo get _registerPasswordStrength => _passwordStrengthInfo(
-    password: _passwordController.text,
-    username: _usernameController.text,
-    email: _emailController.text,
+  _PasswordStrengthInfo get _strength => _passwordStrengthInfo(
+    password: _password.text,
+    username: _username.text,
+    email: _email.text,
   );
 
-  Widget _spinnerOr(String label) {
-    return widget.controller.isAuthenticating
-        ? const SizedBox.square(
-            dimension: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : Text(label);
+  void _edited(NeoCredentialField _) {
+    _controller.clearInlineError();
+    // The strength meter reads the username and email too.
+    if (_register) setState(() {});
   }
 
-  List<Widget> _twoFactorFields(NeoCloudController controller) {
-    return <Widget>[
-      TextField(
-        controller: _codeController,
-        autofocus: true,
-        keyboardType: TextInputType.visiblePassword,
-        autofillHints: const <String>[AutofillHints.oneTimeCode],
-        onSubmitted: (_) => _submitCode(),
-        decoration: InputDecoration(
-          labelText: appStrings.twoFactorOrRecoveryCode,
-          helperText: appStrings.openYourAuthenticator,
-          helperMaxLines: 2,
-        ),
-      ),
-      if (controller.errorMessage != null) ...<Widget>[
-        const SizedBox(height: AppSpacing.sm),
-        _InlineError(message: controller.errorMessage!),
-      ],
-      const SizedBox(height: AppSpacing.lg),
-      FilledButton(
-        onPressed: controller.isAuthenticating ? null : _submitCode,
-        child: _spinnerOr(appStrings.verify),
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      TextButton(
-        onPressed: controller.isAuthenticating
-            ? null
-            : () {
-                _codeController.clear();
-                controller.cancelTwoFactorLogin();
-              },
-        child: Text(appStrings.backToSignIn),
-      ),
-    ];
+  void _toggleRegisterMode() {
+    _controller.clearInlineError();
+    setState(() => _registerMode = !_registerMode);
   }
 
-  List<Widget> _credentialFields(NeoCloudController controller) {
-    final register = _registerMode || _bootstrap;
-    // The meter reads the username and email too, so every edit redraws it.
-    void edited(String _) {
-      controller.clearInlineError();
-      if (register) setState(() {});
-    }
+  Widget _labeled(String label, Widget field, [Widget? trailing]) =>
+      NeoLabeledField(
+        palette: _palette,
+        label: label,
+        field: field,
+        trailing: trailing,
+      );
 
-    final strength = _registerPasswordStrength;
-    final showSecurityKeySignIn = !register && controller.supportsSecurityKeys;
-    final showForgotLink = controller.hasUser && controller.emailConfigured;
-    return <Widget>[
-      if (_offersQrLogin) ...<Widget>[
-        _QrLoginBlock(controller: controller, onDialogOpen: _setQrDialogOpen),
-        const SizedBox(height: 20),
-        _orDivider(appStrings.authOrUsePassword),
-        const SizedBox(height: AppSpacing.md),
-      ],
-      TextField(
-        controller: _usernameController,
-        autofillHints: const <String>[AutofillHints.username],
-        keyboardType: register
-            ? TextInputType.text
-            : TextInputType.emailAddress,
-        autocorrect: false,
-        enableSuggestions: false,
-        textInputAction: TextInputAction.next,
-        onChanged: edited,
-        decoration: InputDecoration(
-          labelText: register
-              ? appStrings.username
-              : appStrings.usernameOrEmail,
-        ),
-      ),
-      if (register) ...<Widget>[
-        const SizedBox(height: AppSpacing.sm),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const <String>[AutofillHints.email],
-          onChanged: edited,
-          decoration: InputDecoration(labelText: appStrings.email),
-        ),
-      ],
-      const SizedBox(height: AppSpacing.sm),
-      TextField(
-        controller: _passwordController,
-        obscureText: true,
-        autocorrect: false,
-        enableSuggestions: false,
-        textInputAction: register ? TextInputAction.next : TextInputAction.done,
-        autofillHints: <String>[
-          register ? AutofillHints.newPassword : AutofillHints.password,
-        ],
-        onChanged: edited,
-        onSubmitted: (_) => register ? null : _submit(),
-        decoration: InputDecoration(labelText: appStrings.password),
-      ),
-      // NeoAgent's link on the password row; mail is on, so it sends a link.
-      if (!register && showForgotLink)
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: controller.isAuthenticating ? null : () => unawaited(_showForgotPasswordDialog(context, controller, initialAccount: _usernameController.text)),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              minimumSize: const Size(0, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: GoogleFonts.geist(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
+  Widget _credentials() {
+    final forgotPassword = _controller.hasUser && _controller.emailConfigured
+        ? TextButton(
+            onPressed: _controller.isAuthenticating
+                ? null
+                : () => unawaited(
+                    _showForgotPasswordDialog(
+                      context,
+                      _controller,
+                      initialAccount: _username.text,
+                    ),
+                  ),
+            style: neoAuthLinkStyle(),
             child: Text(appStrings.forgotPassword),
-          ),
-        ),
-      if (register) ...<Widget>[
-        const SizedBox(height: 10),
-        _PasswordStrengthIndicator(info: strength),
-        const SizedBox(height: AppSpacing.sm),
-        TextField(
-          controller: _confirmPasswordController,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          autofillHints: const <String>[AutofillHints.newPassword],
-          onChanged: edited,
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(labelText: appStrings.confirmPassword),
-        ),
-      ],
-      if (controller.errorMessage != null) ...<Widget>[
-        const SizedBox(height: AppSpacing.sm),
-        _InlineError(message: controller.errorMessage!),
-      ],
-      if (controller.emailConfigured) _AuthEmailNotices(controller: controller),
-      const SizedBox(height: AppSpacing.lg),
-      FilledButton(
-        onPressed:
-            controller.isAuthenticating || (register && !strength.acceptable)
-            ? null
-            : _submit,
-        child: _spinnerOr(
-          register ? appStrings.authCreateAccount : appStrings.signIn,
+          )
+        : null;
+    return NeoCredentialFields(
+      register: _register,
+      username: _username,
+      email: _email,
+      password: _password,
+      confirmPassword: _confirmPassword,
+      usernameFocus: _usernameFocus,
+      emailFocus: _emailFocus,
+      passwordFocus: _passwordFocus,
+      confirmPasswordFocus: _confirmPasswordFocus,
+      obscurePassword: _obscurePassword,
+      onChanged: _edited,
+      onSubmit: () => unawaited(_submit()),
+      decoration: (_, suffix) =>
+          neoAuthInputDecoration(_palette, suffixIcon: suffix),
+      labeledField: _labeled,
+      usernameLabel: appStrings.username,
+      usernameOrEmailLabel: appStrings.usernameOrEmail,
+      emailLabel: appStrings.email,
+      passwordLabel: appStrings.password,
+      confirmPasswordLabel: appStrings.confirmPassword,
+      passwordToggle: IconButton(
+        tooltip: _obscurePassword
+            ? appStrings.authShowPassword
+            : appStrings.authHidePassword,
+        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        icon: Icon(
+          _obscurePassword
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          size: 18,
         ),
       ),
-      if (showSecurityKeySignIn) ...<Widget>[
+      passwordStrength: _PasswordStrengthIndicator(info: _strength),
+      forgotPassword: forgotPassword,
+    );
+  }
+
+  Widget _twoFactorField() => _labeled(
+    appStrings.twoFactorOrRecoveryCode,
+    TextField(
+      controller: _code,
+      autofocus: true,
+      // Recovery codes are alphanumeric (XXXXX-XXXXX).
+      keyboardType: TextInputType.visiblePassword,
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: const <String>[AutofillHints.oneTimeCode],
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => unawaited(_submit()),
+      decoration: neoAuthInputDecoration(_palette),
+    ),
+  );
+
+  Widget _divider(String label) =>
+      NeoOrDivider(palette: _palette, label: label);
+
+  /// What follows the submit button: the other ways in.
+  List<Widget> _otherWays() {
+    final controller = _controller;
+    if (controller.isAwaitingTwoFactor) {
+      return <Widget>[
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: controller.isAuthenticating
+              ? null
+              : () {
+                  _code.clear();
+                  controller.cancelTwoFactorLogin();
+                },
+          child: Text(appStrings.backToSignIn),
+        ),
+      ];
+    }
+    if (_register) return const <Widget>[];
+    final buttonStyle = OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(46),
+    );
+    if (!controller.usesDeviceLogin) {
+      if (!controller.supportsSecurityKeys) return const <Widget>[];
+      return <Widget>[
         const SizedBox(height: 20),
-        _orDivider(appStrings.authOrContinueWith),
+        _divider(appStrings.authOrContinueWith),
         const SizedBox(height: 14),
         OutlinedButton.icon(
           onPressed: controller.isAuthenticating
               ? null
               : () => unawaited(
-                  controller.signInWithSecurityKey(
-                    username: _usernameController.text,
-                  ),
+                  controller.signInWithSecurityKey(username: _username.text),
                 ),
-          style: _altSignInButtonStyle(),
-          icon: const Icon(Icons.key, size: 18),
+          style: buttonStyle,
+          icon: const Icon(Icons.key_rounded, size: 18),
           label: Text(appStrings.authSignInWithSecurityKey),
         ),
+      ];
+    }
+    return <Widget>[
+      if (qrScannerSupported)
+        const SizedBox(height: 12)
+      else ...<Widget>[
+        const SizedBox(height: 20),
+        _divider(appStrings.authOrContinueWith),
+        const SizedBox(height: 14),
       ],
-      if (!_bootstrap) ...<Widget>[
-        const SizedBox(height: AppSpacing.sm),
+      OutlinedButton.icon(
+        onPressed: controller.isAuthenticating || controller.isConnecting
+            ? null
+            : () => unawaited(
+                controller.connect(
+                  controller.passwordLogin?.server ??
+                      controller.connectedServer,
+                  openVerification: _openInBrowser,
+                ),
+              ),
+        style: buttonStyle,
+        icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+        label: Text(appStrings.connectWithBrowser),
+      ),
+      // Without mail there is no reset link to offer.
+      if (!controller.emailConfigured) ...<Widget>[
+        const SizedBox(height: 14),
+        Text(
+          appStrings.authForgotPasswordAskAdmin,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: _textMuted, fontSize: 12, height: 1.45),
+        ),
+      ],
+    ];
+  }
+
+  (String, String) _heading() {
+    if (_controller.isAwaitingTwoFactor) {
+      return (appStrings.enter2faCode, appStrings.openYourAuthenticator);
+    }
+    if (_bootstrap) {
+      return (
+        appStrings.createTheFirstAccount,
+        appStrings.firstAccountSubtitle,
+      );
+    }
+    if (_registerMode) {
+      return (appStrings.authCreateAccount, appStrings.createAnotherAccount);
+    }
+    return _controller.usesDeviceLogin
+        ? (appStrings.authPhoneSignInTitle, appStrings.authPhoneSignInSubtitle)
+        : (appStrings.authSignInTitle, appStrings.authSignInSubtitle);
+  }
+
+  Widget _cardContent() {
+    final controller = _controller;
+    final qrScan = _offersQrLogin ? controller.qrLogin.scan : null;
+    final twoFactor = controller.isAwaitingTwoFactor;
+    final register = _register;
+    final scanToPair =
+        controller.usesDeviceLogin &&
+        !twoFactor &&
+        !register &&
+        qrScannerSupported;
+    final (title, subtitle) = qrScan != null
+        ? (appStrings.qrLoginWaitingTitle, appStrings.qrLoginWaitingBody)
+        : _heading();
+    final String submitLabel;
+    if (twoFactor) {
+      submitLabel = appStrings.verify;
+    } else if (register) {
+      submitLabel = appStrings.authCreateAccount;
+    } else {
+      submitLabel = appStrings.signIn;
+    }
+    final blocked = register && !twoFactor && !_strength.acceptable;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        NeoAuthHeading(palette: _palette, title: title, subtitle: subtitle),
+        if (qrScan != null) ...<Widget>[
+          const SizedBox(height: 24),
+          _QrLoginWaiting(controller: controller, scan: qrScan),
+        ] else ...<Widget>[
+          if (controller.errorMessage != null) ...<Widget>[
+            const SizedBox(height: 20),
+            _InlineError(
+              message: controller.errorMessage!,
+              onDismiss: controller.clearInlineError,
+            ),
+          ],
+          if (controller.emailConfigured && !twoFactor)
+            _AuthEmailNotices(controller: controller),
+          if (_offersQrLogin || scanToPair) ...<Widget>[
+            const SizedBox(height: 26),
+            if (scanToPair)
+              _ScanToPairButton(controller: controller)
+            else
+              _QrLoginBlock(
+                controller: controller,
+                onLayout: _setQrInline,
+                onDialogOpen: _setQrDialogOpen,
+              ),
+            const SizedBox(height: 22),
+            _divider(appStrings.authOrUsePassword),
+            const SizedBox(height: 16),
+          ] else
+            const SizedBox(height: 24),
+          AutofillGroup(child: twoFactor ? _twoFactorField() : _credentials()),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: controller.isAuthenticating || blocked
+                ? null
+                : () => unawaited(_submit()),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
+            child: controller.isAuthenticating
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(submitLabel),
+          ),
+          ..._otherWays(),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _footer() {
+    final controller = _controller;
+    if (controller.isAwaitingTwoFactor ||
+        (_offersQrLogin && controller.qrLogin.scan != null)) {
+      return const <Widget>[];
+    }
+    // With sign-up off only the way back from the form stays.
+    final showRegisterToggle =
+        !_bootstrap && (_registerMode || controller.registrationOpen);
+    // With mail the link sits on the password row instead.
+    final showAskAdmin =
+        !controller.usesDeviceLogin && !_register && !controller.emailConfigured;
+    final server =
+        controller.passwordLogin?.server ?? controller.connectedServer;
+    return <Widget>[
+      if (showRegisterToggle || showAskAdmin) ...<Widget>[
+        const SizedBox(height: 16),
         Wrap(
-          alignment: WrapAlignment.spaceBetween,
+          alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
           children: <Widget>[
-            // With sign-up off only the way back from the form stays.
-            if (_registerMode || controller.registrationOpen)
+            if (showRegisterToggle)
               TextButton(
                 onPressed: controller.isAuthenticating
                     ? null
-                    : () {
-                        controller.clearInlineError();
-                        setState(() => _registerMode = !_registerMode);
-                      },
+                    : _toggleRegisterMode,
                 child: Text(
                   _registerMode
                       ? appStrings.alreadyHaveAnAccount
                       : appStrings.needANewAccount,
                 ),
               ),
-            // With mail the link sits under the password field instead.
-            if (!_registerMode && !showForgotLink)
+            if (showAskAdmin)
               TextButton(
-                onPressed: controller.isAuthenticating ? null : () => unawaited(_showAskAdminDialog(context)),
+                onPressed: controller.isAuthenticating
+                    ? null
+                    : () => unawaited(_showAskAdminDialog(context)),
                 child: Text(appStrings.forgotPassword),
               ),
+          ],
+        ),
+      ],
+      if (controller.usesDeviceLogin) ...<Widget>[
+        const SizedBox(height: 4),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 2,
+          children: <Widget>[
+            Text(
+              appStrings.authSigningInTo(
+                Uri.tryParse(server)?.authority ?? server,
+              ),
+              style: TextStyle(color: _textMuted, fontSize: 12),
+            ),
+            TextButton(
+              onPressed: controller.isAuthenticating
+                  ? null
+                  : controller.leavePasswordLogin,
+              style: neoAuthLinkStyle(),
+              child: Text(appStrings.connectChangeServer),
+            ),
           ],
         ),
       ],
@@ -314,94 +475,25 @@ class _AuthViewState extends State<AuthView> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
-    final twoFactor = controller.isAwaitingTwoFactor;
-    _setQrShown(_offersQrLogin);
-    final qrScan = _offersQrLogin ? controller.qrLogin.scan : null;
-    final String title;
-    final String subtitle;
-    if (qrScan != null) {
-      title = appStrings.qrLoginWaitingTitle;
-      subtitle = appStrings.qrLoginWaitingBody;
-    } else if (twoFactor) {
-      title = appStrings.enter2faCode;
-      subtitle = appStrings.openYourAuthenticator;
-    } else if (_bootstrap) {
-      title = appStrings.createTheFirstAccount;
-      subtitle = appStrings.firstAccountSubtitle;
-    } else if (_registerMode) {
-      title = appStrings.authCreateAccount;
-      subtitle = appStrings.createAnotherAccount;
-    } else {
-      title = appStrings.authSignInTitle;
-      subtitle = appStrings.authSignInSubtitle;
-    }
-    return _ControlSurfaceBackdrop(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, viewportConstraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: viewportConstraints.maxHeight,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(
-                      viewportConstraints.maxWidth < AppBreakpoints.mobile
-                          ? 14
-                          : 24,
-                    ),
-                    child: Center(
-                      child: _EntranceMotion(
-                        child: _GlassSurface(
-                          width: 420,
-                          padding: const EdgeInsets.all(AppSpacing.xl),
-                          child: AutofillGroup(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                const Center(
-                                  child: _BrandLockup(
-                                    logoSize: 44,
-                                    showName: false,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Text(title, style: _displayTitleStyle(24)),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  subtitle,
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(color: _textSecondary),
-                                ),
-                                const SizedBox(height: AppSpacing.lg),
-                                if (qrScan != null)
-                                  _QrLoginWaiting(controller: controller, scan: qrScan)
-                                else if (twoFactor)
-                                  ..._twoFactorFields(controller)
-                                else
-                                  ..._credentialFields(controller),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+    if (!_offersQrLogin) _setQrInline(false);
+    final compact = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    return NeoAuthPage(
+      palette: _palette,
+      compact: compact,
+      children: <Widget>[
+        NeoAuthCard(
+          palette: _palette,
+          compact: compact,
+          mark: const NeoCloudMark(size: 76),
+          child: _cardContent(),
         ),
-      ),
+        ..._footer(),
+      ],
     );
   }
 }
 
-/// Both sign-in cards' submit: registration (passwords match and are strong
+/// The sign-in card's submit: registration (passwords match and are strong
 /// enough) or sign-in.
 Future<void> _submitCredentials(
   NeoCloudController controller, {
@@ -417,12 +509,20 @@ Future<void> _submitCredentials(
       controller.showInlineError(appStrings.passwordsDoNotMatch);
       return;
     }
-    final strength = _passwordStrengthInfo(password: password, username: username, email: email);
+    final strength = _passwordStrengthInfo(
+      password: password,
+      username: username,
+      email: email,
+    );
     if (!strength.acceptable) {
       controller.showInlineError(strength.message);
       return;
     }
-    await controller.register(username: username.trim(), email: email.trim(), password: password);
+    await controller.register(
+      username: username.trim(),
+      email: email.trim(),
+      password: password,
+    );
   } else {
     if (username.trim().isEmpty || password.isEmpty) {
       controller.showInlineError(appStrings.enterYourUsernameOrEmail);
@@ -431,18 +531,4 @@ Future<void> _submitCredentials(
     await controller.login(username: username.trim(), password: password);
   }
   if (controller.isAuthenticated) TextInput.finishAutofillContext();
-}
-
-/// A hairline either side of a short word ("or use your password").
-Widget _orDivider(String label) {
-  return Row(
-    children: <Widget>[
-      Expanded(child: Divider(color: _border)),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(label, style: TextStyle(color: _textMuted, fontSize: 12)),
-      ),
-      Expanded(child: Divider(color: _border)),
-    ],
-  );
 }

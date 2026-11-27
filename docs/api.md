@@ -32,7 +32,7 @@ unless that account shared it (or a folder above it) with you: see
 `503` when not ok. Runs `SELECT 1` and checks that the data and storage
 directories are writable; nothing else, so it is safe to poll (Docker's
 HEALTHCHECK, load balancers, `neocloud start`). `GET /api/version` →
-`{ name, version, node }`.
+`{ name, product, version, go }`.
 
 `GET /status` serves the public status page, which refreshes from
 `/api/health` every minute.
@@ -130,6 +130,8 @@ password and 2FA code are asked for exactly as with a session.
 | --- | --- | --- |
 | GET | `/` | |
 | GET | `/usage` | |
+| GET | `/sessions` | → `{ sessions: [{ id, current, ipAddress, userAgent, createdAt, lastSeenAt, expiresAt }] }`; session ids are account-scoped and current-session status is determined from the signed browser session |
+| DELETE | `/sessions/:id` | Revokes another active session and deletes its persisted cookie session; `400 CURRENT_SESSION` for this session, `404 NOT_FOUND` for an unknown, expired, revoked or other account's session |
 | PUT | `/display-name` | `{ displayName }` |
 | PUT | `/email` | `{ email, currentPassword, code? }` — asks for the password (and the code with 2FA on). With email-change confirmation on (service mail configured) → `{ user, emailChangePending: true, pendingEmail }`: a link goes to the new address, the old one gets a notice, and the address changes only when the link is opened. Otherwise → `{ user }` at once, the new address unconfirmed (`emailVerifiedAt: null`). `400 INVALID_EMAIL`, `409 EMAIL_TAKEN`, `401 WRONG_PASSWORD`, `429 RATE_LIMITED` (3 mails per 15 minutes), `503 EMAIL_SEND_FAILED` (nothing changed) |
 | POST | `/email/resend` | | Sends the confirmation again: to `pendingEmail` when a change is waiting, else to the current address when it was never confirmed → `{ success: true, pendingEmail }`. `409 EMAIL_NOT_CONFIGURED`, `409 NOTHING_TO_CONFIRM`, `429`, `503 EMAIL_SEND_FAILED` |
@@ -777,7 +779,7 @@ act on the caller's own account; another account's party or image id answers
 | --- | --- | --- |
 | GET | `/profile` | `{ displayName, email, phone, presets: [{ id, label, value }], autoFill, autoSave, saveFolderId, notifyOnEachSignature, signatures: [{ id, kind, method, label, isDefault, createdAt }] }`. Until saved, name and email come from the account; `autoFill` and `autoSave` are true, `notifyOnEachSignature` false, `saveFolderId` null (the automatic "Signed documents" folder in the root, made on demand, never in a vault) |
 | PUT | `/profile` | the fields named in the body are replaced, the rest stays (`signatures` is read-only here): `displayName` ≤ 120, `email`, `phone` ≤ 40, `presets` (≤ 30, `label` ≤ 60 and different, `value` ≤ 500, an unknown `id` is replaced), the three switches, `saveFolderId` (a live folder of the caller that is not in a vault, or null) → the profile. `400 INVALID_PROFILE`, `INVALID_FOLDER` |
-| POST | `/profile/images` `?kind=signature\|initials&method=draw\|type\|upload&label=&default=0\|1&text=` | raw PNG body (re-encoded with sharp, ≤ 8 MB in; `text` for `method=type`) → `201` the image as listed above. At most 5 per kind (`409 IMAGE_LIMIT`); the first of a kind is its default. `400 INVALID_IMAGE`, `413 UPLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
+| POST | `/profile/images` `?kind=signature\|initials&method=draw\|type\|upload&label=&default=0\|1&text=` | raw PNG body (re-encoded, ≤ 8 MB in; `text` for `method=type`) → `201` the image as listed above. At most 5 per kind (`409 IMAGE_LIMIT`); the first of a kind is its default. `400 INVALID_IMAGE`, `413 UPLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
 | GET | `/profile/images/:id` | the picture (PNG), owner only |
 | PUT | `/profile/images/:id` | `{ label?, isDefault? }` → the image; one default per kind |
 | DELETE | `/profile/images/:id` | removes it and its storage; the newest of its kind becomes the default when it was one |
@@ -934,6 +936,7 @@ server can: `{ imageThumbnails, officePreview, fullTextSearch }` (`fullTextSearc
 | --- | --- | --- |
 | GET | `/api/sync/tree` | Every live node with its relative `path`, plus the journal `cursor` |
 | GET | `/api/sync/changes?cursor=&limit=` | `{ changes: [{ seq, op, nodeId, node }], cursor, hasMore }`. `cursor=latest` answers `{ changes: [], cursor: <newest seq>, hasMore: false }`, to start following from now |
+| GET | `/api/sync/watch?cursor=` | Authenticated Server-Sent Events: `ready` supplies the starting cursor; `sync:changed` signals that `/api/sync/changes` has advanced; `shares:changed` invalidates the current account's shared-with-me list; grant-scoped `files:changed` carries only folder IDs the account can currently access. Fresh connections start at the journal head; reconnects accept `Last-Event-ID`. The stream sends keepalives and closes after five minutes. |
 
 `op` is `create`, `update`, `rename`, `move`, `trash`, `restore` or `delete`.
 `node` is the node as it is now (null once deleted for good). A trashed folder
@@ -1059,13 +1062,14 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 | POST | `/storage/recalculate` | |
 | GET | `/access` · PUT `/access/signup` | `{ allowSignup }` — off refuses every registration but the first account's |
 | POST | `/keys/master` (5 / 15 min) | `{ password, code? }` → `{ masterKey }`; `code` (TOTP or recovery code) is required when the admin has 2FA on: `401 WRONG_PASSWORD`, `TWO_FACTOR_REQUIRED`, `INVALID_CODE` |
-| GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun` and `lastVerification` (below, or null). A run has `bytesUploaded`/`blobsUploaded` so far and, once it has compared with the target, `bytesTotal`/`blobsTotal` it has to upload |
+| GET | `/backups` | `{ targets, runs }`; secrets come back only as `passwordSet` etc. Each target carries `lastRun`, `lastVerification`, and `storageMigration` (or null). A run has `bytesUploaded`/`blobsUploaded` so far and, once it has compared with the target, `bytesTotal`/`blobsTotal` it has to upload |
 | POST | `/backups/targets` | `{ name, type: local\|sftp\|s3\|webdav, config, schedule: manual\|daily\|weekly, hour, weekday, retention }` |
 | PUT / DELETE | `/backups/targets/:id` | an empty secret keeps the stored one |
-| POST | `/backups/targets/:id/test` · `/backups/targets/:id/run` | run answers 202 and works in the background; `404 NOT_FOUND` for an unknown target, `409 BACKUP_RUNNING` while a run to it is going (in the server or `neocloud backup run`) |
+| POST | `/backups/targets/:id/test` | Writes and reads a short-lived private probe object on the configured local, WebDAV, S3, or SFTP target, then removes it; `{ ok: true, message }` or `422 BACKUP_TARGET_FAILED`. SFTP first-use host keys are pinned and audited. |
+| POST | `/backups/targets/:id/run` | Answers `202 { started, runId }`; writes an encrypted database snapshot and referenced encrypted blobs, writes the manifest last, and applies retention in the background on local, WebDAV, S3, or SFTP targets. `404 NOT_FOUND` for an unknown target, `409 BACKUP_RUNNING` during another active run. |
 | POST | `/backups/targets/:id/verify` | checks the newest snapshot → `{ verifiedAt, ok, mode, snapshot, database, blobsChecked, missingBlobs, error }`. `mode` is `full` (database downloaded, decrypted, `quick_check`ed) or, for an S3 target in `GLACIER`/`DEEP_ARCHIVE`, `metadata`: nothing is read, `database` is `archived` when the object is there with the expected size (else `missing` or `wrong size (…)`) |
 | GET | `/backups/targets/:id/snapshots` | finished snapshots, newest first |
-| POST | `/backups/targets/:id/storage-class/migrate` | 202 `{ started }`: copies every existing object under the target's `blobs/` and `snapshots/` into its configured `storageClass` in the background; never deletes, skips objects already in the class and (counted as `objectsArchived`) ones in `GLACIER`/`DEEP_ARCHIVE`. Progress is the target's `storageMigration`: `{ status: running\|ok\|failed\|interrupted, storageClass, startedAt, finishedAt, objectsTotal, objectsDone, bytesTotal, bytesDone, objectsSkipped, objectsArchived, error, heartbeatAt }` (null before the first). Starting again resumes. `400 BACKUP_NOT_S3`, `404 NOT_FOUND`, `409 MIGRATION_RUNNING` |
+| POST | `/backups/targets/:id/storage-class/migrate` | 202 `{ started }`: copies eligible objects under the target's `blobs/` and `snapshots/` into its configured `storageClass`; never deletes, uses multipart copy above 5 GiB, skips objects already in the class and (counted as `objectsArchived`) ones in `GLACIER`/`DEEP_ARCHIVE`. Progress is persisted in the target's `storageMigration` state file: `{ status: running\|ok\|failed\|interrupted, storageClass, startedAt, finishedAt, objectsTotal, objectsDone, bytesTotal, bytesDone, objectsSkipped, objectsArchived, error, heartbeatAt }` (null before first run). Starting again resumes. State is visible across processes sharing `StateDir`; concurrent-run exclusion is process-local, as in Node. `400 BACKUP_NOT_S3`, `404 NOT_FOUND`, `409 MIGRATION_RUNNING` |
 | GET | `/providers` | `{ providers: [{ key, label, type: "key"\|"url", configured, hint }] }`: AI provider env keys; `hint` is the masked key (`sk-a••••1234`) or the URL |
 | PUT | `/providers` | `{ key, value }`: sets one (`""` clears it). `400 UNKNOWN_PROVIDER`, `400 INVALID_URL`. URLs may be on the LAN |
 | GET | `/models` | `{ models: [model], disabledModels, autoEnableNewModels }`: the server's catalog (its own credentials); records newly seen models and, with auto-enable off, disables them |
@@ -1090,6 +1094,23 @@ which. A run fails instead of pruning when a kept snapshot's manifest is
 invalid. WebDAV targets: redirects are not followed, a PROPFIND answer may be
 at most 64 MB, listings stop at 16 levels and 2,000,000 entries, and names
 that are empty, `.`, `..` or contain a slash are refused (SFTP too).
+
+### Server updates — `/api/admin/update`
+
+| Method | Path | Body | Answer |
+| --- | --- | --- | --- |
+| GET | `/update` | | The update status |
+| POST | `/update/check` | | Looks for a newer release, answers the status |
+| POST | `/update` | | `202`, starts the update |
+| PUT | `/update/channel` | `{ channel: "stable"\|"beta" }` | The status |
+
+Status: `{ version, channel, channelLabel, selfUpdate, blockedReason, checkedAt,
+checkFailed, available, job }`. `blockedReason` is `"container"` in a Docker
+image, else null; `available` is `{ version, branch, changes }` or null; `job`
+reports `state` (`idle`, `running`, `completed`, `failed`), phase, progress,
+versions, changelog, logs and whether it rolled back. Errors: `403
+ADMIN_REQUIRED`, `409 UPDATE_CONTAINER`, `409 UPDATE_RUNNING`, `400
+INVALID_CHANNEL`.
 
 ## WebDAV — `/dav/files/<username>/` (app password)
 
@@ -1228,7 +1249,7 @@ Only connected-app access tokens are accepted (not sessions or device
 tokens). A route whose scope was not granted answers `403 INSUFFICIENT_SCOPE`.
 Errors are `{ error, code }`. Paths are user-visible (`/Contracts/Lease.md`);
 only the account's own files are reachable, never files in a vault (they
-don't show, their ids answer 404, writes into a vault are `403 VAULT_NOT_ALLOWED`).
+don't show, and their ids and writes into a vault answer 404).
 Bodies may be up to 8 MB of JSON.
 
 Item: `{ id, name, path, type: "file"|"folder", size, mimeType, modifiedAt }`.

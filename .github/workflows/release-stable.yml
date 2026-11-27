@@ -1,16 +1,11 @@
 name: Release Stable
 
-# Manual, from main: promotes beta to main, lets semantic-release cut vX.Y.Z
-# from the conventional commits, then builds the same artifacts as a beta
-# release and moves the Docker :latest tag.
+# Manual, from main: promotes beta to main, stamps the next stable version,
+# builds the web client and publishes vX.Y.Z with the same artifacts as a beta
+# release, moving the Docker :latest tag.
 #
-# semantic-release on main ignores the vX.Y.Z-beta.N prerelease tags, and with
-# no stable tag at all it starts at 1.0.0. Until the first stable release a
-# v0.0.0 tag on the root commit is created as the baseline, so the betas'
-# 0.1.0 line becomes v0.1.0 (a feat commit is a minor bump from 0.0.0).
-#
-# dry_run merges and builds locally and prints the version semantic-release
-# would cut, without pushing, tagging or publishing anything.
+# dry_run merges and builds locally and prints the version it would release,
+# without pushing, tagging or publishing anything.
 
 on:
   workflow_dispatch:
@@ -22,8 +17,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
-  pull-requests: write
   packages: write
   actions: read
 
@@ -35,15 +28,13 @@ jobs:
   release:
     name: Promote beta and publish stable release
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
-      release_tag: ${{ steps.tag.outputs.release_tag }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
       release_sha: ${{ steps.sha.outputs.release_sha }}
     env:
-      DRY_RUN: ${{ inputs.dry_run }}
+      GOWORK: 'off'
     steps:
-      # semantic-release only publishes from its configured branch (main) and
-      # reads the branch from the run's ref.
       - name: Require main
         if: github.ref != 'refs/heads/main'
         run: |
@@ -72,15 +63,9 @@ jobs:
           fetch-depth: 0
           ref: main
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
 
       - name: Configure Git identity
         run: |
@@ -91,85 +76,83 @@ jobs:
         run: |
           git fetch origin main beta --tags --force
           if ! git merge --no-ff --no-commit origin/beta; then
-            # main only receives promotions: the version stamp follows beta,
-            # and the bundle is rebuilt in the next step.
-            git checkout origin/beta -- package.json package-lock.json
+            # main only receives promotions: the version stamp follows beta and
+            # the bundle is rebuilt below.
+            unexpected="$(git diff --name-only --diff-filter=U | grep -vE '^(internal/buildinfo/version\.go|package\.json|package-lock\.json|flutter_app/build/web/|server/public/)' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "::error::Promoting beta conflicts with main outside generated files:"
+              echo "$unexpected"
+              exit 1
+            fi
+            git checkout origin/beta -- internal/buildinfo/version.go package.json package-lock.json
           fi
-          git rm -rq --cached --ignore-unmatch server/public
-          rm -rf server/public
-          unmerged="$(git diff --name-only --diff-filter=U)"
-          if [ -n "$unmerged" ]; then
-            echo "::error::Promoting beta conflicts with main outside generated files:"
-            echo "$unmerged"
+          git rm -rq --ignore-unmatch server/public flutter_app/build/web
+
+      # The workflows and actions below come from the merged tree.
+      - name: Check the update signing key
+        uses: ./.github/actions/check-signing-key
+        with:
+          private_key: ${{ secrets.NEOCLOUD_RUNTIME_SIGNING_PRIVATE_KEY }}
+
+      - name: Resolve and set the stable version
+        id: version
+        run: |
+          go run ./cmd/neocloud-release resolve-version --channel stable --github-output
+          go run ./cmd/neocloud-release set-version "$(go run ./cmd/neocloud-release resolve-version --channel stable)"
+
+      - name: Run the server tests
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+
+      - uses: ./.github/actions/build-web
+
+      - name: Commit, tag and push
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            echo "::error::${RELEASE_TAG} already exists."
             exit 1
           fi
-
-      - name: Build bundled web client
-        run: npm run flutter:build:web
-
-      - name: Verify the bundle does not point at a dev server
-        run: |
-          if grep -Eq "localhost:3344|127\.0\.0\.1:3344" server/public/main.dart.js; then
-            echo "::error::Bundled web client still points at a local dev server."
-            exit 1
-          fi
-
-      - name: Commit the promotion
-        run: |
-          git add -f server/public
-          if [ -f .git/MERGE_HEAD ] || ! git diff --cached --quiet; then
-            git commit -m "chore(release): promote beta to main [skip ci]"
-          else
-            echo "main already contains beta and its bundle."
-          fi
-
-      - name: Seed the baseline tag before the first stable release
-        run: |
-          if git tag --merged HEAD --list 'v*' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "A stable release exists; no baseline needed."
+          git add internal/buildinfo/version.go package.json package-lock.json
+          git add -f flutter_app/build/web
+          git commit -m "chore(release): ${RELEASE_TAG} [skip ci]"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Would release ${RELEASE_TAG}."
             exit 0
           fi
-          root="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
-          git tag v0.0.0 "$root" -m "Baseline before the first stable release"
-          echo "Tagged v0.0.0 at ${root} as the semantic-release baseline."
+          git tag "$RELEASE_TAG" -m "Release ${RELEASE_TAG}"
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/${RELEASE_TAG}"
 
-      - name: Push main
+      - name: Create draft release
         if: ${{ !inputs.dry_run }}
-        run: |
-          git push origin HEAD:main
-          if git rev-parse -q --verify refs/tags/v0.0.0 >/dev/null; then
-            git push origin v0.0.0
-          fi
-
-      - name: semantic-release
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
         run: |
-          args=()
-          if [ "$DRY_RUN" = "true" ]; then
-            args+=(--dry-run)
-          fi
-          npx --yes \
-            -p semantic-release@25 \
-            -p @semantic-release/commit-analyzer@13 \
-            -p @semantic-release/release-notes-generator@14 \
-            -p @semantic-release/github@12 \
-            semantic-release "${args[@]}"
-
-      - name: Capture release tag
-        id: tag
-        if: ${{ !inputs.dry_run }}
-        run: |
-          tag="$(git tag --points-at HEAD --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
-          if [ -z "$tag" ]; then
-            echo "::error::semantic-release did not tag $(git rev-parse HEAD); no releasable commits since the last stable release."
-            exit 1
-          fi
-          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
+            || gh release create "$RELEASE_TAG" \
+                 --title "Release ${RELEASE_TAG}" \
+                 --generate-notes --draft --latest=false --verify-tag
+          go run ./cmd/neocloud-release release-download --tag "$RELEASE_TAG"
 
       - id: sha
-        if: ${{ !inputs.dry_run }}
         run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-server:
+    name: Build server
+    needs: release
+    if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_build-server.yml
+    secrets: inherit
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
 
   build-clients:
     name: Build clients
@@ -195,11 +178,38 @@ jobs:
       release_tag: ${{ needs.release.outputs.release_tag }}
 
   publish-release-assets:
-    name: Publish release assets
-    needs: [release, build-clients]
-    if: ${{ !inputs.dry_run }}
+    name: Publish release
+    if: ${{ !inputs.dry_run && !cancelled() && needs.release.result == 'success' && needs.build-server.result == 'success' }}
+    needs: [release, build-server, build-clients]
     permissions:
       contents: write
     uses: ./.github/workflows/_publish-release-assets.yml
     with:
       release_tag: ${{ needs.release.outputs.release_tag }}
+      release_sha: ${{ needs.release.outputs.release_sha }}
+      prerelease: false
+
+  notify-discord:
+    name: Notify Discord
+    needs:
+      - release
+      - publish-release-assets
+    if: needs.release.outputs.release_tag != ''
+    uses: ./.github/workflows/discord-release.yml
+    with:
+      release_tag: ${{ needs.release.outputs.release_tag }}
+    secrets:
+      DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+
+  discard-draft-release:
+    name: Discard the draft of a cancelled run
+    if: ${{ cancelled() && needs.release.outputs.release_tag != '' }}
+    needs: [release, build-server, publish-release-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.release_sha }}
+      - uses: ./.github/actions/discard-draft-release
+        with:
+          release_tag: ${{ needs.release.outputs.release_tag }}

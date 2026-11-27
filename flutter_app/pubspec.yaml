@@ -34,10 +34,13 @@ dependencies:
     path: packages/neocloud_sync
   neocloud_background:
     path: packages/neocloud_background
+  neolabs_flutter:
+    git:
+      url: https://github.com/NeoLabs-Systems/neolabs-flutter.git
+      ref: 633320a
   crypto: ^3.0.6
   image: ^4.5.0
   cryptography: ^2.7.0
-  qr_flutter: ^4.1.0
   mobile_scanner: ^7.5.0
 
 # workmanager_platform_interface 0.9.4 added a parameter that

@@ -5,9 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:neocloud/src/signing/field_types.dart';
 import 'package:neocloud/src/signing/models.dart';
 
-/// The server's accepted field types and preferences, dumped by
-/// `node scripts/dump_signing_schema.js`. The creator may only offer what the
-/// server takes, or saving the fields would be refused.
+/// The server's accepted field types and preferences. The creator may only
+/// offer what the server takes, or saving the fields would be refused. The
+/// server's test keeps the file current:
+/// `UPDATE_SIGNING_SCHEMA=1 go test -run TestFieldSchemaFixture ./internal/signing`
 Map<String, dynamic> _server() =>
     (jsonDecode(
               File(

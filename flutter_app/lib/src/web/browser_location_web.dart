@@ -5,3 +5,6 @@ import 'package:web/web.dart' as web;
 void replaceBrowserPath(String path) {
   web.window.history.replaceState(null, '', path);
 }
+
+/// Loads the app again, e.g. after an update replaced the web client.
+void reloadPage() => web.window.location.reload();

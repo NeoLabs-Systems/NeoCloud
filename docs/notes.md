@@ -74,25 +74,23 @@ names and content are encrypted in the app before they leave it:
   there (creating or unlocking the notebook first) and moves the original to
   the trash, where it stays, unencrypted, until the trash is emptied – the
   app says so.
-- The parser (`server/utils/note_markdown.js`) reads a simple YAML subset
+- The parser (`internal/notes/markdown.go`) reads a simple YAML subset
   (scalars and lists of scalars) and writes the same subset back.
 
 ## Server
 
-`server/services/notes/`:
+`internal/notes`:
 
-- `store.js` lists, reads, creates and updates notes on top of the agent file
-  services (`services/agent/files.js`): paths, revisions, versions and the
-  trash all come from there.
-- `cache.js` keeps the parsed card of each note (title, snippet, tags, …) in
+- `store.go` and `notes.go` list, read, create and update notes through the
+  file services: paths, revisions, versions and the trash all come from there.
+- `cache.go` keeps the parsed card of each note (title, snippet, tags, …) in
   memory, keyed by node id and etag, so the list doesn't decrypt every note
   each time. Nothing about a note's content is written to the database.
-- `ai.js` runs the AI actions through the AI facade (`ai/client.js`) after
-  `assertAiAllowedForNode`. AI never writes a note: it returns text and the
-  editor inserts it where you choose.
+- `assist.go` runs the AI actions after the same permission checks as every AI
+  feature. AI never writes a note: it returns text and the editor inserts it
+  where you choose.
 
-Routes (`server/routes/notes.js`, session or phone app): see
-[api.md](api.md#notes).
+Routes (session or phone app): see [api.md](api.md#notes).
 
 ## AI
 

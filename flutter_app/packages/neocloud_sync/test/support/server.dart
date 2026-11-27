@@ -6,8 +6,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
-/// The real NeoCloud server (`node server/index.js` from the repo root) on
-/// a free port with its own temporary NEOCLOUD_HOME.
+/// The real NeoCloud server, built from the repo root, on a free port with its
+/// own temporary NEOCLOUD_HOME.
 class TestServer {
   TestServer._(this.home, this.port, this._env);
 
@@ -20,7 +20,8 @@ class TestServer {
     final server = TestServer._(home, port, {
       'NEOCLOUD_HOME': home.path,
       'PORT': '$port',
-      'NODE_ENV': 'development',
+      'NEOCLOUD_APP_DIR': repoRoot,
+      'ANALYTICS_ENABLED': 'false',
       'NEOCLOUD_MASTER_KEY': hex(),
       'SESSION_SECRET': hex(),
     });
@@ -38,8 +39,24 @@ class TestServer {
 
   static String get repoRoot => p.normalize(p.join(Directory.current.path, '..', '..', '..'));
 
+  static Future<String>? _binary;
+
+  static Future<String> _build() async {
+    final output = await Directory.systemTemp.createTemp('neocloud-sync-server-');
+    final binary = p.join(output.path, Platform.isWindows ? 'neocloud.exe' : 'neocloud');
+    final result = await Process.run(
+      'go',
+      ['build', '-o', binary, './cmd/neocloud'],
+      workingDirectory: repoRoot,
+      environment: {'GOWORK': 'off'},
+    );
+    if (result.exitCode != 0) throw StateError('Server build failed:\n${result.stderr}');
+    return binary;
+  }
+
   Future<void> launch() async {
-    final process = await Process.start('node', ['server/index.js'], workingDirectory: repoRoot, environment: _env);
+    final binary = await (_binary ??= _build());
+    final process = await Process.start(binary, ['serve'], workingDirectory: repoRoot, environment: _env);
     _process = process;
     process.stdout.transform(utf8.decoder).listen(log.write);
     process.stderr.transform(utf8.decoder).listen(log.write);

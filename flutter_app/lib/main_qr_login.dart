@@ -9,48 +9,19 @@ part of 'main.dart';
 //   sign-in code opens the approval sheet, a device-code link (the lite
 //   desktop client's sign-in) opens the device approval page.
 
-/// The QR code on its paper plate: dark modules on a light ground so phone
-/// cameras read it in either theme.
-class _AuthQrPlate extends StatelessWidget {
-  const _AuthQrPlate({required this.size, required this.payload, required this.preparing});
-
-  final double size;
-  final String? payload;
-  final bool preparing;
-
-  @override
-  Widget build(BuildContext context) {
-    final data = payload;
-    final ink = lightPalette.textPrimary;
-    return Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * 0.07),
-      decoration: BoxDecoration(color: lightPalette.bgCard, borderRadius: BorderRadius.circular(size * 0.12)),
-      child: data != null
-          ? QrImageView(
-              data: data,
-              padding: EdgeInsets.zero,
-              backgroundColor: lightPalette.bgCard,
-              eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: ink),
-              dataModuleStyle: QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: ink),
-              semanticsLabel: appStrings.qrLoginScanTitle,
-            )
-          : Center(
-              child: preparing
-                  ? SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: ink))
-                  : Icon(Icons.qr_code_2_rounded, size: size * 0.4, color: ink.withValues(alpha: 0.35)),
-            ),
-    );
-  }
-}
-
 /// Phone sign-in on the web card: the code itself where the card has room,
 /// else a row that opens it in a dialog. Counts down to the next code.
 class _QrLoginBlock extends StatefulWidget {
-  const _QrLoginBlock({required this.controller, required this.onDialogOpen});
+  const _QrLoginBlock({
+    required this.controller,
+    required this.onLayout,
+    required this.onDialogOpen,
+  });
 
   final NeoCloudController controller;
+
+  /// Whether the code is on the card, so it is only watched then.
+  final ValueChanged<bool> onLayout;
 
   /// Tells the card the code stays visible while the dialog is open.
   final ValueChanged<bool> onDialogOpen;
@@ -60,7 +31,40 @@ class _QrLoginBlock extends StatefulWidget {
 }
 
 class _QrLoginBlockState extends State<_QrLoginBlock> {
+  late final Timer _countdown = Timer.periodic(
+    const Duration(seconds: 1),
+    (_) => setState(() {}),
+  );
+  // The dialog's countdown follows the card's ticks.
+  final ValueNotifier<int> _ticks = ValueNotifier<int>(0);
+
   QrLoginFlow get _flow => widget.controller.qrLogin;
+
+  String? get _payload =>
+      _flow.canShowCode ? _flow.challenge!.qrPayload : null;
+
+  String get _status => _flow.canShowCode
+      ? appStrings.qrLoginRefreshesIn(_flow.challenge!.secondsRemaining)
+      : appStrings.qrLoginPreparing;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdown;
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _ticks.value++;
+  }
+
+  @override
+  void dispose() {
+    _countdown.cancel();
+    _ticks.dispose();
+    super.dispose();
+  }
 
   void _refresh() => unawaited(_flow.prepare(force: true));
 
@@ -71,44 +75,64 @@ class _QrLoginBlockState extends State<_QrLoginBlock> {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => ListenableBuilder(
-          listenable: widget.controller,
+          listenable: Listenable.merge(<Listenable>[widget.controller, _ticks]),
           builder: (context, _) {
             // A phone scanned the code: the card shows the waiting state.
             if (_flow.scan != null && !closing) {
               closing = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(dialogContext).pop());
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => Navigator.of(dialogContext).pop(),
+              );
             }
             return AlertDialog(
-            title: Text(appStrings.qrLoginShowCode),
-            content: SizedBox(
-              width: 340,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(appStrings.qrLoginScanBody, style: TextStyle(color: _textSecondary, height: 1.45)),
-                  const SizedBox(height: AppSpacing.md),
-                  Center(
-                    child: _AuthQrPlate(
-                      size: 240,
-                      payload: _flow.canShowCode ? _flow.challenge!.qrPayload : null,
-                      preparing: _flow.isPreparing,
+              title: Text(appStrings.qrLoginShowCode),
+              content: SizedBox(
+                width: 340,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      appStrings.qrLoginScanBody,
+                      style: TextStyle(color: _textSecondary, height: 1.45),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Center(child: _QrCountdown(flow: _flow)),
-                  if (_flow.errorMessage != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.md),
+                    Center(
+                      child: NeoAuthQrPlate(
+                        size: 240,
+                        payload: _payload,
+                        preparing: _flow.isPreparing,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.sm),
-                    _InlineError(message: _flow.errorMessage!),
+                    Center(
+                      child: Text(
+                        _status,
+                        style: GoogleFonts.geistMono(
+                          color: _textMuted,
+                          fontSize: 11,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                    if (_flow.errorMessage != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.sm),
+                      _InlineError(message: _flow.errorMessage!),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            actions: <Widget>[
-              TextButton(onPressed: _flow.isPreparing ? null : _refresh, child: Text(appStrings.qrLoginNewCode)),
-              FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(appStrings.close)),
-            ],
-          );
+              actions: <Widget>[
+                TextButton(
+                  onPressed: _flow.isPreparing ? null : _refresh,
+                  child: Text(appStrings.qrLoginNewCode),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(appStrings.close),
+                ),
+              ],
+            );
           },
         ),
       );
@@ -119,132 +143,27 @@ class _QrLoginBlockState extends State<_QrLoginBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final decoration = BoxDecoration(
-      color: _bgPrimary,
-      borderRadius: BorderRadius.circular(AppRadius.panel),
-      border: Border.all(color: _accent.withValues(alpha: 0.38)),
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final Widget block;
-        if (constraints.maxWidth >= 340) {
-          block = Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: decoration,
-            child: Row(
-              children: <Widget>[
-                _AuthQrPlate(size: 116, payload: _flow.canShowCode ? _flow.challenge!.qrPayload : null, preparing: _flow.isPreparing),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        appStrings.qrLoginScanTitle,
-                        style: TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w600, height: 1.25),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(appStrings.qrLoginScanBody, style: TextStyle(color: _textSecondary, fontSize: 12.5, height: 1.45)),
-                      Row(
-                        children: <Widget>[
-                          Expanded(child: _QrCountdown(flow: _flow)),
-                          IconButton(
-                            tooltip: appStrings.qrLoginNewCode,
-                            onPressed: _flow.isPreparing ? null : _refresh,
-                            color: _textSecondary,
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        } else {
-          block = Material(
-            color: Colors.transparent,
-            child: Ink(
-              decoration: decoration,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.panel),
-                onTap: () => unawaited(_showDialog()),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Row(
-                    children: <Widget>[
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(color: lightPalette.bgCard, borderRadius: BorderRadius.circular(AppRadius.control)),
-                        child: Icon(Icons.qr_code_2_rounded, color: lightPalette.textPrimary),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(appStrings.qrLoginShowCode, style: TextStyle(color: _textPrimary, fontSize: 14.5, fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 2),
-                            Text(appStrings.qrLoginScanTitle, style: TextStyle(color: _textSecondary, fontSize: 12.5)),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right_rounded, color: _textMuted),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            block,
-            if (_flow.errorMessage != null) ...<Widget>[
-              const SizedBox(height: 10),
-              _InlineError(message: _flow.errorMessage!),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// "New code in 87s", ticking each second.
-class _QrCountdown extends StatefulWidget {
-  const _QrCountdown({required this.flow});
-
-  final QrLoginFlow flow;
-
-  @override
-  State<_QrCountdown> createState() => _QrCountdownState();
-}
-
-class _QrCountdownState extends State<_QrCountdown> {
-  Timer? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final flow = widget.flow;
-    return Text(
-      flow.canShowCode ? appStrings.qrLoginRefreshesIn(flow.challenge!.secondsRemaining) : appStrings.qrLoginPreparing,
-      style: GoogleFonts.geistMono(color: _textMuted, fontSize: 11, letterSpacing: 0.4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        NeoQrSignInCard(
+          palette: _palette,
+          payload: _payload,
+          preparing: _flow.isPreparing,
+          title: appStrings.qrLoginScanTitle,
+          instructions: appStrings.qrLoginScanBody,
+          status: _status,
+          refreshLabel: appStrings.qrLoginNewCode,
+          openLabel: appStrings.qrLoginShowCode,
+          onRefresh: _refresh,
+          onOpen: () => unawaited(_showDialog()),
+          onLayout: widget.onLayout,
+        ),
+        if (_flow.errorMessage != null) ...<Widget>[
+          const SizedBox(height: 10),
+          _InlineError(message: _flow.errorMessage!),
+        ],
+      ],
     );
   }
 }

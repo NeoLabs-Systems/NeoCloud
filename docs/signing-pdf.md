@@ -1,6 +1,6 @@
 # Signing PDF engine
 
-`server/services/signing/pdf/` holds pure functions over bytes: no database, no HTTP. All functions are async unless marked sync. Failures throw `PdfError` with a `code`.
+`internal/signing/signpdf` holds the PDF engine: functions over bytes, with no database and no HTTP. Failures carry a `code`.
 
 | Function | Purpose |
 | --- | --- |
@@ -33,8 +33,6 @@ camelCase or snake_case keys are both accepted; `prefs`/`areas` may be JSON stri
 ## Behaviour and limits
 
 - Existing form fields are flattened, XFA/OpenAction/JavaScript removed. A signed source PDF loses its original signature.
-- Fonts: bundled Noto Sans Regular/Bold subsets (SIL OFL, `server/assets/signing/fonts`): Latin, Greek, Cyrillic, punctuation, currency. Other scripts and emoji print as `?`. No italic.
-- The seal uses subfilter `adbe.pkcs7.detached`, not `ETSI.CAdES.detached`: the libraries cannot write the signing-certificate attribute CAdES requires.
-- Decompression: pdf-lib inflates object and xref streams while loading; `decode_guard.js` refuses any stream that grows past 64 MB (`PDF_INVALID`).
-- Memory: a 48 MB PDF builds with about +100 MB RSS (sealing about +290 MB) in under a second in tests; budget roughly 2 to 6 times the file size.
+- Fonts: bundled Noto Sans Regular/Bold subsets (SIL OFL, `internal/signing/signpdf/fonts`): Latin, Greek, Cyrillic, punctuation, currency. Other scripts and emoji print as `?`. No italic.
+- The seal uses subfilter `adbe.pkcs7.detached`, not `ETSI.CAdES.detached`: the server does not write the signing-certificate attribute CAdES requires.
 - This produces a simple electronic signature, not a qualified one.

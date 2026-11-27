@@ -30,7 +30,9 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+# The web client travels with the checkout; releases commit it.
+/build/*
+!/build/web/
 /coverage/
 
 # Symbolication related

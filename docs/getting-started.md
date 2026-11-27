@@ -1,6 +1,6 @@
 # Installation
 
-NeoCloud runs as one Node.js process with a SQLite database. Everything that
+NeoCloud runs as one Go binary with a SQLite database. Everything that
 changes at runtime (database, encrypted files, `.env` with the master key)
 lives in one data folder.
 
@@ -21,14 +21,15 @@ LibreOffice for Office previews (`latest-office`, `beta-office`, …).
 
 ## Script
 
-Linux or macOS with Git and Node.js 22+:
+Linux or macOS (x64 or arm64):
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/NeoLabs-Systems/NeoCloud/main/install.sh)
 ```
 
-The installer clones the repository, runs `neocloud setup` and installs a
-launchd (macOS) or systemd user (Linux) service. Data lives in
+The installer downloads the signed `neocloud` binary of the latest release,
+runs `neocloud install` and starts a launchd (macOS) or systemd user (Linux)
+service. Data lives in
 `~/.neocloud`.
 
 ## First steps

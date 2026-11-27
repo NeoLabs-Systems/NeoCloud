@@ -1,0 +1,63 @@
+name: Update Shared Modules
+
+# Keeps NeoCloud on the newest shared NeoLabs code: the latest neolabs-go and
+# neolabs-flutter commits on main. Any change is committed to beta and starts
+# Release Beta explicitly (a push with this token starts no workflows).
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-shared-modules
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update neolabs-go and neolabs-flutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
+
+      - name: Update modules
+        run: |
+          set -euo pipefail
+          go get github.com/NeoLabs-Systems/neolabs-go@main
+          go mod tidy
+          latest="$(git ls-remote https://github.com/NeoLabs-Systems/neolabs-flutter.git refs/heads/main | cut -f1)"
+          test -n "$latest"
+          sed -i "/neolabs-flutter.git/{n;s/ref: .*/ref: ${latest}/}" flutter_app/pubspec.yaml
+          (cd flutter_app && flutter pub get)
+
+      - name: Check the build
+        run: |
+          go build ./...
+          go vet ./...
+          (cd flutter_app && flutter analyze --no-pub)
+
+      - name: Commit and start the beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "Shared modules are current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add go.mod go.sum flutter_app/pubspec.yaml flutter_app/pubspec.lock
+          git commit -m "chore(deps): update shared NeoLabs modules"
+          git push origin HEAD:beta
+          gh workflow run release-beta.yml --ref beta

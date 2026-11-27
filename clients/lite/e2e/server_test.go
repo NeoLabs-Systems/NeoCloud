@@ -1,7 +1,7 @@
 //go:build e2e
 
-// Package e2e runs the lite client against a real NeoCloud server spawned
-// from this repository (node server/index.js) with a throwaway data folder.
+// Package e2e runs the lite client against a real NeoCloud server built from
+// this repository, with a throwaway data folder.
 package e2e
 
 import (
@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,10 +45,41 @@ type server struct {
 func repoRoot(t *testing.T) string {
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(file), "..", "..", "..")
-	if _, err := os.Stat(filepath.Join(root, "server", "index.js")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, "cmd", "neocloud", "main.go")); err != nil {
 		t.Fatalf("NeoCloud repo not found at %s", root)
 	}
 	return root
+}
+
+var serverBuild struct {
+	once   sync.Once
+	binary string
+	err    error
+}
+
+// serverBinary builds the server of this checkout once per test run.
+func serverBinary(t *testing.T) string {
+	t.Helper()
+	serverBuild.once.Do(func() {
+		dir, err := os.MkdirTemp("", "neocloud-e2e-server-")
+		if err != nil {
+			serverBuild.err = err
+			return
+		}
+		serverBuild.binary = filepath.Join(dir, "neocloud")
+		if runtime.GOOS == "windows" {
+			serverBuild.binary += ".exe"
+		}
+		build := exec.Command("go", "build", "-o", serverBuild.binary, "./cmd/neocloud")
+		build.Dir, build.Env = repoRoot(t), append(os.Environ(), "GOWORK=off")
+		if out, err := build.CombinedOutput(); err != nil {
+			serverBuild.err = fmt.Errorf("build the server: %w\n%s", err, out)
+		}
+	})
+	if serverBuild.err != nil {
+		t.Fatal(serverBuild.err)
+	}
+	return serverBuild.binary
 }
 
 func freePort(t *testing.T) int {
@@ -68,9 +100,6 @@ func randomHex(n int) string {
 // startServer spawns the server and registers the first (admin) account.
 func startServer(t *testing.T) *server {
 	t.Helper()
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node is not installed")
-	}
 	home := t.TempDir()
 	port := freePort(t)
 	s := &server{
@@ -80,7 +109,8 @@ func startServer(t *testing.T) *server {
 		env: append(os.Environ(),
 			"NEOCLOUD_HOME="+home,
 			fmt.Sprintf("PORT=%d", port),
-			"NODE_ENV=development",
+			"NEOCLOUD_APP_DIR="+repoRoot(t),
+			"ANALYTICS_ENABLED=false",
 			"NEOCLOUD_MASTER_KEY="+randomHex(32),
 			"SESSION_SECRET="+randomHex(32),
 			"PUBLIC_URL=",
@@ -106,7 +136,7 @@ func startServer(t *testing.T) *server {
 // spawn starts the server process and waits until it answers.
 func (s *server) spawn(t *testing.T) {
 	t.Helper()
-	cmd := exec.Command("node", "server/index.js")
+	cmd := exec.Command(serverBinary(t), "serve")
 	cmd.Dir, cmd.Env = s.dir, s.env
 	cmd.Stdout, cmd.Stderr = s.logs, s.logs
 	if err := cmd.Start(); err != nil {

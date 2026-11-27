@@ -127,11 +127,7 @@ jobs:
           cache-dependency-path: |
             flutter_app/android/**/*.gradle*
             flutter_app/android/gradle/wrapper/gradle-wrapper.properties
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
       - name: Build release APK
         working-directory: flutter_app
         env:

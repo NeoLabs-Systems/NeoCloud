@@ -20,7 +20,7 @@ Future<ScannedCode?> scanQrCode(BuildContext context, {required bool Function(Sc
 enum _ScanState { priming, scanning, denied, failed }
 
 /// The camera is a dark surface in either theme.
-const NeoCloudPalette _palette = darkPalette;
+final NeoCloudPalette _palette = darkPalette;
 
 class _ScanPage extends StatefulWidget {
   const _ScanPage({required this.accept, required this.hint});

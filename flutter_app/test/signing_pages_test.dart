@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neocloud/main.dart';
 import 'package:neocloud/src/navigation/app_route.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:neolabs_flutter/neolabs_flutter.dart' show NeoAuthQrPlate;
 import 'package:neocloud/src/signing/fake_signing_api.dart';
 import 'package:neocloud/src/signing/signing.dart';
 
@@ -104,7 +104,7 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey<String>('link-qr')).first);
       await tester.pump();
-      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.byType(NeoAuthQrPlate), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey<String>('link-copy')).first);
       await tester.pump();

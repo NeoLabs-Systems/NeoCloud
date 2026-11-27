@@ -263,7 +263,7 @@ Then, cheapest first:
    profiles are embedded once and again only when they change. A clear
    winner decides.
 3. Otherwise the `text` model picks among the ten closest folders, or keeps
-   the file where it is. The prompt (`server/services/ai/organize/prompts.js`)
+   the file where it is. The prompt (`internal/ai/prompts.go`)
    gives a numbered list to choose from, makes "keep it here" the preferred
    answer when unsure, asks for a confidence, and shows a few borderline
    examples. Picks below 60 % confidence are not suggested.

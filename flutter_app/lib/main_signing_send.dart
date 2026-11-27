@@ -470,7 +470,7 @@ class _LinkTileState extends State<_LinkTile> {
             if (_qr)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Center(child: QrImageView(data: widget.url, size: 180, backgroundColor: Colors.white, padding: const EdgeInsets.all(8))),
+                child: Center(child: NeoAuthQrPlate(size: 196, payload: widget.url, preparing: false)),
               ),
           ],
         ),

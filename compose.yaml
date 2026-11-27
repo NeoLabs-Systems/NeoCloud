@@ -1,4 +1,5 @@
 # NeoCloud with Docker Compose: docker compose up -d
+# (Building from a checkout needs the committed web client, flutter_app/build/web.)
 # Then open http://localhost:3344/app on this host and create the first account
 # (it becomes the admin). For other machines, see `ports` below.
 # Back up the master key right after: docker compose exec neocloud neocloud keys export

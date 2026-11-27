@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show compute;
+import 'package:neolabs_flutter/neolabs_flutter.dart'
+    show NeoAuthClient, QrChallengeAction;
 
 import '../files/upload_queue.dart';
 import '../handoff/handoff_models.dart';
@@ -28,6 +30,7 @@ part 'backend_client_office.dart';
 part 'backend_client_photos.dart';
 part 'backend_client_signing.dart';
 part 'backend_client_signing_account.dart';
+part 'backend_client_updates.dart';
 part 'backend_client_vaults.dart';
 
 /// The code of the one 401 a remotely signed-out device gets.
@@ -169,12 +172,28 @@ class BackendClient {
     }
   }
 
+  /// The shared NeoLabs auth endpoints over this client. The server address
+  /// they are called with is [baseUrl], which [uri] already applies.
+  NeoAuthClient get _neoAuth => NeoAuthClient(
+    (_, path, body, {allowUnauthorized = false}) async => _map(
+      path.startsWith('/api/account/qr-login/')
+          ? await _approvalRequest('POST', path, json: body)
+          // A refused sign-in is not an expired session.
+          : await _request(
+              'POST',
+              path,
+              json: body,
+              expireOn401: !path.startsWith('/api/auth/'),
+            ),
+    ),
+  );
+
   // Auth
 
   Future<Map<String, dynamic>> authStatus() async => _map(await _request('GET', '/api/auth/status', expireOn401: false));
 
-  Future<Map<String, dynamic>> login(String username, String password) async =>
-      _map(await _request('POST', '/api/auth/login', json: {'username': username, 'password': password}, expireOn401: false));
+  Future<Map<String, dynamic>> login(String username, String password) =>
+      _neoAuth.login(baseUrl, username, password);
 
   Future<Map<String, dynamic>> loginTwoFactor(String code) async =>
       _map(await _request('POST', '/api/auth/login/2fa', json: {'code': code}, expireOn401: false));
@@ -183,11 +202,7 @@ class BackendClient {
     required String username,
     required String email,
     required String password,
-  }) async => _map(await _request('POST', '/api/auth/register', json: {
-    'username': username,
-    'email': email,
-    'password': password,
-  }, expireOn401: false));
+  }) => _neoAuth.register(baseUrl, username, email, password);
 
   /// Security key sign-in: options for `navigator.credentials.get`, then the
   /// assertion back. Without [username] any discoverable key (passkey) works.
@@ -213,53 +228,63 @@ class BackendClient {
 
   // QR sign-in, the signed-out browser's side
 
-  Future<QrLoginChallenge> createQrLoginChallenge(Map<String, Object?> requestMetadata) async => QrLoginChallenge.fromJson(
-    _map(await _request('POST', '/api/auth/qr-login/challenge', json: {'requestMetadata': requestMetadata}, expireOn401: false)),
+  Future<QrLoginChallenge> createQrLoginChallenge(
+    Map<String, dynamic> requestMetadata,
+  ) async => QrLoginChallenge.fromJson(
+    await _neoAuth.createQrChallenge(baseUrl, requestMetadata),
+  );
+
+  Future<Map<String, dynamic>> _qrAction(
+    QrLoginChallenge challenge,
+    QrChallengeAction action, {
+    String? knownStatus,
+  }) => _neoAuth.qrChallengeAction(
+    baseUrl,
+    challenge.challengeId,
+    challenge.pollToken,
+    action,
+    knownStatus: knownStatus,
   );
 
   /// With [knownStatus] the server holds the request until the status
   /// differs from it (up to 25 s).
-  Future<Map<String, dynamic>> qrLoginStatus(QrLoginChallenge challenge, {String? knownStatus}) async => _map(await _request(
-    'POST',
-    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/status',
-    json: {'token': challenge.pollToken, 'knownStatus': ?knownStatus},
-    expireOn401: false,
-  ));
-
-  Future<void> cancelQrLogin(QrLoginChallenge challenge) => _request(
-    'POST',
-    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/cancel',
-    json: {'token': challenge.pollToken},
-    expireOn401: false,
+  Future<Map<String, dynamic>> qrLoginStatus(
+    QrLoginChallenge challenge, {
+    String? knownStatus,
+  }) => _qrAction(
+    challenge,
+    QrChallengeAction.status,
+    knownStatus: knownStatus,
   );
 
+  Future<void> cancelQrLogin(QrLoginChallenge challenge) =>
+      _qrAction(challenge, QrChallengeAction.cancel);
+
   /// Answers like [login] once the phone approved, with the session cookie.
-  Future<Map<String, dynamic>> claimQrLogin(QrLoginChallenge challenge) async => _map(await _request(
-    'POST',
-    '/api/auth/qr-login/challenge/${Uri.encodeComponent(challenge.challengeId)}/claim',
-    json: {'token': challenge.pollToken},
-    expireOn401: false,
-  ));
+  Future<Map<String, dynamic>> claimQrLogin(QrLoginChallenge challenge) =>
+      _qrAction(challenge, QrChallengeAction.claim);
 
   // QR sign-in, the signed-in phone's side (session or device token)
 
   /// Marks the scanned code as seen and returns what asks to sign in.
-  Future<QrLoginPreview> resolveQrLogin(String challengeId, String secret, Map<String, Object?> scannerMetadata) async =>
-      QrLoginPreview.fromJson(_map(await _approvalRequest('POST', '/api/account/qr-login/resolve', json: {
-        'challengeId': challengeId,
-        'secret': secret,
-        'scannerMetadata': scannerMetadata,
-      })));
+  Future<QrLoginPreview> resolveQrLogin(
+    String challengeId,
+    String secret,
+    Map<String, dynamic> scannerMetadata,
+  ) async => QrLoginPreview.fromJson(
+    await _neoAuth.resolveQr(baseUrl, challengeId, secret, scannerMetadata),
+  );
 
-  Future<QrLoginPreview> approveQrLogin(String challengeId, String secret, Map<String, Object?> approvalMetadata) async =>
-      QrLoginPreview.fromJson(_map(await _approvalRequest('POST', '/api/account/qr-login/approve', json: {
-        'challengeId': challengeId,
-        'secret': secret,
-        'approvalMetadata': approvalMetadata,
-      })));
+  Future<QrLoginPreview> approveQrLogin(
+    String challengeId,
+    String secret,
+    Map<String, dynamic> approvalMetadata,
+  ) async => QrLoginPreview.fromJson(
+    await _neoAuth.approveQr(baseUrl, challengeId, secret, approvalMetadata),
+  );
 
   Future<void> declineQrLogin(String challengeId, String secret) =>
-      _approvalRequest('POST', '/api/account/qr-login/decline', json: {'challengeId': challengeId, 'secret': secret});
+      _neoAuth.declineQr(baseUrl, challengeId, secret);
 
   // Files
 

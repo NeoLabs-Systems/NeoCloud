@@ -1,11 +1,12 @@
 name: Release Beta
 
-# Every push to beta publishes a prerelease vX.Y.Z-beta.N with the lite client
-# binaries, the Android APK and the Docker images (tag :beta).
+# Every push to beta publishes a prerelease vX.Y.Z-beta.N with the server
+# binaries and signed runtime archives, the lite client apps, the Android APK
+# and the Docker images (tag :beta).
 #
-# The release commit carries the version stamp and server/public, the web
-# client built from the released source, so the tag is complete for a git
-# install (install.sh, `neocloud update --tag`) as well as for the images.
+# The release commit carries the version stamp and flutter_app/build/web, the
+# web client built from the released source, so the tag is complete.
+# package.json at that tag is also what hands Node.js installations over.
 #
 # Its push uses GITHUB_TOKEN, which does not start other workflows, so the
 # release commit triggers neither CI nor another release; the actor check
@@ -23,6 +24,7 @@ on:
 permissions:
   contents: write
   packages: write
+  actions: read
 
 # Releases queue up instead of cancelling one another: a cancelled run could
 # leave a pushed tag without its release assets.
@@ -35,60 +37,85 @@ jobs:
     name: Tag beta release
     if: github.event_name == 'workflow_dispatch' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
       release_tag: ${{ steps.version.outputs.release_tag }}
       release_sha: ${{ steps.sha.outputs.release_sha }}
+    env:
+      GOWORK: 'off'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: beta
 
-      - uses: actions/setup-node@v4
+      - name: Check the update signing key
+        uses: ./.github/actions/check-signing-key
         with:
-          node-version: 22
+          private_key: ${{ secrets.NEOCLOUD_RUNTIME_SIGNING_PRIVATE_KEY }}
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.35.5'
-          cache: true
+      - name: Wait for CI on this commit
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          for attempt in $(seq 1 120); do
+            if ! runs="$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT_SHA&per_page=10")"; then
+              echo "Could not fetch the CI state (attempt $attempt/120); retrying."
+              sleep 15
+              continue
+            fi
+            state="$(jq -r --arg sha "$COMMIT_SHA" '
+              [.workflow_runs[] | select(.head_sha == $sha)] | first |
+              if . == null then "missing" else (.status + ":" + (.conclusion // "")) end
+            ' <<< "$runs")"
+            case "$state" in
+              completed:success)
+                echo "CI passed for $COMMIT_SHA."
+                exit 0
+                ;;
+              completed:*)
+                echo "::error::CI concluded ${state#completed:} for $COMMIT_SHA. Refusing to release."
+                exit 1
+                ;;
+              missing|*)
+                echo "CI state for $COMMIT_SHA: $state (attempt $attempt/120)."
+                sleep 15
+                ;;
+            esac
+          done
+          echo "::error::Timed out waiting for CI on $COMMIT_SHA; refusing to release."
+          exit 1
+
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-flutter@1cd3668653c972a8c10cffcf52be95638bba74f8
 
       - name: Configure Git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Resolve next beta version
+      - name: Resolve and set the next beta version
         id: version
         run: |
           git fetch --tags --force
-          node scripts/next_beta_version.js >> "$GITHUB_OUTPUT"
+          go run ./cmd/neocloud-release resolve-version --channel beta --github-output
+          go run ./cmd/neocloud-release set-version "$(go run ./cmd/neocloud-release resolve-version --channel beta)"
 
-      - name: Set package version
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: npm version "$VERSION" --no-git-tag-version --allow-same-version
-
-      - name: Build bundled web client
-        run: npm run flutter:build:web
-
-      - name: Verify the bundle does not point at a dev server
-        run: |
-          if grep -Eq "localhost:3344|127\.0\.0\.1:3344" server/public/main.dart.js; then
-            echo "::error::Bundled web client still points at a local dev server."
-            exit 1
-          fi
+      - uses: ./.github/actions/build-web
 
       - name: Commit and tag
         env:
           RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
         run: |
-          git add package.json package-lock.json
-          git add -f server/public
+          git add internal/buildinfo/version.go package.json package-lock.json
+          git add -f flutter_app/build/web
           # A rerun after a failed push finds the version already bumped.
           git diff --cached --quiet || git commit -m "chore(beta-release): ${RELEASE_TAG} [skip ci]"
+          git checkout -- .
           # Retry when beta moves between checkout and push (a merge landing
           # during the build). The next push to beta releases those commits.
           # The release commit only touches the version stamp and the bundle,
@@ -106,7 +133,7 @@ jobs:
           done
           exit 1
 
-      - name: Create prerelease
+      - name: Create draft prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
@@ -114,16 +141,27 @@ jobs:
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
             || gh release create "$RELEASE_TAG" \
                  --title "Beta ${RELEASE_TAG}" \
-                 --generate-notes --prerelease --verify-tag
+                 --generate-notes --draft --prerelease --latest=false --verify-tag
 
       - name: Add download buttons to the release notes
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
-        run: node scripts/release_download_notes.js --tag "$RELEASE_TAG"
+        run: go run ./cmd/neocloud-release release-download --tag "$RELEASE_TAG"
 
       - id: sha
         run: echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-server:
+    name: Build server
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_build-server.yml
+    secrets: inherit
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
+      release_tag: ${{ needs.release.outputs.release_tag }}
 
   build-clients:
     name: Build clients
@@ -147,10 +185,38 @@ jobs:
       release_tag: ${{ needs.release.outputs.release_tag }}
 
   publish-release-assets:
-    name: Publish release assets
-    needs: [release, build-clients]
+    name: Publish release
+    if: ${{ !cancelled() && needs.release.result == 'success' && needs.build-server.result == 'success' }}
+    needs: [release, build-server, build-clients]
     permissions:
       contents: write
     uses: ./.github/workflows/_publish-release-assets.yml
     with:
       release_tag: ${{ needs.release.outputs.release_tag }}
+      release_sha: ${{ needs.release.outputs.release_sha }}
+      prerelease: true
+
+  notify-discord:
+    name: Notify Discord
+    if: always() && needs.release.result == 'success' && needs.publish-release-assets.result == 'success' && needs.release.outputs.release_tag != ''
+    needs:
+      - release
+      - publish-release-assets
+    uses: ./.github/workflows/discord-release.yml
+    with:
+      release_tag: ${{ needs.release.outputs.release_tag }}
+    secrets:
+      DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+
+  discard-draft-release:
+    name: Discard the draft of a cancelled run
+    if: ${{ cancelled() && needs.release.outputs.release_tag != '' }}
+    needs: [release, build-server, publish-release-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.release_sha }}
+      - uses: ./.github/actions/discard-draft-release
+        with:
+          release_tag: ${{ needs.release.outputs.release_tag }}

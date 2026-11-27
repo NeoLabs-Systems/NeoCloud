@@ -6,14 +6,31 @@ part of 'main.dart';
 
 enum SettingsScope { account, preferences }
 
-enum SettingsPage { profile, signingProfile, security, devices, sharedLinks, storage, imports, cloudStorage, ai, general, cameraUpload }
+enum SettingsPage {
+  profile,
+  signingProfile,
+  security,
+  devices,
+  sharedLinks,
+  storage,
+  imports,
+  cloudStorage,
+  ai,
+  general,
+  cameraUpload,
+}
 
 extension SettingsScopeInfo on SettingsScope {
-  String get label => this == SettingsScope.account ? appStrings.settingsScopeAccount : appStrings.settingsScopeApp;
+  String get label => this == SettingsScope.account
+      ? appStrings.settingsScopeAccount
+      : appStrings.settingsScopeApp;
 }
 
 extension SettingsPageInfo on SettingsPage {
-  SettingsScope get scope => this == SettingsPage.general || this == SettingsPage.cameraUpload ? SettingsScope.preferences : SettingsScope.account;
+  SettingsScope get scope =>
+      this == SettingsPage.general || this == SettingsPage.cameraUpload
+      ? SettingsScope.preferences
+      : SettingsScope.account;
 
   /// Camera upload is available only on supported devices.
   bool visibleFor(NeoCloudController controller) {
@@ -119,7 +136,10 @@ extension SettingsPageInfo on SettingsPage {
 
 /// The phone signs out by forgetting its token, after asking: connecting
 /// again means signing in once more.
-Future<void> _confirmDisconnect(BuildContext context, NeoCloudController controller) => _confirmDelete(
+Future<void> _confirmDisconnect(
+  BuildContext context,
+  NeoCloudController controller,
+) => _confirmDelete(
   context,
   title: appStrings.disconnectTitle,
   message: appStrings.disconnectMessage(controller.connectedServer),
@@ -148,49 +168,55 @@ class _SettingsPanelState extends State<SettingsPanel> {
     super.dispose();
   }
 
-  Widget _nav({required SettingsPage? selected, required bool compact}) => _SettingsNav(
-    controller: controller,
-    search: _search,
-    onSearch: () => setState(() {}),
-    selected: selected,
-    compact: compact,
-    onOpened: () => setState(_search.clear),
-  );
+  Widget _nav({required SettingsPage? selected, required bool compact}) =>
+      _SettingsNav(
+        controller: controller,
+        search: _search,
+        onSearch: () => setState(() {}),
+        selected: selected,
+        compact: compact,
+        onOpened: () => setState(_search.clear),
+      );
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final visible = SettingsPage.values.where((page) => page.visibleFor(controller)).toList();
+        final visible = SettingsPage.values
+            .where((page) => page.visibleFor(controller))
+            .toList();
         final selected = controller.settingsPage;
         final page = visible.contains(selected) ? selected : null;
-        if (constraints.maxWidth >= 760) {
-          final shown = page ?? visible.first;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Container(
-                width: 268,
-                decoration: BoxDecoration(
-                  color: _bgSecondary,
-                  border: Border(right: BorderSide(color: _border)),
-                ),
-                child: _nav(selected: shown, compact: false),
-              ),
-              Expanded(
-                child: _SettingsPageView(key: ValueKey<SettingsPage>(shown), controller: controller, page: shown),
-              ),
-            ],
-          );
-        }
-        if (page == null) return _nav(selected: null, compact: true);
+        final compact = constraints.maxWidth < 760;
+        final shown = page ?? visible.first;
+        final showNavigation = compact && page == null;
+        final layout = NeoSettingsLayout(
+          navigation: _nav(
+            selected: showNavigation ? null : shown,
+            compact: compact,
+          ),
+          content: _SettingsPageView(
+            key: ValueKey<SettingsPage>(shown),
+            controller: controller,
+            page: shown,
+            onBack: compact && page != null
+                ? () => controller.setSettingsPage(null)
+                : null,
+          ),
+          showNavigationOnCompact: showNavigation,
+          railColor: _bgSecondary,
+          borderColor: _border,
+          breakpoint: 760,
+          railWidth: 268,
+        );
+        if (!compact || page == null) return layout;
         // On a phone a page sits on top of the list: back returns to it.
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) controller.setSettingsPage(null);
           },
-          child: _SettingsPageView(key: ValueKey<SettingsPage>(page), controller: controller, page: page, onBack: () => controller.setSettingsPage(null)),
+          child: layout,
         );
       },
     );
@@ -220,20 +246,32 @@ class _SettingsNav extends StatelessWidget {
 
   bool _matches(SettingsPage page) {
     final query = search.text.trim().toLowerCase();
-    return query.isEmpty || '${page.label} ${page.description}'.toLowerCase().contains(query);
+    return query.isEmpty ||
+        '${page.label} ${page.description}'.toLowerCase().contains(query);
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = SettingsPage.values.where((page) => page.visibleFor(controller) && _matches(page)).toList();
+    final pages = SettingsPage.values
+        .where((page) => page.visibleFor(controller) && _matches(page))
+        .toList();
     return ListView(
-      padding: compact ? _pagePadding(context) : const EdgeInsets.fromLTRB(14, 26, 14, 24),
+      padding: compact
+          ? _pagePadding(context)
+          : const EdgeInsets.fromLTRB(14, 26, 14, 24),
       children: <Widget>[
         Padding(
           padding: EdgeInsets.fromLTRB(compact ? 2 : 10, 0, 0, 14),
           child: Text(
             appStrings.settingsTitle,
-            style: compact ? _displayTitleStyle(26) : TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: _textPrimary),
+            style: compact
+                ? _displayTitleStyle(26)
+                : TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    color: _textPrimary,
+                  ),
           ),
         ),
         _SearchField(
@@ -247,12 +285,23 @@ class _SettingsNav extends StatelessWidget {
         ),
         // NeoAgent leads its phone settings with the QR scanner: approving
         // a browser or a desktop sign-in is what the phone is for.
-        if (compact && qrScannerSupported && controller.usesDeviceLogin && search.text.isEmpty) ...<Widget>[
+        if (compact &&
+            qrScannerSupported &&
+            controller.usesDeviceLogin &&
+            search.text.isEmpty) ...<Widget>[
           const SizedBox(height: 16),
           _ScanQrTile(controller: controller),
         ],
-        for (final scope in SettingsScope.values) ..._scopeSection(scope, pages.where((page) => page.scope == scope).toList()),
-        if (pages.isEmpty) Padding(padding: EdgeInsets.fromLTRB(compact ? 4 : 10, 18, 4, 0), child: _EmptyText(appStrings.paletteNothing)),
+        for (final scope in SettingsScope.values)
+          ..._scopeSection(
+            scope,
+            pages.where((page) => page.scope == scope).toList(),
+          ),
+        if (pages.isEmpty)
+          Padding(
+            padding: EdgeInsets.fromLTRB(compact ? 4 : 10, 18, 4, 0),
+            child: _EmptyText(appStrings.paletteNothing),
+          ),
         // NeoAgent's phone settings end with signing out, one tap from the
         // list; the web keeps Sign out on Profile like NeoRouter (the phone
         // has it there too).
@@ -260,13 +309,21 @@ class _SettingsNav extends StatelessWidget {
           const SizedBox(height: 22),
           if (compact)
             _SettingsCardList(
-              children: <Widget>[_SettingsListTile(icon: Icons.logout_rounded, title: appStrings.disconnect, onTap: () => unawaited(_confirmDisconnect(context, controller)))],
+              children: <Widget>[
+                _SettingsListTile(
+                  icon: Icons.logout_rounded,
+                  title: appStrings.disconnect,
+                  onTap: () =>
+                      unawaited(_confirmDisconnect(context, controller)),
+                ),
+              ],
             )
           else
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: OutlinedButton.icon(
-                onPressed: () => unawaited(_confirmDisconnect(context, controller)),
+                onPressed: () =>
+                    unawaited(_confirmDisconnect(context, controller)),
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: Text(appStrings.disconnect),
               ),
@@ -289,23 +346,48 @@ class _SettingsNav extends StatelessWidget {
         scope.label.toUpperCase(),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.geistMono(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.4, color: _textMuted),
+        style: GoogleFonts.geistMono(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.4,
+          color: _textMuted,
+        ),
       ),
     );
     if (!compact) {
-      return <Widget>[header, for (final page in pages) _SettingsNavItem(page: page, selected: page == selected, onTap: () => _openPage(page))];
+      return <Widget>[
+        header,
+        for (final page in pages)
+          _SettingsNavItem(
+            page: page,
+            selected: page == selected,
+            onTap: () => _openPage(page),
+          ),
+      ];
     }
     return <Widget>[
       header,
       _SettingsCardList(
-        children: <Widget>[for (final page in pages) _SettingsListTile(icon: page.icon, title: page.label, onTap: () => _openPage(page))],
+        children: <Widget>[
+          for (final page in pages)
+            _SettingsListTile(
+              icon: page.icon,
+              title: page.label,
+              onTap: () => _openPage(page),
+            ),
+        ],
       ),
     ];
   }
 }
 
 class _SettingsPageView extends StatelessWidget {
-  const _SettingsPageView({super.key, required this.controller, required this.page, this.onBack});
+  const _SettingsPageView({
+    super.key,
+    required this.controller,
+    required this.page,
+    this.onBack,
+  });
 
   final NeoCloudController controller;
   final SettingsPage page;
@@ -336,7 +418,10 @@ class _SettingsPageView extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
                       onPressed: onBack,
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 16,
+                      ),
                       label: Text(appStrings.settingsTitle),
                     ),
                   ),
@@ -392,13 +477,18 @@ class _SettingsPageHeader extends StatelessWidget {
     final local = page == SettingsPage.cameraUpload;
     return _SettingsScopePill(
       icon: local ? Icons.devices_outlined : Icons.cloud_outlined,
-      label: local ? appStrings.settingsDeviceHint : appStrings.settingsAccountHint,
+      label: local
+          ? appStrings.settingsDeviceHint
+          : appStrings.settingsAccountHint,
     );
   }
 
   /// Only the preference pages save as they change; the others say so when
   /// a save is in flight or failed.
-  bool get _showSaveStatus => page.scope == SettingsScope.preferences || controller.isSavingSettings || controller.settingsSaveError != null;
+  bool get _showSaveStatus =>
+      page.scope == SettingsScope.preferences ||
+      controller.isSavingSettings ||
+      controller.settingsSaveError != null;
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +500,10 @@ class _SettingsPageHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(page.label, style: _displayTitleStyle(compact ? 24 : 30)),
         const SizedBox(height: 8),
-        Text(page.description, style: TextStyle(color: _textSecondary, height: 1.5)),
+        Text(
+          page.description,
+          style: TextStyle(color: _textSecondary, height: 1.5),
+        ),
       ],
     );
     final scope = _scopePill();
@@ -428,7 +521,12 @@ class _SettingsPageHeader extends StatelessWidget {
             children: <Widget>[
               heading,
               const SizedBox(height: 14),
-              Wrap(spacing: 14, runSpacing: 10, crossAxisAlignment: WrapCrossAlignment.center, children: <Widget>[scope, ?status]),
+              Wrap(
+                spacing: 14,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[scope, ?status],
+              ),
             ],
           );
         }
@@ -441,7 +539,10 @@ class _SettingsPageHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 scope,
-                if (status != null) ...<Widget>[const SizedBox(height: 10), status],
+                if (status != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  status,
+                ],
               ],
             ),
           ],
@@ -476,12 +577,25 @@ class _SettingsSaveStatus extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           if (saving)
-            SizedBox.square(dimension: 12, child: CircularProgressIndicator(strokeWidth: 1.6, color: _textMuted))
+            SizedBox.square(
+              dimension: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                color: _textMuted,
+              ),
+            )
           else
-            Icon(failed ? Icons.error_outline_rounded : Icons.info_outline_rounded, size: 15, color: failed ? _danger : _textSecondary),
+            Icon(
+              failed ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+              size: 15,
+              color: failed ? _danger : _textSecondary,
+            ),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(label, style: TextStyle(color: _textMuted, fontSize: 12.5)),
+            child: Text(
+              label,
+              style: TextStyle(color: _textMuted, fontSize: 12.5),
+            ),
           ),
         ],
       ),
@@ -490,7 +604,11 @@ class _SettingsSaveStatus extends StatelessWidget {
 }
 
 class _SettingsNavItem extends StatelessWidget {
-  const _SettingsNavItem({required this.page, required this.selected, required this.onTap});
+  const _SettingsNavItem({
+    required this.page,
+    required this.selected,
+    required this.onTap,
+  });
 
   final SettingsPage page;
   final bool selected;
@@ -510,14 +628,22 @@ class _SettingsNavItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: <Widget>[
-                Icon(page.icon, size: 18, color: selected ? _accent : _textMuted),
+                Icon(
+                  page.icon,
+                  size: 18,
+                  color: selected ? _accent : _textMuted,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     page.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: selected ? _textPrimary : _textSecondary),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected ? _textPrimary : _textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -550,7 +676,10 @@ class _SettingsScopePill extends StatelessWidget {
           Icon(icon, size: 14, color: _textSecondary),
           const SizedBox(width: 7),
           Flexible(
-            child: Text(label, style: TextStyle(color: _textSecondary, fontSize: 12.5)),
+            child: Text(
+              label,
+              style: TextStyle(color: _textSecondary, fontSize: 12.5),
+            ),
           ),
         ],
       ),
@@ -561,7 +690,12 @@ class _SettingsScopePill extends StatelessWidget {
 /// A titled block of settings: a heading and optional help line, then its
 /// rows on one surface, separated by hairlines.
 class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({required this.title, required this.children, this.description, this.trailing});
+  const _SettingsGroup({
+    required this.title,
+    required this.children,
+    this.description,
+    this.trailing,
+  });
 
   final String title;
   final String? description;
@@ -569,54 +703,35 @@ class _SettingsGroup extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) {
-    final body = Padding(
-      padding: const EdgeInsets.only(bottom: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _SettingsHeading(title: title, description: description, trailing: trailing),
-          if (children.isNotEmpty) _SettingsCardList(children: children),
-        ],
-      ),
-    );
-    return body;
-  }
+  Widget build(BuildContext context) => NeoSettingsGroup(
+    palette: _palette,
+    title: title,
+    description: description,
+    trailing: trailing,
+    children: children,
+  );
 }
 
 /// The heading over a group of settings, also used over content that brings
 /// its own layout, like the messaging channel grid.
 class _SettingsHeading extends StatelessWidget {
-  const _SettingsHeading({required this.title, this.description, this.trailing});
+  const _SettingsHeading({
+    required this.title,
+    this.description,
+    this.trailing,
+  });
 
   final String title;
   final String? description;
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 0, 0, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(title, style: _sectionTitleStyle()),
-                if (description != null) ...<Widget>[
-                  const SizedBox(height: 3),
-                  Text(description!, style: TextStyle(fontSize: 13, color: _textSecondary, height: 1.45)),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null) ...<Widget>[const SizedBox(width: 12), trailing!],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => NeoSettingsHeading(
+    palette: _palette,
+    title: title,
+    description: description,
+    trailing: trailing,
+  );
 }
 
 /// Rows on a single card, split by hairlines.
@@ -626,23 +741,20 @@ class _SettingsCardList extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) {
-    return _AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          for (var i = 0; i < children.length; i++) ...<Widget>[if (i > 0) Divider(height: 1, thickness: 1, color: _border), children[i]],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      NeoSettingsCard(palette: _palette, children: children);
 }
 
 /// One setting: label and help on the left, its control on the right. On a
 /// narrow screen the control moves under the label.
 class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({required this.label, this.description, this.control, this.fillControl = false, this.tag});
+  const _SettingsRow({
+    required this.label,
+    this.description,
+    this.control,
+    this.fillControl = false,
+    this.tag,
+  });
 
   final String label;
   final String? description;
@@ -657,56 +769,14 @@ class _SettingsRow extends StatelessWidget {
   final String? tag;
 
   @override
-  Widget build(BuildContext context) {
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            Text(
-              label,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textPrimary),
-            ),
-            if (tag != null) _SettingsTag(label: tag!),
-          ],
-        ),
-        if (description != null) ...<Widget>[
-          const SizedBox(height: 3),
-          Text(description!, style: TextStyle(fontSize: 13, color: _textSecondary, height: 1.45)),
-        ],
-      ],
-    );
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final control = this.control;
-          if (control == null) return text;
-          if (constraints.maxWidth < 560) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                text,
-                const SizedBox(height: 12),
-                if (fillControl) control else Align(alignment: Alignment.centerLeft, child: control),
-              ],
-            );
-          }
-          return Row(
-            children: <Widget>[
-              Expanded(child: text),
-              const SizedBox(width: 24),
-              if (fillControl) SizedBox(width: 300, child: control) else control,
-            ],
-          );
-        },
-      ),
-    );
-    return row;
-  }
+  Widget build(BuildContext context) => NeoSettingsRow(
+    palette: _palette,
+    label: label,
+    description: description,
+    control: control,
+    fillControl: fillControl,
+    tag: tag,
+  );
 }
 
 /// Free-form content inside a group, for forms and lists.
@@ -716,7 +786,8 @@ class _SettingsBlock extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(20), child: child);
+  Widget build(BuildContext context) =>
+      Padding(padding: const EdgeInsets.all(20), child: child);
 }
 
 /// Small neutral tag next to a label (NeoRouter's MetaPill).
@@ -729,10 +800,17 @@ class _SettingsTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(AppRadius.tag)),
+      decoration: BoxDecoration(
+        color: _bgTertiary,
+        borderRadius: BorderRadius.circular(AppRadius.tag),
+      ),
       child: Text(
         label,
-        style: TextStyle(color: _textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: _textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -740,7 +818,11 @@ class _SettingsTag extends StatelessWidget {
 
 /// A row that opens something, for the page list on a phone.
 class _SettingsListTile extends StatelessWidget {
-  const _SettingsListTile({required this.icon, required this.title, required this.onTap});
+  const _SettingsListTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String title;
@@ -757,14 +839,21 @@ class _SettingsListTile extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(color: _bgTertiary, borderRadius: BorderRadius.circular(9)),
+              decoration: BoxDecoration(
+                color: _bgTertiary,
+                borderRadius: BorderRadius.circular(9),
+              ),
               child: Icon(icon, size: 17, color: _textSecondary),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _textPrimary),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: _textPrimary,
+                ),
               ),
             ),
             Icon(Icons.chevron_right_rounded, size: 20, color: _textMuted),
@@ -777,7 +866,11 @@ class _SettingsListTile extends StatelessWidget {
 
 /// A one-of-a-few choice; the theme gives it NeoRouter's look.
 class _SettingsChoice<T extends Object> extends StatelessWidget {
-  const _SettingsChoice({required this.value, required this.options, required this.onChanged});
+  const _SettingsChoice({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
 
   final T value;
   final List<(T, String)> options;
@@ -787,10 +880,15 @@ class _SettingsChoice<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     final onChanged = this.onChanged;
     return SegmentedButton<T>(
-      segments: <ButtonSegment<T>>[for (final (option, label) in options) ButtonSegment<T>(value: option, label: Text(label))],
+      segments: <ButtonSegment<T>>[
+        for (final (option, label) in options)
+          ButtonSegment<T>(value: option, label: Text(label)),
+      ],
       selected: <T>{value},
       showSelectedIcon: false,
-      onSelectionChanged: onChanged == null ? null : (selection) => onChanged(selection.first),
+      onSelectionChanged: onChanged == null
+          ? null
+          : (selection) => onChanged(selection.first),
     );
   }
 }

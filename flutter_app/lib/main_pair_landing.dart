@@ -58,41 +58,40 @@ class PairLandingView extends StatelessWidget {
   Widget build(BuildContext context) {
     final code = controller.pendingPairCode ?? '';
     final link = parsePairingLink(pairingWebLink(_server, code).toString());
-    return _ControlSurfaceBackdrop(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: _EntranceMotion(
-                child: _GlassSurface(
-                  width: 420,
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Center(child: _BrandLockup(logoSize: 44, showName: false)),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(appStrings.pairLandingTitle, style: _displayTitleStyle(24)),
-                      const SizedBox(height: AppSpacing.sm),
-                      if (link == null) ...<Widget>[
-                        _InlineNote(message: appStrings.pairLandingInvalid),
-                        const SizedBox(height: AppSpacing.lg),
-                        FilledButton(onPressed: controller.finishPairLanding, child: Text(appStrings.openNeoCloud)),
-                      ] else if (_onPhoneBrowser)
-                        ..._phone(link)
-                      else
-                        ..._computer(),
-                    ],
-                  ),
-                ),
+    final compact = MediaQuery.sizeOf(context).width < AppBreakpoints.mobile;
+    return NeoAuthPage(
+      palette: _palette,
+      compact: compact,
+      children: <Widget>[
+        NeoAuthCard(
+          palette: _palette,
+          compact: compact,
+          mark: const NeoCloudMark(size: 76),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                appStrings.pairLandingTitle,
+                textAlign: TextAlign.center,
+                style: _displayTitleStyle(24),
               ),
-            ),
+              const SizedBox(height: AppSpacing.md),
+              if (link == null) ...<Widget>[
+                _InlineNote(message: appStrings.pairLandingInvalid),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton(
+                  onPressed: controller.finishPairLanding,
+                  child: Text(appStrings.openNeoCloud),
+                ),
+              ] else if (_onPhoneBrowser)
+                ..._phone(link)
+              else
+                ..._computer(),
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

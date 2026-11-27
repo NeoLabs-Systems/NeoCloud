@@ -1,0 +1,101 @@
+name: Reusable server builds
+
+# The neocloud binaries install.sh downloads and the signed runtime archives an
+# install updates itself from. The web client comes from the released commit.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build
+        required: true
+        type: string
+      release_tag:
+        description: Release tag the builds are attached to (v1.2.3 or v1.2.3-beta.0)
+        required: true
+        type: string
+    secrets:
+      NEOCLOUD_RUNTIME_SIGNING_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  server:
+    name: Server binaries and runtime archives
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: NeoLabs-Systems/neolabs-go/.github/actions/setup-go@1cd3668653c972a8c10cffcf52be95638bba74f8
+
+      - name: Check the released tree
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "v$(go run ./cmd/neocloud-release version)" = "$RELEASE_TAG"
+          go run ./cmd/neocloud-release check-web
+
+      - name: Build binaries
+        run: |
+          set -euo pipefail
+          for target in \
+            linux/amd64:linux-x64 \
+            linux/arm64:linux-arm64 \
+            darwin/amd64:macos-x64 \
+            darwin/arm64:macos-arm64
+          do
+            os_arch="${target%%:*}"
+            CGO_ENABLED=0 GOOS="${os_arch%/*}" GOARCH="${os_arch#*/}" \
+              go build -trimpath -ldflags "-s -w" -o "dist/neocloud-cli-${target##*:}" ./cmd/neocloud
+          done
+
+      - name: Build signed runtime archives
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          NEOCLOUD_RUNTIME_SIGNING_PRIVATE_KEY: ${{ secrets.NEOCLOUD_RUNTIME_SIGNING_PRIVATE_KEY }}
+        run: go run ./cmd/neocloud-release runtime-bundles --version "$RELEASE_TAG"
+
+      # An install started from the published files: the archive holds what the
+      # server needs to answer.
+      - name: Smoke test the packaged server
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          smoke="$RUNNER_TEMP/smoke"
+          mkdir -p "$smoke"
+          unzip -q "dist/neocloud-runtime-linux-x64-${version}.zip" -d "$smoke"
+          NEOCLOUD_HOME="$smoke/home" PORT=43991 ANALYTICS_ENABLED=false "$smoke/app/bin/neocloud" serve > "$smoke/server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:43991/api/health; then break; fi
+            if [ "$attempt" = 30 ]; then cat "$smoke/server.log"; exit 1; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:43991/api/version | grep -F "\"version\":\"${version}\""
+          curl -fsS http://127.0.0.1:43991/app/ | grep -q '<base href="/app/">'
+          curl -fsS http://127.0.0.1:43991/ | grep -qi neocloud
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-bundle
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Attach to the release
+        uses: ./.github/actions/attach-release-assets
+        with:
+          release_tag: ${{ inputs.release_tag }}
+          files: |
+            dist/neocloud-cli-*
+            dist/neocloud-runtime-*.zip
+            dist/neocloud-runtime-manifest-*.json
+            dist/neocloud-runtime-manifest-*.json.sig

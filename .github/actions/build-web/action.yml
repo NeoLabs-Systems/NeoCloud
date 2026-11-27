@@ -1,0 +1,24 @@
+name: Build web client
+description: >
+  Builds the Flutter web client into flutter_app/build/web (served at /app) and
+  checks that it is self-contained. Requires Flutter and Go set up first.
+
+runs:
+  using: composite
+  steps:
+    - name: Build bundled web client
+      shell: bash
+      working-directory: flutter_app
+      run: |
+        set -euo pipefail
+        rm -rf build/web
+        flutter pub get
+        # The server rewrites <base href> to /app/; CanvasKit and fonts are
+        # served from this bundle, never from Google's CDN.
+        flutter build web --release --no-web-resources-cdn
+
+    - name: Check the web bundle
+      shell: bash
+      env:
+        GOWORK: 'off'
+      run: go run ./cmd/neocloud-release check-web

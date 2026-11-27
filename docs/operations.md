@@ -394,10 +394,6 @@ docker compose run --rm neocloud neocloud backup restore --from /backup <snapsho
 docker compose start neocloud
 ```
 
-`test/integration/restore_drill.test.js` runs this whole procedure (backup,
-verify, wipe, restore, compare every file's SHA-256, versions, trash, shares,
-vault and accounts) on every `npm test`.
-
 ### S3 storage classes and Glacier Flexible Retrieval
 
 An S3 target writes every object (blobs, database, manifest) in its
@@ -475,31 +471,30 @@ the transition, and Glacier's 90-day minimum per copied object.
 
 ## Upgrades and rollback
 
-### Git installs
+### Script installs
 
 ```sh
-neocloud update                 # follow the branch
-neocloud update --tag v0.3.0    # move a pinned install to a release
+neocloud update                 # newest release of your channel
+neocloud update beta            # switch channel and update
+neocloud update --tag 0.3.0     # move to one release and stay on it
 neocloud rollback               # undo the last update
 ```
 
-`neocloud update` refuses if the install folder has local changes, then:
+`neocloud update` downloads the release's signed archive, takes an encrypted
+database snapshot, switches the service over and waits for it to answer. If
+the new version doesn't come up healthy, it rolls back on its own.
+`neocloud rollback` does the same by hand, restoring the snapshot only if the
+update changed the database schema. Admins can also update from the app.
 
-1. takes an encrypted database snapshot (`data/backups/pre-update-*.db.enc`,
-   the last 5 are kept) and records the current commit,
-2. pulls (`--ff-only`) or checks out the tag,
-3. installs dependencies with `npm ci` (exactly the lock file),
-4. restarts and waits up to 60 s for `/api/health`.
+`NEOCLOUD_VERSION=v0.3.0` makes `install.sh` pin a fresh install to a release.
 
-If the new version doesn't come up healthy, it rolls back on its own.
-`neocloud rollback` does the same by hand: stop, `git reset --hard` to the
-previous commit, `npm ci`, and, only if the update changed the database
-schema, restore the pre-update snapshot (the newer database is kept as
-`neocloud.db.before-restore-*`). If the schema didn't change, the current
-data stays, including anything written since the update.
+### Coming from the Node.js server
 
-`install.sh` also uses `npm ci`; `NEOCLOUD_VERSION=v0.3.0` pins a fresh install
-to a release.
+Running `neocloud update` (or updating from the app) on a Node.js install
+switches it to the Go binary: the data folder is kept, the service is pointed
+at the binary, and the Node.js server stays if the switch fails. Progress is
+logged in `~/.neocloud/logs/handover.log`. Once the switch has succeeded,
+`neocloud rollback` cannot return to Node.js.
 
 ### Docker
 

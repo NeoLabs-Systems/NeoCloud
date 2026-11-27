@@ -1,9 +1,9 @@
 part of 'main.dart';
 
-// The import jobs under the form: live progress while one is moving (a poll
-// every two seconds), counts, speed, errors and the controls.
+// The import jobs under the form: live progress while one is moving, counts,
+// speed, errors and the controls.
 
-const Duration _importPollInterval = Duration(seconds: 2);
+const Duration _importPollInterval = Duration(seconds: 10);
 
 extension _ImportStatusInfo on ImportStatus {
   String get label {
@@ -57,22 +57,33 @@ class _ImportJobListState extends State<_ImportJobList> with _PageLoad {
   final ImportSpeedMeters _meters = ImportSpeedMeters();
   final Set<String> _expanded = <String>{};
   Timer? _poll;
+  bool _reloadInFlight = false;
+  bool _reloadPending = false;
 
   NeoCloudController get _controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
+    _controller.importsRevision.addListener(_onImportChanged);
     unawaited(reload());
   }
+
+  void _onImportChanged() => unawaited(reload());
 
   @override
   void dispose() {
     _poll?.cancel();
+    _controller.importsRevision.removeListener(_onImportChanged);
     super.dispose();
   }
 
   Future<void> reload() async {
+    if (_reloadInFlight) {
+      _reloadPending = true;
+      return;
+    }
+    _reloadInFlight = true;
     try {
       final jobs = await _controller.client.imports();
       if (!mounted) return;
@@ -90,6 +101,12 @@ class _ImportJobListState extends State<_ImportJobList> with _PageLoad {
       }
     } catch (error) {
       if (mounted) setState(() => pageError = _controller.friendlyError(error));
+    } finally {
+      _reloadInFlight = false;
+      if (_reloadPending && mounted) {
+        _reloadPending = false;
+        unawaited(reload());
+      }
     }
   }
 

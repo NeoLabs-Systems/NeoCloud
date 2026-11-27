@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:neocloud/main.dart';
+import 'package:neolabs_flutter/neolabs_flutter.dart' show NeoForgotPasswordDialog, NeoLabeledField;
 import 'package:neocloud/src/api/backend_client.dart';
 import 'package:neocloud/src/api/models.dart';
 import 'package:neocloud/src/device/device_session.dart' hide createDeviceSessions;
@@ -88,6 +89,9 @@ Future<void> _pump(WidgetTester tester, NeoCloudController controller, Widget Fu
 
 Finder _field(String label) => find.widgetWithText(TextField, label);
 
+/// A field of the sign-in card, found by the label above it.
+Finder _cardField(String label) => find.descendant(of: find.widgetWithText(NeoLabeledField, label), matching: find.byType(TextField));
+
 /// OutlinedButton.icon builds a private subclass, so match by subtype.
 Finder _sendTestButton() => find.ancestor(of: find.text('Send test email'), matching: find.bySubtype<OutlinedButton>());
 
@@ -130,12 +134,12 @@ void main() {
       final controller = await _controller(http);
       await _pump(tester, controller, () => AuthView(controller: controller));
       expect(_forgotLink(), findsOneWidget);
-      await tester.enterText(_field('Username or email').first, 'ada');
+      await tester.enterText(_cardField('Username or email'), 'ada');
       await tester.tap(_forgotLink());
       await _settle(tester);
       expect(find.text('Reset password'), findsOneWidget);
       expect(find.textContaining('NeoCloud will send a reset link'), findsOneWidget);
-      final dialogField = tester.widget<TextField>(_field('Username or email').last);
+      final dialogField = tester.widget<TextField>(find.widgetWithText(TextField, 'Username or email'));
       expect(dialogField.controller!.text, 'ada');
       expect(find.text('Send link'), findsOneWidget);
     });
@@ -144,7 +148,7 @@ void main() {
       final http = FakeHttp(_auth);
       final controller = await _controller(http);
       await _pump(tester, controller, () => AuthView(controller: controller));
-      await tester.enterText(_field('Username or email').first, 'ada');
+      await tester.enterText(_cardField('Username or email'), 'ada');
       await tester.tap(_forgotLink());
       await _settle(tester);
       await tester.tap(find.text('Send link'));
@@ -165,7 +169,7 @@ void main() {
       expect(find.text('Enter your username or email.'), findsOneWidget);
       expect(http.where('POST', '/api/auth/password/forgot'), isEmpty);
 
-      await tester.enterText(_field('Username or email').last, 'limited');
+      await tester.enterText(find.widgetWithText(TextField, 'Username or email'), 'limited');
       await tester.tap(find.text('Send link'));
       await _settle(tester);
       expect(find.text('Send link'), findsOneWidget, reason: 'the dialog stays open');
@@ -179,10 +183,10 @@ void main() {
       await _pump(tester, controller, () => AuthView(controller: controller));
       await tester.tap(find.text('Need a new account? Register'));
       await _settle(tester);
-      await tester.enterText(_field('Username').first, 'ada');
-      await tester.enterText(_field('Email').first, 'ada@example.com');
-      await tester.enterText(_field('Password').first, _strongPassword);
-      await tester.enterText(_field('Confirm password').first, _strongPassword);
+      await tester.enterText(_cardField('Username'), 'ada');
+      await tester.enterText(_cardField('Email'), 'ada@example.com');
+      await tester.enterText(_cardField('Password'), _strongPassword);
+      await tester.enterText(_cardField('Confirm password'), _strongPassword);
       await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
       await _settle(tester);
@@ -204,8 +208,8 @@ void main() {
       final http = FakeHttp(_auth);
       final controller = await _controller(http);
       await _pump(tester, controller, () => AuthView(controller: controller));
-      await tester.enterText(_field('Username or email').first, 'ada');
-      await tester.enterText(_field('Password').first, _strongPassword);
+      await tester.enterText(_cardField('Username or email'), 'ada');
+      await tester.enterText(_cardField('Password'), _strongPassword);
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await _settle(tester);
       expect(find.textContaining('Confirm your email address before signing in'), findsOneWidget);
@@ -220,8 +224,8 @@ void main() {
       final http = FakeHttp((call) => const FakeReply(401, <String, dynamic>{'error': 'Invalid', 'code': 'INVALID_CREDENTIALS'}));
       final controller = await _controller(http, mail: false);
       await _pump(tester, controller, () => AuthView(controller: controller));
-      await tester.enterText(_field('Username or email').first, 'ada');
-      await tester.enterText(_field('Password').first, 'nope-nope-nope');
+      await tester.enterText(_cardField('Username or email'), 'ada');
+      await tester.enterText(_cardField('Password'), 'nope-nope-nope');
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await _settle(tester);
       expect(find.text('Resend confirmation email'), findsNothing);
@@ -233,21 +237,21 @@ void main() {
 
     testWidgets('without mail the plain line stays and there is no link', (tester) async {
       final controller = await _controller(FakeHttp(_auth), mail: false, phone: true);
-      await _pump(tester, controller, () => PhoneAuthView(controller: controller), size: phoneSize);
+      await _pump(tester, controller, () => AuthView(controller: controller), size: phoneSize);
       expect(_forgotLink(), findsNothing);
       expect(find.textContaining('Ask the person who runs your NeoCloud'), findsOneWidget);
     });
 
-    testWidgets('with mail the link sits on the password row and opens a sheet', (tester) async {
+    testWidgets('with mail the link sits on the password row and opens the request dialog', (tester) async {
       final http = FakeHttp(_auth);
       final controller = await _controller(http, phone: true);
-      await _pump(tester, controller, () => PhoneAuthView(controller: controller), size: phoneSize);
+      await _pump(tester, controller, () => AuthView(controller: controller), size: phoneSize);
       expect(find.textContaining('Ask the person who runs your NeoCloud'), findsNothing);
       expect(_forgotLink(), findsOneWidget);
-      await tester.enterText(_field('').first, 'ada');
+      await tester.enterText(_cardField('Username or email'), 'ada');
       await tester.tap(_forgotLink());
       await _settle(tester);
-      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(NeoForgotPasswordDialog), findsOneWidget);
       await tester.tap(find.text('Send link'));
       await _settle(tester);
       expect(http.where('POST', '/api/auth/password/forgot').single.body['account'], 'ada');
@@ -257,7 +261,7 @@ void main() {
     testWidgets('a 403 from the sign-in shows the message and resends through the phone client', (tester) async {
       final http = FakeHttp(_auth);
       final controller = await _controller(http, phone: true);
-      await _pump(tester, controller, () => PhoneAuthView(controller: controller), size: phoneSize);
+      await _pump(tester, controller, () => AuthView(controller: controller), size: phoneSize);
       await tester.enterText(find.byType(TextField).at(0), 'ada');
       await tester.enterText(find.byType(TextField).at(1), _strongPassword);
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
