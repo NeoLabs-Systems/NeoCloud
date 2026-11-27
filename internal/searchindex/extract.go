@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding/unicode"
@@ -19,8 +20,9 @@ import (
 var ErrUnsupportedExtraction = errors.New("searchindex: this document format needs an optional extractor")
 var sourceCharset = regexp.MustCompile(`(?i)(?:charset|encoding)\s*=\s*["']?([A-Za-z0-9._:-]+)`)
 
-// ExtractText converts supported plain-text, HTML, and Office/OpenDocument
-// files into bounded UTF-8 text. The caller should decrypt the source blob
+// ExtractText converts supported plain-text, HTML, PDF and Office/OpenDocument
+// files, and pictures while text recognition is available, into bounded UTF-8
+// text. The caller should decrypt the source blob
 // before calling it and keep that plaintext only in memory.
 func ExtractText(ctx context.Context, node Node, source []byte) (string, error) {
 	if err := ctx.Err(); err != nil {
@@ -36,6 +38,13 @@ func ExtractText(ctx context.Context, node Node, source []byte) (string, error) 
 	}
 	if kind == "pdf" {
 		text, err := extractPDFText(ctx, source)
+		if err != nil {
+			return "", err
+		}
+		return capText(text), nil
+	}
+	if kind == "image" {
+		text, err := recognizePicture(ctx, source)
 		if err != nil {
 			return "", err
 		}
@@ -69,6 +78,8 @@ func checkSourceSize(node Node) error {
 		limit = MaxPDFSource
 	case "office":
 		limit = MaxOfficeSource
+	case "image":
+		limit = MaxImageSource
 	}
 	if node.Size > limit {
 		return fmt.Errorf("searchindex: source exceeds %d-byte extraction limit", limit)
@@ -84,6 +95,11 @@ func extractionKind(name, mimeType string) string {
 		return "pdf"
 	case strings.HasSuffix(name, ".docx"), strings.HasSuffix(name, ".xlsx"), strings.HasSuffix(name, ".pptx"), strings.HasSuffix(name, ".odt"), strings.HasSuffix(name, ".ods"), strings.HasSuffix(name, ".odp"):
 		return "office"
+	case isPicture(name, mimeType):
+		if ocr.Available() {
+			return "image"
+		}
+		return ""
 	case strings.HasSuffix(name, ".html"), strings.HasSuffix(name, ".htm"), strings.HasSuffix(name, ".xhtml"), mimeType == "text/html":
 		return "html"
 	case strings.HasPrefix(mimeType, "text/") || isIndexable(name, mimeType):

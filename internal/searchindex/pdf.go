@@ -14,13 +14,36 @@ const maxPDFPages = 2000
 
 var errPDFTextLimit = errors.New("searchindex: PDF text limit reached")
 
-// extractPDFText uses poppler's pdftotext when it is installed, else the
-// built-in reader.
+// extractPDFText reads the text layer, with poppler's pdftotext when it is
+// installed, else the built-in reader; pages without one are read by text
+// recognition when it is available.
 func extractPDFText(ctx context.Context, source []byte) (string, error) {
-	if binary := pdftotextPath(); binary != "" {
-		return runPdftotext(ctx, binary, source)
+	pages, err := pdfPages(ctx, source)
+	if err != nil {
+		return "", err
 	}
-	var out strings.Builder
+	if err = recognizeScannedPages(ctx, source, pages); err != nil {
+		return "", err
+	}
+	return strings.Join(pages, "\n"), nil
+}
+
+// pdfPages is the text layer of each page, as far as the limits reach.
+func pdfPages(ctx context.Context, source []byte) ([]string, error) {
+	if binary := pdftotextPath(); binary != "" {
+		text, err := runPdftotext(ctx, binary, source)
+		if err != nil {
+			return nil, err
+		}
+		// pdftotext ends every page with a form feed.
+		pages := strings.Split(text, "\f")
+		if len(pages) > 1 && pages[len(pages)-1] == "" {
+			pages = pages[:len(pages)-1]
+		}
+		return pages, nil
+	}
+	var pages []string
+	size := 0
 	// Keep parser work bounded even for valid but pathological documents. The
 	// source and output limits are enforced by ExtractText and capText.
 	_, err := pdftext.ExtractPages(ctx, bytes.NewReader(source), int64(len(source)), pdftext.Options{
@@ -39,30 +62,26 @@ func extractPDFText(ctx context.Context, source []byte) (string, error) {
 			return err
 		}
 		text := page.Text()
-		remaining := MaxTextBytes - out.Len()
+		remaining := MaxTextBytes - size
 		if remaining <= 0 {
 			return errPDFTextLimit
-		}
-		if out.Len() > 0 && text != "" {
-			out.WriteByte('\n')
-			remaining--
 		}
 		if len(text) > remaining {
 			text = text[:remaining]
 			for len(text) > 0 && !utf8.ValidString(text) {
 				text = text[:len(text)-1]
 			}
-			out.WriteString(text)
+			pages = append(pages, text)
 			return errPDFTextLimit
 		}
-		out.WriteString(text)
+		pages, size = append(pages, text), size+len(text)+1
 		return nil
 	})
 	if errors.Is(err, errPDFTextLimit) {
 		err = nil
 	}
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return out.String(), nil
+	return pages, nil
 }

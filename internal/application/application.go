@@ -39,6 +39,7 @@ import (
 	"github.com/NeoLabs-Systems/neocloud/internal/neorouter"
 	"github.com/NeoLabs-Systems/neocloud/internal/notes"
 	"github.com/NeoLabs-Systems/neocloud/internal/oauth"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"github.com/NeoLabs-Systems/neocloud/internal/office"
 	"github.com/NeoLabs-Systems/neocloud/internal/photos"
 	"github.com/NeoLabs-Systems/neocloud/internal/publicshares"
@@ -85,6 +86,13 @@ func Open(ctx context.Context, getenv func(string) string, userHome string) (*Ap
 		Disabled: !runtime.Config.OfficePreviewEnabled, Binary: runtime.Config.LibreOfficePath,
 		SandboxOff: !runtime.Config.PreviewSandbox,
 	})
+	ocr.Configure(ocr.Settings{Disabled: !runtime.Config.OCREnabled, Languages: runtime.Config.OCRLanguages})
+	// Looking for the tools now reports them once at startup.
+	if status := ocr.CurrentStatus(); status.Enabled {
+		slog.Info("Text recognition is on", "languages", strings.Join(status.Languages, "+"), "scanned_pdfs", status.PDF, "missing_languages", strings.Join(status.Missing, "+"))
+	} else if runtime.Config.OCREnabled {
+		slog.Info("Text recognition is off: tesseract with one of the configured languages is not installed", "missing_languages", strings.Join(status.Missing, "+"))
+	}
 	origins := httpx.ParseOrigins(strings.Join(runtime.Config.Origins, ","))
 	liveEvents, err := newRealtime(runtime, origins)
 	if err != nil {
@@ -269,6 +277,7 @@ func Open(ctx context.Context, getenv func(string) string, userHome string) (*Ap
 					"imageThumbnails": true, "officePreview": documentconvert.Available(),
 					"fullTextSearch": searchEnabled.Load(),
 				},
+				"ocr": ocr.CurrentStatus(),
 			}
 		},
 		OnSendTestEmail: func(ctx context.Context, recipient, language string) (string, error) {

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/NeoLabs-Systems/neocloud/internal/documentconvert"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 )
 
 func TestCapabilitiesRequiresAuthAndReportsImplementedFeatures(t *testing.T) {
@@ -28,7 +29,7 @@ func TestCapabilitiesRequiresAuthAndReportsImplementedFeatures(t *testing.T) {
 	if err := json.Unmarshal(payload, &got); err != nil {
 		t.Fatalf("decode capabilities: %v", err)
 	}
-	want := map[string]bool{"imageThumbnails": true, "officePreview": documentconvert.Available(), "fullTextSearch": false}
+	want := map[string]bool{"imageThumbnails": true, "officePreview": documentconvert.Available(), "fullTextSearch": false, "ocr": ocr.Available()}
 	if len(got) != len(want) {
 		t.Fatalf("capabilities = %#v, want exactly %#v", got, want)
 	}

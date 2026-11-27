@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/NeoLabs-Systems/neocloud/internal/cryptox"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 )
 
 const (
@@ -73,10 +74,12 @@ type Status struct {
 	Failed  int64 `json:"failed"`
 	Bytes   int64 `json:"bytes"`
 	// Available names the extractors: pdftotext is optional, Office and
-	// OpenDocument text comes from the built-in zip reader.
+	// OpenDocument text comes from the built-in zip reader, and OCR reads
+	// pictures and scanned PDF pages when tesseract is installed.
 	Available struct {
-		Pdftotext bool `json:"pdftotext"`
-		Office    bool `json:"office"`
+		Pdftotext bool       `json:"pdftotext"`
+		Office    bool       `json:"office"`
+		OCR       ocr.Status `json:"ocr"`
 	} `json:"available"`
 }
 
@@ -290,7 +293,7 @@ func (i *Indexer) Rebuild(ctx context.Context) (Status, error) {
 // Status counts the index and the files still to be read.
 func (i *Indexer) Status(ctx context.Context) (Status, error) {
 	status := Status{Enabled: i.enabled()}
-	status.Available.Pdftotext, status.Available.Office = pdftotextPath() != "", true
+	status.Available.Pdftotext, status.Available.Office, status.Available.OCR = pdftotextPath() != "", true, ocr.CurrentStatus()
 	err := i.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM search_docs WHERE status='indexed'),(SELECT COUNT(*) FROM search_docs WHERE status='failed'),(SELECT COALESCE(SUM(length(text_enc)),0) FROM search_docs)+(SELECT COALESCE(SUM(length(block)),0) FROM search_fts_data)+(SELECT COALESCE(SUM(length(sz)),0) FROM search_fts_docsize)`).Scan(&status.Indexed, &status.Failed, &status.Bytes)
 	if err != nil {
 		return Status{}, err
@@ -400,8 +403,14 @@ func (i *Indexer) RunPass(ctx context.Context, maxFiles int) (int, error) {
 // indexFile records the text of one file, or that it could not be read, so
 // that it is not tried again until it changes.
 func (i *Indexer) indexFile(ctx context.Context, userID int64, node Node) error {
-	var text string
-	err := checkSourceSize(node)
+	text, reused, err := i.sharedText(ctx, userID, node)
+	if err != nil {
+		return err
+	}
+	if reused {
+		return i.SaveIndexed(ctx, userID, node, text)
+	}
+	err = checkSourceSize(node)
 	if err == nil {
 		var plain []byte
 		if plain, err = i.readBlob(ctx, userID, node); err == nil {
@@ -417,6 +426,46 @@ func (i *Indexer) indexFile(ctx context.Context, userID int64, node Node) error 
 		return i.SaveFailed(ctx, userID, node)
 	}
 	return i.SaveIndexed(ctx, userID, node, text)
+}
+
+// sharedText is the text already read from the same content under another
+// of the account's files (a copy shares its blob), so that a picture or a
+// scan is not recognised twice. It counts only when both files are read the
+// same way.
+func (i *Indexer) sharedText(ctx context.Context, userID int64, node Node) (string, bool, error) {
+	rows, err := i.db.QueryContext(ctx, `SELECT d.node_id,d.text_enc,n.name,COALESCE(n.mime,'') FROM search_docs d JOIN nodes n ON n.id=d.node_id AND n.blob_id=d.blob_id
+		WHERE d.user_id=? AND d.blob_id=? AND d.node_id<>? AND d.status='indexed' LIMIT 8`, userID, node.BlobID, node.ID)
+	if err != nil {
+		return "", false, err
+	}
+	kind := extractionKind(node.Name, node.MIME)
+	var same []textRow
+	for rows.Next() {
+		var other textRow
+		var name, mime string
+		if err = rows.Scan(&other.nodeID, &other.sealed, &name, &mime); err != nil {
+			rows.Close()
+			return "", false, err
+		}
+		if extractionKind(name, mime) == kind {
+			same = append(same, other)
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return "", false, err
+	}
+	for _, other := range same {
+		if len(other.sealed) == 0 {
+			return "", true, nil
+		}
+		// An entry that does not open is read again from the file.
+		if text, err := i.decryptText(ctx, userID, other.nodeID, other.sealed); err == nil {
+			return text, true, nil
+		}
+	}
+	return "", false, nil
 }
 
 // extractWithin time-boxes the extractor and keeps a failing parser from
@@ -447,13 +496,18 @@ func (i *Indexer) extractWithin(ctx context.Context, node Node, plain []byte) (s
 	}
 }
 
-const pendingFrom = ` FROM nodes n WHERE n.user_id=? AND n.type='file' AND n.vault_id IS NULL AND n.trashed_at IS NULL AND n.blob_id IS NOT NULL AND n.id NOT IN(SELECT id FROM hidden) AND (n.mime LIKE 'text/%' OR lower(n.mime)='application/pdf' OR EXISTS(SELECT 1 FROM json_each(?) e WHERE lower(n.name) LIKE '%' || e.value)) AND NOT EXISTS(SELECT 1 FROM search_docs d WHERE d.node_id=n.id AND d.blob_id=n.blob_id)`
+const pendingFrom = ` FROM nodes n WHERE n.user_id=? AND n.type='file' AND n.vault_id IS NULL AND n.trashed_at IS NULL AND n.blob_id IS NOT NULL AND n.id NOT IN(SELECT id FROM hidden) AND (n.mime LIKE 'text/%' OR lower(n.mime)='application/pdf' OR lower(n.mime) IN(SELECT value FROM json_each(?)) OR EXISTS(SELECT 1 FROM json_each(?) e WHERE lower(n.name) LIKE '%' || e.value)) AND NOT EXISTS(SELECT 1 FROM search_docs d WHERE d.node_id=n.id AND d.blob_id=n.blob_id)`
 
 // pendingQuery is the CTE and arguments of the files without a current entry.
 func pendingQuery(userID int64) (string, []any) {
-	extensions, _ := json.Marshal(indexableExtensions)
+	mimes, extensions := []string{}, indexableExtensions
+	if ocr.Available() {
+		mimes, extensions = pictureMIMEs, append(slices.Clone(indexableExtensions), pictureExtensions...)
+	}
+	mimeList, _ := json.Marshal(mimes)
+	extensionList, _ := json.Marshal(extensions)
 	return `WITH RECURSIVE hidden(id) AS (SELECT id FROM nodes WHERE user_id=? AND trashed_at IS NOT NULL UNION ALL SELECT n.id FROM nodes n JOIN hidden h ON n.parent_id=h.id WHERE n.user_id=?)`,
-		[]any{userID, userID, userID, string(extensions)}
+		[]any{userID, userID, userID, string(mimeList), string(extensionList)}
 }
 
 func (i *Indexer) pendingFiles(ctx context.Context, userID int64, limit int) ([]Node, error) {
@@ -596,10 +650,14 @@ func isIndexable(name, mime string) bool {
 	if m == "application/pdf" || strings.HasPrefix(m, "text/") {
 		return true
 	}
+	if isPicture(name, m) {
+		return ocr.Available()
+	}
 	return slices.Contains(indexableExtensions, strings.ToLower(filepath.Ext(name)))
 }
 
-// indexableExtensions are the file name extensions the index reads.
+// indexableExtensions are the file name extensions the index reads, besides
+// pictures while text recognition is available.
 var indexableExtensions = []string{".pdf", ".html", ".htm", ".xhtml", ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp", ".txt", ".text", ".md", ".markdown", ".rst", ".adoc", ".org", ".tex", ".log", ".csv", ".tsv", ".json", ".jsonl", ".ndjson", ".xml", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".properties", ".srt", ".vtt", ".ics", ".vcf", ".eml", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte", ".css", ".scss", ".sass", ".less", ".py", ".rb", ".go", ".rs", ".java", ".kt", ".kts", ".swift", ".dart", ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".php", ".pl", ".lua", ".r", ".scala", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".sql", ".gradle", ".cmake", ".mk"}
 
 func capText(text string) string {

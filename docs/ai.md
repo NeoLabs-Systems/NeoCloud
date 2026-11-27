@@ -210,8 +210,10 @@ asking for folders after names costs nothing more.
 
 - **Documents** (PDF, Office, text): the text the search index extracted
   (decrypted through the index's own store), else the same extractor run
-  in memory, at most about 12 000 characters, to the `text` model.
-- **Images and screenshots**: OCR text from the index when it has some,
+  in memory, at most about 12 000 characters, to the `text` model. Scanned
+  PDF pages are read by text recognition when the server has it.
+- **Images and screenshots**: the text the index recognised in them (text
+  recognition, see [operations](operations.md#text-recognition-ocr)) when it has some,
   else the picture itself, scaled to 1024 px, to the `vision` model. Without
   a vision model images are skipped.
 

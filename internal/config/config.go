@@ -178,6 +178,8 @@ type Config struct {
 	OfficePreviewEnabled          bool
 	LibreOfficePath               string
 	PreviewSandbox                bool
+	OCREnabled                    bool
+	OCRLanguages                  string
 	OfficeEditorURL               string
 	OfficeHostURL                 string
 	OfficeEditorEnabled           bool
@@ -364,6 +366,8 @@ func Load(getenv func(string) string, userHome string) (Config, error) {
 		OfficePreviewEnabled:  strings.TrimSpace(get("NEOCLOUD_OFFICE_PREVIEW")) == "" || truthy(get("NEOCLOUD_OFFICE_PREVIEW")),
 		LibreOfficePath:       strings.TrimSpace(get("NEOCLOUD_LIBREOFFICE_PATH")),
 		PreviewSandbox:        !strings.EqualFold(strings.TrimSpace(get("NEOCLOUD_PREVIEW_SANDBOX")), "off"),
+		OCREnabled:            strings.TrimSpace(get("NEOCLOUD_OCR")) == "" || truthy(get("NEOCLOUD_OCR")),
+		OCRLanguages:          strings.TrimSpace(get("NEOCLOUD_OCR_LANGUAGES")),
 		OfficeEditorURL:       strings.TrimRight(strings.TrimSpace(get("NEOCLOUD_OFFICE_EDITOR_URL")), "/"),
 		OfficeHostURL:         strings.TrimRight(strings.TrimSpace(get("NEOCLOUD_OFFICE_HOST_URL")), "/"),
 		OfficeEditorEnabled:   strings.EqualFold(strings.TrimSpace(get("NEOCLOUD_OFFICE_EDITOR_ENABLED")), "true"),

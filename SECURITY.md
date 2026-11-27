@@ -50,7 +50,13 @@ database:
 - The text kept for result snippets is deflated and encrypted with the
   account's data key (AES-256-GCM, bound to the file's id), like the blobs.
 - Extraction happens in memory (in the server, or `pdftotext` reading
-  stdin); no plaintext is written to disk for it.
+  stdin); no plaintext is written to disk for it. With text recognition on
+  (`tesseract` installed, `NEOCLOUD_OCR` not false) the index also holds the
+  words recognised in pictures and in scanned PDF pages: the picture or the
+  page drawn by `pdftoppm` goes to `tesseract` on stdin and the words come
+  back on stdout, with a minimal environment, at most two runs at a time,
+  time and size limits, and the process group killed when the time is up. Neither tool opens network connections for this. Signing field
+  detection reads scanned pages the same way and keeps nothing.
 - Database backups sent to backup targets are encrypted with the backup key,
   so the index leaves the server only in that form.
 

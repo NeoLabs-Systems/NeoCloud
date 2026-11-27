@@ -637,7 +637,7 @@ as a terminal QR on `neocloud-lite login`.
   snippets. SECURITY.md documents that the index reveals which words a file
   contains to anyone holding the database.
 - Indexing runs in the background (1 worker, low priority), driven by the
-  change journal; `GET /api/admin/search-index` → `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office } }`,
+  change journal; `GET /api/admin/search-index` → `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office, ocr } }`,
   `POST /api/admin/search-index/rebuild`.
 - `GET /api/search?q=…&content=1` (plus all existing filters) returns name
   matches and content matches merged: each item gets `match: "name"|"content"|"both"`

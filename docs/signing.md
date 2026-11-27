@@ -44,9 +44,19 @@ States of a document: `draft → sent → in_progress → finalizing → complet
   stay plain text fields. Every find has a role and a confidence (form fields
   1); overlapping finds keep the most certain one, form fields always win, and
   a find that would cover a field already there is skipped, so asking twice
-  adds nothing. It reads the text layer only: no AI, no OCR, so a scanned
-  page without text gives nothing, and text that does not read upright on the
-  displayed page is ignored (turn the page first). The same file always gives
+  adds nothing. No AI is involved. A page whose text layer has fewer than ten
+  letters (a scan, or words drawn as shapes) is read by text recognition when
+  the server has it (`tesseract` and `pdftoppm`, `ocr` in `GET
+  /capabilities`, see [operations](operations.md#text-recognition-ocr)):
+  the page is drawn as it is displayed, `/Rotate` and crop box applied, so
+  its pixels map to the page by scaling alone; the recognised words count as
+  text, and lines and boxes are found in the pixels (rows of ink at least
+  15 pt long and no thicker than 3 pt, joined across a slight skew; four such
+  strokes meeting as a rectangle are a check box or a text field, as drawn
+  boxes are). At most 10 pages and 2 minutes of recognition per request;
+  such finds have `source: "scan"`. Without recognition a scanned page gives
+  nothing. Text that does not read upright on the displayed page is ignored
+  (turn the page first). The same file always gives
   the same fields. Quick sign asks for the roles signature, initials, date and
   name and fills them at once with the saved pictures, today and the name.
 

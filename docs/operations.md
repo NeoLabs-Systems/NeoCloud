@@ -214,6 +214,33 @@ below `NEOCLOUD_MIN_FREE_DISK` (default `1GB`). A full disk would otherwise
 fail writes halfway, including the database's. Admin › Health shows free
 space on the storage and data disks; `neocloud doctor` warns below the floor.
 
+## Text recognition (OCR)
+
+When `tesseract` is installed, full-text search reads the words in pictures
+(JPEG, PNG, WebP, HEIC/HEIF, TIFF) and in PDF pages without a text layer, and
+signing field detection reads scanned pages. PDF pages are drawn by
+`pdftoppm` (poppler-utils) first; without it only pictures are read. The
+Docker image ships both, with English and German (`tesseract-ocr`,
+`tesseract-ocr-eng`, `tesseract-ocr-deu`, about 35 MB). Elsewhere:
+
+```bash
+apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu poppler-utils   # Debian, Ubuntu
+brew install tesseract tesseract-lang poppler                                # macOS
+```
+
+`NEOCLOUD_OCR=false` turns it off; `NEOCLOUD_OCR_LANGUAGES` (default
+`eng+deu`) picks the languages, and codes whose data is not installed are
+left out. The tools are looked for at startup (the log says what was found)
+and reported in Admin › Health and `GET /api/admin/search-index`
+(`available.ocr`). Pictures and pages go to the tools on stdin and come back
+on stdout: nothing is written to disk. Limits: two tools at a time, 45 s per
+recognition and 30 s per drawn page, pictures scaled to 3000 pixels on their
+longest side, pages drawn at 2400, 10 pages per PDF. Recognition costs CPU: a
+photo library is read once, one file at a time, by the background indexer.
+After installing tesseract, pictures are picked up on their own; PDFs that
+were indexed before are read again when they change, or after
+`POST /api/admin/search-index/rebuild`.
+
 ## Database care
 
 All of this runs on its own; nothing to configure.

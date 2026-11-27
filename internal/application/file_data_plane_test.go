@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"github.com/NeoLabs-Systems/neolabs-go/passhash"
 	"github.com/gen2brain/vpx/webp"
 )
@@ -466,7 +467,13 @@ func TestComposedFullTextSearch(t *testing.T) {
 
 	var status indexStatus
 	p.json(owner, http.MethodGet, "/api/admin/search-index", "", http.StatusOK, &status)
-	if !status.Enabled || status.Pending != 0 || status.Failed != 1 || status.Indexed != 9 || status.Bytes <= 0 || !status.Available.Office {
+	// photo.jpg is not a picture: without text recognition it is not read at
+	// all, with it it cannot be read.
+	failed := int64(1)
+	if ocr.Available() {
+		failed = 2
+	}
+	if !status.Enabled || status.Pending != 0 || status.Failed != failed || status.Indexed != 9 || status.Bytes <= 0 || !status.Available.Office {
 		t.Fatalf("status = %+v", status)
 	}
 	for _, route := range [][2]string{{http.MethodGet, "/api/admin/search-index"}, {http.MethodPost, "/api/admin/search-index/rebuild"}} {

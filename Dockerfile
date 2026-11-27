@@ -30,7 +30,9 @@ LABEL org.opencontainers.image.title="NeoCloud" \
 # Which release channel the image reports.
 ARG NEOCLOUD_CHANNEL=stable
 # librsvg2-bin and a font render SVG thumbnails, poppler-utils improves PDF text
-# search and bubblewrap keeps LibreOffice off the network.
+# search and bubblewrap keeps LibreOffice off the network. tesseract-ocr with
+# English and German reads pictures and scanned PDF pages (drawn by poppler's
+# pdftoppm) for search and signing field detection: about 35 MB more.
 # Office previews need LibreOffice (~400 MB). Build with
 # --build-arg WITH_LIBREOFFICE=true to include it.
 ARG WITH_LIBREOFFICE=false
@@ -38,6 +40,7 @@ ARG WITH_LIBREOFFICE=false
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates tini \
       librsvg2-bin fonts-dejavu-core poppler-utils bubblewrap \
+      tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu \
  && if [ "$WITH_LIBREOFFICE" = "true" ]; then apt-get install -y --no-install-recommends libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress; fi \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 1000 neocloud \

@@ -736,7 +736,7 @@ creating, importing, turning pages, sending and duplicating 200.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/capabilities` | `{ formats: { pdf, image, office }, maxSourceBytes, maxPages, maxParties, maxFields, email: { configured } }`; `office` is true only when LibreOffice is available, `email.configured` when an admin set up service mail (see [email.md](email.md)): without it signing stays link-only |
+| GET | `/capabilities` | `{ formats: { pdf, image, office }, ocr, maxSourceBytes, maxPages, maxParties, maxFields, email: { configured } }`; `office` is true only when LibreOffice is available, `ocr` when field detection reads scanned pages (tesseract and pdftoppm), `email.configured` when an admin set up service mail (see [email.md](email.md)): without it signing stays link-only |
 | POST | `/documents` | `{ nodeId, title?, locale? }` → `201 { document, parties, fields, warnings }`. Freezes the file (PDF, image or, when possible, office document) and adds one party. `warnings` has `FORM_FIELDS_FLATTENED` when the PDF has form fields (the final file flattens them; an existing digital signature in the source is lost). Errors: `404` (not yours, trashed), `400 VAULT_FILE`, `NOT_A_FILE`, `PDF_ENCRYPTED`, `INVALID_PDF`, `TOO_MANY_PAGES` (over 300), `CONVERSION_UNAVAILABLE`, `CONVERSION_FAILED`, `INVALID_IMAGE`, `413 DOCUMENT_TOO_LARGE` (over 50 MB), `QUOTA_EXCEEDED`, `415 UNSUPPORTED_TYPE` |
 | GET | `/documents` `?status=&limit=&cursor=` | `{ items: [{ id, title, status, parties: [{ id, name, color, status }], pageCount, expiresAt, createdAt, updatedAt, completedAt, finalNodeId, sourceNodeId }], nextCursor }`, newest activity first, `limit` 1–100 (50) |
 | GET | `/documents/:id` | `{ document, parties, fields }`. `document`: `id, title, status, signingOrder, locale, expiresAt, pageCount, pages, sourceNodeId, sourceName, finalNodeId, snapshotSha256, finalSha256, consentVersion, message, reminderDays, finalizeError, createdAt, updatedAt, sentAt, completedAt, canceledAt`. Party: `id, position, name, color, email, isSelf, status, hasLink, linkHint, openedAt, consentedAt, completedAt, declinedAt, declineReason, signerName, delivery` (`delivery`: `{ status: queued\|sent\|skipped\|no_email\|failed, lastSentAt, attempts, errorCode, lastError, remindersSent, nextReminderAt }`, worked out from the outbox; `errorCode`: `SMTP_UNREACHABLE\|SMTP_REJECTED\|INVALID_ADDRESS\|RATE_LIMITED\|UNKNOWN`, `lastError` a short sentence for it in the document's language, never the mail server's text). Sending and reminding answer `403 EMAIL_NOT_VERIFIED` or `429 MAIL_QUOTA_EXCEEDED` (docs/email.md). Field: `id, partyId, type, name, required, readonly, defaultValue, prefs, areas, position`. Link URLs are never returned here |
@@ -744,7 +744,7 @@ creating, importing, turning pages, sending and duplicating 200.
 | DELETE | `/documents/:id` | draft, completed, declined, expired or canceled (`409 INVALID_STATE` otherwise). Deletes values and the frozen copy; the signed file stays in the library |
 | PUT | `/documents/:id/fields` | `{ fields: [{ id?, partyId, type, name?, required?, readonly?, defaultValue?, prefs?, areas }] }` replaces the list (max 500; ids of existing fields are kept, others get new ones) → `{ fields }`. Types: `text number date phone checkbox radio select multiple cells signature initials stamp image file heading`. `400 INVALID_FIELD` |
 | PUT | `/documents/:id/parties` | `{ parties: [{ id?, name, email?, color?, isSelf? }] }` (1–20), draft only; parties left out are removed with their fields → `{ document, parties, fields }`. `isSelf`: the owner signs this party (at most one; its email defaults to the owner's; bound to the owner's account; never mailed). `400 INVALID_PARTY` |
-| POST | `/documents/:id/import-fields` | draft only: adds what field detection finds as new fields of the first party: the PDF's form fields and the places its pages mark for a signature, initials, date, name, place, labelled text or a check box ([signing.md](signing.md#preparing-the-pages)). Body (all optional) `{ roles?: [signature\|initials\|date\|name\|place\|text\|checkbox\|radio\|select\|multiple\|cells], minConfidence? (0–1, default 0.5) }` keeps only those roles and the more certain finds. Finds that would cover a field already there are skipped → `{ imported, detected: [{ id, role, confidence, source: form\|layout }], fields }` (`fields` is every field of the document). `400 INVALID_REQUEST`, `409 DOCUMENT_LOCKED` |
+| POST | `/documents/:id/import-fields` | draft only: adds what field detection finds as new fields of the first party: the PDF's form fields and the places its pages mark for a signature, initials, date, name, place, labelled text or a check box ([signing.md](signing.md#preparing-the-pages)). Body (all optional) `{ roles?: [signature\|initials\|date\|name\|place\|text\|checkbox\|radio\|select\|multiple\|cells], minConfidence? (0–1, default 0.5) }` keeps only those roles and the more certain finds. Finds that would cover a field already there are skipped → `{ imported, detected: [{ id, role, confidence, source: form\|layout\|scan }], fields }` (`fields` is every field of the document). `400 INVALID_REQUEST`, `409 DOCUMENT_LOCKED` |
 | POST | `/documents/:id/rotate` | `{ angle: 90\|180\|270\|-90 (any multiple of 90 but 0), pages?: [0-based page numbers] }` (no `pages`: all) turns pages clockwise; draft, or sent and still unopened (`409 DOCUMENT_LOCKED`). The frozen PDF is replaced by one with the new `/Rotate` (a new `snapshotSha256`, `pages` with the turned sizes), boxes on turned pages move with them, the audit trail gets `pages_rotated` `{ pages, angle, previousSha256, sha256 }` → `{ document, parties, fields }`. `400 INVALID_REQUEST`, `409 SNAPSHOT_CHANGED` (turned meanwhile), `413 QUOTA_EXCEEDED` |
 | POST | `/documents/:id/send` | body (all optional) `{ message? (plain text, ≤ 1000), deliverEmail? (default true), reminderDays? (0 off, 2, 3, 5, 7, 14) }` → `{ document, parties, fields, links: [{ partyId, url }], delivery: [{ partyId, status }] }`. The only time the URLs exist (`<origin>/app/sign/<token>`). With service mail configured and `deliverEmail` not false, parties with an address are mailed: everybody at once for `random`, only the first for `preserved` (the next gets "your turn" when its predecessor signs); `delivery.status`: `queued` (in the outbox), `skipped` (waiting its turn, the owner, mail off or not configured), `no_email`. `400 PARTY_WITHOUT_FIELDS`, `EXPIRY_IN_PAST`, `INVALID_REQUEST`; `409 ALREADY_SENT` |
 | POST | `/documents/:id/parties/:partyId/remind` | `{ message? }` (≤ 1000) → `202 { delivery: { partyId, status: 'queued' } }`. At least 24 hours between two reminders to a party, at most 5 (automatic ones count). `409 PARTY_NOT_ACTIVE` (finished, declined, waiting for its turn, the owner, link off, document not out for signing), `400 NO_EMAIL`, `503 EMAIL_NOT_CONFIGURED`, `429 REMINDER_TOO_SOON` (`retryAfter` seconds, also the `Retry-After` header), `429 REMINDER_LIMIT` |
@@ -928,7 +928,7 @@ immutable`. `415 PREVIEW_UNAVAILABLE` for other types, `404` for vault files
 **Document preview** — `GET /api/files/:id/preview`: a PDF of an Office file
 (needs LibreOffice on the server; see SECURITY.md for how the converter is
 confined). `GET /api/capabilities` says whether the
-server can: `{ imageThumbnails, officePreview, fullTextSearch }` (`fullTextSearch` is the admin switch for content search).
+server can: `{ imageThumbnails, officePreview, fullTextSearch, ocr }` (`fullTextSearch` is the admin switch for content search; `ocr`: text in pictures is recognised when tesseract is installed and `NEOCLOUD_OCR` is not false).
 
 **ZIP** — `GET /api/download/zip?ids=a,b,c` streams folders and files as one archive.
 
@@ -1047,7 +1047,7 @@ tokens included, gets `403 ADMIN_REQUIRED`.
 
 | Method | Path | Body |
 | --- | --- | --- |
-| GET | `/health` · `/logs` · `/audit` · `/version` | `/health`: counts, disks, `database` (`ok`\|`damaged`\|`pending`, the last daily `quick_check`), `databaseCheckedAt`, `damagedBlobs` (weekly blob scrub), `blobScrubCycleAt`, `minFreeDiskBytes` |
+| GET | `/health` · `/logs` · `/audit` · `/version` | `/health`: counts, disks, `database` (`ok`\|`damaged`\|`pending`, the last daily `quick_check`), `databaseCheckedAt`, `damagedBlobs` (weekly blob scrub), `blobScrubCycleAt`, `minFreeDiskBytes`, `previews`, `ocr: { enabled, pdf, languages, missingLanguages? }` (text recognition, see [operations](operations.md#text-recognition-ocr)) |
 | GET | `/users?q=` | `{ users: [{ id, username, displayName, email, emailVerified, emailConfirmationPending, isAdmin, disabled, disabledAt, usedBytes, quotaBytes, quotaMode, fileCount, aiMonthlyTokens, createdAt, lastLogin }] }`. `aiMonthlyTokens`: the account's own AI token budget (`null` follows the server default, `0` is no limit) |
 | PUT | `/users/:id/quota` | `{ mode: "default"\|"unlimited"\|"custom", bytes? }` (`"50GB"` works) |
 | PUT | `/users/:id/admin` | `{ isAdmin }`: a boolean; anything else `400 INVALID_VALUE` |
@@ -1182,7 +1182,7 @@ Off until an admin turns it on; each account can opt out.
 | Method | Path | Body / query | Notes |
 | --- | --- | --- | --- |
 | GET / PUT | `/api/admin/config` | `{ fullTextSearch: bool }` | Admin session or phone. Off by default (`NEOCLOUD_FULL_TEXT_SEARCH` in `.env`). Off pauses the indexer and search ignores content; the index is kept |
-| GET | `/api/admin/search-index` | | Admin session or phone. `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office } }`. `bytes`: encrypted texts plus FTS pages. `office` is always `true` (built-in zip reader) |
+| GET | `/api/admin/search-index` | | Admin session or phone. `{ enabled, indexed, pending, failed, bytes, available: { pdftotext, office, ocr: { enabled, pdf, languages, missingLanguages? } } }`. `bytes`: encrypted texts plus FTS pages. `office` is always `true` (built-in zip reader); `ocr.enabled`: pictures are read, `ocr.pdf`: scanned PDF pages too |
 | POST | `/api/admin/search-index/rebuild` | | Admin session or phone. `202` with the status: the index is emptied and every file read again in the background |
 | GET / PUT | `/api/settings` | `{ fullTextSearch: bool }` | Per account, default `true`. `false` drops the account's entries on the next indexer pass and stops indexing its files |
 | GET | `/api/search` | `content=1` plus everything above | Adds content matches, see below |
@@ -1209,6 +1209,13 @@ plain text (any charset: BOM, UTF-16, UTF-8, a declared charset, else
 Windows-1252) and HTML (without scripts and styles), up to 10 MB; PDF (by
 `pdftotext` when installed, otherwise the bundled extractor, up to 2000
 pages) and docx/xlsx/pptx/odt/ods/odp (the XML inside the zip), up to 100 MB.
+With text recognition ([operations](operations.md#text-recognition-ocr)):
+pictures (JPEG, PNG, WebP, HEIC/HEIF, TIFF, up to 40 MB) and PDF pages with
+fewer than ten letters in their text layer, at most 10 such pages per PDF.
+Without it pictures are not indexed at all (not recorded as empty), so they
+are read once it is installed; PDFs indexed before keep their entry until
+they change or the index is rebuilt. A copy that shares a file's content
+reuses its text instead of being read again.
 At most 1 MB of text per file; each file gets 60 s. Never vault files,
 never trashed files. A file that can't be read counts as `failed` and is
 tried again when its content changes or on a rebuild. A changed file drops

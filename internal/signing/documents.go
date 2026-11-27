@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/NeoLabs-Systems/neocloud/internal/documentconvert"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"github.com/NeoLabs-Systems/neocloud/internal/signing/signpdf"
 	"github.com/google/uuid"
 )
@@ -33,6 +34,7 @@ var (
 func (h *Handler) capabilities() map[string]any {
 	return map[string]any{
 		"formats":        map[string]bool{"pdf": true, "image": true, "office": documentconvert.Available()},
+		"ocr":            ocr.PDFAvailable(), // field detection reads scanned pages
 		"maxSourceBytes": maxSourceBytes, "maxPages": maxPages, "maxParties": maxParties, "maxFields": maxFields,
 		"email": map[string]bool{"configured": h.mailEnabled()},
 	}

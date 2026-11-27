@@ -30,6 +30,7 @@ import (
 	"github.com/NeoLabs-Systems/neocloud/internal/config"
 	"github.com/NeoLabs-Systems/neocloud/internal/cryptox"
 	"github.com/NeoLabs-Systems/neocloud/internal/documentconvert"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
@@ -338,7 +339,7 @@ func TestComposedRuntimeServesHealthAndFirstAccountRegistration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var capabilities map[string]bool
-	if capabilityResponse.StatusCode != http.StatusOK || json.NewDecoder(capabilityResponse.Body).Decode(&capabilities) != nil || len(capabilities) != 3 || !capabilities["imageThumbnails"] || capabilities["officePreview"] != documentconvert.Available() || capabilities["fullTextSearch"] {
+	if capabilityResponse.StatusCode != http.StatusOK || json.NewDecoder(capabilityResponse.Body).Decode(&capabilities) != nil || len(capabilities) != 4 || !capabilities["imageThumbnails"] || capabilities["officePreview"] != documentconvert.Available() || capabilities["fullTextSearch"] || capabilities["ocr"] != ocr.Available() {
 		body, _ := io.ReadAll(capabilityResponse.Body)
 		capabilityResponse.Body.Close()
 		t.Fatalf("composed capabilities = %d: %s (%#v)", capabilityResponse.StatusCode, body, capabilities)

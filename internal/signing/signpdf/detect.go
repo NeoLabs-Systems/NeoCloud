@@ -10,8 +10,8 @@ import (
 )
 
 // Field detection: where a document wants something written. It reads the
-// AcroForm and the layout of each page (no AI, no OCR: a scan without a text
-// layer has nothing to read) and finds
+// AcroForm and the layout of each page (no AI; a page without a text layer is
+// read by text recognition when the server has it, see scan.go) and finds
 //
 //   - labels such as "Signature:", "Unterschrift", "Date", "Datum", "Name",
 //     "Initials", "Ort" beside, under or above a line one writes on (drawn, or
@@ -229,6 +229,7 @@ type pageDetector struct {
 	lay     *layout
 	phrases []phrase
 	targets []target
+	source  string // layout, or scan for a page read by recognition
 }
 
 // collectTargets merges the rules, drops those with text sitting on them or
@@ -453,7 +454,7 @@ func (pd *pageDetector) checkbox(t target, label string, score float64) Imported
 		score += 0.05
 	}
 	return ImportedField{Type: "checkbox", Name: truncateRunes(cleanLabel(label), 100), Required: false, Prefs: map[string]any{},
-		Areas: []Area{pd.area(b)}, Role: "checkbox", Confidence: round2(score), Source: "layout"}
+		Areas: []Area{pd.area(b)}, Role: "checkbox", Confidence: round2(score), Source: pd.source}
 }
 
 // Sizes by role in points: preferred height, widest box.
@@ -529,7 +530,7 @@ func (pd *pageDetector) place(t target, p phrase, pr pairing) []ImportedField {
 		}
 		out = append(out, ImportedField{
 			Type: fieldType(r.role), Name: truncateRunes(cleanLabel(name), 100), Required: true, Prefs: map[string]any{},
-			Areas: []Area{pd.area(box{at, bottom - height, width, height})}, Role: r.role, Confidence: round2(math.Min(0.97, confidence)), Source: "layout",
+			Areas: []Area{pd.area(box{at, bottom - height, width, height})}, Role: r.role, Confidence: round2(math.Min(0.97, confidence)), Source: pd.source,
 		})
 		at += segment + gap
 	}
@@ -565,7 +566,7 @@ func (pd *pageDetector) freeSpace(p phrase) []ImportedField {
 	}
 	return []ImportedField{{
 		Type: fieldType(role), Name: truncateRunes(cleanLabel(p.text), 100), Required: true, Prefs: map[string]any{},
-		Areas: []Area{pd.area(box{x0, bottom - height, width, height})}, Role: role, Confidence: 0.55, Source: "layout",
+		Areas: []Area{pd.area(box{x0, bottom - height, width, height})}, Role: role, Confidence: 0.55, Source: pd.source,
 	}}
 }
 
@@ -615,20 +616,32 @@ func DetectFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 	}
 	fonts := map[int]*fontInfo{}
 	detectors := map[int]*pageDetector{}
-	detector := func(index int) *pageDetector {
+	scans := newScanBudget()
+	detector := func(index int) (*pageDetector, error) {
 		if pd, ok := detectors[index]; ok {
-			return pd
+			return pd, nil
 		}
 		lay := doc.layout(index, fonts)
-		pd := &pageDetector{page: index, lay: lay, phrases: phrases(lay.chars)}
+		scanned, err := scans.read(ctx, data, index, lay)
+		if err != nil {
+			return nil, err
+		}
+		pd := &pageDetector{page: index, lay: lay, phrases: phrases(lay.chars), source: "layout"}
+		if scanned {
+			pd.source = "scan"
+		}
 		detectors[index] = pd
-		return pd
+		return pd, nil
 	}
 	found := doc.importForm()
 	for i := range found {
 		f := &found[i]
 		if f.Type == "text" && f.Role == "" {
-			f.Role = detector(f.Areas[0].Page).formRole(f.Areas[0])
+			pd, err := detector(f.Areas[0].Page)
+			if err != nil {
+				return nil, err
+			}
+			f.Role = pd.formRole(f.Areas[0])
 		}
 		f.retype()
 	}
@@ -636,7 +649,10 @@ func DetectFields(ctx context.Context, data []byte) ([]ImportedField, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		pd := detector(index)
+		pd, err := detector(index)
+		if err != nil {
+			return nil, err
+		}
 		pd.collectTargets()
 		found = append(found, pd.fields()...)
 	}

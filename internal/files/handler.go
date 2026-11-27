@@ -20,6 +20,7 @@ import (
 	requestauth "github.com/NeoLabs-Systems/neocloud/internal/auth"
 	"github.com/NeoLabs-Systems/neocloud/internal/cryptox"
 	"github.com/NeoLabs-Systems/neocloud/internal/documentconvert"
+	"github.com/NeoLabs-Systems/neocloud/internal/ocr"
 	"github.com/NeoLabs-Systems/neocloud/internal/searchindex"
 	"github.com/NeoLabs-Systems/neocloud/internal/webdav"
 	"github.com/NeoLabs-Systems/neolabs-go/httpx"
@@ -194,6 +195,7 @@ func capabilityPayload() map[string]bool {
 		"imageThumbnails": true,
 		"officePreview":   documentconvert.Available(),
 		"fullTextSearch":  false,
+		"ocr":             ocr.Available(),
 	}
 }
 
