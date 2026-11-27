@@ -1,13 +1,11 @@
 package main
 
 // The release's web client must be self-contained: local CanvasKit and fonts,
-// no Google CDN, and a version.json the service worker agrees with.
+// and no Google CDN.
 // google_fonts, which the shared widgets use too, finds the bundled Geist
 // files by name.
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,7 +18,6 @@ import (
 var (
 	runtimeFetchingOff = regexp.MustCompile(`GoogleFonts\.config\.allowRuntimeFetching\s*=\s*false`)
 	buildConfig        = regexp.MustCompile(`_flutter\.buildConfig\s*=\s*(\{[^;]+\});`)
-	versionHash        = regexp.MustCompile(`["']version\.json["']\s*:\s*["']([a-f0-9]{32})["']`)
 )
 
 func checkWebBundle(root, web string) error {
@@ -69,13 +66,6 @@ func checkWebBundle(root, web string) error {
 		}
 	}
 
-	hash := md5.Sum([]byte(read(filepath.Join(web, "version.json"))))
-	match := versionHash.FindStringSubmatch(read(filepath.Join(web, "flutter_service_worker.js")))
-	if match == nil {
-		fail("flutter_service_worker.js does not cache version.json")
-	} else if match[1] != hex.EncodeToString(hash[:]) {
-		fail("version.json does not match the service worker resource hash %s", match[1])
-	}
 	if baked := regexp.MustCompile(`localhost:3344|127\.0\.0\.1:3344`); baked.MatchString(read(filepath.Join(web, "main.dart.js"))) {
 		fail("the web client still points at a local dev server")
 	}

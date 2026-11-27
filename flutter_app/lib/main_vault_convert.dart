@@ -46,7 +46,7 @@ Future<FileNode?> showConvertToVault(BuildContext context, NeoCloudController co
       if (answer == _VaultResumeAnswer.startOver) {
         await store.remove(folder.id);
         if (!context.mounted) return null;
-        return showConvertToVault(context, controller, folder);
+        return await showConvertToVault(context, controller, folder);
       }
       if (answer != _VaultResumeAnswer.unlocked) return null;
     }

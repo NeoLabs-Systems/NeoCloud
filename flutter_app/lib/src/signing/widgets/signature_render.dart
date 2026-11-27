@@ -150,7 +150,7 @@ Future<Uint8List?> normalizeImagePng(Uint8List bytes) async {
       Paint()..filterQuality = FilterQuality.high,
     );
     image.dispose();
-    return _toPng(recorder.endRecording(), width, height);
+    return await _toPng(recorder.endRecording(), width, height);
   } catch (_) {
     return null;
   } finally {

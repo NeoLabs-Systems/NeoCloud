@@ -33,6 +33,7 @@ class _PageScaffold extends StatelessWidget {
       list = ListView.builder(
         physics: refresh == null ? null : const AlwaysScrollableScrollPhysics(),
         padding: _pagePadding(context),
+        // ignore: deprecated_member_use, the replacement does not exist in older Flutter releases.
         cacheExtent: 0,
         itemCount: children.length,
         itemBuilder: (context, index) => Center(
@@ -531,7 +532,7 @@ class _SectionCard extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Expanded(child: _SectionTitle(title)),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
         ),

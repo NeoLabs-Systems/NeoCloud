@@ -61,6 +61,7 @@ class _UploadPanelState extends State<_UploadPanel> {
     _wasActive = active;
     _announcedFailures = failures;
     _wasOffline = offline;
+    // ignore: deprecated_member_use, the replacement does not exist in older Flutter releases.
     if (message != null) unawaited(SemanticsService.announce(message, direction));
   }
 

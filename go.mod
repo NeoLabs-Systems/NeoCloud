@@ -2,6 +2,8 @@ module github.com/NeoLabs-Systems/neocloud
 
 go 1.27.3
 
+toolchain go1.27.4
+
 require (
 	github.com/NeoLabs-Systems/neolabs-go v0.3.5-0.20261127205405-4e8cfd4c1c32
 	github.com/aws/aws-sdk-go-v2 v1.48.1
