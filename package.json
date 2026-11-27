@@ -1,7 +1,7 @@
 {
   "name": "neocloud",
   "private": true,
-  "version": "0.1.1-beta.36",
+  "version": "0.1.1-beta.37",
   "description": "Not a Node.js package. Lets the Node.js updater of older NeoCloud installations hand over to the Go binary (scripts/node-handover.sh); version must equal internal/buildinfo/version.go.",
   "license": "AGPL-3.0-only",
   "scripts": {
