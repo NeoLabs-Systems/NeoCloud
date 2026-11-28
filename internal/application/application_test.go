@@ -2652,16 +2652,20 @@ func TestComposedHandoffBrowserToPhoneAndPhoneReceivePreference(t *testing.T) {
 		cancel()
 		t.Fatalf("events=%d %s", stream.StatusCode, data)
 	}
-	status, payload = do("GET", "/api/handoff/devices", "", "")
-	if status != http.StatusOK || json.Unmarshal(payload, &deviceList) != nil {
-		stream.Body.Close()
-		cancel()
-		t.Fatalf("phone preference devices=%d %s", status, payload)
-	}
+	// The stream registers its presence just after it answers, so give a slow
+	// machine a moment to see the phone come online.
 	phoneFound := false
-	for _, d := range deviceList.Devices {
-		if d.ID == fmt.Sprintf("d:%d", deviceID) {
-			phoneFound = d.Kind == "phone" && d.Online && !d.CanReceive
+	for deadline := time.Now().Add(5 * time.Second); !phoneFound && time.Now().Before(deadline); time.Sleep(50 * time.Millisecond) {
+		status, payload = do("GET", "/api/handoff/devices", "", "")
+		if status != http.StatusOK || json.Unmarshal(payload, &deviceList) != nil {
+			stream.Body.Close()
+			cancel()
+			t.Fatalf("phone preference devices=%d %s", status, payload)
+		}
+		for _, d := range deviceList.Devices {
+			if d.ID == fmt.Sprintf("d:%d", deviceID) {
+				phoneFound = d.Kind == "phone" && d.Online && !d.CanReceive
+			}
 		}
 	}
 	stream.Body.Close()
