@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/NeoLabs-Systems/neolabs-go/cli/envfile"
 	"github.com/NeoLabs-Systems/neolabs-go/runtimecfg"
 	"github.com/NeoLabs-Systems/neolabs-go/servicemail"
 	_ "modernc.org/sqlite"
@@ -200,9 +201,18 @@ func ReadEnv(path string) (map[string]string, error) {
 
 // UpdateEnv persists environment values in the private install env file. An
 // empty value is stored as an empty assignment, matching startup semantics.
+// A value can never add a line: a line break would let it set other keys.
 func UpdateEnv(path string, updates map[string]string) error {
 	if path == "" || len(updates) == 0 {
 		return errors.New("config: env file path and at least one update are required")
+	}
+	for key, value := range updates {
+		if !envfile.ValidKey(key) {
+			return fmt.Errorf("config: invalid environment variable name %q", key)
+		}
+		if strings.ContainsAny(value, "\r\n\x00") {
+			return fmt.Errorf("config: the value of %s contains a line break", key)
+		}
 	}
 	envFileWriteMu.Lock()
 	defer envFileWriteMu.Unlock()

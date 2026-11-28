@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"github.com/NeoLabs-Systems/neocloud/internal/settings"
 	"github.com/NeoLabs-Systems/neolabs-go/httpx"
@@ -165,7 +166,9 @@ func uniqueModelIDs(ids []string) []string {
 	result := make([]string, 0, len(ids))
 	for _, id := range ids {
 		id = strings.TrimSpace(id)
-		if id != "" && !seen[id] {
+		// A model id is one line of printable text; anything else is not an id
+		// any provider serves, and could not be stored in .env either.
+		if id != "" && !seen[id] && !strings.ContainsFunc(id, unicode.IsControl) {
 			seen[id] = true
 			result = append(result, id)
 		}

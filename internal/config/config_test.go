@@ -245,3 +245,37 @@ func testPaths(root string) Paths {
 		PreviewDir:   filepath.Join(storage, "previews"),
 	}
 }
+
+func TestUpdateEnvRefusesValuesThatWouldAddLines(t *testing.T) {
+	envFile := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envFile, []byte("PORT=3344\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"x\nALLOWED_ORIGINS=https://evil.example", "x\rSECURE_COOKIES=false", "x\x00y"} {
+		if err := UpdateEnv(envFile, map[string]string{"NEOCLOUD_DISABLED_MODELS": value}); err == nil {
+			t.Fatalf("UpdateEnv accepted %q", value)
+		}
+	}
+	if err := UpdateEnv(envFile, map[string]string{"BAD KEY": "x"}); err == nil {
+		t.Fatal("UpdateEnv accepted an invalid key")
+	}
+	raw, err := os.ReadFile(envFile)
+	if err != nil || string(raw) != "PORT=3344\n" {
+		t.Fatalf("env file changed: %q (%v)", raw, err)
+	}
+	if err := UpdateEnv(envFile, map[string]string{"NEOCLOUD_DISABLED_MODELS": "a::b,c::d"}); err != nil {
+		t.Fatal(err)
+	}
+	if values := runtimecfg.ParseEnv(mustRead(t, envFile)); values["NEOCLOUD_DISABLED_MODELS"] != "a::b,c::d" || len(values) != 2 {
+		t.Fatalf("env values = %v", values)
+	}
+}
+
+func mustRead(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}

@@ -120,3 +120,10 @@ func TestAdminModelVisibilityDoesNotChangeMemoryWhenEnvWriteFails(t *testing.T) 
 		t.Fatalf("failed write changed live state: %d %s", response.Code, response.Body.String())
 	}
 }
+
+func TestUniqueModelIDsDropsIDsWithControlCharacters(t *testing.T) {
+	got := uniqueModelIDs([]string{" openai::gpt ", "x\nALLOWED_ORIGINS=https://evil.example", "openai::gpt", "bad\x00id", "ollama::llama"})
+	if !reflect.DeepEqual(got, []string{"openai::gpt", "ollama::llama"}) {
+		t.Fatalf("uniqueModelIDs = %#v", got)
+	}
+}
