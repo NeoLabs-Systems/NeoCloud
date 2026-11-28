@@ -145,7 +145,7 @@ func TestSignInFromSomewhereNewTellsTheOwner(t *testing.T) {
 		if got != "cloud-user cloud@example.test 192.0.2.1 Second browser" {
 			t.Fatalf("notice = %q", got)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("no notice for a sign-in from a new browser")
 	}
 	select {

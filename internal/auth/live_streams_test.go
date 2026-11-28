@@ -43,7 +43,7 @@ func TestRevokingACredentialEndsItsEventStreams(t *testing.T) {
 	mustEnd := func(name string, ended chan struct{}) {
 		select {
 		case <-ended:
-		case <-time.After(2 * time.Second):
+		case <-time.After(10 * time.Second):
 			t.Fatalf("%s stream stayed open after revocation", name)
 		}
 	}

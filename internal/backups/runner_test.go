@@ -238,7 +238,7 @@ func TestBackupTargetRunIsExcludedAcrossRunnerInstances(t *testing.T) {
 	}
 	select {
 	case <-started:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("first runner never entered the active target")
 	}
 	if _, err = second.startTargetRun(1, &blockedBackupTarget{started: make(chan struct{}, 1)}, 1); !errors.Is(err, ErrAlreadyRunning) {

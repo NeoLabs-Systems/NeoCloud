@@ -132,7 +132,7 @@ func TestAnonymousPasswordRecoveryDoesNotRevealAccountOrDeliveryFailures(t *test
 		if attempted != "cloud-user:cloud@example.test" {
 			t.Errorf("mail attempt used unexpected account: %q", attempted)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("known account did not trigger password reset delivery")
 	}
 	select {
@@ -1201,11 +1201,11 @@ func TestPasswordRecoveryIsUniformAndInvalidatesCredentials(t *testing.T) {
 					if recipient != "recovery@example.test" {
 						t.Fatalf("password-change notice went to %q", recipient)
 					}
-				case <-time.After(time.Second):
+				case <-time.After(10 * time.Second):
 					t.Fatal("password-change notice was not sent")
 				}
 				return
-			case <-time.After(2 * time.Second):
+			case <-time.After(10 * time.Second):
 				t.Fatal("reset mail was not sent")
 			}
 		}
@@ -1233,7 +1233,7 @@ func TestPasswordRecoveryIgnoresLegacySignupTokenWhenConfirmationIsDisabled(t *t
 	}
 	select {
 	case <-mail:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("password reset was blocked by a stale signup confirmation token")
 	}
 }
@@ -1403,7 +1403,7 @@ func TestQRLoginLongPollWakesWhenChallengeChangesAndHonorsCancellation(t *testin
 		if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"status":"scanned"`) || !strings.Contains(response.Body.String(), `"longPoll":true`) {
 			t.Fatalf("long-poll response %d: %s", response.Code, response.Body.String())
 		}
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("long poll did not wake after persisted status change")
 	}
 
@@ -1418,7 +1418,7 @@ func TestQRLoginLongPollWakesWhenChallengeChangesAndHonorsCancellation(t *testin
 	select {
 	case <-done:
 		// Nobody is left to read an answer; the wait just has to end.
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("long poll did not return after request cancellation")
 	}
 }

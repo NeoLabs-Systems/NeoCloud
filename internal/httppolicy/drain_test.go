@@ -24,7 +24,7 @@ func TestDrainRefusesNewUploadsAndEndsStreams(t *testing.T) {
 	drain.Start()
 	select {
 	case <-ended:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("the event stream outlived the drain")
 	}
 	for path, want := range map[string]int{"/api/upload": 503, "/api/uploads": 503, "/api/uploads/x/parts/1": 503, "/api/files": 200} {

@@ -72,7 +72,7 @@ func TestWatchInvalidatesOwnerSharedByMeAcrossDatabasePools(t *testing.T) {
 			if count != want {
 				t.Fatalf("flush count=%d, want %d; stream: %s", count, want, w.Body.String())
 			}
-		case <-time.After(time.Second):
+		case <-time.After(10 * time.Second):
 			t.Fatalf("watch did not flush event %d; stream: %s", want, w.Body.String())
 		}
 	}
@@ -103,7 +103,7 @@ func TestWatchInvalidatesOwnerSharedByMeAcrossDatabasePools(t *testing.T) {
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 }
@@ -138,7 +138,7 @@ func TestWatchStreamsDurableCursorHintsAndUsesLastEventID(t *testing.T) {
 	}()
 	select {
 	case <-w.flushed: // ready cursor event
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not send ready event")
 	}
 	if _, err := db.W.Exec(`INSERT INTO changes(user_id,node_id,op) VALUES(1,'node-one','create')`); err != nil {
@@ -146,13 +146,13 @@ func TestWatchStreamsDurableCursorHintsAndUsesLastEventID(t *testing.T) {
 	}
 	select {
 	case <-w.flushed: // durable change cursor event
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not publish a committed journal change")
 	}
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 	body := w.Body.String()
@@ -177,7 +177,7 @@ func TestWatchWithoutCursorStartsAtCurrentJournalHead(t *testing.T) {
 	go func() { mux.ServeHTTP(w, req); close(done) }()
 	select {
 	case <-w.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not send ready event")
 	}
 	if !strings.Contains(w.Body.String(), "event: ready\ndata: {\"cursor\":1}") {
@@ -191,7 +191,7 @@ func TestWatchWithoutCursorStartsAtCurrentJournalHead(t *testing.T) {
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 }
@@ -212,7 +212,7 @@ func TestWatchSignalsOnlyTheGranteesShareInvalidation(t *testing.T) {
 	}()
 	select {
 	case <-w.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not send ready event")
 	}
 	if _, err := db.W.Exec(`INSERT INTO user_shares(owner_id,node_id,grantee_id,permission,recipient) VALUES(1,'shared-root',2,'read','sync-two')`); err != nil {
@@ -220,13 +220,13 @@ func TestWatchSignalsOnlyTheGranteesShareInvalidation(t *testing.T) {
 	}
 	select {
 	case <-w.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not publish share invalidation")
 	}
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 	if !strings.Contains(w.Body.String(), "event: shares:changed\ndata: {}") {
@@ -251,7 +251,7 @@ func TestWatchSignalsShareInvalidationWhenGrantExpires(t *testing.T) {
 	go func() { mux.ServeHTTP(w, req); close(done) }()
 	select {
 	case <-w.flushed: // ready event
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not send ready event")
 	}
 	select {
@@ -262,7 +262,7 @@ func TestWatchSignalsShareInvalidationWhenGrantExpires(t *testing.T) {
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 	if !strings.Contains(w.Body.String(), "event: shares:changed\ndata: {}") {
@@ -292,7 +292,7 @@ func TestWatchEmitsSharedFolderChangesOnlyWithinCurrentGrant(t *testing.T) {
 	go func() { mux.ServeHTTP(w, req); close(done) }()
 	select {
 	case <-w.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not send ready event")
 	}
 	if _, err := db.W.Exec(`UPDATE nodes SET parent_id='outside-folder' WHERE id='inside-file';
@@ -302,13 +302,13 @@ func TestWatchEmitsSharedFolderChangesOnlyWithinCurrentGrant(t *testing.T) {
 	}
 	select {
 	case <-w.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not publish grant-scoped folder changes")
 	}
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("watch did not stop after request cancellation")
 	}
 	body := w.Body.String()

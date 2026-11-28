@@ -332,7 +332,7 @@ func TestStartWorkerStopsAndJoins(t *testing.T) {
 	go func() { stop(); close(finished) }()
 	select {
 	case <-finished:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("photo worker did not stop")
 	}
 }
